@@ -8,7 +8,7 @@ individual rows) documents the same information in context; this file exists as 
 project-wide index so gaps are easy to audit without opening every workbook.
 
 **Every workbook is a live-formula Excel model, independently re-derived in Python
-(`tools/verify_<class>_workbook.py`) and checked cell-for-cell against the Excel formulas.**
+(`src/verify_<class>_workbook.py`) and checked cell-for-cell against the Excel formulas.**
 "Gap" below never means "untested" — every number, including assumed ones, flows through the
 same full verification pipeline (exact match, categorical sweep across
 `monster_type × fixed-duration`, and a level-boundary sweep for unexplained decreases). A gap
@@ -18,10 +18,10 @@ means *the underlying game value itself* is uncertain, not that the spreadsheet 
 
 For a class with good wiki data, each scaling skill's damage is stored as a
 `(baseDamage, factorIndex)` pair: `baseDamage` in tenths-of-a-percent, and `factorIndex` selecting
-one of 24 pre-built growth curves in `src/ts/data/factor-table-data.ts` (a level 1→300 table).
+one of 24 pre-built growth curves in `data/factor_table.json` (a level 1→300 table).
 This pair is resolved by sampling a skill's real per-level values from its own individual wiki
 page and finding the `factorIndex` whose curve reproduces those samples with ~0% residual error
-(see any `tools/_reverse_engineer_<class>_factors.py`). This is the high-confidence path.
+(see any `src/_reverse_engineer_<class>_factors.py`). This is the high-confidence path.
 
 ## Gap tiers used below
 

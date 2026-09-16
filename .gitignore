@@ -7,3 +7,6 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Generated output from potential_cubes_ev.py
+*_potential_cubes_ev.csv
