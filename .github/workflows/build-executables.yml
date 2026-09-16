@@ -1,0 +1,57 @@
+name: Build potential_cubes_ev executables
+
+# Builds a standalone, double-clickable potential_cubes_ev for macOS and Windows and attaches
+# them to the GitHub Release that triggered the run. Can also be run manually (workflow_dispatch)
+# to sanity-check the build without cutting a release; in that case the binaries are only
+# uploaded as workflow artifacts (Actions tab), not attached anywhere public.
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            asset_name: potential_cubes_ev-macos
+            build_name: potential_cubes_ev
+          - os: windows-latest
+            asset_name: potential_cubes_ev-windows.exe
+            build_name: potential_cubes_ev.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install openpyxl formulas numpy tqdm pyinstaller
+
+      - name: Build executable
+        run: >
+          pyinstaller --onefile --name potential_cubes_ev
+          --collect-submodules formulas
+          --collect-data formulas
+          src/potential_cubes_ev.py
+
+      - name: Rename artifact
+        shell: bash
+        run: mv "dist/${{ matrix.build_name }}" "dist/${{ matrix.asset_name }}"
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.asset_name }}
+
+      - name: Upload workflow artifact
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: dist/${{ matrix.asset_name }}

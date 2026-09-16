@@ -57,11 +57,19 @@ or sampling.
 """
 import argparse
 import csv
+import multiprocessing
 import sys
 from pathlib import Path
 
 import numpy as np
 import openpyxl
+
+# Must run before ANY other module-level code: when frozen into a onefile executable
+# (PyInstaller), a multiprocessing child re-invokes this same binary as its own "interpreter,"
+# re-running this whole module from the top with interpreter-style flags in sys.argv
+# (-B -S -I -c ...) that argparse below can't parse. freeze_support() detects that case and
+# exits before reaching any of that — but only if called first, before parse_args() etc. run.
+multiprocessing.freeze_support()
 
 MAX_CUBES = 1000
 

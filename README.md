@@ -44,8 +44,30 @@ your own stats, and every other sheet recalculates live.
 5. **Sensitivity** has the full detail behind that marginal-value table, one block per stat.
 6. **CubeData / PotentialCubes** model your current gear's Potential Cube lines. For the
    standalone version of that same math — a command-line tool that reads your gear straight out
-   of the workbook — run `python3 potential_cubes_ev.py` from inside that class's own folder (it
-   auto-detects the one `.xlsx` file next to it); requires `pip install openpyxl formulas`.
+   of the workbook — grab the prebuilt executable for your OS from the
+   **[latest Release](../../releases/latest)** (`potential_cubes_ev-macos` or
+   `potential_cubes_ev-windows.exe`), drop it into that class's own folder next to the `.xlsx`,
+   and double-click it — no Python required. (On macOS, right-click → Open the first time, since
+   it isn't signed by an Apple-registered developer.) If you'd rather run it from source instead,
+   `python3 potential_cubes_ev.py` from inside that folder does the same thing (auto-detects the
+   one `.xlsx` file next to it); requires `pip install openpyxl formulas`.
+
+### What to put for Monster Defense
+
+`Monster Defense` on the Inputs sheet is the target's own Defense stat — it directly affects your
+damage via the game's own damage-reduction formula, so getting it right matters. Known values,
+per our source:
+
+- **Chapter Boss**: 3200 Defense at Chapter 28, going up by +50 per chapter after that (e.g.
+  Chapter 29 ≈ 3250, Chapter 30 ≈ 3300). This is a linear extrapolation from the one confirmed
+  data point — treat anything beyond Chapter 28 as an estimate, not a confirmed value.
+- **Breakthrough**: 4860 Defense at Chapter 28, Breakthrough stage 9, going up by +20 per stage
+  after that. Same caveat — only that one point is confirmed; later stages are extrapolated.
+- **World Boss**: a flat 62,100 Defense (no scaling reported).
+
+If you're not fighting one of the above, or you have a more precise value for your specific
+content, just use that instead — these are starting points, not hardcoded assumptions in the
+workbook itself.
 
 ## Regenerating a workbook from source
 
