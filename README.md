@@ -99,3 +99,16 @@ against the live Excel formulas — not just at your current stats, but across e
 level from 1 to 200, checking specifically that no unlock or mastery threshold ever *decreases*
 your DPS. See `KNOWN_GAPS.md` for the handful of places where the underlying game data itself —
 not the spreadsheet math — is uncertain.
+
+## Future work
+
+Have a feature you want, a bug you've found, or a class that feels off? Open an issue — feedback
+and requests are welcome.
+
+**Next up:** verifying and closing the data gaps in Bishop, Paladin, Buccaneer, and Corsair (see
+`KNOWN_GAPS.md` for exactly what's flagged in each) — these four classes have the least complete
+wiki data of the twelve and are the current priority.
+
+**Further out:** none of the twelve workbooks model MP consumption, Artifacts, or Companions yet
+— these are all planned additions once the class-data gaps above are settled.
+

@@ -4,6 +4,10 @@ This file is for anyone — human or AI — picking up this codebase to add a cl
 or extend the tooling. It captures conventions and pitfalls that were only discovered by building
 all 12 classes; following them will save you from re-discovering the same bugs.
 
+**Current priority** (see README.md's "Future work" section): verifying and closing the data
+gaps in Bishop, Paladin, Buccaneer, and Corsair — `KNOWN_GAPS.md` lists exactly what's flagged in
+each. MP consumption, Artifacts, and Companions are planned after that, project-wide.
+
 ## What this project is
 
 Per-class Excel DPS calculators for MapleStory Idle RPG. Each class gets:
