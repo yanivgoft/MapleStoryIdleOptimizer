@@ -68,10 +68,11 @@ the two don't auto-sync.
 
 ## Credits & data sources
 
-This is a fan-made, unofficial project — not affiliated with or endorsed by Nexon.
-
-- **[MapleStory Idle RPG](https://www.nexon.com/)** is Nexon's game. All class/skill names,
-  mechanics, and numbers describe their game design, not ours.
+- **[MapleStory Damage Calculator](https://djc-0de.github.io/Maplestory-Damage-Calculator/)** —
+  this project's `data/factor_table.json` and `data/cube_potential_data.json` (the level 1→300
+  skill-scaling factor table and the Potential Cube line/rate tables) are extracted directly from
+  that project's own already-built game-mechanics data. This project exists as a companion to it,
+  covering per-class DPS math as standalone Excel workbooks rather than a web UI.
 - **[idle.maplestorywiki.net](https://idle.maplestorywiki.net)**, an editable community wiki, is
   the primary source for every skill's damage curve, cooldown, and mastery table used in this
   project. Its own content is published under a
@@ -79,7 +80,7 @@ This is a fan-made, unofficial project — not affiliated with or endorsed by Ne
   license — credit to that wiki's editors for compiling the underlying game data these
   calculators are built from.
 - Post-patch numeric deltas (where the wiki lagged behind a game update) are cross-referenced
-  against Nexon's own official in-game patch notes.
+  against the game's own official in-game patch notes.
 
 Every skill's damage, cooldown, and mastery bonus is sourced from the wiki above and
 cross-referenced against those official patch notes. Where a skill has a full per-level curve on
