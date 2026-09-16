@@ -66,17 +66,29 @@ won't lose your stats if you regenerate after an update. If you rebuild, remembe
 `src/potential_cubes_ev.py` into that class's folder too — it's a plain copy, not a symlink, so
 the two don't auto-sync.
 
-## Where the numbers come from
+## Credits & data sources
 
-Every skill's damage, cooldown, and mastery bonus is sourced from
-[idle.maplestorywiki.net](https://idle.maplestorywiki.net) and cross-referenced against the
-game's own official patch notes. Where a skill has a full per-level curve on the wiki, that curve
-is matched exactly (not approximated) against the game's own internal scaling table. Where it
-doesn't — a handful of classes were added to the wiki without full per-skill documentation — the
-workbook says so explicitly, both in that class's own README sheet and in
-**[KNOWN_GAPS.md](KNOWN_GAPS.md)**, which is the single project-wide list of every assumption or
-approximation in every class. Nothing is silently guessed; anything uncertain is labeled as such
-in the workbook itself.
+This is a fan-made, unofficial project — not affiliated with or endorsed by Nexon.
+
+- **[MapleStory Idle RPG](https://www.nexon.com/)** is Nexon's game. All class/skill names,
+  mechanics, and numbers describe their game design, not ours.
+- **[idle.maplestorywiki.net](https://idle.maplestorywiki.net)**, an editable community wiki, is
+  the primary source for every skill's damage curve, cooldown, and mastery table used in this
+  project. Its own content is published under a
+  [Creative Commons Attribution-NonCommercial-ShareAlike](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+  license — credit to that wiki's editors for compiling the underlying game data these
+  calculators are built from.
+- Post-patch numeric deltas (where the wiki lagged behind a game update) are cross-referenced
+  against Nexon's own official in-game patch notes.
+
+Every skill's damage, cooldown, and mastery bonus is sourced from the wiki above and
+cross-referenced against those official patch notes. Where a skill has a full per-level curve on
+the wiki, that curve is matched exactly (not approximated) against the game's own internal
+scaling table. Where it doesn't — a handful of classes were added to the wiki without full
+per-skill documentation — the workbook says so explicitly, both in that class's own README sheet
+and in **[KNOWN_GAPS.md](KNOWN_GAPS.md)**, which is the single project-wide list of every
+assumption or approximation in every class. Nothing is silently guessed; anything uncertain is
+labeled as such in the workbook itself.
 
 ## Accuracy
 
