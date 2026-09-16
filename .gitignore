@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.pyc
+
+# Excel lock/temp files
+~$*.xlsx
+
+# OS
+.DS_Store
