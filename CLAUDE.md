@@ -112,16 +112,20 @@ you're building a new class, check for all of these *before* your first build, n
    block-local row that's still within the normal per-skill column range (1–19ish) — they'll
    silently collide with that row's own real skill data; place them well beyond it (e.g. column
    `Z`), matching wherever the main Calc sheet puts its own equivalent scratch cells.
-7. **Never add a term to the Sensitivity block that reintroduces a swept stat's own delta a
-   second time.** Bishop/FP-Mage/Ice-Lightning-Mage's basic-attack Attack formula had an
-   `int_attack_delta` term that re-added the Flat INT/INT % override's delta directly into Attack
-   — on top of the same delta already flowing correctly through `STAT_DAMAGE`, roughly doubling
-   the reported marginal DPS for those two stats only (every other stat's block computed that
-   term as exactly 0, so it looked fine everywhere else). If a stat's contribution is already
-   captured by an existing composite `ib()` key (`"attack"`, `"stat_damage"`), don't also thread
-   its raw delta through anywhere else — verify a new stat's own marginal DPS row against a
-   fresh-subprocess run of `verify_<class>_workbook.py` with a large *nonzero* baseline value for
-   that stat (a zero baseline can make a doubled term look identical to a correct one).
+7. **Main-stat's flat-Attack contribution and STAT_DAMAGE are two independent mechanics, not
+   duplicates — don't "fix" one by deleting the other.** Every class's `ib("stat_damage")` key
+   (main stat final value * 0.01 + sub stat * 0.0025, feeding the STAT_DAMAGE% bucket) and the
+   Sensitivity block's `mainstat_attack_delta` term (same main/sub stat pair, feeding flat Attack
+   at ratio 1/0.25 before ATTACK% applies) are both real, separate in-game conversions — the
+   character's main/sub stat contributes to damage through *two* independent channels. It's easy
+   to mistake this for double-counting when cross-checking Sensitivity numbers by hand, since both
+   terms move together whenever the swept stat is Flat main-stat/main-stat %. Before removing
+   either term, verify by hand-deriving the *expected* marginal DPS from the in-game mechanic
+   description, not just by comparing the Sensitivity block's internal consistency against the
+   main Calc sheet — the main Calc sheet deliberately never implements the flat-Attack half at all
+   (it assumes the user's own Flat ATTACK entry already includes it), so an internal-consistency
+   check alone cannot distinguish "real mechanic implemented only in delta form" from "duplicated
+   bug."
 
 ## Cross-checking a new class against its siblings
 

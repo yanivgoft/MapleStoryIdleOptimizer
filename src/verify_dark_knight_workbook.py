@@ -130,7 +130,8 @@ attack = flat_attack * (1 + attack_pct / 100)
 flat_str, str_pct, dex_stat = _in("flat_str"), _in("str_pct"), _in("dex")
 defense_pct = _in("defense_pct")
 total_defense = defense * (1 + defense_pct / 100)
-iron_wall_str_bonus = 0.10 * total_defense if level >= 38 else 0.0
+iron_wall_conversion_rate = 10 * get_factor(level, 22) / 1000
+iron_wall_str_bonus = iron_wall_conversion_rate / 100 * total_defense if level >= 38 else 0.0
 stat_damage = ((flat_str + iron_wall_str_bonus) * (1 + str_pct / 100)) * 0.01 + dex_stat * 0.0025
 damage = _in("damage")
 damage_amp = _in("damage_amp")

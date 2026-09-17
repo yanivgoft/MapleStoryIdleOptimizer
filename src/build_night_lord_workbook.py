@@ -1668,6 +1668,16 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         "boss_damage", "skill_damage", "final_damage", "attack_mult",
     )}
 
+    # Flat ATTACK is assumed to already include the character's current LUK/DEX-derived attack
+    # (1 total LUK = 1 flat Attack, 1 DEX = 0.25 flat Attack, added into the pool before ATTACK%
+    # applies) — same "already baked into Inputs, only the Sensitivity marginal delta matters"
+    # pattern used elsewhere in this block. Identically 0 for every block except the ones sweeping
+    # flat_luk/luk_pct/dex.
+    mainstat_attack_delta = (
+        f'((({ib("flat_luk")}*(1+{ib("luk_pct")}/100))-({IB("flat_luk")}*(1+{IB("luk_pct")}/100)))'
+        f'+0.25*({ib("dex")}-{IB("dex")}))'
+    )
+
     r_dsa = ROW["DARK_SIGHT_ATK"]
     r_fcs = ROW["FRAILTY_CURSE_SELF_FD"]
     dark_sight_atk_avg = f'((C{row_of["DARK_SIGHT_ATK"]}=TRUE)*F{row_of["DARK_SIGHT_ATK"]}*{buff_uptime_block(row_of["DARK_SIGHT_ATK"], r_dsa)})'
@@ -1757,7 +1767,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         ))
 
         if key in FULL_HIT_PIPELINE_KEYS:
-            ws.cell(row=row, column=10, value=f'={ib("attack")}*(F{row}/100)')
+            ws.cell(row=row, column=10, value=(
+                f'=({ib("attack")}+{mainstat_attack_delta}*(1+{ib("attack_pct")}/100))*(F{row}/100)'
+            ))
             monster_dmg_term = monster_blend_expr(
                 ib("monster_type"), ib("normal_weight_frac"),
                 f'{ib("boss_damage")}+{delta["boss_damage"]}+{S("MasteryBossDamage%", r)}+{monster_dmg_bonus_ref}',

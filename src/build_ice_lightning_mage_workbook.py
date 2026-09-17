@@ -1466,6 +1466,16 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     # flows through the local Actions-Per-Second formula, not the K-column chain.
     attack_speed_delta = f'(F{row_of["MAGIC_ACCELERATION"]}-Calc!F{ROW["MAGIC_ACCELERATION"]})'
 
+    # Flat ATTACK is assumed to already include the character's current INT/LUK-derived attack
+    # (1 total INT = 1 flat Attack, 1 LUK = 0.25 flat Attack, added into the pool before ATTACK%
+    # applies) — same "already baked into Inputs, only the Sensitivity marginal delta matters"
+    # pattern as Magic Critical/Spell Mastery above. Identically 0 for every block except the
+    # ones sweeping flat_int/int_pct/luk.
+    mainstat_attack_delta = (
+        f'((({ib("flat_int")}*(1+{ib("int_pct")}/100))-({IB("flat_int")}*(1+{IB("int_pct")}/100)))'
+        f'+0.25*({ib("luk")}-{IB("luk")}))'
+    )
+
 
     fda_block = fixed_duration_active_expr(ib("monster_type"), ib("fight_duration"))
 
@@ -1548,7 +1558,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
         if key == "CHAIN_LIGHTNING" or key in DAMAGE_ROW_KEYS:
             ws.cell(row=row, column=10, value=(
-                f'={ib("attack")}*(F{row}/100)'
+                f'=({ib("attack")}+{mainstat_attack_delta}*(1+{ib("attack_pct")}/100))*(F{row}/100)'
             ))
             monster_dmg_term = monster_blend_expr(
                 ib("monster_type"), ib("normal_weight_frac"),

@@ -108,7 +108,12 @@ Key mechanics/simplifications specific to this kit:
     BaseDamage (18000->9000 tenths%) and HitsPerCast (2->6) once Lv.134 unlocks, net +50% total
     damage (6*0.5 vs 2*1.0) — same "flip fields at a level threshold" pattern used for
     Strike-mastery hit-count bumps elsewhere, just applied to both fields simultaneously.
-  - Iron Wall (+10% of total Defense as STR, Lv.38+) is modeled live via a tracked Defense/
+  - Iron Wall (converts total Defense into STR at a level-scaling rate — 10% at Lv.1, applied
+    via the same factorIndex 22 growth curve confirmed for Bishop's own Invincible by a real
+    2-point data match, per user request to model both classes' Defense-conversion skill the same
+    way; DK's own curve isn't independently confirmed yet, since the wiki's own Iron Wall page
+    still shows a flat unchanging 10% at every sampled level — flagged, not yet cross-checked
+    against real DK-specific in-game data — Lv.38+) is modeled live via a tracked Defense/
     Defense % Inputs pair feeding STAT_DAMAGE directly (added when the project-wide Content-Type
     feature introduced a Defense stat for the PvP opponent-defense estimate). Warrior Mastery/
     Iron Body-equivalent flat-stat passives still have no rows (zero DPS-relevant mechanic).
@@ -347,8 +352,17 @@ def total_defense_expr(ib_fn):
     return f'({ib_fn("defense")}*(1+{ib_fn("defense_pct")}/100))'
 
 
+def iron_wall_conversion_rate_expr(ib_fn):
+    lvl = ib_fn("level")
+    factor_lookup = (
+        f'INDEX(FactorTable!$B$2:$Y$301, MATCH(ROUND(MIN(300,MAX(1,{lvl})),0), '
+        f'FactorTable!$A$2:$A$301,0), 23)'
+    )
+    return f'(10*{factor_lookup}/1000)'
+
+
 def iron_wall_str_bonus_expr(ib_fn):
-    return f'IF({ib_fn("level")}>=38,0.10*{total_defense_expr(ib_fn)},0)'
+    return f'IF({ib_fn("level")}>=38,{iron_wall_conversion_rate_expr(ib_fn)}/100*{total_defense_expr(ib_fn)},0)'
 
 
 def build_readme_sheet(wb):
@@ -388,7 +402,8 @@ def build_readme_sheet(wb):
         "component, and Final Pact's own Final Damage component are always-on passives assumed to "
         "already be reflected in your own Inputs stat entries — only their Sensitivity marginal "
         "delta is modeled live, matching this project's established convention. Iron Wall "
-        "(+10% of your total Defense as STR, once Lv.38 unlocks) IS modeled live — Defense (flat) "
+        "(a level-scaling % of your total Defense as STR — 10% at Lv.1, growing with level, once "
+        "Lv.38 unlocks) IS modeled live — Defense (flat) "
         "and Defense % are their own tracked Inputs, feeding STAT_DAMAGE directly, with their own "
         "Sensitivity marginal-value rows and PotentialCubes Defense % support. Warrior-Mastery-"
         "equivalent flat-stat passives have zero DPS-relevant mechanic and get no row at all. "
@@ -469,9 +484,11 @@ def build_inputs_sheet(wb, existing=None):
                           "stage number (e.g. '80') for Weapon/Enhancement/EXP/Equipment/Hero Dungeon", "28-9"),
         ("flat_attack", "Flat ATTACK", 10000),
         ("attack_pct", "ATTACK %", 0),
-        ("defense", "Defense (flat) — your own DEF stat; Iron Wall converts 10% of it into STR, "
+        ("defense", "Defense (flat) — your own DEF stat; Iron Wall converts a level-scaling % "
+                    "(10% at Lv.1, growing with level) of it into STR, "
                     "and PvP assumes the opponent has the same total Defense as you", 0),
-        ("defense_pct", "Defense % (Iron Wall converts total Defense, incl. this %, into STR)", 0),
+        ("defense_pct", "Defense % (Iron Wall converts total Defense, incl. this %, into STR, "
+                    "at a level-scaling rate)", 0),
         ("crit_rate", "CRIT_RATE %", 0),
         ("crit_damage", "CRIT_DAMAGE %", 0),
         ("attack_speed", "ATTACK_SPEED % (base, excludes Weapon Acceleration)", 0),
@@ -1404,7 +1421,7 @@ STAT_SWEEP = [
     ("flat_str", "Flat STR", "flat"),
     ("str_pct", "STR %", "pct"),
     ("dex", "DEX", "flat"),
-    ("defense", "Defense (flat) — Iron Wall converts 10% into STR", "flat"),
+    ("defense", "Defense (flat) — Iron Wall converts a level-scaling % (10%+) into STR", "flat"),
     ("defense_pct", "Defense %", "pct"),
     ("damage", "DAMAGE %", "pct"),
     ("damage_amp", "DAMAGE_AMP %", "pct"),
@@ -1553,6 +1570,16 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         "crit_damage", "boss_damage", "skill_damage", "final_damage", "def_pen", "attack_mult",
     )}
 
+    # Flat ATTACK is assumed to already include the character's current STR/DEX-derived attack
+    # (1 total STR = 1 flat Attack, 1 DEX = 0.25 flat Attack, added into the pool before ATTACK%
+    # applies) — same "already baked into Inputs, only the Sensitivity marginal delta matters"
+    # pattern used elsewhere in this block. Identically 0 for every block except the ones sweeping
+    # flat_str/str_pct/dex.
+    mainstat_attack_delta = (
+        f'((({ib("flat_str")}*(1+{ib("str_pct")}/100))-({IB("flat_str")}*(1+{IB("str_pct")}/100)))'
+        f'+0.25*({ib("dex")}-{IB("dex")}))'
+    )
+
     r_hex = ROW["HEX_OF_THE_EVIL_EYE"]
     r_dr = ROW["DARK_RESONANCE"]
     r_coc = ROW["CROSS_OVER_CHAINS"]
@@ -1664,7 +1691,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         ws.cell(row=row, column=9, value="1")
 
         if key in (["DARK_IMPALE"] + DAMAGE_ROW_KEYS):
-            ws.cell(row=row, column=10, value=f'={ib("attack")}*(F{row}/100)')
+            ws.cell(row=row, column=10, value=(
+                f'=({ib("attack")}+{mainstat_attack_delta}*(1+{ib("attack_pct")}/100))*(F{row}/100)'
+            ))
             monster_dmg_term = monster_blend_expr(
                 ib("monster_type"), ib("normal_weight_frac"),
                 f'{ib("boss_damage")}+{delta["boss_damage"]}+{S("MasteryBossDamage%", r)}+{evil_eye_avg}+{dark_resonance_boss_avg}',

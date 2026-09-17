@@ -131,14 +131,10 @@ normal_weight = (
 skill1, skill2, skill3, skill4, skill_all = (
     _in("skill_lvl_1st"), _in("skill_lvl_2nd"), _in("skill_lvl_3rd"), _in("skill_lvl_4th"), _in("skill_lvl_all")
 )
-monster_defense = _compute_monster_defense(content_type, chapter, stage, defense)
 flat_attack, attack_pct = _in("flat_attack"), _in("attack_pct")
 attack = flat_attack * (1 + attack_pct / 100)
 flat_int, int_pct, luk = _in("flat_int"), _in("int_pct"), _in("luk")
 defense_pct = _in("defense_pct")
-total_defense = defense * (1 + defense_pct / 100)
-invincible_int_bonus = 0.10 * total_defense if level >= 35 else 0.0
-stat_damage = ((flat_int + invincible_int_bonus) * (1 + int_pct / 100)) * 0.01 + luk * 0.0025
 damage = _in("damage")
 damage_amp = _in("damage_amp")
 boss_damage = _in("boss_damage")
@@ -196,13 +192,13 @@ SKILLS = {
 BUFFS = {
     "MAGIC_GUARD": dict(job_step=1, cooldown=(30 * 0.7) if level >= 21 else 30, duration=15,
                          base=120, fidx=21, scales=True, costs_action=True, target="ATTACK"),
-    "HEAL": dict(job_step=2, cooldown=18, duration=heal_duration, base=100, fidx=22, scales=True,
+    "HEAL": dict(job_step=2, cooldown=18, duration=heal_duration, base=100, fidx=21, scales=True,
                  costs_action=True, mastery=level_gated_sum({54: 8}), target="ATTACK"),
-    "BLESS": dict(job_step=2, cooldown=24, duration=bless_duration, base=160, fidx=22, scales=True,
+    "BLESS": dict(job_step=2, cooldown=24, duration=bless_duration, base=160, fidx=21, scales=True,
                   costs_action=True, target="ATTACK"),
-    "HOLY_MAGIC_SHELL": dict(job_step=3, cooldown=27, duration=22, base=150, fidx=22, scales=True,
+    "HOLY_MAGIC_SHELL": dict(job_step=3, cooldown=27, duration=22, base=150, fidx=21, scales=True,
                               costs_action=True, target="ATTACK"),
-    "ADVANCED_BLESSING": dict(job_step=4, cooldown=26, duration=20, base=70, fidx=22, scales=True,
+    "ADVANCED_BLESSING": dict(job_step=4, cooldown=26, duration=20, base=70, fidx=21, scales=True,
                                costs_action=True, mastery=level_gated_sum({113: 4}), target="FINAL_DAMAGE"),
     "INFINITY": dict(job_step=4, cooldown=30, duration=15, base=150, fidx=21, scales=True,
                       costs_action=True, ramp_mult=64 / 45, target="FINAL_DAMAGE"),
@@ -211,6 +207,7 @@ PASSIVES = {
     "BUFF_MASTERY": dict(job_step=4, base=100, fidx=22, scales=True),
     "ARCANE_AIM": dict(job_step=4, base=30, fidx=22, scales=True),
     "ELEMENT_AMPLIFICATION": dict(job_step=3, base=150, fidx=22, scales=True),
+    "DIVINE_PROTECTION": dict(job_step=3, base=250, fidx=22, scales=True),
     "MP_EATER_MP_BOOST": dict(job_step=2, base=70, fidx=0, scales=False),
     "BLOOD_OF_THE_DIVINE": dict(job_step=4, base=50, fidx=22, scales=True),
     "MAPLE_HERO_BISHOP": dict(job_step=4, base=500, fidx=23, scales=True),
@@ -291,6 +288,27 @@ blood_divine_pct = passive_pct("BLOOD_OF_THE_DIVINE")
 maple_hero_bishop_pct = passive_pct("MAPLE_HERO_BISHOP")
 holy_symbol_pct = passive_pct("HOLY_SYMBOL")
 holy_symbol_mastery_pct = PASSIVES["HOLY_SYMBOL"]["mastery"] if unlocked("HOLY_SYMBOL") else 0.0
+
+# Divine Protection: auto-triggering +25%->X% Defense buff, 15s window every 20s, duty-cycle-
+# averaged exactly like Holy Symbol (real buff row, gets the exact fixed-duration branch too).
+divine_protection_pct = coeff_pct(250, 22, True, 3) if unlocked("DIVINE_PROTECTION") else 0.0
+if unlocked("DIVINE_PROTECTION"):
+    dp_eff_cd = eff_cooldown(20, False)
+    if fixed_duration_active:
+        dp_uptime = exact_buff_uptime(dp_eff_cd, eff_duration(15)) / fight_duration
+    elif monster_type == "pvp":
+        dp_uptime = min(eff_duration(15), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
+    else:
+        dp_uptime = eff_duration(15) / dp_eff_cd
+    divine_protection_bonus = divine_protection_pct * dp_uptime
+else:
+    divine_protection_bonus = 0.0
+
+total_defense = defense * (1 + (defense_pct + divine_protection_bonus) / 100)
+invincible_conversion_rate = 10 * get_factor(level, 22) / 1000
+invincible_int_bonus = invincible_conversion_rate / 100 * total_defense if level >= 35 else 0.0
+stat_damage = ((flat_int + invincible_int_bonus) * (1 + int_pct / 100)) * 0.01 + luk * 0.0025
+monster_defense = _compute_monster_defense(content_type, chapter, stage, total_defense)
 
 # Holy Fountain - Boss Monster Damage (Mastery Lv.68, patched 10%->20%): flat, non-scaling,
 # duty-cycle-averaged off Holy Fountain's own (patched 30s) cooldown, linger 15s.
@@ -433,7 +451,7 @@ for key, s in SKILLS.items():
 # this row for the full derivation). R = the character's total attack rate (Actions Per Second).
 if unlocked("TRIUMPH_FEATHER"):
     tf_base = 1500
-    tf_fidx = 12
+    tf_fidx = 21
     tf_pct = coeff_pct(tf_base, tf_fidx, True, 3) + level_gated_sum({73: 50})
     tf_hd = hit_damage(coeff_pct(tf_base, tf_fidx, True, 3), False, dict(mastery=level_gated_sum({73: 50})), "TRIUMPH_FEATHER")
     r_total = actions_per_second

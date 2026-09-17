@@ -290,12 +290,25 @@ def IB(key):
     return f"Inputs!$B${IN[key]}"
 
 
-def total_defense_expr(ib_fn):
-    return f'({ib_fn("defense")}*(1+{ib_fn("defense_pct")}/100))'
+def effective_defense_pct_expr(ib_fn, dp_bonus_ref):
+    return f'({ib_fn("defense_pct")}+{dp_bonus_ref})'
 
 
-def invincible_int_bonus_expr(ib_fn):
-    return f'IF({ib_fn("level")}>=35,0.10*{total_defense_expr(ib_fn)},0)'
+def total_defense_expr(ib_fn, dp_bonus_ref):
+    return f'({ib_fn("defense")}*(1+{effective_defense_pct_expr(ib_fn, dp_bonus_ref)}/100))'
+
+
+def invincible_conversion_rate_expr(ib_fn):
+    lvl = ib_fn("level")
+    factor_lookup = (
+        f'INDEX(FactorTable!$B$2:$Y$301, MATCH(ROUND(MIN(300,MAX(1,{lvl})),0), '
+        f'FactorTable!$A$2:$A$301,0), 23)'
+    )
+    return f'(10*{factor_lookup}/1000)'
+
+
+def invincible_int_bonus_expr(ib_fn, dp_bonus_ref):
+    return f'IF({ib_fn("level")}>=35,{invincible_conversion_rate_expr(ib_fn)}/100*{total_defense_expr(ib_fn, dp_bonus_ref)},0)'
 
 
 def build_readme_sheet(wb):
@@ -377,9 +390,11 @@ def build_inputs_sheet(wb, existing=None):
                           "stage number (e.g. '80') for Weapon/Enhancement/EXP/Equipment/Hero Dungeon", "28-9"),
         ("flat_attack", "Flat ATTACK", 10000),
         ("attack_pct", "ATTACK %", 0),
-        ("defense", "Defense (flat) — your own DEF stat; Invincible converts 10% of it into INT, "
+        ("defense", "Defense (flat) — your own DEF stat; Invincible converts a level-scaling % "
+                    "(10% at Lv.1, growing with level) of it into INT, "
                     "and PvP assumes the opponent has the same total Defense as you", 0),
-        ("defense_pct", "Defense % (Invincible converts total Defense, incl. this %, into INT)", 0),
+        ("defense_pct", "Defense % (Invincible converts total Defense, incl. this %, into INT, "
+                    "at a level-scaling rate)", 0),
         ("crit_rate", "CRIT_RATE %", 0),
         ("crit_damage", "CRIT_DAMAGE %", 0),
         ("attack_speed", "ATTACK_SPEED % (base, excludes Nimble Feet/MP Eater/Blood of the Divine)", 0),
@@ -473,7 +488,7 @@ def build_inputs_sheet(wb, existing=None):
             f'IF(OR({IB("content_type")}="EXP Dungeon",{IB("content_type")}="Equipment Dungeon"),250+{IB("stage")}*50,'
             f'IF({IB("content_type")}="Hero Dungeon",650+{IB("stage")}*50,'
             f'IF(OR({IB("content_type")}="Breakthrough",{IB("content_type")}="Chapter Hunt"),4860+20*{IB("breakthrough_stage_index")},'
-            f'({IB("defense")}*(1+{IB("defense_pct")}/100)))))))))'
+            f'({IB("defense")}*(1+{effective_defense_pct_expr(IB, DIVINE_PROTECTION_BONUS_REF)}/100)))))))))'
         )),
         ("fight_duration", "Fixed Fight Duration (auto-computed from Content Type; 0 = steady-state)", (
             f'=IF({IB("content_type")}="Chapter Hunt",0,'
@@ -618,10 +633,11 @@ SC = {name: get_column_letter(i + 1) for i, name in enumerate(SKILL_COLUMNS)}
 # Row order (2..LAST_ROW) — derived from this list, never hand-numbered.
 ROW_ORDER = [
     "BIG_BANG", "MAGIC_GUARD", "HEAL", "BLESS", "ANGEL_RAY", "ANGEL_RAY_BOSS_PROC", "GENESIS",
-    "BAHAMUT", "HOLY_FOUNTAIN", "HOLY_MAGIC_SHELL", "HOLY_SYMBOL", "ADVANCED_BLESSING",
-    "TRIUMPH_FEATHER", "MAPLE_HERO_BISHOP", "MP_EATER_MP_BOOST", "ELEMENT_AMPLIFICATION",
-    "INFINITY", "BLOOD_OF_THE_DIVINE", "MAGIC_ACCELERATION", "SPELL_MASTERY", "HIGH_WISDOM",
-    "MAGIC_CRITICAL_RATE", "MAGIC_CRITICAL_DAMAGE", "BUFF_MASTERY", "ARCANE_AIM",
+    "BAHAMUT", "HOLY_FOUNTAIN", "HOLY_MAGIC_SHELL", "HOLY_SYMBOL", "DIVINE_PROTECTION",
+    "ADVANCED_BLESSING", "TRIUMPH_FEATHER", "MAPLE_HERO_BISHOP", "MP_EATER_MP_BOOST",
+    "ELEMENT_AMPLIFICATION", "INFINITY", "BLOOD_OF_THE_DIVINE", "MAGIC_ACCELERATION",
+    "SPELL_MASTERY", "HIGH_WISDOM", "MAGIC_CRITICAL_RATE", "MAGIC_CRITICAL_DAMAGE",
+    "BUFF_MASTERY", "ARCANE_AIM",
 ]
 ROW = {key: i for i, key in enumerate(ROW_ORDER, start=2)}
 LAST_ROW = 1 + len(ROW_ORDER)
@@ -642,6 +658,7 @@ UNLOCK_LEVEL = {
     "HOLY_FOUNTAIN": 66,
     "HOLY_MAGIC_SHELL": 69,
     "HOLY_SYMBOL": 72,
+    "DIVINE_PROTECTION": 60,
     "ADVANCED_BLESSING": 107,
     "TRIUMPH_FEATHER": 63,
     "MAPLE_HERO_BISHOP": 100,
@@ -699,27 +716,28 @@ SKILL_ROWS = [
      "21s). factorIndex 21, baseDamage 120 tenths%. Shared verbatim w/ FP-Mage/Ice-Lightning-Mage "
      "(identical wiki wording and numbers)."),
     ("HEAL", "Heal (self Attack%)", 2, 18, True, 1, 0, 0, 100, 1,
-     100, 22, True,
+     100, 21, True,
      level_gated_sum(IB("level"), {54: 8}),
      0, 0, 1, "ATTACK",
      f'=IF({IB("level")}>=39,10*1.5,10)',
      "", "", "",
-     "FLAGGED ASSUMPTION (no wiki curve — only the level-1 value is known): factorIndex 22 "
-     "(buff/passive convention), baseDamage 100 tenths% (10% level-1). Heal's own HP-recovery "
+     "CONFIRMED (2-point curve match, ~0% residual): factorIndex 21, baseDamage 100 tenths% "
+     "(10% level-1, 14.4% at level 111 per real in-game data). Heal's own HP-recovery "
      "component is entirely out of scope (no HP tracking anywhere in this calculator). The "
      "conditional '+10% Attack while target HP>=70%' component is modeled always-on (steady-state "
      "'healthy' assumption, same tier as Ice-Lightning-Mage's always-5-Frost-stacks convention). "
      "Self-inclusive ('allied players' — matches Meditation's own established self-inclusive "
      "precedent in FP-Mage/Ice-Lightning-Mage). Duration 10s (Mastery Lv.39 'Heal - Persistence' "
-     "+50% -> 15s), cooldown 18s. SkillMasteryBonus% is the SEPARATE Mastery Lv.54 'Heal - "
-     "Attack' (+8% Attack when the caster's OWN HP>=50%) — a distinct mastery from the base "
+     "+50% -> 15s), cooldown 18s. SkillMasteryBonus% is the SEPARATE, sourced Mastery Lv.54 'Heal "
+     "- Attack' (+8% Attack when the caster's OWN HP>=50%) — a distinct mastery from the base "
      "skill's own conditional effect, also modeled always-on under the same 100%-HP assumption."),
     ("BLESS", "Bless", 2, 24, True, 1, 0, 0, 100, 1,
-     160, 22, True,
+     160, 21, True,
      0, 0, 0, 1, "ATTACK",
      f'=IF({IB("level")}>=44,15*1.3,15)',
      "", "", "",
-     "FLAGGED ASSUMPTION: factorIndex 22, baseDamage 160 tenths% (16% level-1). Bishop's own "
+     "CONFIRMED (2-point curve match, ~0% residual): factorIndex 21, baseDamage 160 tenths% "
+     "(16% level-1, 23.1% at level 111 per real in-game data). Bishop's own "
      "Meditation-equivalent (near-identical wording: 'Increases the Attack of allied players by "
      "16% for 15 sec'), self-inclusive. Duration 15s (Mastery Lv.44 'Bless - Persistence' +30% -> "
      "19.5s), cooldown 24s."),
@@ -728,8 +746,9 @@ SKILL_ROWS = [
      level_gated_sum(IB("level"), {108: 50}),
      0, 0, 1, "", 0,
      "", "", "",
-     "FLAGGED ASSUMPTION: factorIndex 12 (burst convention), baseDamage 6800 tenths% (680% "
-     "level-1). Wiki: 'Attacks the target with a holy sword 3 times to deal 680% damage 2 "
+     "CONFIRMED (2-point curve match, ~0% residual): factorIndex 12, baseDamage 6800 tenths% (680% "
+     "level-1, 1298.8% at level 182 per real in-game data). Wiki: 'Attacks the target with a holy "
+     "sword 3 times to deal 680% damage 2 "
      "time(s) each' — read as 6 total hits (3 strikes x 2), single-target (no target count given, "
      "stun not modeled). Cooldown 17s. Mastery Lv.108 'Angel Ray - Damage' +50% (real "
      "SkillMasteryBonus%, separate from the Lv.122 Boss Monster Damage proc mastery)."),
@@ -753,7 +772,8 @@ SKILL_ROWS = [
      level_gated_sum(IB("level"), {118: 50}),
      0, 0, 10, "", 0,
      "", "", "",
-     "FLAGGED ASSUMPTION: factorIndex 12, baseDamage 7000 tenths% (700% level-1). Wiki: 'Drops a "
+     "CONFIRMED (2-point curve match, ~0% residual): factorIndex 12, baseDamage 7000 tenths% (700% "
+     "level-1, 1337% at level 182 per real in-game data). Wiki: 'Drops a "
      "pillar of holy light on 10 nearby target(s) to deal 700% damage 6 time(s)' — burst, not a "
      "DoT (no duration/tick-interval given). Cooldown 23s. Mastery Lv.118 'Genesis - Damage' +50% "
      "(real SkillMasteryBonus%), Lv.126 'Genesis - Reuse' -30% cooldown (baked into the "
@@ -787,10 +807,11 @@ SKILL_ROWS = [
      "Boss Monster Damage buff tied to this row's own cooldown, mirroring Ice-Lightning-Mage's "
      "Freezing Breath - Weaken treatment exactly."),
     ("HOLY_MAGIC_SHELL", "Holy Magic Shell (self Attack%)", 3, 27, True, 1, 0, 0, 100, 1,
-     150, 22, True,
+     150, 21, True,
      0, 0, 0, 1, "ATTACK", 22,
      "", "", "",
-     "FLAGGED ASSUMPTION: factorIndex 22, baseDamage 150 tenths% (15% level-1). Wiki: 'Increases "
+     "CONFIRMED (2-point curve match, ~0% residual): factorIndex 21, baseDamage 150 tenths% "
+     "(15% level-1, 26.5% at level 192 per real in-game data). Wiki: 'Increases "
      "Attack by 15%... decreases damage taken by allied players by 5%' — the damage-taken "
      "reduction is defensive, out of scope (same exclusion precedent as Ice-Lightning-Mage's "
      "Frozen Break -5%-damage-taken note). Attack component modeled like Magic Guard, "
@@ -801,7 +822,8 @@ SKILL_ROWS = [
      0,
      level_gated_sum(IB("level"), {90: 25}), 0, 1, "", f'=IF({IB("level")}>=98,14*1.5,14)',
      "", "", "",
-     "FLAGGED ASSUMPTION: factorIndex 22, baseDamage 150 tenths% (15% level-1). Wiki: 'Increases "
+     "CONFIRMED (2-point curve match, ~0% residual): factorIndex 22, baseDamage 150 tenths% "
+     "(15% level-1, 23.6% at level 192 per real in-game data). Wiki: 'Increases "
      "allied players' Normal Monster Damage by 15%... every 28 sec' — auto-triggering passive, "
      "not player-cast (CostsActionSlot=False). Duration 14s (Mastery Lv.98 'Holy Symbol - "
      "Persistence' +50% -> 21s). This row's own F-value feeds a duty-cycle-averaged bespoke "
@@ -819,12 +841,30 @@ SKILL_ROWS = [
      "F-column formula for every row, which would have silently contaminated this row's own "
      "F-value (also legitimately used above for the Normal Monster Damage bonus calculation) — "
      "caught via the categorical monster_type sweep, not by the default-boss verification alone."),
+    ("DIVINE_PROTECTION", "Divine Protection (self Defense%)", 3, 20, False, 1, 0, 0, 100, 1,
+     250, 22, True,
+     0, 0, 0, 1, "", 15,
+     "", "", "",
+     "FLAGGED ASSUMPTION (only the level-1 value is confirmed so far — no second data point yet "
+     "for this specific skill): factorIndex 22 (buff/passive convention), baseDamage 250 tenths% "
+     "(25% level-1). Confirmed real via the wiki (this skill and its own page didn't exist the "
+     "first time this class was reverse-engineered): 'At the start of the battle activates a holy "
+     "barrier to increase Defense by 25% for 15 sec and become immune to debuffs for 2 sec. "
+     "Activates every 20 sec thereafter.' Auto-triggering, not player-cast "
+     "(CostsActionSlot=False); Cooldown(s)=20 here holds the trigger interval. Debuff immunity is "
+     "out of scope (no debuff mechanic exists). Duty-cycle-averaged (like Holy Symbol) into a "
+     "bespoke Defense%-bonus bucket (Summary!DIVINE_PROTECTION_BONUS) that's added directly to "
+     "Inputs!defense_pct wherever total Defense is computed (see effective_defense_pct_expr) — "
+     "feeds both Invincible's own Defense->INT conversion and the PvP opponent-Defense estimate. "
+     "BuffTargetStat left blank since 'Defense %' isn't one of the existing generic "
+     "BuffTargetStat options."),
     ("ADVANCED_BLESSING", "Advanced Blessing", 4, 26, True, 1, 0, 0, 100, 1,
-     70, 22, True,
+     70, 21, True,
      level_gated_sum(IB("level"), {113: 4}),
      0, 0, 1, "FINAL_DAMAGE", 20,
      "", "", "",
-     "FLAGGED ASSUMPTION: factorIndex 22, baseDamage 70 tenths% (7% level-1). Wiki: 'Increases "
+     "CONFIRMED (2-point curve match, ~0.8% residual): factorIndex 21, baseDamage 70 tenths% "
+     "(7% level-1, 12% at level 182 per real in-game data). Wiki: 'Increases "
      "Final Damage of allied players by 7%... decreases their MP Cost by 7%' — MP-cost reduction "
      "out of scope (MP not tracked). Self-inclusive, FINAL_DAMAGE target (joins the Average Buff "
      "Multiplier chain in Summary alongside Magic Guard/Heal/Bless/Holy Magic Shell/Infinity). "
@@ -833,12 +873,13 @@ SKILL_ROWS = [
      "additively into this row's own SkillMasteryBonus%."),
     ("TRIUMPH_FEATHER", "Triumph Feather", 3, "", False,
      f'=IF({IB("level")}>=104,3,2)', 1, 0, 35, 1,
-     1500, 12, True,
+     1500, 21, True,
      level_gated_sum(IB("level"), {73: 50}),
      0, 0,
      f'=IF({IB("level")}>=94,7,1)', "", 0,
      "", "", "",
-     "FLAGGED ASSUMPTION: factorIndex 12, baseDamage 1500 tenths% (150% level-1). Genuinely new "
+     "CONFIRMED (2-point curve match, ~0% residual): factorIndex 21, baseDamage 1500 tenths% "
+     "(150% level-1, 265.2% at level 192 per real in-game data). Genuinely new "
      "2-stage-proc mechanic: wiki says 'When attacking, harnesses the power of the angel for 10 "
      "sec with a 15% chance [Mastery Lv.78 +10%p -> 25%]. While harnessing, 35% chance/attack to "
      "create angel feathers dealing 150% additional damage 2 time(s), 1s ICD per target (treated "
@@ -861,8 +902,10 @@ SKILL_ROWS = [
      500, 23, True,
      0, 0, 0, 1, "", 0,
      "", "", "",
-     "FLAGGED ASSUMPTION: factorIndex 23 (Maple Hero convention, matching every other class's own "
-     "Maple Hero factorIndex), baseDamage 500 tenths% (50% level-1). Bishop's own Maple Hero "
+     "CONFIRMED (2-point curve match, ~0% residual): factorIndex 23 (matches every other class's "
+     "own Maple Hero factorIndex — now independently verified for Bishop too, not just assumed by "
+     "convention), baseDamage 500 tenths% (50% level-1, 381% at level 182 per real in-game data). "
+     "Bishop's own Maple Hero "
      "targets Triumph Feather with a DIFFERENT mechanic shape than every other class's Maple "
      "Hero: 'Increases Final Damage of [Triumph Feather] by 50%' — a genuine Final-Damage-chain "
      "additive term (like Element Amplification), NOT a MapleHeroBase-scaled 'additional damage%' "
@@ -899,8 +942,9 @@ SKILL_ROWS = [
      50, 22, True,
      0, 0, 0, 1, "", 0,
      "", "", "",
-     "FLAGGED ASSUMPTION: factorIndex 22, baseDamage 50 tenths% (5% level-1, the Final Damage "
-     "component). HP-scaling passive — HP isn't tracked anywhere in this calculator, so modeled "
+     "CONFIRMED for the Final Damage component (2-point curve match, ~0.4% residual): factorIndex "
+     "22, baseDamage 50 tenths% (5% level-1, 7.7% at level 182 per real in-game data — the Final "
+     "Damage component). HP-scaling passive — HP isn't tracked anywhere in this calculator, so modeled "
      "assuming permanently 100% HP (steady-state favorable assumption, same tier as Ice-"
      "Lightning-Mage's always-5-Frost-stacks convention). Wiki: 'Increases Final Damage by 5%. "
      "For every 10% of current HP increases Critical Damage by 2%' -> at 100% HP, +20% Crit "
@@ -1030,7 +1074,9 @@ SUMMARY_ROW = {
     "BASIC_ATTACKS_PER_SEC": 58,
     "TOTAL_DPS": 3,
     "BASIC_ATTACK_DPS": 59,
+    "DIVINE_PROTECTION_BONUS": 60,
 }
+DIVINE_PROTECTION_BONUS_REF = f"Summary!$B${SUMMARY_ROW['DIVINE_PROTECTION_BONUS']}"
 
 
 def build_calc_sheet(wb):
@@ -1232,7 +1278,7 @@ def build_summary_sheet(wb):
     ws.cell(row=D_STAT_DAMAGE, column=1, value="STAT_DAMAGE % (= 1% of total INT [incl. Invincible's Defense-> INT] + 0.25% of LUK)")
     ws.cell(
         row=D_STAT_DAMAGE, column=2,
-        value=f'=(({IB("flat_int")}+{invincible_int_bonus_expr(IB)})*(1+{IB("int_pct")}/100))*0.01+{IB("luk")}*0.0025'
+        value=f'=(({IB("flat_int")}+{invincible_int_bonus_expr(IB, DIVINE_PROTECTION_BONUS_REF)})*(1+{IB("int_pct")}/100))*0.01+{IB("luk")}*0.0025'
     )
 
     ws.cell(row=D_BASIC_INPUT_LEVEL, column=1, value="Basic Attack (Big Bang) Input Level (4th job formula)")
@@ -1267,6 +1313,7 @@ def build_summary_sheet(wb):
         SUMMARY_ROW["APS"], SUMMARY_ROW["CAST_RATE"], SUMMARY_ROW["BASIC_ATTACKS_PER_SEC"],
     )
     r_total, r_basic = SUMMARY_ROW["TOTAL_DPS"], SUMMARY_ROW["BASIC_ATTACK_DPS"]
+    r_dpb = SUMMARY_ROW["DIVINE_PROTECTION_BONUS"]
 
     mg, heal, bless, hms, ab, inf = (
         ROW["MAGIC_GUARD"], ROW["HEAL"], ROW["BLESS"], ROW["HOLY_MAGIC_SHELL"],
@@ -1321,6 +1368,10 @@ def build_summary_sheet(wb):
     # self-gates correctly without needing a separate Calc!C check).
     ws.cell(row=r_db, column=1, value="Damage % Bonus (Holy Symbol - Damage Boost, solo-always-true)")
     ws.cell(row=r_db, column=2, value=f'={S("MasteryBossDamage%", hsym)}')
+
+    dp = ROW["DIVINE_PROTECTION"]
+    ws.cell(row=r_dpb, column=1, value="Defense % Bonus (Divine Protection, averaged)")
+    ws.cell(row=r_dpb, column=2, value=f'=IF(Calc!C{dp}=TRUE,Calc!F{dp}*{buff_uptime(dp)},0)')
 
     # Blood of the Divine: assumed permanently 100% HP -> +20% Crit Damage (4x this row's own
     # Final-Damage-scaled F-value, preserving the level-1 5%FD:20%CD ratio — see its own Note).
@@ -1403,7 +1454,7 @@ def build_summary_sheet(wb):
 STAT_SWEEP = [
     ("flat_int", "Flat INT", "flat"),
     ("int_pct", "INT %", "pct"),
-    ("defense", "Defense (flat) — Invincible converts 10% into INT", "flat"),
+    ("defense", "Defense (flat) — Invincible converts a level-scaling % (10%+) into INT", "flat"),
     ("defense_pct", "Defense %", "pct"),
     ("damage", "DAMAGE %", "pct"),
     ("damage_amp", "DAMAGE_AMP %", "pct"),
@@ -1492,14 +1543,14 @@ def override_expr_for(kind, key):
     return f'({base}+1)'
 
 
-def make_ib(override_key, override_expr):
+def make_ib(override_key, override_expr, dp_bonus_ref):
     def ib(key):
         if key == override_key:
             return override_expr
         if key == "attack":
             return f'({ib("flat_attack")}*(1+{ib("attack_pct")}/100))'
         if key == "stat_damage":
-            return f'((({ib("flat_int")}+{invincible_int_bonus_expr(ib)})*(1+{ib("int_pct")}/100))*0.01+{ib("luk")}*0.0025)'
+            return f'((({ib("flat_int")}+{invincible_int_bonus_expr(ib, dp_bonus_ref)})*(1+{ib("int_pct")}/100))*0.01+{ib("luk")}*0.0025)'
         return IB(key)
     return ib
 
@@ -1522,6 +1573,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     s_aps = calc_end + 8
     s_castrate = calc_end + 9
     s_baps = calc_end + 10
+    s_dpb = calc_end + 11
     s_total = calc_end + 12
     avgbuff_ref, mdb_ref, ndb_ref = f"B{s_avgbuff}", f"B{s_mdb}", f"B{s_ndb}"
     db_ref, cdb_ref, asb_ref = f"B{s_db}", f"B{s_cdb}", f"B{s_asb}"
@@ -1535,6 +1587,16 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     crit_dmg_delta = f'(F{row_of["MAGIC_CRITICAL_DAMAGE"]}-Calc!F{ROW["MAGIC_CRITICAL_DAMAGE"]})'
     min_dmg_delta = f'(F{row_of["SPELL_MASTERY"]}-Calc!F{ROW["SPELL_MASTERY"]})'
     attack_speed_delta = f'(F{row_of["MAGIC_ACCELERATION"]}-Calc!F{ROW["MAGIC_ACCELERATION"]})'
+
+    # Flat ATTACK is assumed to already include the character's current INT/LUK-derived attack
+    # (1 total INT = 1 flat Attack, 1 LUK = 0.25 flat Attack, added into the pool before ATTACK%
+    # applies) — same "already baked into Inputs, only the Sensitivity marginal delta matters"
+    # pattern as Magic Critical/Spell Mastery above. Identically 0 for every block except the
+    # ones sweeping flat_int/int_pct/luk.
+    mainstat_attack_delta = (
+        f'((({ib("flat_int")}*(1+{ib("int_pct")}/100))-({IB("flat_int")}*(1+{IB("int_pct")}/100)))'
+        f'+0.25*({ib("luk")}-{IB("luk")}))'
+    )
 
     fda_block = fixed_duration_active_expr(ib("monster_type"), ib("fight_duration"))
 
@@ -1614,7 +1676,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
         if key == "BIG_BANG" or key in DAMAGE_ROW_KEYS:
             ws.cell(row=row, column=10, value=(
-                f'={ib("attack")}*(F{row}/100)'
+                f'=({ib("attack")}+{mainstat_attack_delta}*(1+{ib("attack_pct")}/100))*(F{row}/100)'
             ))
             monster_dmg_term = monster_blend_expr(
                 ib("monster_type"), ib("normal_weight_frac"),
@@ -1726,6 +1788,10 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ws.cell(row=s_db, column=1, value="Damage % Bonus (Holy Symbol - Damage Boost)")
     ws.cell(row=s_db, column=2, value=f'={S("MasteryBossDamage%", ROW["HOLY_SYMBOL"])}')
 
+    dp_block = row_of["DIVINE_PROTECTION"]
+    ws.cell(row=s_dpb, column=1, value="Defense % Bonus (Divine Protection)")
+    ws.cell(row=s_dpb, column=2, value=f'=IF(C{dp_block}=TRUE,F{dp_block}*{buff_uptime_block(dp_block, ROW["DIVINE_PROTECTION"])},0)')
+
     bd = row_of["BLOOD_OF_THE_DIVINE"]
     ws.cell(row=s_cdb, column=1, value="Crit Damage % Bonus (Blood of the Divine)")
     ws.cell(row=s_cdb, column=2, value=f'=4*IF(C{bd}=TRUE,F{bd},0)')
@@ -1777,8 +1843,10 @@ def build_sensitivity_sheet(wb):
 
     for idx, (key, label, kind) in enumerate(STAT_SWEEP):
         base_row = BLOCK_START + idx * BLOCK_HEIGHT
+        block_calc_end = (base_row + 2) + (LAST_ROW - 2)
+        dp_bonus_ref_block = f"B{block_calc_end + 11}"
         override_expr = override_expr_for(kind, key)
-        ib = make_ib(key, override_expr)
+        ib = make_ib(key, override_expr, dp_bonus_ref_block)
         total_ref = build_stat_block(ws, base_row, ib, key, label, override_expr)
 
         row = header_row + 1 + idx

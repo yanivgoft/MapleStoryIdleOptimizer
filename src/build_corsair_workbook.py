@@ -1551,6 +1551,16 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         "crit_damage", "boss_damage", "skill_damage", "final_damage", "def_pen", "attack_mult",
     )}
 
+    # Flat ATTACK is assumed to already include the character's current DEX/STR-derived attack
+    # (1 total DEX = 1 flat Attack, 1 STR = 0.25 flat Attack, added into the pool before ATTACK%
+    # applies) — same "already baked into Inputs, only the Sensitivity marginal delta matters"
+    # pattern used elsewhere in this block. Identically 0 for every block except the ones sweeping
+    # flat_dex/dex_pct/str.
+    mainstat_attack_delta = (
+        f'((({ib("flat_dex")}*(1+{ib("dex_pct")}/100))-({IB("flat_dex")}*(1+{IB("dex_pct")}/100)))'
+        f'+0.25*({ib("str")}-{IB("str")}))'
+    )
+
     r_rd = ROW["ROLL_OF_THE_DICE_DICE"]
     r_jr = ROW["JOLLY_ROGER_FD"]
 
@@ -1642,7 +1652,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         ws.cell(row=row, column=9, value="1")
 
         if key in (["EIGHT_LEGS_EASTON"] + DAMAGE_ROW_KEYS):
-            ws.cell(row=row, column=10, value=f'={ib("attack")}*(F{row}/100)')
+            ws.cell(row=row, column=10, value=(
+                f'=({ib("attack")}+{mainstat_attack_delta}*(1+{ib("attack_pct")}/100))*(F{row}/100)'
+            ))
             monster_dmg_term = monster_blend_expr(
                 ib("monster_type"), ib("normal_weight_frac"),
                 f'{ib("boss_damage")}+{delta["boss_damage"]}+{S("MasteryBossDamage%", r)}',

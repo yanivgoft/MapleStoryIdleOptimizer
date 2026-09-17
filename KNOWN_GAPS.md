@@ -91,13 +91,17 @@ either a different data source (community spreadsheets, in-game data mining) or 
 FLAGGED-ASSUMPTION convention permanently.
 
 ### Bishop
-~11 of ~15 skills are **FLAGGED ASSUMPTION**: Magic Guard, Heal, Bless, Angel Ray (+ its own Boss
-Monster Damage proc row), Genesis, Holy Magic Shell, Holy Symbol, Advanced Blessing, Triumph
-Feather, Maple Hero, Infinity, Blood of the Divine.
+*(Most of this class's original gaps were closed via real user-provided in-game data points —
+see "Gaps closed" below. What's left:)*
 
-Two exceptions are higher-confidence: **Big Bang** and **Bahamut** reuse Ice-Lightning-Mage's own
-already-verified Chain Lightning/Elquines tuples directly, since their level-1 wiki wording is
-word-for-word identical.
+**Divine Protection** is FLAGGED ASSUMPTION: only its level-1 value (25% Defense) is confirmed;
+no second data point exists yet to resolve its real growth curve (currently assumed factorIndex
+22, the standard buff/passive convention).
+
+Two Big Bang/Bahamut precedent-reuses remain unaffected and still high-confidence: they reuse
+Ice-Lightning-Mage's own already-verified Chain Lightning/Elquines tuples directly, since their
+level-1 wiki wording is word-for-word identical — and this was independently re-confirmed via a
+real level-182 data point for both, matching with ~0% residual.
 
 ### Paladin
 6 of its own unique skills are **FLAGGED ASSUMPTION**: Close Combat, Noble Demand, Heaven's
@@ -207,13 +211,50 @@ since "why did the DPS number change" is a fair question to be able to answer la
   instead of 18/17), and FP-Mage/Ice-Lightning-Mage had a Maple Hero helper-cell placement that
   collided with (overwrote) the first two skill rows' own CastsInFight values. All fixed; see
   `CLAUDE.md`'s structural-bug catalog for the general pattern to avoid re-introducing it.
-- **Bishop/FP-Mage/Ice-Lightning-Mage — Sensitivity sheet double-counted Flat INT/INT % in the
-  Attack calculation**: found by a user cross-checking the Sensitivity sheet's own numbers by
-  hand. A pre-existing (present since these classes were first built, unrelated to the Content
-  Type work) `int_attack_delta` term added the swept stat's own `flat_int`/`int_pct` delta
-  directly into the basic-attack/damage-row's Attack value — on top of the same delta already
-  correctly flowing through STAT_DAMAGE. This inflated the reported marginal DPS for Flat INT and
-  INT % specifically by roughly 1.25x–2.1x (the exact ratio depends on current stats), while every
-  other stat (including the new Defense/Defense %) was unaffected and correct. Confirmed via the
-  independent Python verify script and fixed by removing the erroneous term — Attack now uses the
-  same plain `attack*(coefficient/100)` formula as every other class's Sensitivity block.
+- **All 12 classes — Sensitivity sheet was missing the main-stat/sub-stat → flat Attack marginal
+  delta**: this is a real, intentional in-game mechanic (1 main stat's final/effective value = 1
+  flat Attack; 1 sub stat's raw value = 0.25 flat Attack, both added into the pool before ATTACK%
+  applies) documented in this project's very first commit, but it was only ever implemented for
+  Bishop/FP-Mage/Ice-Lightning-Mage, and even there only for the main-stat half (the sub-stat/LUK
+  half was never implemented at all). A user cross-checking the Sensitivity sheet's Flat INT row
+  by hand ("we should be gaining here from both the stat prop and the flat attack gain") flagged
+  that the numbers looked too low. Investigating that led me to mistakenly conclude the existing
+  `int_attack_delta` term was a double-counting bug (it looked like it duplicated the same delta
+  already flowing through STAT_DAMAGE) and remove it — this was wrong; the two contributions are
+  independent stat mechanics, not duplicates. The user caught this ("Did we mistakenly delete this
+  logic?") and clarified the exact ratios. Fix: restored the term as `mainstat_attack_delta`
+  (main-stat ratio 1, sub-stat ratio 0.25) for Bishop/FP-Mage/Ice-Lightning-Mage, and extended it
+  — at the user's explicit request — to all 12 classes, using each class's own main/sub stat pair
+  (STR/DEX for Hero/Paladin/Dark Knight/Buccaneer, DEX/STR for Bowmaster/Marksman/Corsair, LUK/DEX
+  for Night Lord/Shadower). Remains Sensitivity-only (a marginal-delta correction for the "+1 unit"
+  test), not part of the live main-sheet Total DPS — matching the original design intent, since the
+  main Calc sheet still assumes the user's own Flat ATTACK entry already includes this
+  contribution. Verified per class: TOTAL DPS unchanged, Sensitivity main/sub-stat rows' marginal
+  DPS increased appropriately.
+- **Bishop — real in-game data closed most of the class's remaining gaps**: the user provided
+  real level-N values (mostly at level 111/182/192) for Heal, Bless, Angel Ray, Genesis, Advanced
+  Blessing, Holy Magic Shell, Holy Symbol, Triumph Feather, Maple Hero, Blood of the Divine, and
+  Invincible. Combined with each skill's already-known level-1 anchor, this let every one of them
+  be resolved via the same 2-point curve-matching method `_reverse_engineer_<class>_factors.py`
+  scripts use — all matched an existing factorIndex with ~0% residual (mostly factorIndex 21,
+  correcting the FLAGGED-ASSUMPTION default of 22 for these specific skills; Angel Ray/Genesis
+  confirmed 12; Holy Symbol/Maple Hero/Blood of the Divine confirmed their existing assumed
+  factorIndex). None of these are FLAGGED ASSUMPTION anymore. Also found via a fresh wiki fetch
+  (the Mastery page didn't exist the first time this class was built — it now does, fully
+  populated, confirming every mastery bonus already coded was correct) and one previously-unknown
+  skill: **Divine Protection** (Lv.60, +25%→X% Defense for 15s every 20s, duty-cycle-averaged into
+  a new Defense%-bonus bucket that feeds both Invincible and the PvP-defense estimate) — added as
+  a new SKILL_ROWS entry. **Shining Ray** (Lv.60, 3rd-job basic attack, confirmed real) stays
+  unmodeled by explicit decision, since it's fully superseded by Big Bang at Lv.100 and every
+  workbook defaults to level 200.
+- **Bishop — Invincible's Defense→INT conversion rate isn't flat 10%, it scales with level**: the
+  user's real level-111 data point (13.3%, vs. the wiki's flat-looking "10%") resolved to
+  factorIndex 22 with ~0% residual — the same growth curve every other buff/passive skill in this
+  project already uses. Fixed by computing the rate live via a FactorTable lookup instead of a
+  hardcoded 0.10.
+- **Dark Knight — Iron Wall given the same level-scaling treatment as Bishop's Invincible, by
+  user request**: unlike Invincible, Iron Wall's own wiki page still shows a flat, unchanging 10%
+  at every sampled level (1 through 100) — so this is applied by analogy to Invincible's confirmed
+  behavior, not from independently-confirmed Dark-Knight-specific data. Flagged in the build
+  script's own docstring; revisit if real Dark Knight data ever contradicts the flat-10%-per-wiki
+  reading.

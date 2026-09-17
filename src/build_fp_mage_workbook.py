@@ -1551,10 +1551,14 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     min_dmg_delta = f'(F{row_of["SPELL_MASTERY"]}-Calc!F{ROW["SPELL_MASTERY"]})'
 
     # Flat ATTACK already includes the character's current INT/LUK-derived attack (1 total INT =
-    # 1 ATTACK, added into the flat pool before ATTACK% applies) — same "already baked in, only the
-    # marginal delta matters" pattern as Magic Critical/Spell Mastery above, just computed directly
-    # from Inputs instead of a Skills-sheet row. Identically 0 for every block except the ones
-    # sweeping flat_int/int_pct.
+    # 1 ATTACK, 1 LUK = 0.25 ATTACK, added into the flat pool before ATTACK% applies) — same
+    # "already baked in, only the marginal delta matters" pattern as Magic Critical/Spell Mastery
+    # above, just computed directly from Inputs instead of a Skills-sheet row. Identically 0 for
+    # every block except the ones sweeping flat_int/int_pct/luk.
+    mainstat_attack_delta = (
+        f'((({ib("flat_int")}*(1+{ib("int_pct")}/100))-({IB("flat_int")}*(1+{IB("int_pct")}/100)))'
+        f'+0.25*({ib("luk")}-{IB("luk")}))'
+    )
 
     # Level 126/130 Flame Haze burn-stacking mastery — block-local mirror of the same computation
     # in build_calc_sheet (local H/V columns and baps_ref/meteor_ref instead of cross-sheet refs).
@@ -1646,7 +1650,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
         if key == "BASIC_ATTACK" or key in DAMAGE_ROW_KEYS:
             ws.cell(row=row, column=10, value=(
-                f'={ib("attack")}*(F{row}/100)'
+                f'=({ib("attack")}+{mainstat_attack_delta}*(1+{ib("attack_pct")}/100))*(F{row}/100)'
             ))
             monster_dmg_term = monster_blend_expr(
                 ib("monster_type"), ib("normal_weight_frac"),
