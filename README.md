@@ -52,22 +52,43 @@ your own stats, and every other sheet recalculates live.
    `python3 potential_cubes_ev.py` from inside that folder does the same thing (auto-detects the
    one `.xlsx` file next to it); requires `pip install openpyxl formulas`.
 
-### What to put for Monster Defense
+### Content Type
 
-`Monster Defense` on the Inputs sheet is the target's own Defense stat — it directly affects your
-damage via the game's own damage-reduction formula, so getting it right matters. Known values,
-per our source:
+`Content Type` on the Inputs sheet picks what you're fighting; `Monster Defense` and `Fixed Fight
+Duration` are both computed from it automatically — you no longer set either one by hand (except
+PvP's Defense, see below). `Chapter` and `Stage` feed the chapter- and dungeon-based types.
 
-- **Chapter Boss**: 3200 Defense at Chapter 28, going up by +50 per chapter after that (e.g.
-  Chapter 29 ≈ 3250, Chapter 30 ≈ 3300). This is a linear extrapolation from the one confirmed
-  data point — treat anything beyond Chapter 28 as an estimate, not a confirmed value.
-- **Breakthrough**: 4860 Defense at Chapter 28, Breakthrough stage 9, going up by +20 per stage
-  after that. Same caveat — only that one point is confirmed; later stages are extrapolated.
-- **World Boss**: a flat 62,100 Defense (no scaling reported).
+| Content Type | Uses | Monster Defense | Duration |
+|---|---|---|---|
+| Chapter Boss | Chapter | `3200 + 50 × (Chapter − 28)` | 70s |
+| Breakthrough | Chapter, Stage | see below | 40s |
+| Chapter Hunt | Chapter, Stage | same formula as Breakthrough | steady-state (no duration) |
+| Hero Dungeon | Stage | `650 + Stage × 50` | 50s |
+| World Boss | — | flat `62,100` | 75s |
+| Weapon Dungeon | Stage | `Stage × 50` | 22s |
+| Enhancement Dungeon | Stage | `950 + Stage × 50` | 25s |
+| EXP Dungeon | Stage | `250 + Stage × 50` | 40s |
+| Equipment Dungeon | Stage | `250 + Stage × 50` | 40s |
+| PvP | — | your own Defense stat (assumes the opponent has the same) | own fixed 15s window |
 
-If you're not fighting one of the above, or you have a more precise value for your specific
-content, just use that instead — these are starting points, not hardcoded assumptions in the
-workbook itself.
+For Breakthrough/Chapter Hunt, `Stage` is the sub-stage number shown in-game (the "9" in 28-9).
+Chapters 29–38 have 14 sub-stages each before that chapter's own boss; chapter 39 onward has 19
+sub-stages each. Defense is anchored at the one confirmed data point — 4860 at Chapter 28,
+Stage 9 — and increases by 20 for every sub-stage crossed from there, correctly carrying the count
+across chapter boundaries. Only that one anchor point is confirmed; everything computed from it is
+an extrapolation using the known sub-stage-count pattern, not independently confirmed data.
+
+For the five Dungeon types, `Stage` is that dungeon's own stage number (unrelated to Chapter).
+
+If none of the above fits your content, or you have a more precise value, `PvP` is the one
+Content Type where Monster Defense stays a value you set directly (via the `Defense` input, your
+own character's Defense stat) rather than a computed one.
+
+**Dark Knight and Bishop** track `Defense` and `Defense %` as full stats (not just a PvP estimate)
+— Iron Wall and Invincible respectively convert 10% of your total Defense into STR/INT once
+unlocked, so these two classes' `Defense`/`Defense %` also have their own Sensitivity marginal-DPS
+rows and a `Defense %` PotentialCubes value. Every other class's `Defense` input is used only for
+the PvP estimate above and has no other DPS effect.
 
 ## Regenerating a workbook from source
 

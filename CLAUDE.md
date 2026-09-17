@@ -95,6 +95,33 @@ you're building a new class, check for all of these *before* your first build, n
    One class shipped with it correctly in the main Calc sheet but silently missing from the
    Sensitivity mirror, for weeks, before being caught by comparing two classes' Sensitivity
    sheets against each other.
+6. **The Sensitivity sheet's per-stat recompute block has its own local `InvCooldown`/
+   `CastsInFight` columns (17/`Q` and 18/`R`), separate from the main Calc sheet's identically-
+   positioned columns — any formula inside a block that needs "this row's exact-casts count" or
+   "this row's inverse cooldown" must reference the *block's own* `R{row}`/`Q{row}`, never a
+   column letter one or more off (`S`/`V` are unrelated columns — `S` is the diagnostic
+   `O/N` ratio, `V`+ are typically blank). Three classes shipped with several call sites
+   (buff-uptime helpers, the Skill+Buff-Cast-Rate `SUMPRODUCT`, and — in two classes — the block's
+   own `InvCooldown`/`CastsInFight` *write* itself) pointing at the wrong column, which silently
+   collapsed the Attack% bucket and/or Basic-Attack rate for every marginal-DPS test done in
+   fixed-duration mode. It went unnoticed for a long time because fixed-duration mode was rarely
+   exercised (steady-state was the default) — **any per-stat recompute block copied from another
+   class's file needs every column-letter reference in it individually checked against that same
+   class's own main-Calc-sheet equivalent**, not just skimmed for "looks structurally similar."
+   Also watch for scratch/helper cells (e.g. a Maple Hero level/factor lookup) placed at a
+   block-local row that's still within the normal per-skill column range (1–19ish) — they'll
+   silently collide with that row's own real skill data; place them well beyond it (e.g. column
+   `Z`), matching wherever the main Calc sheet puts its own equivalent scratch cells.
+7. **Never add a term to the Sensitivity block that reintroduces a swept stat's own delta a
+   second time.** Bishop/FP-Mage/Ice-Lightning-Mage's basic-attack Attack formula had an
+   `int_attack_delta` term that re-added the Flat INT/INT % override's delta directly into Attack
+   — on top of the same delta already flowing correctly through `STAT_DAMAGE`, roughly doubling
+   the reported marginal DPS for those two stats only (every other stat's block computed that
+   term as exactly 0, so it looked fine everywhere else). If a stat's contribution is already
+   captured by an existing composite `ib()` key (`"attack"`, `"stat_damage"`), don't also thread
+   its raw delta through anywhere else — verify a new stat's own marginal DPS row against a
+   fresh-subprocess run of `verify_<class>_workbook.py` with a large *nonzero* baseline value for
+   that stat (a zero baseline can make a doubled term look identical to a correct one).
 
 ## Cross-checking a new class against its siblings
 
@@ -114,8 +141,13 @@ Nimble Feet, and more verbatim). When adding a class to an existing sibling grou
 1. Build succeeds, zero `formulas`-evaluated error cells, checked incrementally sheet-by-sheet
    for a new class.
 2. `verify_<class>_workbook.py` matches the live workbook exactly at default Inputs.
-3. Full categorical sweep: `monster_type ∈ {boss, normal, breakthrough, pvp} × fixed-duration
-   mode ∈ {0, 15, 30}` — never trust "the checks pass" from only the default combination.
+3. Full categorical sweep over the Inputs sheet's `content_type` (all 10 values), not
+   `monster_type`/`fight_duration` directly — those two are now computed from `content_type` (plus
+   `chapter`/`stage` for the chapter- and dungeon-based types) via the Inputs-sheet formulas at
+   `IN["monster_type"]`/`IN["monster_defense"]`/`IN["fight_duration"]` (see `build_hero_workbook.py`'s
+   `build_inputs_sheet`, the reference implementation). Include a couple of `chapter`/`stage`
+   values spanning the 28→29 and 38→39/39→40 sub-stage-count boundaries for
+   Breakthrough/Chapter Hunt. Never trust "the checks pass" from only the default combination.
 4. Level-boundary sweep across every mastery/unlock threshold from 1–200, checking specifically
    for unexplained DPS *decreases* as level increases.
 5. If shared skills exist with a sibling class, diff their resolved tuples.

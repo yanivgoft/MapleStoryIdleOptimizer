@@ -250,40 +250,56 @@ DERIVED_ROW = {
     "normal_weight_frac": D_NORMAL_WEIGHT_FRAC,
 }
 
+CONTENT_TYPES = [
+    "Chapter Boss", "Breakthrough", "PvP", "EXP Dungeon", "Equipment Dungeon",
+    "Weapon Dungeon", "Enhancement Dungeon", "Hero Dungeon", "World Boss", "Chapter Hunt",
+]
+
 IN = {
     "level": 3,
-    "monster_type": 4,
-    "flat_attack": 5,
-    "attack_pct": 6,
-    "monster_defense": 7,
-    "crit_rate": 8,
-    "crit_damage": 9,
-    "attack_speed": 10,
-    "flat_dex": 11,
-    "dex_pct": 12,
-    "str": 13,
-    "damage": 14,
-    "damage_amp": 15,
-    "basic_attack_damage": 16,
-    "skill_damage": 17,
-    "def_pen": 18,
-    "boss_damage": 19,
-    "normal_damage": 20,
-    "min_damage": 21,
-    "max_damage": 22,
-    "final_damage": 23,
-    "skill_lvl_1st": 24,
-    "skill_lvl_2nd": 25,
-    "skill_lvl_3rd": 26,
-    "skill_lvl_4th": 27,
-    "skill_lvl_all": 28,
-    "skill_cooldown_decrease": 31,
-    "basic_attack_target_increase": 32,
-    "buff_duration_increase_pct": 33,
-    "companion_summon_time_increase_pct": 34,
-    "fight_duration": 35,
-    "breakthrough_normal_weight_pct": 36,
-    "max_enemies_hit": 37,
+    "content_type": 4,
+    "flat_attack": 7,
+    "attack_pct": 8,
+    "defense": 9,
+    "crit_rate": 10,
+    "crit_damage": 11,
+    "attack_speed": 12,
+    "flat_dex": 13,
+    "dex_pct": 14,
+    "str": 15,
+    "damage": 16,
+    "damage_amp": 17,
+    "basic_attack_damage": 18,
+    "skill_damage": 19,
+    "def_pen": 20,
+    "boss_damage": 21,
+    "normal_damage": 22,
+    "min_damage": 23,
+    "max_damage": 24,
+    "final_damage": 25,
+    "skill_lvl_1st": 26,
+    "skill_lvl_2nd": 27,
+    "skill_lvl_3rd": 28,
+    "skill_lvl_4th": 29,
+    "skill_lvl_all": 30,
+    "skill_cooldown_decrease": 33,
+    "basic_attack_target_increase": 34,
+    "buff_duration_increase_pct": 35,
+    "companion_summon_time_increase_pct": 36,
+    "chapter": 5,
+    "breakthrough_normal_weight_pct": 37,
+    "max_enemies_hit": 38,
+    "stage": 6,
+    "monster_type": 39,
+    "breakthrough_stage_index": 40,
+    "monster_defense": 41,
+    "fight_duration": 42,
+}
+
+# Rows computed by formula on the Inputs sheet itself (not user-editable) — see
+# build_inputs_sheet's "Computed (do not edit)" block below.
+COMPUTED_INPUT_ROWS = {
+    IN["monster_type"], IN["breakthrough_stage_index"], IN["monster_defense"], IN["fight_duration"],
 }
 
 
@@ -356,8 +372,12 @@ def build_readme_sheet(wb):
         "Maple Hero's own per-level scaling curve is confirmed via idle.maplestorywiki.net/w/"
         "Maple_Hero_(Bowmaster) — all three target skills (Arrow Platter/Phoenix/Covering Fire) "
         "scale by the identical ratio at every level, so one shared curve covers all three.",
-        "Monster Type blends Boss/Normal Monster Damage% by the Chapter Breakthrough weight %; "
-        "PvP forces a fixed 15-second window regardless of the Fixed Fight Duration input.",
+        "Content Type (Inputs) picks what you're fighting — Chapter Boss/Breakthrough/PvP/EXP "
+        "Dungeon/Equipment Dungeon/Weapon Dungeon/Enhancement Dungeon/Hero Dungeon/World Boss/"
+        "Chapter Hunt — and Monster Defense and Fixed Fight Duration are both auto-computed from "
+        "it (plus Chapter/Stage for the chapter- and dungeon-based types); PvP still forces its "
+        "own fixed 15-second window and uses your own Defense stat as the opponent's Defense "
+        "estimate. See README.md's 'Content Type' section for the exact formulas.",
         "Not modeled (out of scope): all forms of crowd control, Accuracy, Evasion, Defense "
         "reduction/penetration debuffs on the character's own Defense stat, movement speed, "
         "Illusion Step's own Evasion/damage-taken-reduction phase, and Companion Summoning Time.",
@@ -379,10 +399,13 @@ def build_inputs_sheet(wb, existing=None):
 
     rows = [
         ("level", "Character Level", 200),
-        ("monster_type", "Monster Type (\"boss\", \"normal\", \"breakthrough\", or \"pvp\")", "boss"),
+        ("content_type", "Content Type", "Chapter Boss"),
+        ("chapter", "Chapter (used when Content Type is Chapter Boss / Breakthrough / Chapter Hunt)", 28),
+        ("stage", "Stage — sub-stage within Chapter for Breakthrough/Chapter Hunt (e.g. the '9' in 28-9), "
+                  "or Dungeon Stage number for Weapon/Enhancement/EXP/Equipment/Hero Dungeon; ignored otherwise", 9),
         ("flat_attack", "Flat ATTACK", 10000),
         ("attack_pct", "ATTACK %", 0),
-        ("monster_defense", "Monster Defense (flat, post-x100/x10 scaling)", 0),
+        ("defense", "Defense (your own DEF stat; PvP assumes the opponent has the same Defense as you)", 0),
         ("crit_rate", "CRIT_RATE %", 0),
         ("crit_damage", "CRIT_DAMAGE %", 0),
         ("attack_speed", "ATTACK_SPEED % (base, excludes Archer Mastery/Bow Acceleration)", 0),
@@ -411,14 +434,13 @@ def build_inputs_sheet(wb, existing=None):
         cell = ws.cell(row=r, column=2, value=existing.get(key, default))
         cell.fill = INPUT_FILL
 
-    ws.cell(row=30, column=1, value="Additional Bonuses").font = SECTION_FONT
+    ws.cell(row=32, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
         ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
-        ("fight_duration", "Fixed Fight Duration (seconds, boss or normal — leave 0 for steady-state DPS; ignored for pvp)", 0),
-        ("breakthrough_normal_weight_pct", "Chapter Breakthrough: Normal-Monster Weight % (only used when Monster Type = breakthrough)", 60),
+        ("breakthrough_normal_weight_pct", "Boss/Normal Weight % (used when Content Type is Breakthrough or Hero Dungeon)", 60),
         ("max_enemies_hit", "Max Enemies Actually In Range (normal monsters only; default 999 = uncapped)", 999),
     ]
     for key, label, default in bonus_rows:
@@ -426,6 +448,54 @@ def build_inputs_sheet(wb, existing=None):
         ws.cell(row=r, column=1, value=label).font = LABEL_FONT
         cell = ws.cell(row=r, column=2, value=existing.get(key, default))
         cell.fill = INPUT_FILL
+
+    dv_content_type = DataValidation(
+        type="list", formula1='"' + ",".join(CONTENT_TYPES) + '"', allow_blank=False
+    )
+    ws.add_data_validation(dv_content_type)
+    dv_content_type.add(ws.cell(row=IN["content_type"], column=2))
+
+    COMPUTED_FILL = PatternFill("solid", fgColor="D9D9D9")
+    computed_rows = [
+        ("monster_type", "Monster Type (auto-computed from Content Type)", (
+            f'=IF({IB("content_type")}="PvP","pvp",'
+            f'IF(OR({IB("content_type")}="Breakthrough",{IB("content_type")}="Hero Dungeon"),"breakthrough",'
+            f'IF(OR({IB("content_type")}="EXP Dungeon",{IB("content_type")}="Equipment Dungeon",{IB("content_type")}="Chapter Hunt"),"normal",'
+            f'"boss")))'
+        )),
+        ("breakthrough_stage_index", "Breakthrough Global Stage Index (helper)", (
+            f'=IF({IB("chapter")}=28,{IB("stage")}-9,'
+            f'{IB("stage")}+14*MAX(0,MIN({IB("chapter")}-1,38)-28)+19*MAX(0,{IB("chapter")}-39))'
+        )),
+        ("monster_defense", "Monster Defense (auto-computed from Content Type)", (
+            f'=IF({IB("content_type")}="Chapter Boss",3200+50*({IB("chapter")}-28),'
+            f'IF({IB("content_type")}="World Boss",62100,'
+            f'IF({IB("content_type")}="Weapon Dungeon",{IB("stage")}*50,'
+            f'IF({IB("content_type")}="Enhancement Dungeon",950+{IB("stage")}*50,'
+            f'IF(OR({IB("content_type")}="EXP Dungeon",{IB("content_type")}="Equipment Dungeon"),250+{IB("stage")}*50,'
+            f'IF({IB("content_type")}="Hero Dungeon",650+{IB("stage")}*50,'
+            f'IF(OR({IB("content_type")}="Breakthrough",{IB("content_type")}="Chapter Hunt"),4860+20*{IB("breakthrough_stage_index")},'
+            f'{IB("defense")})))))))'
+        )),
+        ("fight_duration", "Fixed Fight Duration (auto-computed from Content Type; 0 = steady-state)", (
+            f'=IF({IB("content_type")}="Chapter Hunt",0,'
+            f'IF({IB("content_type")}="Weapon Dungeon",22,'
+            f'IF({IB("content_type")}="Equipment Dungeon",40,'
+            f'IF({IB("content_type")}="Enhancement Dungeon",25,'
+            f'IF({IB("content_type")}="Hero Dungeon",50,'
+            f'IF({IB("content_type")}="EXP Dungeon",40,'
+            f'IF({IB("content_type")}="World Boss",75,'
+            f'IF({IB("content_type")}="Chapter Boss",70,'
+            f'IF({IB("content_type")}="Breakthrough",40,'
+            f'0)))))))))'
+        )),
+    ]
+    for key, label, formula in computed_rows:
+        r = IN[key]
+        ws.cell(row=r, column=1, value=f"{label} — computed, do not edit").font = LABEL_FONT
+        cell = ws.cell(row=r, column=2, value=formula)
+        cell.fill = COMPUTED_FILL
+        ws.row_dimensions[r].hidden = True
 
     ws.column_dimensions["A"].width = 55
     ws.column_dimensions["B"].width = 16
@@ -1429,7 +1499,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
-            fda_block, f'S{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
+            fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
             S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
         )
 
@@ -1840,9 +1910,16 @@ def load_existing_workbook_state(path):
     if "Inputs" in wb.sheetnames:
         ws = wb["Inputs"]
         for key, row in IN.items():
+            if row in COMPUTED_INPUT_ROWS:
+                continue
             value = ws.cell(row=row, column=2).value
             if value is not None and not (isinstance(value, str) and value.startswith("=")):
                 existing_inputs[key] = value
+
+        old_label = ws.cell(row=IN["content_type"], column=1).value or ""
+        if "Content Type" not in old_label:
+            existing_inputs.pop("content_type", None)
+            existing_inputs.pop("chapter", None)
 
     existing_potential_cubes = {}
     if "PotentialCubes" in wb.sheetnames:

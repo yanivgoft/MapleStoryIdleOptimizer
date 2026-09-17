@@ -76,8 +76,8 @@ Blow's Lv.134 combo-excess-stack mastery — were closed after this file was fir
 "Gaps closed" below.)*
 
 ### Dark Knight
-*(One gap originally flagged here — Gungnir's Descent's Lv.134 mastery — was closed after this
-file was first written; see "Gaps closed" below.)*
+*(Two gaps originally flagged here — Gungnir's Descent's Lv.134 mastery and Iron Wall's
+Defense→STR conversion — were closed after this file was first written; see "Gaps closed" below.)*
 
 ---
 
@@ -188,3 +188,32 @@ since "why did the DPS number change" is a fair question to be able to answer la
   Sensitivity sheet's own "Baseline Total DPS" didn't match `Summary!TOTAL DPS` whenever Scaring
   Sword was active. Fixed by hoisting the reference to a module-level constant so both formula
   builders share it.
+- **Dark Knight — Iron Wall (+10% of total Defense as STR, Lv.38+)**: previously entirely
+  unmodeled (no Defense-tracking input existed anywhere in the project). A tracked Defense (flat)
+  + Defense % Inputs pair was added project-wide (originally for the Content Type feature's PvP
+  opponent-defense estimate); Iron Wall now feeds that pair directly into STAT_DAMAGE, with its
+  own Sensitivity marginal-value rows and PotentialCubes Defense % support.
+- **Bishop — Invincible (+10% of total Defense as INT, Lv.35+)**: same gap and same fix as Iron
+  Wall above — Bishop's own Defense-conversion skill, previously unmodeled for the same reason.
+- **Sensitivity sheet — wrong-column references in several classes' per-stat recompute blocks**:
+  found while verifying the Content Type feature (which made fixed-duration mode the default for
+  9 of 10 content types, exposing a bug that previously only ever ran in the rarely-used
+  fixed-duration mode). Several classes' Sensitivity-sheet blocks referenced column `S`/`V`
+  instead of `R`/`Q` (the block's own local "CastsInFight"/"InvCooldown" columns) in their
+  buff-uptime and cast-rate SUMPRODUCT formulas — silently corrupting the entire Attack% bucket
+  and Basic-Attack-rate calculation for every stat's marginal-DPS test whenever fixed-duration
+  mode was active. Bishop, FP-Mage, and Ice-Lightning-Mage additionally had their own block-local
+  "CastsInFight"/"InvCooldown" helper columns written to the wrong column index entirely (19/22
+  instead of 18/17), and FP-Mage/Ice-Lightning-Mage had a Maple Hero helper-cell placement that
+  collided with (overwrote) the first two skill rows' own CastsInFight values. All fixed; see
+  `CLAUDE.md`'s structural-bug catalog for the general pattern to avoid re-introducing it.
+- **Bishop/FP-Mage/Ice-Lightning-Mage — Sensitivity sheet double-counted Flat INT/INT % in the
+  Attack calculation**: found by a user cross-checking the Sensitivity sheet's own numbers by
+  hand. A pre-existing (present since these classes were first built, unrelated to the Content
+  Type work) `int_attack_delta` term added the swept stat's own `flat_int`/`int_pct` delta
+  directly into the basic-attack/damage-row's Attack value — on top of the same delta already
+  correctly flowing through STAT_DAMAGE. This inflated the reported marginal DPS for Flat INT and
+  INT % specifically by roughly 1.25x–2.1x (the exact ratio depends on current stats), while every
+  other stat (including the new Defense/Defense %) was unaffected and correct. Confirmed via the
+  independent Python verify script and fixed by removing the erroneous term — Attack now uses the
+  same plain `attack*(coefficient/100)` formula as every other class's Sensitivity block.

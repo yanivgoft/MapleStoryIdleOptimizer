@@ -54,7 +54,53 @@ def _in(key):
 
 
 level = _in("level")
-monster_type = _in("monster_type")
+def _compute_monster_type(content_type):
+    if content_type == "PvP":
+        return "pvp"
+    if content_type in ("Breakthrough", "Hero Dungeon"):
+        return "breakthrough"
+    if content_type in ("EXP Dungeon", "Equipment Dungeon", "Chapter Hunt"):
+        return "normal"
+    return "boss"
+
+
+def _compute_breakthrough_stage_index(chapter, stage):
+    if chapter == 28:
+        return stage - 9
+    return stage + 14 * max(0, min(chapter - 1, 38) - 28) + 19 * max(0, chapter - 39)
+
+
+def _compute_monster_defense(content_type, chapter, stage, defense):
+    if content_type == "Chapter Boss":
+        return 3200 + 50 * (chapter - 28)
+    if content_type == "World Boss":
+        return 62100
+    if content_type == "Weapon Dungeon":
+        return stage * 50
+    if content_type == "Enhancement Dungeon":
+        return 950 + stage * 50
+    if content_type in ("EXP Dungeon", "Equipment Dungeon"):
+        return 250 + stage * 50
+    if content_type == "Hero Dungeon":
+        return 650 + stage * 50
+    if content_type in ("Breakthrough", "Chapter Hunt"):
+        return 4860 + 20 * _compute_breakthrough_stage_index(chapter, stage)
+    return defense  # PvP fallback — manual, opponent-dependent
+
+
+def _compute_fight_duration(content_type):
+    return {
+        "Chapter Hunt": 0, "Weapon Dungeon": 22, "Equipment Dungeon": 40,
+        "Enhancement Dungeon": 25, "Hero Dungeon": 50, "EXP Dungeon": 40,
+        "World Boss": 75, "Chapter Boss": 70, "Breakthrough": 40,
+    }.get(content_type, 0)
+
+
+content_type = _in("content_type")
+chapter = _in("chapter")
+stage = _in("stage")
+defense = _in("defense")
+monster_type = _compute_monster_type(content_type)
 breakthrough_normal_weight_pct = _in("breakthrough_normal_weight_pct")
 # Chapter Breakthrough blends boss and normal by this weight (0=pure boss, 1=pure normal);
 # boss=0, normal=1, pvp is its own thing entirely and never blends (mirrors Inputs!normal_weight_frac).
@@ -66,7 +112,7 @@ normal_weight = (
 skill1, skill2, skill3, skill4, skill_all = (
     _in("skill_lvl_1st"), _in("skill_lvl_2nd"), _in("skill_lvl_3rd"), _in("skill_lvl_4th"), _in("skill_lvl_all")
 )
-monster_defense = _in("monster_defense")
+monster_defense = _compute_monster_defense(content_type, chapter, stage, defense)
 flat_attack, attack_pct = _in("flat_attack"), _in("attack_pct")
 attack = flat_attack * (1 + attack_pct / 100)  # mirrors Inputs!B31's own formula
 flat_int, int_pct, luk = _in("flat_int"), _in("int_pct"), _in("luk")
@@ -88,7 +134,7 @@ skill_cooldown_decrease = _in("skill_cooldown_decrease")
 basic_attack_target_increase = _in("basic_attack_target_increase")
 buff_duration_increase_pct = _in("buff_duration_increase_pct")
 companion_summon_time_increase_pct = _in("companion_summon_time_increase_pct")
-fight_duration = _in("fight_duration")
+fight_duration = _compute_fight_duration(content_type)
 max_enemies_hit = _in("max_enemies_hit")
 
 # Fixed fight-duration mode — independent re-derivation of the workbook's exact-count model

@@ -108,8 +108,10 @@ Key mechanics/simplifications specific to this kit:
     BaseDamage (18000->9000 tenths%) and HitsPerCast (2->6) once Lv.134 unlocks, net +50% total
     damage (6*0.5 vs 2*1.0) — same "flip fields at a level threshold" pattern used for
     Strike-mastery hit-count bumps elsewhere, just applied to both fields simultaneously.
-  - Iron Wall (STR from Defense conversion) and Warrior Mastery/Iron Body-equivalent flat-stat
-    passives have no rows (no Defense-tracking mechanic exists anywhere in this project).
+  - Iron Wall (+10% of total Defense as STR, Lv.38+) is modeled live via a tracked Defense/
+    Defense % Inputs pair feeding STAT_DAMAGE directly (added when the project-wide Content-Type
+    feature introduced a Defense stat for the PvP opponent-defense estimate). Warrior Mastery/
+    Iron Body-equivalent flat-stat passives still have no rows (zero DPS-relevant mechanic).
 """
 import json
 import re
@@ -274,40 +276,57 @@ DERIVED_ROW = {
     "normal_weight_frac": D_NORMAL_WEIGHT_FRAC,
 }
 
+CONTENT_TYPES = [
+    "Chapter Boss", "Breakthrough", "PvP", "EXP Dungeon", "Equipment Dungeon",
+    "Weapon Dungeon", "Enhancement Dungeon", "Hero Dungeon", "World Boss", "Chapter Hunt",
+]
+
 IN = {
     "level": 3,
-    "monster_type": 4,
-    "flat_attack": 5,
-    "attack_pct": 6,
-    "monster_defense": 7,
-    "crit_rate": 8,
-    "crit_damage": 9,
-    "attack_speed": 10,
-    "flat_str": 11,
-    "str_pct": 12,
-    "dex": 13,
-    "damage": 14,
-    "damage_amp": 15,
-    "basic_attack_damage": 16,
-    "skill_damage": 17,
-    "def_pen": 18,
-    "boss_damage": 19,
-    "normal_damage": 20,
-    "min_damage": 21,
-    "max_damage": 22,
-    "final_damage": 23,
-    "skill_lvl_1st": 24,
-    "skill_lvl_2nd": 25,
-    "skill_lvl_3rd": 26,
-    "skill_lvl_4th": 27,
-    "skill_lvl_all": 28,
-    "skill_cooldown_decrease": 31,
-    "basic_attack_target_increase": 32,
-    "buff_duration_increase_pct": 33,
-    "companion_summon_time_increase_pct": 34,
-    "fight_duration": 35,
-    "breakthrough_normal_weight_pct": 36,
-    "max_enemies_hit": 37,
+    "content_type": 4,
+    "flat_attack": 7,
+    "attack_pct": 8,
+    "defense": 9,
+    "crit_rate": 11,
+    "crit_damage": 12,
+    "attack_speed": 13,
+    "flat_str": 14,
+    "str_pct": 15,
+    "dex": 16,
+    "damage": 17,
+    "damage_amp": 18,
+    "basic_attack_damage": 19,
+    "skill_damage": 20,
+    "def_pen": 21,
+    "boss_damage": 22,
+    "normal_damage": 23,
+    "min_damage": 24,
+    "max_damage": 25,
+    "final_damage": 26,
+    "skill_lvl_1st": 27,
+    "skill_lvl_2nd": 28,
+    "skill_lvl_3rd": 29,
+    "skill_lvl_4th": 30,
+    "skill_lvl_all": 31,
+    "skill_cooldown_decrease": 34,
+    "basic_attack_target_increase": 35,
+    "buff_duration_increase_pct": 36,
+    "companion_summon_time_increase_pct": 37,
+    "chapter": 5,
+    "breakthrough_normal_weight_pct": 38,
+    "max_enemies_hit": 39,
+    "stage": 6,
+    "monster_type": 40,
+    "breakthrough_stage_index": 41,
+    "monster_defense": 42,
+    "fight_duration": 43,
+    "defense_pct": 10,
+}
+
+# Rows computed by formula on the Inputs sheet itself (not user-editable) — see
+# build_inputs_sheet's "Computed (do not edit)" block below.
+COMPUTED_INPUT_ROWS = {
+    IN["monster_type"], IN["breakthrough_stage_index"], IN["monster_defense"], IN["fight_duration"],
 }
 
 
@@ -315,6 +334,14 @@ def IB(key):
     if key in DERIVED_ROW:
         return f"Summary!$B${DERIVED_ROW[key]}"
     return f"Inputs!$B${IN[key]}"
+
+
+def total_defense_expr(ib_fn):
+    return f'({ib_fn("defense")}*(1+{ib_fn("defense_pct")}/100))'
+
+
+def iron_wall_str_bonus_expr(ib_fn):
+    return f'IF({ib_fn("level")}>=38,0.10*{total_defense_expr(ib_fn)},0)'
 
 
 def build_readme_sheet(wb):
@@ -353,10 +380,12 @@ def build_readme_sheet(wb):
         "Weapon Acceleration, Weapon Mastery, Barricade Mastery, Power Stance's own Final Damage "
         "component, and Final Pact's own Final Damage component are always-on passives assumed to "
         "already be reflected in your own Inputs stat entries — only their Sensitivity marginal "
-        "delta is modeled live, matching this project's established convention. Iron Wall (STR "
-        "from Defense) and Warrior-Mastery-equivalent flat-stat passives have zero DPS-relevant "
-        "mechanic and get no row at all (no Defense-tracking mechanic exists anywhere in this "
-        "project). Dark Knight has NO Physical Training or Endure skill at all (confirmed absent "
+        "delta is modeled live, matching this project's established convention. Iron Wall "
+        "(+10% of your total Defense as STR, once Lv.38 unlocks) IS modeled live — Defense (flat) "
+        "and Defense % are their own tracked Inputs, feeding STAT_DAMAGE directly, with their own "
+        "Sensitivity marginal-value rows and PotentialCubes Defense % support. Warrior-Mastery-"
+        "equivalent flat-stat passives have zero DPS-relevant mechanic and get no row at all. "
+        "Dark Knight has NO Physical Training or Endure skill at all (confirmed absent "
         "from its own skill list, despite both being present on Hero's).",
         "Evil Eye and Dark Resonance both drive the Global Monster Damage-Taken Bonus% bucket "
         "(the mechanism Hero's own Scaring Sword pioneered) — Evil Eye's own +15%->19.2% applies "
@@ -401,8 +430,12 @@ def build_readme_sheet(wb):
         "mastery (+15% damage taken to struck targets) is included here on both "
         "MasteryBossDamage%/MasteryNormalDamage% — Hero's own build happened to miss this same "
         "mastery on its own Magic Crash row, not fixed there (out of scope for this fork).",
-        "Monster Type blends Boss/Normal Monster Damage% by the Chapter Breakthrough weight %; "
-        "PvP forces a fixed 15-second window regardless of the Fixed Fight Duration input.",
+        "Content Type (Inputs) picks what you're fighting — Chapter Boss/Breakthrough/PvP/EXP "
+        "Dungeon/Equipment Dungeon/Weapon Dungeon/Enhancement Dungeon/Hero Dungeon/World Boss/"
+        "Chapter Hunt — and Monster Defense and Fixed Fight Duration are both auto-computed from "
+        "it (plus Chapter/Stage for the chapter- and dungeon-based types); PvP still forces its "
+        "own fixed 15-second window and uses your own Defense stat as the opponent's Defense "
+        "estimate. See README.md's 'Content Type' section for the exact formulas.",
         "Not modeled (out of scope): all forms of crowd control (Evil Eye Shock stun), Accuracy, "
         "Evasion, Defense, Max HP/MP recovery, movement speed, and Companion Summoning Time.",
     ]:
@@ -423,10 +456,15 @@ def build_inputs_sheet(wb, existing=None):
 
     rows = [
         ("level", "Character Level", 200),
-        ("monster_type", "Monster Type (\"boss\", \"normal\", \"breakthrough\", or \"pvp\")", "boss"),
+        ("content_type", "Content Type", "Chapter Boss"),
+        ("chapter", "Chapter (used when Content Type is Chapter Boss / Breakthrough / Chapter Hunt)", 28),
+        ("stage", "Stage — sub-stage within Chapter for Breakthrough/Chapter Hunt (e.g. the '9' in 28-9), "
+                  "or Dungeon Stage number for Weapon/Enhancement/EXP/Equipment/Hero Dungeon; ignored otherwise", 9),
         ("flat_attack", "Flat ATTACK", 10000),
         ("attack_pct", "ATTACK %", 0),
-        ("monster_defense", "Monster Defense (flat, post-x100/x10 scaling)", 0),
+        ("defense", "Defense (flat) — your own DEF stat; Iron Wall converts 10% of it into STR, "
+                    "and PvP assumes the opponent has the same total Defense as you", 0),
+        ("defense_pct", "Defense % (Iron Wall converts total Defense, incl. this %, into STR)", 0),
         ("crit_rate", "CRIT_RATE %", 0),
         ("crit_damage", "CRIT_DAMAGE %", 0),
         ("attack_speed", "ATTACK_SPEED % (base, excludes Weapon Acceleration)", 0),
@@ -455,14 +493,13 @@ def build_inputs_sheet(wb, existing=None):
         cell = ws.cell(row=r, column=2, value=existing.get(key, default))
         cell.fill = INPUT_FILL
 
-    ws.cell(row=30, column=1, value="Additional Bonuses").font = SECTION_FONT
+    ws.cell(row=33, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
         ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
-        ("fight_duration", "Fixed Fight Duration (seconds, boss or normal — leave 0 for steady-state DPS; ignored for pvp)", 0),
-        ("breakthrough_normal_weight_pct", "Chapter Breakthrough: Normal-Monster Weight % (only used when Monster Type = breakthrough)", 60),
+        ("breakthrough_normal_weight_pct", "Boss/Normal Weight % (used when Content Type is Breakthrough or Hero Dungeon)", 60),
         ("max_enemies_hit", "Max Enemies Actually In Range (normal monsters only; default 999 = uncapped)", 999),
     ]
     for key, label, default in bonus_rows:
@@ -470,6 +507,54 @@ def build_inputs_sheet(wb, existing=None):
         ws.cell(row=r, column=1, value=label).font = LABEL_FONT
         cell = ws.cell(row=r, column=2, value=existing.get(key, default))
         cell.fill = INPUT_FILL
+
+    dv_content_type = DataValidation(
+        type="list", formula1='"' + ",".join(CONTENT_TYPES) + '"', allow_blank=False
+    )
+    ws.add_data_validation(dv_content_type)
+    dv_content_type.add(ws.cell(row=IN["content_type"], column=2))
+
+    COMPUTED_FILL = PatternFill("solid", fgColor="D9D9D9")
+    computed_rows = [
+        ("monster_type", "Monster Type (auto-computed from Content Type)", (
+            f'=IF({IB("content_type")}="PvP","pvp",'
+            f'IF(OR({IB("content_type")}="Breakthrough",{IB("content_type")}="Hero Dungeon"),"breakthrough",'
+            f'IF(OR({IB("content_type")}="EXP Dungeon",{IB("content_type")}="Equipment Dungeon",{IB("content_type")}="Chapter Hunt"),"normal",'
+            f'"boss")))'
+        )),
+        ("breakthrough_stage_index", "Breakthrough Global Stage Index (helper)", (
+            f'=IF({IB("chapter")}=28,{IB("stage")}-9,'
+            f'{IB("stage")}+14*MAX(0,MIN({IB("chapter")}-1,38)-28)+19*MAX(0,{IB("chapter")}-39))'
+        )),
+        ("monster_defense", "Monster Defense (auto-computed from Content Type)", (
+            f'=IF({IB("content_type")}="Chapter Boss",3200+50*({IB("chapter")}-28),'
+            f'IF({IB("content_type")}="World Boss",62100,'
+            f'IF({IB("content_type")}="Weapon Dungeon",{IB("stage")}*50,'
+            f'IF({IB("content_type")}="Enhancement Dungeon",950+{IB("stage")}*50,'
+            f'IF(OR({IB("content_type")}="EXP Dungeon",{IB("content_type")}="Equipment Dungeon"),250+{IB("stage")}*50,'
+            f'IF({IB("content_type")}="Hero Dungeon",650+{IB("stage")}*50,'
+            f'IF(OR({IB("content_type")}="Breakthrough",{IB("content_type")}="Chapter Hunt"),4860+20*{IB("breakthrough_stage_index")},'
+            f'({IB("defense")}*(1+{IB("defense_pct")}/100)))))))))'
+        )),
+        ("fight_duration", "Fixed Fight Duration (auto-computed from Content Type; 0 = steady-state)", (
+            f'=IF({IB("content_type")}="Chapter Hunt",0,'
+            f'IF({IB("content_type")}="Weapon Dungeon",22,'
+            f'IF({IB("content_type")}="Equipment Dungeon",40,'
+            f'IF({IB("content_type")}="Enhancement Dungeon",25,'
+            f'IF({IB("content_type")}="Hero Dungeon",50,'
+            f'IF({IB("content_type")}="EXP Dungeon",40,'
+            f'IF({IB("content_type")}="World Boss",75,'
+            f'IF({IB("content_type")}="Chapter Boss",70,'
+            f'IF({IB("content_type")}="Breakthrough",40,'
+            f'0)))))))))'
+        )),
+    ]
+    for key, label, formula in computed_rows:
+        r = IN[key]
+        ws.cell(row=r, column=1, value=f"{label} — computed, do not edit").font = LABEL_FONT
+        cell = ws.cell(row=r, column=2, value=formula)
+        cell.fill = COMPUTED_FILL
+        ws.row_dimensions[r].hidden = True
 
     ws.column_dimensions["A"].width = 55
     ws.column_dimensions["B"].width = 16
@@ -1135,10 +1220,10 @@ def build_summary_sheet(wb):
     ws.cell(row=D_ATTACK, column=1, value="ATTACK (= Flat ATTACK x (1+ATTACK%/100))")
     ws.cell(row=D_ATTACK, column=2, value=f'={IB("flat_attack")}*(1+{IB("attack_pct")}/100)')
 
-    ws.cell(row=D_STAT_DAMAGE, column=1, value="STAT_DAMAGE % (= 1% of total STR + 0.25% of DEX)")
+    ws.cell(row=D_STAT_DAMAGE, column=1, value="STAT_DAMAGE % (= 1% of total STR [incl. Iron Wall's Defense-> STR] + 0.25% of DEX)")
     ws.cell(
         row=D_STAT_DAMAGE, column=2,
-        value=f'=({IB("flat_str")}*(1+{IB("str_pct")}/100))*0.01+{IB("dex")}*0.0025'
+        value=f'=(({IB("flat_str")}+{iron_wall_str_bonus_expr(IB)})*(1+{IB("str_pct")}/100))*0.01+{IB("dex")}*0.0025'
     )
 
     ws.cell(row=D_BASIC_INPUT_LEVEL, column=1, value="Basic Attack (Dark Impale) Input Level (4th job formula)")
@@ -1288,6 +1373,8 @@ STAT_SWEEP = [
     ("flat_str", "Flat STR", "flat"),
     ("str_pct", "STR %", "pct"),
     ("dex", "DEX", "flat"),
+    ("defense", "Defense (flat) — Iron Wall converts 10% into STR", "flat"),
+    ("defense_pct", "Defense %", "pct"),
     ("damage", "DAMAGE %", "pct"),
     ("damage_amp", "DAMAGE_AMP %", "pct"),
     ("boss_damage", "BOSS_DAMAGE %", "pct"),
@@ -1327,6 +1414,7 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Defense Penetration": "def_pen",
     "Dex %": "dex",
     "Dex": "dex",
+    "Defense %": "defense_pct",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
     "Skill Cooldown Decrease (seconds)": "skill_cooldown_decrease",
@@ -1385,7 +1473,7 @@ def make_ib(override_key, override_expr):
         if key == "attack":
             return f'({ib("flat_attack")}*(1+{ib("attack_pct")}/100))'
         if key == "stat_damage":
-            return f'(({ib("flat_str")}*(1+{ib("str_pct")}/100))*0.01+{ib("dex")}*0.0025)'
+            return f'((({ib("flat_str")}+{iron_wall_str_bonus_expr(ib)})*(1+{ib("str_pct")}/100))*0.01+{ib("dex")}*0.0025)'
         return IB(key)
     return ib
 
@@ -1421,7 +1509,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
-            fda_block, f'S{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
+            fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
             S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
         )
 
@@ -1836,9 +1924,16 @@ def load_existing_workbook_state(path):
     if "Inputs" in wb.sheetnames:
         ws = wb["Inputs"]
         for key, row in IN.items():
+            if row in COMPUTED_INPUT_ROWS:
+                continue
             value = ws.cell(row=row, column=2).value
             if value is not None and not (isinstance(value, str) and value.startswith("=")):
                 existing_inputs[key] = value
+
+        old_label = ws.cell(row=IN["content_type"], column=1).value or ""
+        if "Content Type" not in old_label:
+            existing_inputs.pop("content_type", None)
+            existing_inputs.pop("chapter", None)
 
     existing_potential_cubes = {}
     if "PotentialCubes" in wb.sheetnames:

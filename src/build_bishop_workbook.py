@@ -220,40 +220,57 @@ DERIVED_ROW = {
     "normal_weight_frac": D_NORMAL_WEIGHT_FRAC,
 }
 
+CONTENT_TYPES = [
+    "Chapter Boss", "Breakthrough", "PvP", "EXP Dungeon", "Equipment Dungeon",
+    "Weapon Dungeon", "Enhancement Dungeon", "Hero Dungeon", "World Boss", "Chapter Hunt",
+]
+
 IN = {
     "level": 3,
-    "monster_type": 4,
-    "flat_attack": 5,
-    "attack_pct": 6,
-    "monster_defense": 7,
-    "crit_rate": 8,
-    "crit_damage": 9,
-    "attack_speed": 10,
-    "flat_int": 11,
-    "int_pct": 12,
-    "luk": 13,
-    "damage": 14,
-    "damage_amp": 15,
-    "basic_attack_damage": 16,
-    "skill_damage": 17,
-    "def_pen": 18,
-    "boss_damage": 19,
-    "normal_damage": 20,
-    "min_damage": 21,
-    "max_damage": 22,
-    "final_damage": 23,
-    "skill_lvl_1st": 24,
-    "skill_lvl_2nd": 25,
-    "skill_lvl_3rd": 26,
-    "skill_lvl_4th": 27,
-    "skill_lvl_all": 28,
-    "skill_cooldown_decrease": 31,
-    "basic_attack_target_increase": 32,
-    "buff_duration_increase_pct": 33,
-    "companion_summon_time_increase_pct": 34,
-    "fight_duration": 35,
-    "breakthrough_normal_weight_pct": 36,
-    "max_enemies_hit": 37,
+    "content_type": 4,
+    "flat_attack": 7,
+    "attack_pct": 8,
+    "defense": 9,
+    "crit_rate": 11,
+    "crit_damage": 12,
+    "attack_speed": 13,
+    "flat_int": 14,
+    "int_pct": 15,
+    "luk": 16,
+    "damage": 17,
+    "damage_amp": 18,
+    "basic_attack_damage": 19,
+    "skill_damage": 20,
+    "def_pen": 21,
+    "boss_damage": 22,
+    "normal_damage": 23,
+    "min_damage": 24,
+    "max_damage": 25,
+    "final_damage": 26,
+    "skill_lvl_1st": 27,
+    "skill_lvl_2nd": 28,
+    "skill_lvl_3rd": 29,
+    "skill_lvl_4th": 30,
+    "skill_lvl_all": 31,
+    "skill_cooldown_decrease": 34,
+    "basic_attack_target_increase": 35,
+    "buff_duration_increase_pct": 36,
+    "companion_summon_time_increase_pct": 37,
+    "chapter": 5,
+    "breakthrough_normal_weight_pct": 38,
+    "max_enemies_hit": 39,
+    "stage": 6,
+    "monster_type": 40,
+    "breakthrough_stage_index": 41,
+    "monster_defense": 42,
+    "fight_duration": 43,
+    "defense_pct": 10,
+}
+
+# Rows computed by formula on the Inputs sheet itself (not user-editable) — see
+# build_inputs_sheet's "Computed (do not edit)" block below.
+COMPUTED_INPUT_ROWS = {
+    IN["monster_type"], IN["breakthrough_stage_index"], IN["monster_defense"], IN["fight_duration"],
 }
 
 # These 6 values are computed (not user-entered) and live on the Summary sheet's "Derived Values"
@@ -264,6 +281,14 @@ def IB(key):
     if key in DERIVED_ROW:
         return f"Summary!$B${DERIVED_ROW[key]}"
     return f"Inputs!$B${IN[key]}"
+
+
+def total_defense_expr(ib_fn):
+    return f'({ib_fn("defense")}*(1+{ib_fn("defense_pct")}/100))'
+
+
+def invincible_int_bonus_expr(ib_fn):
+    return f'IF({ib_fn("level")}>=35,0.10*{total_defense_expr(ib_fn)},0)'
 
 
 def build_readme_sheet(wb):
@@ -310,10 +335,17 @@ def build_readme_sheet(wb):
         "HP >= 70%.",
         "Triumph Feather's two-stage proc and Angel Ray's boss-only proc are modeled as "
         "steady-state average multipliers rather than an exact proc-by-proc simulation.",
-        "Monster Type blends Boss/Normal Monster Damage% by the Chapter Breakthrough weight %; "
-        "PvP forces a fixed 15-second window regardless of the Fixed Fight Duration input.",
+        "Content Type (Inputs) picks what you're fighting — Chapter Boss/Breakthrough/PvP/EXP "
+        "Dungeon/Equipment Dungeon/Weapon Dungeon/Enhancement Dungeon/Hero Dungeon/World Boss/"
+        "Chapter Hunt — and Monster Defense and Fixed Fight Duration are both auto-computed from "
+        "it (plus Chapter/Stage for the chapter- and dungeon-based types); PvP still forces its "
+        "own fixed 15-second window and uses your own Defense stat as the opponent's Defense "
+        "estimate. See README.md's 'Content Type' section for the exact formulas.",
+        "Invincible (+10% of your total Defense as INT, once Lv.35 unlocks) IS modeled live — "
+        "Defense (flat) and Defense % are their own tracked Inputs, feeding STAT_DAMAGE directly, "
+        "with their own Sensitivity marginal-value rows and PotentialCubes Defense % support.",
         "Not modeled (out of scope): crowd control, Accuracy/Evasion/Defense reduction, "
-        "movement speed, the character's own Defense stat, and Companion Summoning Time.",
+        "movement speed, and Companion Summoning Time.",
     ]:
         line(r, text); r += 1
 
@@ -332,10 +364,15 @@ def build_inputs_sheet(wb, existing=None):
 
     rows = [
         ("level", "Character Level", 200),
-        ("monster_type", "Monster Type (\"boss\", \"normal\", \"breakthrough\", or \"pvp\")", "boss"),
+        ("content_type", "Content Type", "Chapter Boss"),
+        ("chapter", "Chapter (used when Content Type is Chapter Boss / Breakthrough / Chapter Hunt)", 28),
+        ("stage", "Stage — sub-stage within Chapter for Breakthrough/Chapter Hunt (e.g. the '9' in 28-9), "
+                  "or Dungeon Stage number for Weapon/Enhancement/EXP/Equipment/Hero Dungeon; ignored otherwise", 9),
         ("flat_attack", "Flat ATTACK", 10000),
         ("attack_pct", "ATTACK %", 0),
-        ("monster_defense", "Monster Defense (flat, post-x100/x10 scaling)", 0),
+        ("defense", "Defense (flat) — your own DEF stat; Invincible converts 10% of it into INT, "
+                    "and PvP assumes the opponent has the same total Defense as you", 0),
+        ("defense_pct", "Defense % (Invincible converts total Defense, incl. this %, into INT)", 0),
         ("crit_rate", "CRIT_RATE %", 0),
         ("crit_damage", "CRIT_DAMAGE %", 0),
         ("attack_speed", "ATTACK_SPEED % (base, excludes Nimble Feet/MP Eater/Blood of the Divine)", 0),
@@ -364,14 +401,13 @@ def build_inputs_sheet(wb, existing=None):
         cell = ws.cell(row=r, column=2, value=existing.get(key, default))
         cell.fill = INPUT_FILL
 
-    ws.cell(row=30, column=1, value="Additional Bonuses").font = SECTION_FONT
+    ws.cell(row=33, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
         ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
-        ("fight_duration", "Fixed Fight Duration (seconds, boss or normal — leave 0 for steady-state DPS; ignored for pvp)", 0),
-        ("breakthrough_normal_weight_pct", "Chapter Breakthrough: Normal-Monster Weight % (only used when Monster Type = breakthrough)", 60),
+        ("breakthrough_normal_weight_pct", "Boss/Normal Weight % (used when Content Type is Breakthrough or Hero Dungeon)", 60),
         ("max_enemies_hit", "Max Enemies Actually In Range (normal monsters only; default 999 = uncapped)", 999),
     ]
     for key, label, default in bonus_rows:
@@ -379,6 +415,54 @@ def build_inputs_sheet(wb, existing=None):
         ws.cell(row=r, column=1, value=label).font = LABEL_FONT
         cell = ws.cell(row=r, column=2, value=existing.get(key, default))
         cell.fill = INPUT_FILL
+
+    dv_content_type = DataValidation(
+        type="list", formula1='"' + ",".join(CONTENT_TYPES) + '"', allow_blank=False
+    )
+    ws.add_data_validation(dv_content_type)
+    dv_content_type.add(ws.cell(row=IN["content_type"], column=2))
+
+    COMPUTED_FILL = PatternFill("solid", fgColor="D9D9D9")
+    computed_rows = [
+        ("monster_type", "Monster Type (auto-computed from Content Type)", (
+            f'=IF({IB("content_type")}="PvP","pvp",'
+            f'IF(OR({IB("content_type")}="Breakthrough",{IB("content_type")}="Hero Dungeon"),"breakthrough",'
+            f'IF(OR({IB("content_type")}="EXP Dungeon",{IB("content_type")}="Equipment Dungeon",{IB("content_type")}="Chapter Hunt"),"normal",'
+            f'"boss")))'
+        )),
+        ("breakthrough_stage_index", "Breakthrough Global Stage Index (helper)", (
+            f'=IF({IB("chapter")}=28,{IB("stage")}-9,'
+            f'{IB("stage")}+14*MAX(0,MIN({IB("chapter")}-1,38)-28)+19*MAX(0,{IB("chapter")}-39))'
+        )),
+        ("monster_defense", "Monster Defense (auto-computed from Content Type)", (
+            f'=IF({IB("content_type")}="Chapter Boss",3200+50*({IB("chapter")}-28),'
+            f'IF({IB("content_type")}="World Boss",62100,'
+            f'IF({IB("content_type")}="Weapon Dungeon",{IB("stage")}*50,'
+            f'IF({IB("content_type")}="Enhancement Dungeon",950+{IB("stage")}*50,'
+            f'IF(OR({IB("content_type")}="EXP Dungeon",{IB("content_type")}="Equipment Dungeon"),250+{IB("stage")}*50,'
+            f'IF({IB("content_type")}="Hero Dungeon",650+{IB("stage")}*50,'
+            f'IF(OR({IB("content_type")}="Breakthrough",{IB("content_type")}="Chapter Hunt"),4860+20*{IB("breakthrough_stage_index")},'
+            f'({IB("defense")}*(1+{IB("defense_pct")}/100)))))))))'
+        )),
+        ("fight_duration", "Fixed Fight Duration (auto-computed from Content Type; 0 = steady-state)", (
+            f'=IF({IB("content_type")}="Chapter Hunt",0,'
+            f'IF({IB("content_type")}="Weapon Dungeon",22,'
+            f'IF({IB("content_type")}="Equipment Dungeon",40,'
+            f'IF({IB("content_type")}="Enhancement Dungeon",25,'
+            f'IF({IB("content_type")}="Hero Dungeon",50,'
+            f'IF({IB("content_type")}="EXP Dungeon",40,'
+            f'IF({IB("content_type")}="World Boss",75,'
+            f'IF({IB("content_type")}="Chapter Boss",70,'
+            f'IF({IB("content_type")}="Breakthrough",40,'
+            f'0)))))))))'
+        )),
+    ]
+    for key, label, formula in computed_rows:
+        r = IN[key]
+        ws.cell(row=r, column=1, value=f"{label} — computed, do not edit").font = LABEL_FONT
+        cell = ws.cell(row=r, column=2, value=formula)
+        cell.fill = COMPUTED_FILL
+        ws.row_dimensions[r].hidden = True
 
     ws.column_dimensions["A"].width = 46
     ws.column_dimensions["B"].width = 16
@@ -1114,10 +1198,10 @@ def build_summary_sheet(wb):
     ws.cell(row=D_ATTACK, column=1, value="ATTACK (= Flat ATTACK x (1+ATTACK%/100))")
     ws.cell(row=D_ATTACK, column=2, value=f'={IB("flat_attack")}*(1+{IB("attack_pct")}/100)')
 
-    ws.cell(row=D_STAT_DAMAGE, column=1, value="STAT_DAMAGE % (= 1% of total INT + 0.25% of LUK)")
+    ws.cell(row=D_STAT_DAMAGE, column=1, value="STAT_DAMAGE % (= 1% of total INT [incl. Invincible's Defense-> INT] + 0.25% of LUK)")
     ws.cell(
         row=D_STAT_DAMAGE, column=2,
-        value=f'=({IB("flat_int")}*(1+{IB("int_pct")}/100))*0.01+{IB("luk")}*0.0025'
+        value=f'=(({IB("flat_int")}+{invincible_int_bonus_expr(IB)})*(1+{IB("int_pct")}/100))*0.01+{IB("luk")}*0.0025'
     )
 
     ws.cell(row=D_BASIC_INPUT_LEVEL, column=1, value="Basic Attack (Big Bang) Input Level (4th job formula)")
@@ -1288,6 +1372,8 @@ def build_summary_sheet(wb):
 STAT_SWEEP = [
     ("flat_int", "Flat INT", "flat"),
     ("int_pct", "INT %", "pct"),
+    ("defense", "Defense (flat) — Invincible converts 10% into INT", "flat"),
+    ("defense_pct", "Defense %", "pct"),
     ("damage", "DAMAGE %", "pct"),
     ("damage_amp", "DAMAGE_AMP %", "pct"),
     ("boss_damage", "BOSS_DAMAGE %", "pct"),
@@ -1327,6 +1413,7 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Defense Penetration": "def_pen",
     "Int %": "int_pct",
     "Int": "flat_int",
+    "Defense %": "defense_pct",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
     "Skill Cooldown Decrease (seconds)": "skill_cooldown_decrease",
@@ -1381,7 +1468,7 @@ def make_ib(override_key, override_expr):
         if key == "attack":
             return f'({ib("flat_attack")}*(1+{ib("attack_pct")}/100))'
         if key == "stat_damage":
-            return f'(({ib("flat_int")}*(1+{ib("int_pct")}/100))*0.01+{ib("luk")}*0.0025)'
+            return f'((({ib("flat_int")}+{invincible_int_bonus_expr(ib)})*(1+{ib("int_pct")}/100))*0.01+{ib("luk")}*0.0025)'
         return IB(key)
     return ib
 
@@ -1417,10 +1504,6 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     crit_dmg_delta = f'(F{row_of["MAGIC_CRITICAL_DAMAGE"]}-Calc!F{ROW["MAGIC_CRITICAL_DAMAGE"]})'
     min_dmg_delta = f'(F{row_of["SPELL_MASTERY"]}-Calc!F{ROW["SPELL_MASTERY"]})'
     attack_speed_delta = f'(F{row_of["MAGIC_ACCELERATION"]}-Calc!F{ROW["MAGIC_ACCELERATION"]})'
-
-    int_attack_delta = (
-        f'(({ib("flat_int")}*(1+{ib("int_pct")}/100))-({IB("flat_int")}*(1+{IB("int_pct")}/100)))'
-    )
 
     fda_block = fixed_duration_active_expr(ib("monster_type"), ib("fight_duration"))
 
@@ -1460,8 +1543,8 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]),
         )
         rate_row = rate_or_exact_hits_expr(
-            fda_block, f"S{row}", S("HitsPerCast", r), S("ICD(s)", r), S("ActiveWindow(s)", r),
-            eff_cd_row, ib("fight_duration"), f"G{row}*V{row}",
+            fda_block, f"R{row}", S("HitsPerCast", r), S("ICD(s)", r), S("ActiveWindow(s)", r),
+            eff_cd_row, ib("fight_duration"), f"G{row}*Q{row}",
         )
 
         if key == "BIG_BANG":
@@ -1500,7 +1583,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
         if key == "BIG_BANG" or key in DAMAGE_ROW_KEYS:
             ws.cell(row=row, column=10, value=(
-                f'=({ib("attack")}+{int_attack_delta}*(1+{ib("attack_pct")}/100))*(F{row}/100)'
+                f'={ib("attack")}*(F{row}/100)'
             ))
             monster_dmg_term = monster_blend_expr(
                 ib("monster_type"), ib("normal_weight_frac"),
@@ -1568,14 +1651,14 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             ws.cell(row=row, column=15, value=0)
 
         ws.cell(row=row, column=16, value=f'=IF({total_ref}=0,0,O{row}/{total_ref})')
-        ws.cell(row=row, column=22, value=f'=IFERROR(1/{eff_cd_row},0)')
+        ws.cell(row=row, column=17, value=f'=IFERROR(1/{eff_cd_row},0)')
 
         if ROW_HAS_COOLDOWN[key]:
-            ws.cell(row=row, column=19, value=(
+            ws.cell(row=row, column=18, value=(
                 f'=IF({fda_block},{exact_casts_expr(ib("fight_duration"), eff_cd_row)},0)'
             ))
         else:
-            ws.cell(row=row, column=19, value=0)
+            ws.cell(row=row, column=18, value=0)
 
     mg, heal, bless, hms, ab, inf = (
         row_of["MAGIC_GUARD"], row_of["HEAL"], row_of["BLESS"], row_of["HOLY_MAGIC_SHELL"],
@@ -1585,7 +1668,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
-            fda_block, f'S{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
+            fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
             S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
         )
 
@@ -1629,9 +1712,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ws.cell(row=s_castrate, column=2, value=(
         f'=IF({fda_block},'
         f'SUMPRODUCT((Skills!{SC["CostsActionSlot"]}2:{SC["CostsActionSlot"]}{LAST_ROW}=TRUE)*'
-        f'(C{calc_start}:C{calc_end}=TRUE)*S{calc_start}:S{calc_end})/{ib("fight_duration")},'
+        f'(C{calc_start}:C{calc_end}=TRUE)*R{calc_start}:R{calc_end})/{ib("fight_duration")},'
         f'SUMPRODUCT((Skills!{SC["CostsActionSlot"]}2:{SC["CostsActionSlot"]}{LAST_ROW}=TRUE)*'
-        f'(C{calc_start}:C{calc_end}=TRUE)*V{calc_start}:V{calc_end}))'
+        f'(C{calc_start}:C{calc_end}=TRUE)*Q{calc_start}:Q{calc_end}))'
     ))
 
     ws.cell(row=s_baps, column=1, value="Big Bang Casts Per Second")
@@ -1837,12 +1920,19 @@ def load_existing_workbook_state(path):
     if "Inputs" in wb.sheetnames:
         ws = wb["Inputs"]
         for key, row in IN.items():
+            if row in COMPUTED_INPUT_ROWS:
+                continue
             value = ws.cell(row=row, column=2).value
             # Inputs cells are always raw literals now (never formulas) — a formula string here
             # means this row held something else before a layout change; skip it rather than
             # carry over stale data from the wrong cell.
             if value is not None and not (isinstance(value, str) and value.startswith("=")):
                 existing_inputs[key] = value
+
+        old_label = ws.cell(row=IN["content_type"], column=1).value or ""
+        if "Content Type" not in old_label:
+            existing_inputs.pop("content_type", None)
+            existing_inputs.pop("chapter", None)
 
     existing_potential_cubes = {}
     if "PotentialCubes" in wb.sheetnames:
