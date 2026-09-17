@@ -255,51 +255,58 @@ CONTENT_TYPES = [
     "Weapon Dungeon", "Enhancement Dungeon", "Hero Dungeon", "World Boss", "Chapter Hunt",
 ]
 
+BOSS_NORMAL_WEIGHT_CHOICES = [
+    "More Normal", "A Little More Normal", "Equal", "A Little More Boss", "More Boss",
+]
+
 IN = {
     "level": 3,
     "content_type": 4,
-    "flat_attack": 7,
-    "attack_pct": 8,
-    "defense": 9,
-    "crit_rate": 10,
-    "crit_damage": 11,
-    "attack_speed": 12,
-    "flat_dex": 13,
-    "dex_pct": 14,
-    "str": 15,
-    "damage": 16,
-    "damage_amp": 17,
-    "basic_attack_damage": 18,
-    "skill_damage": 19,
-    "def_pen": 20,
-    "boss_damage": 21,
-    "normal_damage": 22,
-    "min_damage": 23,
-    "max_damage": 24,
-    "final_damage": 25,
-    "skill_lvl_1st": 26,
-    "skill_lvl_2nd": 27,
-    "skill_lvl_3rd": 28,
-    "skill_lvl_4th": 29,
-    "skill_lvl_all": 30,
-    "skill_cooldown_decrease": 33,
-    "basic_attack_target_increase": 34,
-    "buff_duration_increase_pct": 35,
-    "companion_summon_time_increase_pct": 36,
-    "chapter": 5,
-    "breakthrough_normal_weight_pct": 37,
-    "max_enemies_hit": 38,
-    "stage": 6,
-    "monster_type": 39,
-    "breakthrough_stage_index": 40,
-    "monster_defense": 41,
-    "fight_duration": 42,
+    "chapter_stage": 5,
+    "flat_attack": 6,
+    "attack_pct": 7,
+    "defense": 8,
+    "crit_rate": 9,
+    "crit_damage": 10,
+    "attack_speed": 11,
+    "flat_dex": 12,
+    "dex_pct": 13,
+    "str": 14,
+    "damage": 15,
+    "damage_amp": 16,
+    "basic_attack_damage": 17,
+    "skill_damage": 18,
+    "def_pen": 19,
+    "boss_damage": 20,
+    "normal_damage": 21,
+    "min_damage": 22,
+    "max_damage": 23,
+    "final_damage": 24,
+    "skill_lvl_1st": 25,
+    "skill_lvl_2nd": 26,
+    "skill_lvl_3rd": 27,
+    "skill_lvl_4th": 28,
+    "skill_lvl_all": 29,
+    "skill_cooldown_decrease": 32,
+    "basic_attack_target_increase": 33,
+    "buff_duration_increase_pct": 34,
+    "companion_summon_time_increase_pct": 35,
+    "boss_normal_weight_choice": 36,
+    "max_enemies_hit": 37,
+    "monster_type": 38,
+    "chapter": 39,
+    "stage": 40,
+    "breakthrough_stage_index": 41,
+    "monster_defense": 42,
+    "fight_duration": 43,
+    "breakthrough_normal_weight_pct": 44,
 }
 
 # Rows computed by formula on the Inputs sheet itself (not user-editable) — see
 # build_inputs_sheet's "Computed (do not edit)" block below.
 COMPUTED_INPUT_ROWS = {
-    IN["monster_type"], IN["breakthrough_stage_index"], IN["monster_defense"], IN["fight_duration"],
+    IN["monster_type"], IN["chapter"], IN["stage"], IN["breakthrough_normal_weight_pct"],
+    IN["breakthrough_stage_index"], IN["monster_defense"], IN["fight_duration"],
 }
 
 
@@ -400,9 +407,9 @@ def build_inputs_sheet(wb, existing=None):
     rows = [
         ("level", "Character Level", 200),
         ("content_type", "Content Type", "Chapter Boss"),
-        ("chapter", "Chapter (used when Content Type is Chapter Boss / Breakthrough / Chapter Hunt)", 28),
-        ("stage", "Stage — sub-stage within Chapter for Breakthrough/Chapter Hunt (e.g. the '9' in 28-9), "
-                  "or Dungeon Stage number for Weapon/Enhancement/EXP/Equipment/Hero Dungeon; ignored otherwise", 9),
+        ("chapter_stage", "Chapter-Stage — e.g. '28-9' for Chapter Boss/Breakthrough/Chapter Hunt "
+                          "(chapter-substage, the boss chapter number alone also works), or just the "
+                          "stage number (e.g. '80') for Weapon/Enhancement/EXP/Equipment/Hero Dungeon", "28-9"),
         ("flat_attack", "Flat ATTACK", 10000),
         ("attack_pct", "ATTACK %", 0),
         ("defense", "Defense (your own DEF stat; PvP assumes the opponent has the same Defense as you)", 0),
@@ -434,13 +441,13 @@ def build_inputs_sheet(wb, existing=None):
         cell = ws.cell(row=r, column=2, value=existing.get(key, default))
         cell.fill = INPUT_FILL
 
-    ws.cell(row=32, column=1, value="Additional Bonuses").font = SECTION_FONT
+    ws.cell(row=31, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
         ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
-        ("breakthrough_normal_weight_pct", "Boss/Normal Weight % (used when Content Type is Breakthrough or Hero Dungeon)", 60),
+        ("boss_normal_weight_choice", "Boss/Normal Emphasis (used when Content Type is Breakthrough or Hero Dungeon)", "A Little More Normal"),
         ("max_enemies_hit", "Max Enemies Actually In Range (normal monsters only; default 999 = uncapped)", 999),
     ]
     for key, label, default in bonus_rows:
@@ -455,6 +462,12 @@ def build_inputs_sheet(wb, existing=None):
     ws.add_data_validation(dv_content_type)
     dv_content_type.add(ws.cell(row=IN["content_type"], column=2))
 
+    dv_boss_normal_weight = DataValidation(
+        type="list", formula1='"' + ",".join(BOSS_NORMAL_WEIGHT_CHOICES) + '"', allow_blank=False
+    )
+    ws.add_data_validation(dv_boss_normal_weight)
+    dv_boss_normal_weight.add(ws.cell(row=IN["boss_normal_weight_choice"], column=2))
+
     COMPUTED_FILL = PatternFill("solid", fgColor="D9D9D9")
     computed_rows = [
         ("monster_type", "Monster Type (auto-computed from Content Type)", (
@@ -462,6 +475,24 @@ def build_inputs_sheet(wb, existing=None):
             f'IF(OR({IB("content_type")}="Breakthrough",{IB("content_type")}="Hero Dungeon"),"breakthrough",'
             f'IF(OR({IB("content_type")}="EXP Dungeon",{IB("content_type")}="Equipment Dungeon",{IB("content_type")}="Chapter Hunt"),"normal",'
             f'"boss")))'
+        )),
+        ("chapter", "Chapter (parsed from Chapter-Stage)", (
+            f'=IFERROR(IF(ISNUMBER(FIND("-",{IB("chapter_stage")})),'
+            f'VALUE(LEFT({IB("chapter_stage")},FIND("-",{IB("chapter_stage")})-1)),'
+            f'VALUE({IB("chapter_stage")})),28)'
+        )),
+        ("stage", "Stage (parsed from Chapter-Stage)", (
+            f'=IFERROR(IF(ISNUMBER(FIND("-",{IB("chapter_stage")})),'
+            f'VALUE(MID({IB("chapter_stage")},FIND("-",{IB("chapter_stage")})+1,50)),'
+            f'VALUE({IB("chapter_stage")})),9)'
+        )),
+        ("breakthrough_normal_weight_pct", "Boss/Normal Weight % (parsed from Boss/Normal Emphasis)", (
+            f'=IF({IB("boss_normal_weight_choice")}="More Normal",70,'
+            f'IF({IB("boss_normal_weight_choice")}="A Little More Normal",60,'
+            f'IF({IB("boss_normal_weight_choice")}="Equal",50,'
+            f'IF({IB("boss_normal_weight_choice")}="A Little More Boss",40,'
+            f'IF({IB("boss_normal_weight_choice")}="More Boss",30,'
+            f'60)))))'
         )),
         ("breakthrough_stage_index", "Breakthrough Global Stage Index (helper)", (
             f'=IF({IB("chapter")}=28,{IB("stage")}-9,'
@@ -1919,7 +1950,7 @@ def load_existing_workbook_state(path):
         old_label = ws.cell(row=IN["content_type"], column=1).value or ""
         if "Content Type" not in old_label:
             existing_inputs.pop("content_type", None)
-            existing_inputs.pop("chapter", None)
+            existing_inputs.pop("chapter_stage", None)
 
     existing_potential_cubes = {}
     if "PotentialCubes" in wb.sheetnames:

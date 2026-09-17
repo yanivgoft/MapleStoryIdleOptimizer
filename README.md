@@ -56,33 +56,40 @@ your own stats, and every other sheet recalculates live.
 
 `Content Type` on the Inputs sheet picks what you're fighting; `Monster Defense` and `Fixed Fight
 Duration` are both computed from it automatically — you no longer set either one by hand (except
-PvP's Defense, see below). `Chapter` and `Stage` feed the chapter- and dungeon-based types.
+PvP's Defense, see below). `Chapter-Stage` (right below Content Type) feeds the chapter- and
+dungeon-based types — type it as `28-9` (chapter-substage, e.g. Breakthrough Chapter 28 stage 9)
+for the chapter-based types, or just a plain number like `80` for the five Dungeon types (their
+own stage number, unrelated to Chapter). For Chapter Boss you can type just the chapter number
+alone (e.g. `28`) since it has no sub-stage.
 
-| Content Type | Uses | Monster Defense | Duration |
+| Content Type | Chapter-Stage format | Monster Defense | Duration |
 |---|---|---|---|
-| Chapter Boss | Chapter | `3200 + 50 × (Chapter − 28)` | 70s |
-| Breakthrough | Chapter, Stage | see below | 40s |
-| Chapter Hunt | Chapter, Stage | same formula as Breakthrough | steady-state (no duration) |
-| Hero Dungeon | Stage | `650 + Stage × 50` | 50s |
+| Chapter Boss | `28` (chapter only) | `3200 + 50 × (Chapter − 28)` | 70s |
+| Breakthrough | `28-9` | see below | 40s |
+| Chapter Hunt | `28-9` | same formula as Breakthrough | steady-state (no duration) |
+| Hero Dungeon | `80` (stage only) | `650 + Stage × 50` | 50s |
 | World Boss | — | flat `62,100` | 75s |
-| Weapon Dungeon | Stage | `Stage × 50` | 22s |
-| Enhancement Dungeon | Stage | `950 + Stage × 50` | 25s |
-| EXP Dungeon | Stage | `250 + Stage × 50` | 40s |
-| Equipment Dungeon | Stage | `250 + Stage × 50` | 40s |
+| Weapon Dungeon | `80` (stage only) | `Stage × 50` | 22s |
+| Enhancement Dungeon | `80` (stage only) | `950 + Stage × 50` | 25s |
+| EXP Dungeon | `80` (stage only) | `250 + Stage × 50` | 40s |
+| Equipment Dungeon | `80` (stage only) | `250 + Stage × 50` | 40s |
 | PvP | — | your own Defense stat (assumes the opponent has the same) | own fixed 15s window |
 
-For Breakthrough/Chapter Hunt, `Stage` is the sub-stage number shown in-game (the "9" in 28-9).
-Chapters 29–38 have 14 sub-stages each before that chapter's own boss; chapter 39 onward has 19
-sub-stages each. Defense is anchored at the one confirmed data point — 4860 at Chapter 28,
+For Breakthrough/Chapter Hunt, the number after the dash is the sub-stage shown in-game (the "9"
+in 28-9). Chapters 29–38 have 14 sub-stages each before that chapter's own boss; chapter 39 onward
+has 19 sub-stages each. Defense is anchored at the one confirmed data point — 4860 at Chapter 28,
 Stage 9 — and increases by 20 for every sub-stage crossed from there, correctly carrying the count
 across chapter boundaries. Only that one anchor point is confirmed; everything computed from it is
 an extrapolation using the known sub-stage-count pattern, not independently confirmed data.
 
-For the five Dungeon types, `Stage` is that dungeon's own stage number (unrelated to Chapter).
-
 If none of the above fits your content, or you have a more precise value, `PvP` is the one
 Content Type where Monster Defense stays a value you set directly (via the `Defense` input, your
 own character's Defense stat) rather than a computed one.
+
+**Boss/Normal Emphasis** (only used when Content Type is Breakthrough or Hero Dungeon, since
+those mix boss- and normal-monster kills) is a 5-option dropdown instead of a free-typed
+percentage: More Normal (70% normal-weighted) / A Little More Normal (60%, the default) / Equal
+(50%) / A Little More Boss (40%) / More Boss (30%).
 
 **Dark Knight and Bishop** track `Defense` and `Defense %` as full stats (not just a PvP estimate)
 — Iron Wall and Invincible respectively convert 10% of your total Defense into STR/INT once

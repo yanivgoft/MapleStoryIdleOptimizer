@@ -91,12 +91,33 @@ def _compute_fight_duration(content_type):
     }.get(content_type, 0)
 
 
+def _parse_chapter_stage(raw):
+    raw = str(raw)
+    if "-" in raw:
+        left, right = raw.split("-", 1)
+        try:
+            return float(left), float(right)
+        except ValueError:
+            return 28.0, 9.0
+    try:
+        v = float(raw)
+        return v, v
+    except ValueError:
+        return 28.0, 9.0
+
+
+def _compute_breakthrough_normal_weight_pct(choice):
+    return {
+        "More Normal": 70, "A Little More Normal": 60, "Equal": 50,
+        "A Little More Boss": 40, "More Boss": 30,
+    }.get(choice, 60)
+
+
 content_type = _in("content_type")
-chapter = _in("chapter")
-stage = _in("stage")
+chapter, stage = _parse_chapter_stage(_in("chapter_stage"))
 defense = _in("defense")
 monster_type = _compute_monster_type(content_type)
-breakthrough_normal_weight_pct = _in("breakthrough_normal_weight_pct")
+breakthrough_normal_weight_pct = _compute_breakthrough_normal_weight_pct(_in("boss_normal_weight_choice"))
 normal_weight = (
     1.0 if monster_type == "normal"
     else breakthrough_normal_weight_pct / 100 if monster_type == "breakthrough"
