@@ -189,13 +189,15 @@ def eff_duration(duration):
     return duration * (1 + buff_duration_increase_pct / 100)
 
 
-def exact_casts(cooldown):
-    return math.floor(fight_duration / cooldown) + 1
+def exact_casts(cooldown, duration=None):
+    d = fight_duration if duration is None else duration
+    return math.floor(d / cooldown) + 1
 
 
-def exact_total_hits(cooldown, hits_per_cast, icd, window):
-    casts = exact_casts(cooldown)
-    remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
+def exact_total_hits(cooldown, hits_per_cast, icd, window, duration=None):
+    d = fight_duration if duration is None else duration
+    casts = exact_casts(cooldown, d)
+    remaining_after_last = max(0.0, d - (casts - 1) * cooldown)
     if icd:
         full_window_ticks = window / icd
         last_cast_ticks = min(window, remaining_after_last) / icd
@@ -324,6 +326,21 @@ nimble_avg = buff_avg(nimble_feet_pct, 15, 60, True) if unlocked("NIMBLE_FEET") 
 as_bonus = nimble_avg + steal_avg
 actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - as_bonus / 150))) / 100
 
+
+def non_buff_casts(cooldown):
+    """CastsInFight for a non-buff (damage) skill, reduced by the buff-casting startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0
+    return exact_casts(cooldown, max(0.0, fight_duration - buff_cast_startup_time))
+
+
+def non_buff_total_hits(cooldown, hits_per_cast, icd, window):
+    """exact_total_hits for a non-buff (damage) skill, reduced by the startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0.0
+    return exact_total_hits(cooldown, hits_per_cast, icd, window, max(0.0, fight_duration - buff_cast_startup_time))
+
+
 # ---- Cast rate (subtracted from Cruel Stab) ----
 COST_ACTION_ROWS = [
     ("DARK_FLARE", dark_flare_cooldown, True, 1),
@@ -337,8 +354,24 @@ COST_ACTION_ROWS = [
     ("NIMBLE_FEET", 60, True, 1),
     ("DARK_SIGHT_ATK", 25, True, 2),
 ]
+
+# Buff-Casting Startup Delay: in fixed-duration fights, the character casts every currently-
+# unlocked, actively-cast buff sequentially at fight start (1/APS seconds each) before their
+# first damage-skill cast. Buffs (matching build_shadower_workbook.py's STARTUP_BUFF_ROW_KEYS)
+# keep their own t=0 uptime math unchanged via buff_avg/exact_buff_uptime above.
+STARTUP_BUFF_KEYS = {"INTO_DARKNESS", "SMOKESCREEN", "NIMBLE_FEET", "DARK_SIGHT_ATK"}
 if fixed_duration_active:
-    cast_rate = sum(exact_casts(eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)) / fight_duration
+    buff_cast_startup_time = sum(
+        1 for k, cd, ca, aps in COST_ACTION_ROWS if k in STARTUP_BUFF_KEYS and ca and unlocked(k)
+    ) / actions_per_second
+else:
+    buff_cast_startup_time = 0.0
+
+if fixed_duration_active:
+    cast_rate = sum(
+        (non_buff_casts(eff_cooldown(cd, ca)) if k not in STARTUP_BUFF_KEYS else exact_casts(eff_cooldown(cd, ca))) * aps
+        for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)
+    ) / fight_duration
 else:
     cast_rate = sum((1 / eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k))
 cruel_stab_per_second = max(0, actions_per_second - cast_rate)
@@ -356,7 +389,7 @@ for key, s in DAMAGE_SKILLS.items():
     hd = hit_damage(pct, False, s.get("mastery_boss", 0), s.get("mastery_normal", 0), maple_ratio=maple_ratio)
     eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
     if fixed_duration_active:
-        rate = exact_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
+        rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
@@ -370,7 +403,7 @@ if unlocked("TOXIC_VENOM"):
         if key in TOXIC_VENOM_TRIGGER_SKILLS and unlocked(key):
             eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
             if fixed_duration_active:
-                rate = exact_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
+                rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
             else:
                 hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
                 rate = hits / eff_cd
@@ -378,7 +411,7 @@ if unlocked("TOXIC_VENOM"):
     if unlocked("ASSASSINATE"):
         _asn_eff_cd = eff_cooldown(13, True)
         if fixed_duration_active:
-            _asn_rate = exact_total_hits(_asn_eff_cd, 2, None, None) / fight_duration
+            _asn_rate = non_buff_total_hits(_asn_eff_cd, 2, None, None) / fight_duration
         else:
             _asn_rate = 2 / _asn_eff_cd
         total_hit_rate += _asn_rate * target_multiplier(1)
@@ -424,7 +457,7 @@ if unlocked("ASSASSINATE"):
     asn_pct = asn_base_pct + 0.5 * asn_finisher_pct * murderous_intent_mult
     asn_hd = hit_damage(asn_pct, False, 0, 0)
     if fixed_duration_active:
-        asn_rate = exact_total_hits(assassinate_eff_cd, 2, None, None) / fight_duration
+        asn_rate = non_buff_total_hits(assassinate_eff_cd, 2, None, None) / fight_duration
     else:
         asn_rate = 2 / assassinate_eff_cd
     asn_dps = asn_rate * asn_hd * target_multiplier(1)

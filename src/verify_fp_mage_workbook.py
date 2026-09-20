@@ -289,20 +289,23 @@ def eff_duration(duration):
     return duration * (1 + (buff_duration_increase_pct + buff_mastery_pct) / 100)
 
 
-def exact_casts(cooldown):
+def exact_casts(cooldown, duration=None):
     """Exact number of casts within the fixed fight duration: one at t=0 (character starts the
     fight fully ready), then one every effective cooldown as long as it starts before the fight
     ends. math.floor (not a plain int() truncation) to be unambiguous about negative-adjacent
-    edge cases, though cooldown/duration are always positive here."""
-    return math.floor(fight_duration / cooldown) + 1
+    edge cases, though cooldown/duration are always positive here. `duration` defaults to the
+    whole fight; non-buff skills pass a reduced value (see non_buff_casts)."""
+    d = fight_duration if duration is None else duration
+    return math.floor(d / cooldown) + 1
 
 
-def exact_total_hits(cooldown, hits_per_cast, icd, window):
+def exact_total_hits(cooldown, hits_per_cast, icd, window, duration=None):
     """Exact total tick/hit count across the whole fixed-duration fight: every cast except the
     last gets a full window of ticks; the last cast's window is truncated to whatever fight time
     remains after it starts. Collapses to casts*hits_per_cast for non-DoT rows (icd falsy)."""
-    casts = exact_casts(cooldown)
-    remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
+    d = fight_duration if duration is None else duration
+    casts = exact_casts(cooldown, d)
+    remaining_after_last = max(0.0, d - (casts - 1) * cooldown)
     if icd:
         full_window_ticks = window / icd
         last_cast_ticks = min(window, remaining_after_last) / icd
@@ -384,8 +387,34 @@ for key, b in BUFFS.items():
 avg_buff_mult = (1 + attack_bucket_sum / 100) * final_damage_mult
 
 actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - as_bonus / 150))) / 100
+
+# Buff-Casting Startup Delay: in fixed-duration fights, the character casts every currently-
+# unlocked, actively-cast buff sequentially at fight start (1/APS seconds each, same cadence as
+# every other action-costing skill) before their first damage-skill cast — so damage skills'
+# usable window is reduced by this amount. Buffs themselves keep their own t=0 uptime math
+# unchanged (they're what causes the delay, not affected further by it).
 if fixed_duration_active:
-    cast_rate = sum(exact_casts(eff_cooldown(SKILLS[k]["cooldown"], s["costs_action"])) for k, s in SKILLS.items() if s["costs_action"] and unlocked(k))
+    buff_cast_startup_time = sum(1 for key, b in BUFFS.items() if b["costs_action"] and unlocked(key)) / actions_per_second
+else:
+    buff_cast_startup_time = 0.0
+
+
+def non_buff_casts(cooldown):
+    """CastsInFight for a non-buff (damage) skill, reduced by the buff-casting startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0
+    return exact_casts(cooldown, max(0.0, fight_duration - buff_cast_startup_time))
+
+
+def non_buff_total_hits(cooldown, hits_per_cast, icd, window):
+    """exact_total_hits for a non-buff (damage) skill, reduced by the startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0.0
+    return exact_total_hits(cooldown, hits_per_cast, icd, window, max(0.0, fight_duration - buff_cast_startup_time))
+
+
+if fixed_duration_active:
+    cast_rate = sum(non_buff_casts(eff_cooldown(SKILLS[k]["cooldown"], s["costs_action"])) for k, s in SKILLS.items() if s["costs_action"] and unlocked(k))
     cast_rate += sum(exact_casts(eff_cooldown(b["cooldown"], b["costs_action"])) for key, b in BUFFS.items() if b["costs_action"] and unlocked(key))
     cast_rate /= fight_duration
 else:
@@ -450,7 +479,7 @@ for key, s in SKILLS.items():
     cdr_costs_action = SKILLS["POISON_MIST_BURST"]["costs_action"] if key == "MIST_ERUPTION" else s["costs_action"]
     eff_cd = eff_cooldown(s["cooldown"], cdr_costs_action)
     if fixed_duration_active:
-        rate = exact_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
+        rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
@@ -460,7 +489,7 @@ for key, s in SKILLS.items():
 # every triggering attack (mirrors Summary!B14 + Calc!O14's formula in the real workbook).
 if fixed_duration_active:
     meteor_trigger_rate = sum(
-        METEOR_PROC_TRIGGERS_PER_CAST.get(k, 1) * exact_casts(eff_cooldown(SKILLS[k]["cooldown"], SKILLS[k]["costs_action"]))
+        METEOR_PROC_TRIGGERS_PER_CAST.get(k, 1) * non_buff_casts(eff_cooldown(SKILLS[k]["cooldown"], SKILLS[k]["costs_action"]))
         for k in TRIGGERS_METEOR if unlocked(k)
     ) / fight_duration + basic_attacks_per_second
 else:

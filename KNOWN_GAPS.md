@@ -258,3 +258,44 @@ since "why did the DPS number change" is a fair question to be able to answer la
   behavior, not from independently-confirmed Dark-Knight-specific data. Flagged in the build
   script's own docstring; revisit if real Dark Knight data ever contradicts the flat-10%-per-wiki
   reading.
+- **All 12 classes — added a buff-casting startup delay to fixed-duration DPS, plus a CDR
+  Milestone Sweep on the Sensitivity sheet**: Cooldown Reduction behaves unlike every other stat in
+  fixed-duration content (dungeon/boss fights with a time cap) — a skill's cast count is
+  `INT(fight_duration/effective_cooldown)+1`, so DPS only improves in discrete jumps when reduced
+  cooldown lets one more full cast fit, not smoothly. The Sensitivity sheet's existing single "+1
+  second" test couldn't show where those jumps are or how big they are, so a new dedicated section
+  (10 full shadow Calc+Summary recomputes, one per absolute CDR value from 0.5s to 5.0s) was added
+  after all the normal STAT_SWEEP blocks, with a compact "CDR (s) / Total DPS / Gain vs prior step
+  / % Gain vs current CDR" table on top. While building this, we also found the existing
+  fixed-duration model had **no start-of-fight delay at all** — every skill (and every buff) was
+  assumed to fire its first cast at `t=0`, as if cast in parallel with everything else. In reality
+  the character casts their buffs first, sequentially, before their first damage-skill cast, so the
+  real usable window for a damage skill's cast count is `fight_duration -
+  buff_cast_startup_time`, not the raw fight duration. `buff_cast_startup_time` = (count of
+  currently-unlocked, actively-cast [`CostsActionSlot=TRUE`] buff-category [`BuffDuration(s)>0`]
+  skills) × (1 / Actions Per Second) — a new Summary-sheet row, applied to every content type (not
+  just the new sweep), gated behind the same `fixed_duration_active` flag every other
+  fixed-duration-only formula already uses (steady-state DPS is completely unaffected — confirmed
+  identical before/after per class). Buffs themselves keep their own unmodified `t=0` cast-count
+  math (they're what causes the delay, not affected further by it); only non-buff (damage) rows
+  have their available duration reduced, floored at 0 casts (not the naive formula's "always at
+  least 1") if buff-casting alone would consume the whole fight. A subtle bug surfaced during
+  implementation, worth remembering for any future duration-related change: a skill's own DPS-rate
+  formula (`rate_or_exact_hits_expr`/`exact_total_hits_expr`) takes the cast count as one input
+  and a *separate* duration argument for the last cast's partial-tick-window truncation — both
+  must use the identical (startup-reduced, for non-buff rows) duration, or multi-tick DoT-style
+  skills (ICD>0) silently compute a wrong rate even though single-hit skills look fine. Each
+  class's own buff-row list differs (a few classes — Corsair, Buccaneer — have zero real recastable
+  buffs at all, so `buff_cast_startup_time` is always 0 there and this is a no-op); see each
+  `build_<class>_workbook.py`'s own `BUFF_ROW_KEYS`/`STARTUP_BUFF_ROW_KEYS` for the exact list.
+- **Open, not yet fixed — buff recast-timing uses a buff's raw cooldown instead of its
+  CDR-reduced cooldown**: found while implementing the entry above, out of scope for that change.
+  A buff's own cast *count* in fixed-duration mode (`CastsInFight`/`R{row}`) correctly reflects
+  Cooldown Reduction (via `effective_cooldown_expr`). But `buff_uptime`/`buff_uptime_block`'s own
+  `uptime_fraction_or_exact_expr` call passes the buff's *raw* `Cooldown(s)` (not the CDR-adjusted
+  value) as the spacing between recasts when computing `exact_buff_uptime_expr`'s
+  `last_cast_start = (casts-1)*cooldown`. Currently invisible at the default `skill_cooldown_decrease
+  = 0`, since raw and effective cooldown are identical there — but once a user has real CDR, this
+  will understate how tightly-packed a buff's recasts actually are (using the wider raw-cooldown
+  spacing while the cast count itself already assumes the narrower CDR-reduced one), slightly
+  underestimating that buff's uptime. Present in every class that has a recastable buff row.

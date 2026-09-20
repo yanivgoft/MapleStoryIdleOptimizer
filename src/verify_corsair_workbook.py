@@ -177,13 +177,15 @@ def eff_duration(duration):
     return duration * (1 + buff_duration_increase_pct / 100)
 
 
-def exact_casts(cooldown):
-    return math.floor(fight_duration / cooldown) + 1
+def exact_casts(cooldown, duration=None):
+    d = fight_duration if duration is None else duration
+    return math.floor(d / cooldown) + 1
 
 
-def exact_total_hits(cooldown, hits_per_cast, icd, window):
-    casts = exact_casts(cooldown)
-    remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
+def exact_total_hits(cooldown, hits_per_cast, icd, window, duration=None):
+    d = fight_duration if duration is None else duration
+    casts = exact_casts(cooldown, d)
+    remaining_after_last = max(0.0, d - (casts - 1) * cooldown)
     if icd:
         full_window_ticks = window / icd
         last_cast_ticks = min(window, remaining_after_last) / icd
@@ -237,6 +239,27 @@ ahoy_mateys_pct = coeff_pct(2500, 22, True, 4) if unlocked("AHOY_MATEYS_HELPER")
 #      same as Buccaneer ----
 actions_per_second = 1 + min(150, 150 * (attack_speed_base / 150)) / 100
 
+# Buff-Casting Startup Delay: Corsair has no recast-able buff skills (no BUFFS-equivalent dict
+# exists in this model — Roll of the Dice's dice component is an always-active flat
+# approximation, not a timed recast), so this is always 0 — kept for architectural consistency
+# with the other 11 classes' identical wiring.
+buff_cast_startup_time = 0.0
+
+
+def non_buff_casts(cooldown):
+    """CastsInFight for a non-buff (damage) skill, reduced by the buff-casting startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0
+    return exact_casts(cooldown, max(0.0, fight_duration - buff_cast_startup_time))
+
+
+def non_buff_total_hits(cooldown, hits_per_cast, icd, window):
+    """exact_total_hits for a non-buff (damage) skill, reduced by the startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0.0
+    return exact_total_hits(cooldown, hits_per_cast, icd, window, max(0.0, fight_duration - buff_cast_startup_time))
+
+
 # ---- Basic attack (Eight-Legs Easton) ----
 eight_legs_easton_targets = 6 + basic_attack_target_increase
 EIGHT_LEGS_EASTON_HITS = 6 if level >= 136 else 5
@@ -256,7 +279,7 @@ COST_ACTION_ROWS = [
     ("BROADSIDE_BURST", 30, True, 1),
 ]
 if fixed_duration_active:
-    cast_rate = sum(exact_casts(eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)) / fight_duration
+    cast_rate = sum(non_buff_casts(eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)) / fight_duration
 else:
     cast_rate = sum((1 / eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k))
 eight_legs_easton_per_second = max(0, actions_per_second - cast_rate)
@@ -358,7 +381,7 @@ for key, s in DAMAGE_SKILLS.items():
     proc_prob = s.get("proc_chance", 1.0)
     eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
     if fixed_duration_active:
-        rate = exact_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
+        rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
@@ -377,7 +400,7 @@ if unlocked("MAJESTIC_PRESENCE"):
             return 0.0
         eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
         if fixed_duration_active:
-            return exact_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
+            return non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         return hits / eff_cd
 

@@ -251,13 +251,15 @@ def eff_duration(duration):
     return duration * (1 + (buff_duration_increase_pct + buff_mastery_pct) / 100)
 
 
-def exact_casts(cooldown):
-    return math.floor(fight_duration / cooldown) + 1
+def exact_casts(cooldown, duration=None):
+    d = fight_duration if duration is None else duration
+    return math.floor(d / cooldown) + 1
 
 
-def exact_total_hits(cooldown, hits_per_cast, icd, window):
-    casts = exact_casts(cooldown)
-    remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
+def exact_total_hits(cooldown, hits_per_cast, icd, window, duration=None):
+    d = fight_duration if duration is None else duration
+    casts = exact_casts(cooldown, d)
+    remaining_after_last = max(0.0, d - (casts - 1) * cooldown)
     if icd:
         full_window_ticks = window / icd
         last_cast_ticks = min(window, remaining_after_last) / icd
@@ -354,9 +356,34 @@ def _cdr_costs_action(key, s):
     return SKILLS[ref_key]["costs_action"]
 
 
+# Buff-Casting Startup Delay: in fixed-duration fights, the character casts every currently-
+# unlocked, actively-cast buff sequentially at fight start (1/APS seconds each, same cadence as
+# every other action-costing skill) before their first damage-skill cast — so damage skills'
+# usable window is reduced by this amount. Buffs themselves keep their own t=0 uptime math
+# unchanged (they're what causes the delay, not affected further by it).
+if fixed_duration_active:
+    buff_cast_startup_time = sum(1 for key, b in BUFFS.items() if b["costs_action"] and unlocked(key)) / actions_per_second
+else:
+    buff_cast_startup_time = 0.0
+
+
+def non_buff_casts(cooldown):
+    """CastsInFight for a non-buff (damage) skill, reduced by the buff-casting startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0
+    return exact_casts(cooldown, max(0.0, fight_duration - buff_cast_startup_time))
+
+
+def non_buff_total_hits(cooldown, hits_per_cast, icd, window):
+    """exact_total_hits for a non-buff (damage) skill, reduced by the startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0.0
+    return exact_total_hits(cooldown, hits_per_cast, icd, window, max(0.0, fight_duration - buff_cast_startup_time))
+
+
 if fixed_duration_active:
     cast_rate = sum(
-        exact_casts(eff_cooldown(s["cooldown"], _cdr_costs_action(k, s)))
+        non_buff_casts(eff_cooldown(s["cooldown"], _cdr_costs_action(k, s)))
         for k, s in SKILLS.items() if s["costs_action"] and unlocked(k)
     )
     cast_rate += sum(
@@ -432,7 +459,7 @@ for key, s in SKILLS.items():
     hd = hit_damage(pct, False, maple_mult(key), s, frozen_orb_mult=frozen_orb_mult)
     eff_cd = eff_cooldown(s["cooldown"], _cdr_costs_action(key, s))
     if fixed_duration_active:
-        rate = exact_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
+        rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd

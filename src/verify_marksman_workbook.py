@@ -178,13 +178,15 @@ def eff_duration(duration):
     return duration * (1 + buff_duration_increase_pct / 100)
 
 
-def exact_casts(cooldown):
-    return math.floor(fight_duration / cooldown) + 1
+def exact_casts(cooldown, duration=None):
+    d = fight_duration if duration is None else duration
+    return math.floor(d / cooldown) + 1
 
 
-def exact_total_hits(cooldown, hits_per_cast, icd, window):
-    casts = exact_casts(cooldown)
-    remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
+def exact_total_hits(cooldown, hits_per_cast, icd, window, duration=None):
+    d = fight_duration if duration is None else duration
+    casts = exact_casts(cooldown, d)
+    remaining_after_last = max(0.0, d - (casts - 1) * cooldown)
     if icd:
         full_window_ticks = window / icd
         last_cast_ticks = min(window, remaining_after_last) / icd
@@ -293,7 +295,35 @@ nimble_avg = buff_avg(nimble_feet_pct, 15, 60, True) if unlocked("NIMBLE_FEET") 
 as_bonus = nimble_avg
 actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - as_bonus / 150))) / 100
 
+# Buff-Casting Startup Delay: in fixed-duration fights, the character casts every currently-
+# unlocked, actively-cast buff sequentially at fight start (1/APS seconds each, same cadence as
+# every other action-costing skill) before their first damage-skill cast — so damage skills'
+# usable window is reduced by this amount. Buffs themselves (Sharp Eyes, Nimble Feet — Illusion
+# Step doesn't cost an action to trigger, so it never counts) keep their own t=0 uptime math
+# unchanged (they're what causes the delay, not affected further by it).
+BUFF_ROWS_FOR_STARTUP = [("SHARP_EYES", True), ("NIMBLE_FEET", True)]
+if fixed_duration_active:
+    buff_cast_startup_time = sum(1 for k, ca in BUFF_ROWS_FOR_STARTUP if ca and unlocked(k)) / actions_per_second
+else:
+    buff_cast_startup_time = 0.0
+
+
+def non_buff_casts(cooldown):
+    """CastsInFight for a non-buff (damage) skill, reduced by the buff-casting startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0
+    return exact_casts(cooldown, max(0.0, fight_duration - buff_cast_startup_time))
+
+
+def non_buff_total_hits(cooldown, hits_per_cast, icd, window):
+    """exact_total_hits for a non-buff (damage) skill, reduced by the startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0.0
+    return exact_total_hits(cooldown, hits_per_cast, icd, window, max(0.0, fight_duration - buff_cast_startup_time))
+
+
 # ---- Cast rate (subtracted from Empowered Piercing Arrow) ----
+BUFF_KEYS_STARTUP = {"SHARP_EYES", "NIMBLE_FEET"}
 COST_ACTION_ROWS = [
     ("COVERING_FIRE", 19, True, 1),
     ("BOLT_BURST", 21, True, 1),
@@ -304,7 +334,10 @@ COST_ACTION_ROWS = [
     ("NIMBLE_FEET", 60, True, 1),
 ]
 if fixed_duration_active:
-    cast_rate = sum(exact_casts(eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)) / fight_duration
+    cast_rate = sum(
+        (exact_casts(eff_cooldown(cd, ca)) if k in BUFF_KEYS_STARTUP else non_buff_casts(eff_cooldown(cd, ca))) * aps
+        for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)
+    ) / fight_duration
 else:
     cast_rate = sum((1 / eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k))
 epa_per_second = max(0, actions_per_second - cast_rate)
@@ -379,7 +412,7 @@ for key, s in DAMAGE_SKILLS.items():
     proc_prob = 1 - (1 - s.get("proc_chance", 100) / 100) ** 1
     eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
     if fixed_duration_active:
-        rate = exact_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
+        rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
@@ -394,7 +427,7 @@ def hit_rate_per_sec(s, eff_cd):
     window = s.get("window")
     effective_hits = hits_per_cast * (window / icd if icd else 1)
     if fixed_duration_active:
-        rate = exact_total_hits(eff_cd, hits_per_cast, icd, window) / fight_duration / effective_hits if effective_hits else 0
+        rate = non_buff_total_hits(eff_cd, hits_per_cast, icd, window) / fight_duration / effective_hits if effective_hits else 0
     else:
         rate = 1 / eff_cd
     return effective_hits * rate * target_multiplier(s["targets"])

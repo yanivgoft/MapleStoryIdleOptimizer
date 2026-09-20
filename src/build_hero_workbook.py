@@ -589,6 +589,28 @@ def exact_casts_expr(duration_ref, cooldown_ref):
     return f'(INT({duration_ref}/{cooldown_ref})+1)'
 
 
+def buff_cast_startup_time_expr(fda_ref, buff_col, action_col, unlocked_range, aps_ref, last_row):
+    """Time to sequentially cast every currently-unlocked, actively-cast buff at the start of a
+    fixed-duration fight, before the first damage-skill cast — count of such buffs times 1/APS
+    (one action-slot's worth of time each, same cadence as Basic Attack/other active-cast skills).
+    Zero outside fixed-duration mode, where there's no start-of-fight transient to model."""
+    return (
+        f'IF({fda_ref},'
+        f'SUMPRODUCT((Skills!{buff_col}2:{buff_col}{last_row}>0)*'
+        f'(Skills!{action_col}2:{action_col}{last_row}=TRUE)*'
+        f'({unlocked_range}=TRUE))/{aps_ref},0)'
+    )
+
+
+def guarded_casts_expr(available_duration_ref, cooldown_ref):
+    """exact_casts_expr, but 0 (not the naive formula's "always at least 1") once the available
+    duration has been reduced to nothing or below — e.g. a non-buff row whose buff-casting startup
+    delay alone consumes the whole fixed-duration fight. A no-op guard for buff rows, whose
+    available duration is always the fight's raw (always-positive, since fixed-duration mode
+    requires it) duration."""
+    return f'IF({available_duration_ref}<=0,0,{exact_casts_expr(available_duration_ref, cooldown_ref)})'
+
+
 def exact_total_hits_expr(casts_ref, hits_ref, icd_ref, window_ref, cooldown_ref, duration_ref):
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{duration_ref}-{last_cast_start})'
@@ -613,8 +635,8 @@ def uptime_fraction_or_exact_expr(fixed_duration_active_ref, casts_ref, monster_
 
 
 def rate_or_exact_hits_expr(fixed_duration_active_ref, row_ref, hits_ref, icd_ref, window_ref,
-                             cooldown_ref, fight_duration_ref, steady_rate_ref):
-    exact_hits = exact_total_hits_expr(row_ref, hits_ref, icd_ref, window_ref, cooldown_ref, fight_duration_ref)
+                             cooldown_ref, available_duration_ref, fight_duration_ref, steady_rate_ref):
+    exact_hits = exact_total_hits_expr(row_ref, hits_ref, icd_ref, window_ref, cooldown_ref, available_duration_ref)
     return f'IF({fixed_duration_active_ref},({exact_hits}/{fight_duration_ref}),{steady_rate_ref})'
 
 
@@ -674,6 +696,14 @@ R_BAPS = 63                         # Raging Blow (basic attack) Casts Per Secon
 R_CRIT_DAMAGE_BONUS = 64            # Enrage (Crit Damage half), duty-cycled
 R_FD_BONUS = 65                     # Enrage (FD half) + Combo Synergy, steady-state/duty-cycled
 R_RAGING_BLOW_DPS = 66
+R_STARTUP_TIME = 67                 # Buff-Casting Startup Delay (s, fixed-duration only)
+
+# Rows (BuffDuration(s) > 0) exempt from the buff-casting startup delay's reduction of their own
+# CastsInFight — these ARE the buffs (whether actively cast, like Spirit Blade/Scaring Sword/
+# Nimble Feet, or passively triggered, like Enrage's two halves), not the damage rotation waiting
+# on them, so they keep the raw fight duration. Only actively-cast buffs (CostsActionSlot=TRUE)
+# contribute to the delay itself (see buff_cast_startup_time_expr's own Skills-sheet filter).
+BUFF_ROW_KEYS = ["SPIRIT_BLADE", "SCARING_SWORD", "NIMBLE_FEET", "ENRAGE_FD", "ENRAGE_CRITDMG"]
 
 UNLOCK_LEVEL = {
     "RAGING_BLOW": 100,
@@ -1043,9 +1073,19 @@ def build_calc_sheet(wb):
                 IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"),
                 S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]),
             )
+            # Duration actually available for this row's casts in fixed-duration mode: the raw
+            # fight duration for buffs (unaffected by the startup delay they themselves cause), or
+            # that duration reduced by Summary!R_STARTUP_TIME for non-buff (damage) rows, since
+            # they can't start until every actively-cast buff has been cast once. Must match what
+            # CastsInFight (column R, below) uses, or rate_r's last-cast truncation would be
+            # computed against an inconsistent duration.
+            if key in BUFF_ROW_KEYS:
+                available_duration_r = IB("fight_duration")
+            else:
+                available_duration_r = f'MAX(0,{IB("fight_duration")}-Summary!$B${R_STARTUP_TIME})'
             rate_r = rate_or_exact_hits_expr(
                 fixed_duration_active_main, f"R{r}", S("HitsPerCast", r), S("ICD(s)", r),
-                S("ActiveWindow(s)", r), eff_cd_r, IB("fight_duration"), f"G{r}*Q{r}",
+                S("ActiveWindow(s)", r), eff_cd_r, available_duration_r, IB("fight_duration"), f"G{r}*Q{r}",
             )
         else:
             eff_cd_r = None
@@ -1149,9 +1189,8 @@ def build_calc_sheet(wb):
         ws.cell(row=r, column=17, value=(f'=IFERROR(1/{eff_cd_r},0)' if has_cooldown else 0))
 
         if has_cooldown:
-            ws.cell(row=r, column=18, value=(
-                f'=IF({fixed_duration_active_main},{exact_casts_expr(IB("fight_duration"), eff_cd_r)},0)'
-            ))
+            casts_formula = guarded_casts_expr(available_duration_r, eff_cd_r)
+            ws.cell(row=r, column=18, value=f'=IF({fixed_duration_active_main},{casts_formula},0)')
         else:
             ws.cell(row=r, column=18, value=0)
 
@@ -1277,6 +1316,14 @@ def build_summary_sheet(wb):
     ws.cell(row=R_RAGING_BLOW_DPS, column=1, value="Raging Blow (Basic Attack) DPS")
     ws.cell(row=R_RAGING_BLOW_DPS, column=2, value=f"=Calc!O{ROW['RAGING_BLOW']}")
 
+    ws.cell(row=R_STARTUP_TIME, column=1, value=(
+        "Buff-Casting Startup Delay (s, before first damage-skill cast; fixed-duration only)"
+    ))
+    ws.cell(row=R_STARTUP_TIME, column=2, value="=" + buff_cast_startup_time_expr(
+        fda_main, SC["BuffDuration(s)"], SC["CostsActionSlot"], f"Calc!C2:C{LAST_ROW}",
+        f"B{R_APS}", LAST_ROW,
+    ))
+
     ws.cell(row=SUMMARY_BREAKDOWN_HEADER_ROW - 1, column=1, value="Per-Skill DPS Breakdown").font = SECTION_FONT
     ws.cell(row=SUMMARY_BREAKDOWN_HEADER_ROW, column=1, value="Skill")
     ws.cell(row=SUMMARY_BREAKDOWN_HEADER_ROW, column=2, value="DPS")
@@ -1345,6 +1392,11 @@ STAT_SWEEP = [
     ("basic_attack_target_increase", "Basic Attack Target Increase (flat)", "flat"),
     ("buff_duration_increase_pct", "Buff Duration Increase %", "pct"),
 ]
+
+# Absolute CDR values (seconds) swept by the Sensitivity sheet's CDR Milestone Sweep section
+# (see build_sensitivity_sheet) — chosen by the user to cover the range where fixed-duration
+# skill cast counts are likely to cross an INT()-floor threshold and jump.
+CDR_SWEEP_VALUES = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
 
 SENSITIVITY_HEADER_ROW = 4
 SENSITIVITY_ROW_FOR = {key: SENSITIVITY_HEADER_ROW + 1 + idx for idx, (key, _, _) in enumerate(STAT_SWEEP)}
@@ -1443,11 +1495,13 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     s_baps = calc_end + 7
     s_crit_damage_bonus = calc_end + 8
     s_fd_bonus = calc_end + 9
+    s_startup = calc_end + 10
     s_total = calc_end + 11
     crit_rate_bonus_ref = f"B{s_crit_rate_bonus}"
     as_bonus_ref, aps_ref, castrate_ref, baps_ref = f"B{s_as_bonus}", f"B{s_aps}", f"B{s_castrate}", f"B{s_baps}"
     crit_damage_bonus_ref = f"B{s_crit_damage_bonus}"
     fd_bonus_ref = f"B{s_fd_bonus}"
+    startup_ref = f"B{s_startup}"
     total_ref = f"B{s_total}"
 
     fda_block = fixed_duration_active_expr(ib("monster_type"), ib("fight_duration"))
@@ -1525,9 +1579,16 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
                 ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"),
                 S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]),
             )
+            # Block-local mirror of available_duration_r (main sheet) — must use this block's own
+            # startup_ref, not the main sheet's, since sweeping skill_cooldown_decrease/attack_speed
+            # etc. changes it.
+            if key in BUFF_ROW_KEYS:
+                available_duration_row = ib("fight_duration")
+            else:
+                available_duration_row = f'MAX(0,{ib("fight_duration")}-{startup_ref})'
             rate_row = rate_or_exact_hits_expr(
                 fda_block, f"R{row}", S("HitsPerCast", r), S("ICD(s)", r), S("ActiveWindow(s)", r),
-                eff_cd_row, ib("fight_duration"), f"G{row}*Q{row}",
+                eff_cd_row, available_duration_row, ib("fight_duration"), f"G{row}*Q{row}",
             )
         else:
             eff_cd_row = None
@@ -1638,9 +1699,8 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         ws.cell(row=row, column=16, value=f'=IF({total_ref}=0,0,O{row}/{total_ref})')
         ws.cell(row=row, column=17, value=(f'=IFERROR(1/{eff_cd_row},0)' if has_cooldown else 0))
         if has_cooldown:
-            ws.cell(row=row, column=18, value=(
-                f'=IF({fda_block},{exact_casts_expr(ib("fight_duration"), eff_cd_row)},0)'
-            ))
+            casts_formula_block = guarded_casts_expr(available_duration_row, eff_cd_row)
+            ws.cell(row=row, column=18, value=f'=IF({fda_block},{casts_formula_block},0)')
         else:
             ws.cell(row=row, column=18, value=0)
         ws.cell(row=row, column=19, value=f'=IFERROR(O{row}/N{row},0)')
@@ -1678,6 +1738,12 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     ws.cell(row=s_fd_bonus, column=1, value="Global Final Damage Bonus % (Enrage + Combo Synergy)")
     ws.cell(row=s_fd_bonus, column=2, value=f'={enrage_fd_avg}+{combo_synergy_avg}')
+
+    ws.cell(row=s_startup, column=1, value="Buff-Casting Startup Delay (s, fixed-duration only)")
+    ws.cell(row=s_startup, column=2, value="=" + buff_cast_startup_time_expr(
+        fda_block, SC["BuffDuration(s)"], SC["CostsActionSlot"], f"C{calc_start}:C{calc_end}",
+        aps_ref, LAST_ROW,
+    ))
 
     ws.cell(row=s_total, column=1, value="TOTAL DPS").font = LABEL_FONT
     ws.cell(row=s_total, column=2, value=f"=SUM(O{calc_start}:O{calc_end})").font = LABEL_FONT
@@ -1719,6 +1785,40 @@ def build_sensitivity_sheet(wb):
         ws.cell(row=row, column=8, value=f"=G{row}-F{row}")
         ws.cell(row=row, column=9, value=f"=IF(F{row}=0,0,G{row}/F{row}*100)")
         ws.cell(row=row, column=2, value=f'=IFERROR(1/(I{row}-100),"n/a")')
+
+    # Cooldown Reduction Milestone Sweep — CDR's DPS impact is a step function in fixed-duration
+    # content (CastsInFight floors via INT()), unlike every other stat's smooth marginal delta
+    # above, so a single "+1" test can't show where the jumps are. This sweeps a fixed set of
+    # absolute CDR values instead, each with its own full shadow recompute (same build_stat_block
+    # machinery as STAT_SWEEP, just an absolute override instead of "current+1"), appended after
+    # all STAT_SWEEP blocks so it can't collide with their spacing.
+    milestone_section_start = BLOCK_START + len(STAT_SWEEP) * BLOCK_HEIGHT
+    milestone_title_row = milestone_section_start
+    milestone_header_row = milestone_title_row + 1
+    ws.cell(row=milestone_title_row, column=1, value=(
+        "Cooldown Reduction Milestone Sweep (absolute CDR seconds, fixed-duration content only)"
+    )).font = SECTION_FONT
+    milestone_headers = ["CDR (s)", "Total DPS", "DPS Gain (vs prior step)", "% Gain (vs current CDR)"]
+    for i, name in enumerate(milestone_headers):
+        ws.cell(row=milestone_header_row, column=i + 1, value=name)
+    style_header_row(ws, milestone_header_row, len(milestone_headers))
+
+    cdr_blocks_base_row = milestone_header_row + len(CDR_SWEEP_VALUES) + 3
+    for i, cdr_value in enumerate(CDR_SWEEP_VALUES):
+        base_row = cdr_blocks_base_row + i * BLOCK_HEIGHT
+        override_expr = str(cdr_value)
+        ib = make_ib("skill_cooldown_decrease", override_expr)
+        total_ref = build_stat_block(
+            ws, base_row, ib, "skill_cooldown_decrease", f"CDR = {cdr_value}s", override_expr,
+        )
+
+        row = milestone_header_row + 1 + i
+        ws.cell(row=row, column=1, value=cdr_value)
+        ws.cell(row=row, column=2, value=f"={total_ref}")
+        ws.cell(row=row, column=3, value=(f"=B{row}-B{row - 1}" if i > 0 else 0))
+        ws.cell(row=row, column=4, value=(
+            f"=IF(Summary!$B${R_TOTAL}=0,0,(B{row}-Summary!$B${R_TOTAL})/Summary!$B${R_TOTAL}*100)"
+        ))
 
     widths = [40, 16, 8, 14, 14, 16, 14, 12, 10]
     for i, w in enumerate(widths):

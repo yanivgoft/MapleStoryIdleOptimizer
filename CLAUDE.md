@@ -126,6 +126,16 @@ you're building a new class, check for all of these *before* your first build, n
    (it assumes the user's own Flat ATTACK entry already includes it), so an internal-consistency
    check alone cannot distinguish "real mechanic implemented only in delta form" from "duplicated
    bug."
+8. **A skill's cast *count* and the duration used for its last-cast tick-window truncation must
+   always agree.** `rate_or_exact_hits_expr`/`exact_total_hits_expr` take a pre-computed cast-count
+   cell reference (`CastsInFight`/`R{row}`) AND a separate duration argument, used internally for
+   `remaining_after_last = duration - (casts-1)*cooldown`. If some future change reduces the
+   duration used to compute the cast count (e.g. the buff-casting startup delay) without passing
+   that *same* reduced duration into the rate formula's own duration argument, single-hit skills
+   (ICD=0) will look completely fine — the mismatch is only visible on multi-tick DoT-style rows
+   (ICD>0), since only they use `remaining_after_last` for anything. Always verify a
+   duration-related change against at least one ICD>0 row per class before trusting a clean
+   verify-script diff on ICD=0 rows alone.
 
 ## Cross-checking a new class against its siblings
 

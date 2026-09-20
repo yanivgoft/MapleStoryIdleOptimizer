@@ -177,13 +177,15 @@ def eff_duration(duration):
     return duration * (1 + buff_duration_increase_pct / 100)
 
 
-def exact_casts(cooldown):
-    return math.floor(fight_duration / cooldown) + 1
+def exact_casts(cooldown, duration=None):
+    d = fight_duration if duration is None else duration
+    return math.floor(d / cooldown) + 1
 
 
-def exact_total_hits(cooldown, hits_per_cast, icd, window):
-    casts = exact_casts(cooldown)
-    remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
+def exact_total_hits(cooldown, hits_per_cast, icd, window, duration=None):
+    d = fight_duration if duration is None else duration
+    casts = exact_casts(cooldown, d)
+    remaining_after_last = max(0.0, d - (casts - 1) * cooldown)
     if icd:
         full_window_ticks = window / icd
         last_cast_ticks = min(window, remaining_after_last) / icd
@@ -191,6 +193,27 @@ def exact_total_hits(cooldown, hits_per_cast, icd, window):
         full_window_ticks = 1
         last_cast_ticks = 1
     return hits_per_cast * ((casts - 1) * full_window_ticks + last_cast_ticks)
+
+
+# Buccaneer has no live BuffDuration(s)>0 skill rows (every buff-like source is an always-on "FD"
+# passive gated by its own checkbox, not a cast-and-recast buff — see BUFF_ROW_KEYS in the build
+# script), so the buff-casting startup delay is always 0 here; kept as a named value (rather than
+# inlining 0 at each call site) so this file stays structurally in sync with every other class.
+buff_cast_startup_time = 0.0
+
+
+def non_buff_casts(cooldown):
+    """CastsInFight for a non-buff (damage) skill, reduced by the buff-casting startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0
+    return exact_casts(cooldown, max(0.0, fight_duration - buff_cast_startup_time))
+
+
+def non_buff_total_hits(cooldown, hits_per_cast, icd, window):
+    """exact_total_hits for a non-buff (damage) skill, reduced by the startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0.0
+    return exact_total_hits(cooldown, hits_per_cast, icd, window, max(0.0, fight_duration - buff_cast_startup_time))
 
 
 def buff_avg(pct, duration, cooldown, costs_action):
@@ -272,7 +295,7 @@ COST_ACTION_ROWS = [
     ("NAUTILUS_STRIKE", 45, True, 1),
 ]
 if fixed_duration_active:
-    cast_rate = sum(exact_casts(eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)) / fight_duration
+    cast_rate = sum(non_buff_casts(eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)) / fight_duration
 else:
     cast_rate = sum((1 / eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k))
 hook_bomber_per_second = max(0, actions_per_second - cast_rate)
@@ -374,7 +397,7 @@ for key, s in DAMAGE_SKILLS.items():
     proc_prob = s.get("proc_chance", 1.0)
     eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
     if fixed_duration_active:
-        rate = exact_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
+        rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd

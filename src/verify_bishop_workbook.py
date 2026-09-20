@@ -245,13 +245,15 @@ def eff_duration(duration):
     return duration * (1 + (buff_duration_increase_pct + buff_mastery_pct) / 100)
 
 
-def exact_casts(cooldown):
-    return math.floor(fight_duration / cooldown) + 1
+def exact_casts(cooldown, duration=None):
+    d = fight_duration if duration is None else duration
+    return math.floor(d / cooldown) + 1
 
 
-def exact_total_hits(cooldown, hits_per_cast, icd, window):
-    casts = exact_casts(cooldown)
-    remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
+def exact_total_hits(cooldown, hits_per_cast, icd, window, duration=None):
+    d = fight_duration if duration is None else duration
+    casts = exact_casts(cooldown, d)
+    remaining_after_last = max(0.0, d - (casts - 1) * cooldown)
     if icd:
         full_window_ticks = window / icd
         last_cast_ticks = min(window, remaining_after_last) / icd
@@ -349,10 +351,36 @@ crit_damage_bonus = 4 * blood_divine_pct
 as_bonus = (mp_eater_as_pct if unlocked("MP_EATER_MP_BOOST") else 0.0) + (15 if level >= 134 else 0)
 
 actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - as_bonus / 150))) / 100
+
+# Buff-Casting Startup Delay: in fixed-duration fights, the character casts every currently-
+# unlocked, actively-cast buff sequentially at fight start (1/APS seconds each, same cadence as
+# every other action-costing skill) before their first damage-skill cast — so damage skills'
+# usable window is reduced by this amount. Buffs themselves keep their own t=0 uptime math
+# unchanged (they're what causes the delay, not affected further by it).
 if fixed_duration_active:
-    cast_rate = sum(exact_casts(eff_cooldown(SKILLS[k]["cooldown"], SKILLS[k]["costs_action"])) for k, s in SKILLS.items() if s["costs_action"] and unlocked(k))
+    buff_cast_startup_time = sum(1 for key, b in BUFFS.items() if b["costs_action"] and unlocked(key)) / actions_per_second
+else:
+    buff_cast_startup_time = 0.0
+
+
+def non_buff_casts(cooldown):
+    """CastsInFight for a non-buff (damage) skill, reduced by the buff-casting startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0
+    return exact_casts(cooldown, max(0.0, fight_duration - buff_cast_startup_time))
+
+
+def non_buff_total_hits(cooldown, hits_per_cast, icd, window):
+    """exact_total_hits for a non-buff (damage) skill, reduced by the startup delay."""
+    if buff_cast_startup_time >= fight_duration:
+        return 0.0
+    return exact_total_hits(cooldown, hits_per_cast, icd, window, max(0.0, fight_duration - buff_cast_startup_time))
+
+
+if fixed_duration_active:
+    cast_rate = sum(non_buff_casts(eff_cooldown(SKILLS[k]["cooldown"], SKILLS[k]["costs_action"])) for k, s in SKILLS.items() if s["costs_action"] and unlocked(k))
     cast_rate += sum(exact_casts(eff_cooldown(b["cooldown"], b["costs_action"])) for key, b in BUFFS.items() if b["costs_action"] and unlocked(key))
-    cast_rate += exact_casts(eff_cooldown(holy_fountain_cooldown, True)) if unlocked("HOLY_FOUNTAIN") else 0
+    cast_rate += non_buff_casts(eff_cooldown(holy_fountain_cooldown, True)) if unlocked("HOLY_FOUNTAIN") else 0
     cast_rate /= fight_duration
 else:
     cast_rate = sum(1 / eff_cooldown(SKILLS[k]["cooldown"], s["costs_action"]) for k, s in SKILLS.items() if s["costs_action"] and unlocked(k))
@@ -433,7 +461,7 @@ for key, s in SKILLS.items():
     if key == "ANGEL_RAY_BOSS_PROC":
         eff_cd = eff_cooldown(SKILLS["ANGEL_RAY"]["cooldown"], SKILLS["ANGEL_RAY"]["costs_action"])
         if fixed_duration_active:
-            rate = exact_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
+            rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
         else:
             hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
             rate = hits / eff_cd
@@ -441,7 +469,7 @@ for key, s in SKILLS.items():
         continue
     eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
     if fixed_duration_active:
-        rate = exact_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
+        rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
