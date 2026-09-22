@@ -510,12 +510,17 @@ def main():
         return "never<=1000" if n is None else str(n)
 
     header = (
-        f"{'Slot':14s} {'Type':16s} {'Rarity':10s} {'Pity':>6s} {'CurValue%':>10s} {'EV%@50':>10s} "
-        f"{'EV%@200':>10s} {'EV%@1000':>10s} {'SmallestN+':>11s} {'N@50%':>11s} {'N@75%':>11s}"
+        f"{'Slot':14s} {'CurrentGain%':>13s} {'EV@50':>10s} {'EV@200':>10s} "
+        f"{'EV@500':>10s} {'MinForPositiveEV':>17s} {'MinFor50%ToImprove':>19s} {'MinFor75%ToImprove':>19s}"
     )
     print()
-    print(f"(% figures are DPS gain as a percentage of your current Total DPS, {baseline_dps:,.0f})")
-    print("(N@50%/N@75% = cubes needed for that % chance of ANY roll beating current — no weighting by how much)")
+    print(f"(DPS% columns are expected DPS gain as a percentage of your current Total DPS, {baseline_dps:,.0f})")
+    print("(CurrentGain% = the DPS gain your CURRENTLY-rolled value on this line already provides)")
+    print("(EV@N = expected additional DPS gain if you optimally reroll this line with N cubes,")
+    print(" banking the best result seen along the way and stopping once it's good enough)")
+    print("(MinForPositiveEV = fewest cubes where rerolling is expected, on average, to beat keeping your current roll)")
+    print("(MinFor50%/75%ToImprove = fewest cubes needed for that % chance that AT LEAST ONE reroll beats your")
+    print(" current value — a plain probability of any improvement, not weighted by how much better)")
     print(header)
     print("-" * len(header))
     prev_type = None
@@ -526,10 +531,9 @@ def main():
             print(f"-- {r['potential_type']} --")
             prev_type = r["potential_type"]
         print(
-            f"{r['slot']:14s} {r['potential_type']:16s} {r['rarity']:10s} {r['pity']:6.0f} "
-            f"{pct(r['current_value']):9.3f}% {pct(r['milestone_ev'][50]):9.3f}% {pct(r['milestone_ev'][200]):9.3f}% "
-            f"{pct(r['milestone_ev'][1000]):9.3f}% {n_str(r['smallest_n']):>11s} "
-            f"{n_str(r['n_for_50pct']):>11s} {n_str(r['n_for_75pct']):>11s}"
+            f"{r['slot']:14s} {pct(r['current_value']):12.3f}% {pct(r['milestone_ev'][50]):9.3f}% "
+            f"{pct(r['milestone_ev'][200]):9.3f}% {pct(r['milestone_ev'][500]):9.3f}% "
+            f"{n_str(r['smallest_n']):>17s} {n_str(r['n_for_50pct']):>19s} {n_str(r['n_for_75pct']):>19s}"
         )
 
     with open(CSV_PATH, "w", newline="") as f:
