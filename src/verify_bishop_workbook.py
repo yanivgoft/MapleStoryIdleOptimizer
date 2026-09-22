@@ -216,7 +216,9 @@ PASSIVES = {
 NORMAL_MONSTER_TARGETS = {k: v["targets"] for k, v in SKILLS.items()}
 
 
-def target_multiplier(key):
+def boss_normal_multiplier(key, s):
+    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
+    full (1+damage%/100)*targets treatment. `s` is the skill's own mastery dict."""
     if monster_type == "pvp":
         return 1
     if key == "BIG_BANG":
@@ -224,7 +226,11 @@ def target_multiplier(key):
     else:
         targets = NORMAL_MONSTER_TARGETS.get(key, 1)
     targets = min(targets, max_enemies_hit)
-    return (1 - normal_weight) * 1 + normal_weight * targets
+    boss_term = boss_damage + s.get("mastery_boss", 0) + monster_dmg_bonus
+    normal_term = normal_damage + s.get("mastery_normal", 0) + normal_dmg_bonus
+    boss_branch = 1 + boss_term / 100
+    normal_branch = (1 + normal_term / 100) * targets
+    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
 
 
 def unlocked(key):
@@ -420,12 +426,6 @@ def hit_damage(coeff_pct_val, is_basic, s, key):
     effective_coeff = coeff_pct_val + s.get("mastery", 0)
     base_damage = attack * (effective_coeff / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
-    if monster_type == "pvp":
-        monster_dmg = 0
-    else:
-        boss_term = boss_damage + s.get("mastery_boss", 0) + monster_dmg_bonus
-        normal_term = normal_damage + s.get("mastery_normal", 0) + normal_dmg_bonus
-        monster_dmg = (1 - normal_weight) * boss_term + normal_weight * normal_term
     elem_amp = element_amp_pct if unlocked("ELEMENT_AMPLIFICATION") else 0.0
     blood_divine = blood_divine_pct if unlocked("BLOOD_OF_THE_DIVINE") else 0.0
     arcane = arcane_aim_pct if unlocked("ARCANE_AIM") else 0.0
@@ -436,8 +436,10 @@ def hit_damage(coeff_pct_val, is_basic, s, key):
     )
     source_pct = basic_attack_damage if is_basic else skill_damage
     extra_mult = avg_buff_mult
+    # Boss/Normal Monster Damage% is deliberately NOT applied here — it's blended per-branch in
+    # boss_normal_multiplier, applied by the caller.
     base_hit = (
-        base_damage * (1 + stat_damage / 100) * (1 + (damage + damage_bonus) / 100) * (1 + monster_dmg / 100)
+        base_damage * (1 + stat_damage / 100) * (1 + (damage + damage_bonus) / 100)
         * (1 + damage_amp / 100) * dmg_reduction * final_mult * (1 + source_pct / 100) * extra_mult
     )
     non_crit_min = base_hit * min(min_damage, max_damage) / 100
@@ -449,7 +451,7 @@ def hit_damage(coeff_pct_val, is_basic, s, key):
 
 
 big_bang_hit = hit_damage(skill_coefficient_base, True, dict(mastery=big_bang_mastery, mastery_boss=big_bang_boss_mastery), "BIG_BANG")
-big_bang_dps = big_bang_hits * big_bang_hit * big_bang_per_second * target_multiplier("BIG_BANG") if unlocked("BIG_BANG") else 0.0
+big_bang_dps = big_bang_hits * big_bang_hit * big_bang_per_second * boss_normal_multiplier("BIG_BANG", dict(mastery_boss=big_bang_boss_mastery, mastery_normal=0)) if unlocked("BIG_BANG") else 0.0
 
 skill_dps = {}
 for key, s in SKILLS.items():
@@ -465,7 +467,13 @@ for key, s in SKILLS.items():
         else:
             hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
             rate = hits / eff_cd
-        skill_dps[key] = rate * hd * (1 - normal_weight) if monster_type != "pvp" else rate * hd
+        # Boss-only effect (per its own name/Note) — scales with boss_dmg_pct alone, zero
+        # contribution from the normal branch; (1-normal_weight) already reduces this to 0 in
+        # pure-normal content. PvP keeps boss/normal damage% out entirely, matching every other
+        # skill's pvp branch.
+        boss_term = boss_damage + s.get("mastery_boss", 0) + monster_dmg_bonus
+        boss_mult = 1 if monster_type == "pvp" else 1 + boss_term / 100
+        skill_dps[key] = (1 - normal_weight) * rate * hd * boss_mult
         continue
     eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
     if fixed_duration_active:
@@ -473,7 +481,7 @@ for key, s in SKILLS.items():
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
-    skill_dps[key] = rate * hd * target_multiplier(key)
+    skill_dps[key] = rate * hd * boss_normal_multiplier(key, s)
 
 # Triumph Feather: bespoke 2-stage steady-state proc (see build_bishop_workbook.py's own Note on
 # this row for the full derivation). R = the character's total attack rate (Actions Per Second).
@@ -490,9 +498,15 @@ if unlocked("TRIUMPH_FEATHER"):
     icd2 = 1
     feather_rate = (p2 / 100 * r_total) / (1 + icd2 * p2 / 100 * r_total)
     tf_targets = triumph_feather_targets
-    tf_target_mult = (
-        1 if monster_type == "pvp" else (1 - normal_weight) * 1 + normal_weight * min(tf_targets, max_enemies_hit)
-    )
+    tf_targets_capped = min(tf_targets, max_enemies_hit)
+    if monster_type == "pvp":
+        tf_target_mult = 1
+    else:
+        tf_boss_term = boss_damage + monster_dmg_bonus
+        tf_normal_term = normal_damage + normal_dmg_bonus
+        tf_boss_branch = 1 + tf_boss_term / 100
+        tf_normal_branch = (1 + tf_normal_term / 100) * tf_targets_capped
+        tf_target_mult = (1 - normal_weight) * tf_boss_branch + normal_weight * tf_normal_branch
     tf_hits = 3 if level >= 104 else 2
     skill_dps["TRIUMPH_FEATHER"] = tf_hits * tf_hd * harness_fraction * feather_rate * tf_target_mult
 else:

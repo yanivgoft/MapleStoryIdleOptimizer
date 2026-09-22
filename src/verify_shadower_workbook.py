@@ -240,28 +240,35 @@ DAMAGE_SKILLS = {
 NORMAL_MONSTER_TARGETS = {k: v["targets"] for k, v in DAMAGE_SKILLS.items()}
 
 
-def target_multiplier(targets):
+def boss_normal_multiplier(targets, mastery_boss, mastery_normal):
+    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
+    full (1+damage%/100)*targets treatment. The two branches are combined here as a plain dollar
+    blend for the real Total DPS (correct — this IS what actual DPS output looks like when
+    time-averaged across both target types); Sensitivity's marginal-value ranking uses a separate,
+    ratio-based blend instead (Excel-side only, not modeled in this Python script), since a dollar
+    blend would let a stat's reported "value" be dominated by whichever branch hits more targets."""
     if monster_type == "pvp":
         return 1
     targets = min(targets, max_enemies_hit)
-    return (1 - normal_weight) * 1 + normal_weight * targets
+    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
+    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
+    boss_branch = 1 + boss_term / 100
+    normal_branch = (1 + normal_term / 100) * targets
+    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
 
 
 def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_ratio=0.0):
+    # mastery_boss/mastery_normal are unused here now (Boss/Normal Monster Damage% is applied by
+    # the caller via boss_normal_multiplier, not blended into base_hit) — kept in the signature so
+    # every existing call site (which passes each skill's own mastery values) doesn't need editing.
     base_damage = attack * (coeff_pct_val / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
-    if monster_type == "pvp":
-        monster_dmg = 0
-    else:
-        boss_term = boss_damage + mastery_boss + monster_dmg_bonus
-        normal_term = normal_damage + mastery_normal + monster_dmg_bonus
-        monster_dmg = (1 - normal_weight) * boss_term + normal_weight * normal_term
     maple_mult = (1 + maple_ratio * maple_hero_pct / 100) if maple_ratio else 1.0
     final_mult = (1 + final_damage / 100) * maple_mult
     source_pct = basic_attack_damage if is_basic else skill_damage
     extra_mult = avg_buff_mult * shadow_partner_mult
     base_hit = (
-        base_damage * (1 + stat_damage / 100) * (1 + damage / 100) * (1 + monster_dmg / 100)
+        base_damage * (1 + stat_damage / 100) * (1 + damage / 100)
         * (1 + damage_amp / 100) * dmg_reduction * final_mult * (1 + source_pct / 100) * extra_mult
     )
     non_crit_min = base_hit * min(min_damage, max_damage) / 100
@@ -377,7 +384,7 @@ else:
 cruel_stab_per_second = max(0, actions_per_second - cast_rate)
 
 cruel_stab_hit = hit_damage(skill_coefficient_base + cruel_stab_mastery, True, cruel_stab_boss_mastery, 0)
-cruel_stab_dps = cruel_stab_hits * cruel_stab_hit * cruel_stab_per_second * target_multiplier(6 + basic_attack_target_increase) if unlocked("CRUEL_STAB") else 0.0
+cruel_stab_dps = cruel_stab_hits * cruel_stab_hit * cruel_stab_per_second * boss_normal_multiplier(6 + basic_attack_target_increase, cruel_stab_boss_mastery, 0) if unlocked("CRUEL_STAB") else 0.0
 
 skill_dps = {}
 for key, s in DAMAGE_SKILLS.items():
@@ -393,12 +400,12 @@ for key, s in DAMAGE_SKILLS.items():
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
-    skill_dps[key] = rate * hd * target_multiplier(s["targets"])
+    skill_dps[key] = rate * hd * boss_normal_multiplier(s["targets"], s.get("mastery_boss", 0), s.get("mastery_normal", 0))
 
 # ---- Toxic Venom ----
 TOXIC_VENOM_TRIGGER_SKILLS = {"PHASE_DASH", "DARK_FLARE", "SUDDEN_RAID_BURST", "SUDDEN_RAID_DOT"}
 if unlocked("TOXIC_VENOM"):
-    total_hit_rate = cruel_stab_hits * cruel_stab_per_second * target_multiplier(6 + basic_attack_target_increase)
+    total_hit_rate = cruel_stab_hits * cruel_stab_per_second * boss_normal_multiplier(6 + basic_attack_target_increase, cruel_stab_boss_mastery, 0)
     for key, s in DAMAGE_SKILLS.items():
         if key in TOXIC_VENOM_TRIGGER_SKILLS and unlocked(key):
             eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
@@ -407,21 +414,21 @@ if unlocked("TOXIC_VENOM"):
             else:
                 hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
                 rate = hits / eff_cd
-            total_hit_rate += rate * target_multiplier(s["targets"])
+            total_hit_rate += rate * boss_normal_multiplier(s["targets"], s.get("mastery_boss", 0), s.get("mastery_normal", 0))
     if unlocked("ASSASSINATE"):
         _asn_eff_cd = eff_cooldown(13, True)
         if fixed_duration_active:
             _asn_rate = non_buff_total_hits(_asn_eff_cd, 2, None, None) / fight_duration
         else:
             _asn_rate = 2 / _asn_eff_cd
-        total_hit_rate += _asn_rate * target_multiplier(1)
+        total_hit_rate += _asn_rate * boss_normal_multiplier(1, 0, 0)
     # Meso Explosion / Blood Money own hit rates added below once computed
 else:
     total_hit_rate = 0.0
 
 # ---- Shadow Shifter ----
 ss_counter_pct = coeff_pct(25000, 21, True, 4) if unlocked("SHADOW_SHIFTER") else 0.0
-shadow_shifter_dps = incoming_hit_rate * 0.2 * hit_damage(ss_counter_pct, False, 0, 0) if unlocked("SHADOW_SHIFTER") else 0.0
+shadow_shifter_dps = incoming_hit_rate * 0.2 * hit_damage(ss_counter_pct, False, 0, 0) * boss_normal_multiplier(1, 0, 0) if unlocked("SHADOW_SHIFTER") else 0.0
 
 # ---- Meso Explosion / Blood Money (steady-state stack accumulation) ----
 meso_stack_avg = min(10, 0.5 * actions_per_second * 11)
@@ -430,20 +437,20 @@ bm_stack_avg = min(5, 0.25 * actions_per_second * 11)
 meso_pct = (coeff_pct(2700, 12, True, 3) + level_gated_sum({90: 100})) if unlocked("MESO_EXPLOSION") else 0.0
 meso_hd = hit_damage(meso_pct, False, 0, 0)
 meso_rate = (1 / eff_cooldown(11, True)) if not fixed_duration_active else (exact_casts(eff_cooldown(11, True)) / fight_duration)
-meso_dps = 3 * meso_hd * meso_rate * target_multiplier(meso_stack_avg) if unlocked("MESO_EXPLOSION") else 0.0
+meso_dps = 3 * meso_hd * meso_rate * boss_normal_multiplier(meso_stack_avg, 0, 0) if unlocked("MESO_EXPLOSION") else 0.0
 skill_dps["MESO_EXPLOSION"] = meso_dps
 if unlocked("TOXIC_VENOM") and unlocked("MESO_EXPLOSION"):
-    total_hit_rate += 3 * meso_rate * target_multiplier(meso_stack_avg)
+    total_hit_rate += 3 * meso_rate * boss_normal_multiplier(meso_stack_avg, 0, 0)
 
 bm_pct = (coeff_pct(36000, 12, True, 4) + level_gated_sum({122: 50, 138: 50})) if unlocked("BLOOD_MONEY") else 0.0
 bm_hd = hit_damage(bm_pct, False, 0, 0)
-bm_dps = 3 * bm_hd * meso_rate * target_multiplier(bm_stack_avg * bm_target_mult) if unlocked("BLOOD_MONEY") else 0.0
+bm_dps = 3 * bm_hd * meso_rate * boss_normal_multiplier(bm_stack_avg * bm_target_mult, 0, 0) if unlocked("BLOOD_MONEY") else 0.0
 skill_dps["BLOOD_MONEY"] = bm_dps
 if unlocked("TOXIC_VENOM") and unlocked("BLOOD_MONEY"):
-    total_hit_rate += 3 * meso_rate * target_multiplier(bm_stack_avg * bm_target_mult)
+    total_hit_rate += 3 * meso_rate * boss_normal_multiplier(bm_stack_avg * bm_target_mult, 0, 0)
 
 toxic_venom_pct = (coeff_pct(6000, 21, True, 4) + level_gated_sum({130: 100})) if unlocked("TOXIC_VENOM") else 0.0
-toxic_venom_dps = 0.2 * total_hit_rate * hit_damage(toxic_venom_pct, False, 0, 0) if unlocked("TOXIC_VENOM") else 0.0
+toxic_venom_dps = 0.2 * total_hit_rate * hit_damage(toxic_venom_pct, False, 0, 0) * boss_normal_multiplier(1, 0, 0) if unlocked("TOXIC_VENOM") else 0.0
 skill_dps["TOXIC_VENOM"] = toxic_venom_dps
 
 # ---- Assassinate (base + finisher, murderous intent) ----
@@ -460,7 +467,7 @@ if unlocked("ASSASSINATE"):
         asn_rate = non_buff_total_hits(assassinate_eff_cd, 2, None, None) / fight_duration
     else:
         asn_rate = 2 / assassinate_eff_cd
-    asn_dps = asn_rate * asn_hd * target_multiplier(1)
+    asn_dps = asn_rate * asn_hd * boss_normal_multiplier(1, 0, 0)
 else:
     asn_dps = 0.0
 skill_dps["ASSASSINATE"] = asn_dps

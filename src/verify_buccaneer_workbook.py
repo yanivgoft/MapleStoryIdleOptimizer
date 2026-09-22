@@ -230,17 +230,20 @@ def buff_avg(pct, duration, cooldown, costs_action):
     return pct * uptime
 
 
-def target_multiplier(targets):
+def boss_normal_multiplier(targets, mastery_boss, mastery_normal):
+    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
+    full (1+damage%/100)*targets treatment. The two branches are combined here as a plain dollar
+    blend for the real Total DPS (correct); Sensitivity's marginal-value ranking uses a separate,
+    ratio-based blend instead (see build_sensitivity_sheet), since a dollar blend would let a
+    stat's reported "value" be dominated by whichever branch hits more targets."""
     if monster_type == "pvp":
         return 1
     targets = min(targets, max_enemies_hit)
-    return (1 - normal_weight) * 1 + normal_weight * targets
-
-
-def monster_blend(boss_val, normal_val):
-    if monster_type == "pvp":
-        return boss_val
-    return (1 - normal_weight) * boss_val + normal_weight * normal_val
+    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
+    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
+    boss_branch = 1 + boss_term / 100
+    normal_branch = (1 + normal_term / 100) * targets
+    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
 
 
 def coeff_pct(base, fidx, scales, job_step):
@@ -320,17 +323,17 @@ crit_damage_bonus = 0.0
 monster_dmg_bonus = 0.0
 
 
-def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_ratio=0.0):
+def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0):
     base_damage = attack * (coeff_pct_val / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
-    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
-    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
-    monster_dmg = 0 if monster_type == "pvp" else monster_blend(boss_term, normal_term)
     maple_mult = (1 + maple_ratio * maple_hero_pct / 100) if maple_ratio else 1.0
     final_mult = (1 + (final_damage + final_damage_extra) / 100) * maple_mult
     source_pct = basic_attack_damage if is_basic else skill_damage
+    # Boss/Normal Monster Damage% is deliberately NOT applied here — it's blended per-branch
+    # (its own multiplier * its own target count) in boss_normal_multiplier, applied by the
+    # caller, rather than summed into base_hit before a single shared multiplication.
     base_hit = (
-        base_damage * (1 + stat_damage / 100) * (1 + damage / 100) * (1 + monster_dmg / 100)
+        base_damage * (1 + stat_damage / 100) * (1 + damage / 100)
         * (1 + damage_amp / 100) * dmg_reduction * final_mult * (1 + source_pct / 100)
         * attack_bucket_mult
     )
@@ -343,22 +346,22 @@ def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_rati
 
 
 # ---- Hook Bomber (basic attack) ----
-hook_bomber_hit = hit_damage(hook_bomber_pct, True, hook_bomber_mastery_boss_damage, 0)
-hook_bomber_dps = HOOK_BOMBER_HITS * hook_bomber_hit * hook_bomber_per_second * target_multiplier(hook_bomber_targets) if unlocked("HOOK_BOMBER") else 0.0
+hook_bomber_hit = hit_damage(hook_bomber_pct, True)
+hook_bomber_dps = HOOK_BOMBER_HITS * hook_bomber_hit * hook_bomber_per_second * boss_normal_multiplier(hook_bomber_targets, hook_bomber_mastery_boss_damage, 0) if unlocked("HOOK_BOMBER") else 0.0
 
 # ---- Sea Serpent Burst / Serpent Assault (ride on Hook Bomber's own cast rate, weighted by the
 #      Assault-Mode duty cycle instead of a real ProcChance% RNG) ----
 sea_serpent_burst_pct = coeff_pct(1300, 12, True, 2) if unlocked("SEA_SERPENT_BURST") else 0.0
-sea_serpent_burst_hit = hit_damage(sea_serpent_burst_pct, False, 0, 0)
+sea_serpent_burst_hit = hit_damage(sea_serpent_burst_pct, False)
 sea_serpent_burst_dps = (
-    2 * sea_serpent_burst_hit * hook_bomber_per_second * (1 - uptime) * target_multiplier(5)
+    2 * sea_serpent_burst_hit * hook_bomber_per_second * (1 - uptime) * boss_normal_multiplier(5, 0, 0)
     if unlocked("SEA_SERPENT_BURST") else 0.0
 )
 
 serpent_assault_pct = coeff_pct(4800, 12, True, 2) if unlocked("SERPENT_ASSAULT") else 0.0
-serpent_assault_hit = hit_damage(serpent_assault_pct, False, 0, 0, maple_ratio=MAPLE_HERO_RATIOS.get("SERPENT_ASSAULT", 0))
+serpent_assault_hit = hit_damage(serpent_assault_pct, False, maple_ratio=MAPLE_HERO_RATIOS.get("SERPENT_ASSAULT", 0))
 serpent_assault_dps = (
-    3 * serpent_assault_hit * hook_bomber_per_second * uptime * target_multiplier(12)
+    3 * serpent_assault_hit * hook_bomber_per_second * uptime * boss_normal_multiplier(12, 0, 0)
     if unlocked("SERPENT_ASSAULT") else 0.0
 )
 
@@ -393,7 +396,7 @@ for key, s in DAMAGE_SKILLS.items():
         skill_dps[key] = 0.0
         continue
     pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) + s.get("mastery", 0)
-    hd = hit_damage(pct, False, s.get("mastery_boss", 0), s.get("mastery_normal", 0))
+    hd = hit_damage(pct, False)
     proc_prob = s.get("proc_chance", 1.0)
     eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
     if fixed_duration_active:
@@ -401,7 +404,7 @@ for key, s in DAMAGE_SKILLS.items():
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
-    skill_dps[key] = proc_prob * rate * hd * target_multiplier(s["targets"])
+    skill_dps[key] = proc_prob * rate * hd * boss_normal_multiplier(s["targets"], s.get("mastery_boss", 0), s.get("mastery_normal", 0))
 
 total_dps = hook_bomber_dps + sea_serpent_burst_dps + serpent_assault_dps + sum(skill_dps.values())
 

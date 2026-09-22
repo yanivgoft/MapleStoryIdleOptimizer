@@ -222,7 +222,9 @@ NORMAL_MONSTER_TARGETS = {
 }
 
 
-def target_multiplier(key):
+def boss_normal_multiplier(key, s):
+    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
+    full (1+damage%/100)*targets treatment. `s` is the skill's own mastery dict."""
     if monster_type == "pvp":
         return 1
     if key == "CHAIN_LIGHTNING":
@@ -230,7 +232,11 @@ def target_multiplier(key):
     else:
         targets = NORMAL_MONSTER_TARGETS.get(key, 1)
     targets = min(targets, max_enemies_hit)
-    return (1 - normal_weight) * 1 + normal_weight * targets
+    boss_term = boss_damage + s.get("mastery_boss", 0) + monster_dmg_bonus
+    normal_term = normal_damage + s.get("mastery_normal", 0) + monster_dmg_bonus
+    boss_branch = 1 + boss_term / 100
+    normal_branch = (1 + normal_term / 100) * targets
+    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
 
 
 def unlocked(key):
@@ -412,23 +418,19 @@ def maple_mult(key):
     return 1 + (MAPLE_TARGETS[key] / 10) * (maple_factor / 1000) / 100
 
 
-def hit_damage(coeff_pct_val, is_basic, maple_mult_val, s, frozen_orb_mult=1.0):
+def hit_damage(coeff_pct_val, is_basic, maple_mult_val, s):
     effective_coeff = coeff_pct_val + s["mastery"]
     base_damage = attack * (effective_coeff / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
-    if monster_type == "pvp":
-        monster_dmg = 0
-    else:
-        boss_term = boss_damage + s["mastery_boss"] + monster_dmg_bonus
-        normal_term = normal_damage + s["mastery_normal"] + monster_dmg_bonus
-        monster_dmg = (1 - normal_weight) * boss_term + normal_weight * normal_term
     elem_amp = element_amp_pct if unlocked("ELEMENT_AMPLIFICATION") else 0.0
     arcane = arcane_aim_pct if unlocked("ARCANE_AIM") else 0.0
     final_mult = (1 + final_damage / 100) * (1 + elem_amp / 100) * (1 + arcane / 100) ** 5
     source_pct = basic_attack_damage if is_basic else skill_damage
-    extra_mult = avg_buff_mult * maple_mult_val * frozen_orb_mult
+    # Boss/Normal Monster Damage% is deliberately NOT applied here — it's blended per-branch in
+    # boss_normal_multiplier (or FROZEN_ORB's own inline split below), applied by the caller.
+    extra_mult = avg_buff_mult * maple_mult_val
     base_hit = (
-        base_damage * (1 + stat_damage / 100) * (1 + (damage + damage_bonus) / 100) * (1 + monster_dmg / 100)
+        base_damage * (1 + stat_damage / 100) * (1 + (damage + damage_bonus) / 100)
         * (1 + damage_amp / 100) * dmg_reduction * final_mult * (1 + source_pct / 100) * extra_mult
     )
     non_crit_min = base_hit * min(min_damage, max_damage) / 100
@@ -441,7 +443,7 @@ def hit_damage(coeff_pct_val, is_basic, maple_mult_val, s, frozen_orb_mult=1.0):
 
 chain_s = SKILLS["CHAIN_LIGHTNING"]
 chain_hit = hit_damage(skill_coefficient_base, True, 1.0, chain_s)
-chain_dps = chain_lightning_hits * chain_hit * chain_lightning_per_second * target_multiplier("CHAIN_LIGHTNING") \
+chain_dps = chain_lightning_hits * chain_hit * chain_lightning_per_second * boss_normal_multiplier("CHAIN_LIGHTNING", chain_s) \
     if unlocked("CHAIN_LIGHTNING") else 0.0
 
 skill_dps = {}
@@ -453,17 +455,29 @@ for key, s in SKILLS.items():
         continue
     pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"])
     proc = 1 - (1 - s.get("chance", 100) / 100) ** s.get("rolls", 1)
-    frozen_orb_mult = 1.0
-    if key == "FROZEN_ORB":
-        frozen_orb_mult = 0.5 if monster_type == "pvp" else (1 - normal_weight) * 0.5 + normal_weight * 1
-    hd = hit_damage(pct, False, maple_mult(key), s, frozen_orb_mult=frozen_orb_mult)
+    hd = hit_damage(pct, False, maple_mult(key), s)
     eff_cd = eff_cooldown(s["cooldown"], _cdr_costs_action(key, s))
     if fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
-    skill_dps[key] = rate * proc * hd * target_multiplier(key)
+    if key == "FROZEN_ORB":
+        # Frozen Orb's own boss/normal damage multiplier (0.5 vs single target, 1.0 vs
+        # normal-monster AoE) is applied INSIDE each branch, not as a shared w-blended scalar —
+        # see build_ice_lightning_mage_workbook.py's own comment on this branch for why.
+        if monster_type == "pvp":
+            boss_mult, normal_mult = 1.0, 1.0
+        else:
+            boss_term = boss_damage + s.get("mastery_boss", 0) + monster_dmg_bonus
+            normal_term = normal_damage + s.get("mastery_normal", 0) + monster_dmg_bonus
+            targets = min(NORMAL_MONSTER_TARGETS.get(key, 1), max_enemies_hit)
+            boss_mult = 1 + boss_term / 100
+            normal_mult = (1 + normal_term / 100) * targets
+        combined_mult = (1 - normal_weight) * 0.5 * boss_mult + normal_weight * 1.0 * normal_mult
+        skill_dps[key] = rate * proc * hd * combined_mult
+    else:
+        skill_dps[key] = rate * proc * hd * boss_normal_multiplier(key, s)
 
 total_dps = chain_dps + sum(skill_dps.values())
 

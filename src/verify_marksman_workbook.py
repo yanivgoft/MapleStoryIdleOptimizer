@@ -222,10 +222,29 @@ def buff_avg(pct, duration, cooldown, costs_action):
 
 
 def target_multiplier(targets):
+    """Target-count-only blend (no damage%) — still correct as a plain linear blend on its own
+    (used for pure rate/trigger-frequency quantities like hit_rate_per_sec, not for a skill's own
+    DPS contribution, which must go through boss_normal_multiplier instead)."""
     if monster_type == "pvp":
         return 1
     targets = min(targets, max_enemies_hit)
     return (1 - normal_weight) * 1 + normal_weight * targets
+
+
+def boss_normal_multiplier(targets, mastery_boss, mastery_normal):
+    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
+    full (1+damage%/100)*targets treatment. The two branches are combined here as a plain dollar
+    blend for the real Total DPS (correct); Sensitivity's marginal-value ranking uses a separate,
+    ratio-based blend instead, since a dollar blend would let a stat's reported "value" be
+    dominated by whichever branch hits more targets."""
+    if monster_type == "pvp":
+        return 1
+    targets = min(targets, max_enemies_hit)
+    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
+    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
+    boss_branch = 1 + boss_term / 100
+    normal_branch = (1 + normal_term / 100) * targets
+    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
 
 
 def monster_blend(boss_val, normal_val):
@@ -343,18 +362,17 @@ else:
 epa_per_second = max(0, actions_per_second - cast_rate)
 
 
-def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_ratio=0.0, extra_fd_pct=0.0):
+def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0, extra_fd_pct=0.0):
     base_damage = attack * (coeff_pct_val / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
-    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
-    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
-    monster_dmg = 0 if monster_type == "pvp" else monster_blend(boss_term, normal_term)
     maple_mult = (1 + maple_ratio * maple_hero_pct / 100) if maple_ratio else 1.0
     extra_fd_mult = (1 + extra_fd_pct / 100)
     final_mult = (1 + (final_damage + mortal_blow_bonus) / 100) * maple_mult * extra_fd_mult
     source_pct = basic_attack_damage if is_basic else skill_damage
+    # Boss/Normal Monster Damage% is deliberately NOT applied here — it's blended per-branch in
+    # boss_normal_multiplier, applied by the caller.
     base_hit = (
-        base_damage * (1 + stat_damage / 100) * (1 + damage / 100) * (1 + monster_dmg / 100)
+        base_damage * (1 + stat_damage / 100) * (1 + damage / 100)
         * (1 + damage_amp / 100) * dmg_reduction * final_mult * (1 + source_pct / 100)
         * attack_bucket_mult
     )
@@ -369,9 +387,9 @@ def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_rati
 # ---- Empowered Piercing Arrow (basic attack) ----
 epa_pct = skill_coefficient_base + epa_final_attack_addition + epa_damage_mastery
 epa_targets = 6 + basic_attack_target_increase
-epa_hit = hit_damage(epa_pct, True, epa_boss_mastery, 0)
+epa_hit = hit_damage(epa_pct, True)
 EPA_HITS = 6 if level >= 134 else 5
-epa_dps = EPA_HITS * epa_hit * epa_per_second * target_multiplier(epa_targets) if unlocked("EMPOWERED_PIERCING_ARROW") else 0.0
+epa_dps = EPA_HITS * epa_hit * epa_per_second * boss_normal_multiplier(epa_targets, epa_boss_mastery, 0) if unlocked("EMPOWERED_PIERCING_ARROW") else 0.0
 epa_hit_rate = EPA_HITS * epa_per_second * target_multiplier(epa_targets) if unlocked("EMPOWERED_PIERCING_ARROW") else 0.0
 
 # ---- Damage skills (excludes Bolt Surplus, handled separately below via its own dual-trigger
@@ -406,7 +424,7 @@ for key, s in DAMAGE_SKILLS.items():
         continue
     pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) + s.get("mastery", 0)
     hd = hit_damage(
-        pct, False, s.get("mastery_boss", 0), s.get("mastery_normal", 0),
+        pct, False,
         maple_ratio=s.get("maple_ratio", 0.0), extra_fd_pct=s.get("extra_fd", 0.0),
     )
     proc_prob = 1 - (1 - s.get("proc_chance", 100) / 100) ** 1
@@ -416,7 +434,7 @@ for key, s in DAMAGE_SKILLS.items():
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
-    tm = target_multiplier(s["targets"])
+    tm = boss_normal_multiplier(s["targets"], s.get("mastery_boss", 0), s.get("mastery_normal", 0))
     skill_dps[key] = proc_prob * rate * hd * tm
 
 # HitRate(perSec) as actually defined on the Excel side (Calc!S = O/N = H*rate*target_multiplier,
@@ -442,8 +460,8 @@ bolt_surplus_hits = 2 + (1 if level >= 136 else 0)
 bolt_surplus_targets = 3 + (2 if level >= 136 else 0)
 if unlocked("BOLT_SURPLUS"):
     bolt_surplus_pct = coeff_pct(6500, 21, True, 4) + level_gated_sum({120: 50})
-    bolt_surplus_hd = hit_damage(bolt_surplus_pct, False, 0, 0)
-    bolt_surplus_dps = 0.15 * bolt_surplus_trigger_rate * bolt_surplus_hits * bolt_surplus_hd * target_multiplier(bolt_surplus_targets)
+    bolt_surplus_hd = hit_damage(bolt_surplus_pct, False)
+    bolt_surplus_dps = 0.15 * bolt_surplus_trigger_rate * bolt_surplus_hits * bolt_surplus_hd * boss_normal_multiplier(bolt_surplus_targets, 0, 0)
 else:
     bolt_surplus_dps = 0.0
 skill_dps["BOLT_SURPLUS"] = bolt_surplus_dps

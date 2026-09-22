@@ -251,7 +251,14 @@ NORMAL_MONSTER_TARGETS = {
 }
 
 
-def target_multiplier(key):
+def boss_normal_multiplier(key, s):
+    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
+    full (1+damage%/100)*targets treatment. The two branches are combined here as a plain dollar
+    blend for the real Total DPS (correct — this IS what your actual DPS output looks like when
+    time-averaged across both target types); Sensitivity's marginal-value ranking uses a separate,
+    ratio-based blend instead (see build_sensitivity_sheet), since a dollar blend would let a
+    stat's reported "value" be dominated by whichever branch hits more targets. `s` is the skill's
+    own mastery dict (mastery_boss/mastery_normal), same as hit_damage already reads."""
     if monster_type == "pvp":
         return 1
     if key == "BASIC_ATTACK":
@@ -261,9 +268,13 @@ def target_multiplier(key):
     # A skill that could theoretically hit more targets than are actually in range only hits
     # what's there (confirmed by the user) — capped before the Chapter Breakthrough blend.
     targets = min(targets, max_enemies_hit)
-    # Chapter Breakthrough blends the AoE (normal) and single-target (boss) multipliers by
-    # normal_weight — the edge cases (weight=0/1) reduce exactly to pure boss/normal.
-    return (1 - normal_weight) * 1 + normal_weight * targets
+    boss_term = boss_damage + s["mastery_boss"]
+    normal_term = normal_damage + s["mastery_normal"]
+    boss_branch = 1 + boss_term / 100
+    normal_branch = (1 + normal_term / 100) * targets
+    # Chapter Breakthrough blends the two branches by normal_weight — the edge cases (weight=0/1)
+    # reduce exactly to pure boss/normal.
+    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
 
 
 def unlocked(key):
@@ -436,20 +447,14 @@ def hit_damage(coeff_pct_val, is_basic, maple_mult_val, s):
     effective_coeff = coeff_pct_val + s["mastery"]
     base_damage = attack * (effective_coeff / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
-    if monster_type == "pvp":
-        monster_dmg = 0
-    else:
-        boss_term = boss_damage + s["mastery_boss"]
-        normal_term = normal_damage + s["mastery_normal"]
-        # Chapter Breakthrough blends the boss and normal Monster Damage% terms by normal_weight
-        # (mirrors build_fp_mage_workbook.monster_blend_expr) — pure boss/normal are the
-        # weight=0/1 edge cases.
-        monster_dmg = (1 - normal_weight) * boss_term + normal_weight * normal_term
     final_mult = (1 + final_damage / 100) * (1 + element_amp_pct / 100) * (1 + arcane_aim_pct / 100) ** 5
     source_pct = basic_attack_damage if is_basic else skill_damage + fervent_drain_pct * 5
     extra_mult = burning_magic_mult * elemental_decrease_mult * avg_buff_mult * maple_mult_val
+    # Boss/Normal Monster Damage% is deliberately NOT applied here — it's blended per-branch
+    # (its own multiplier * its own target count) in boss_normal_multiplier, applied by the
+    # caller, rather than summed into base_hit before a single shared multiplication.
     base_hit = (
-        base_damage * (1 + stat_damage / 100) * (1 + damage / 100) * (1 + monster_dmg / 100)
+        base_damage * (1 + stat_damage / 100) * (1 + damage / 100)
         * (1 + damage_amp / 100) * dmg_reduction * final_mult * (1 + source_pct / 100) * extra_mult
     )
     non_crit_min = base_hit * min(min_damage, max_damage) / 100
@@ -462,7 +467,7 @@ def hit_damage(coeff_pct_val, is_basic, maple_mult_val, s):
 
 basic_s = SKILLS["BASIC_ATTACK"]
 basic_hit = hit_damage(skill_coefficient_base, True, 1.0, basic_s)
-basic_dps = 5 * basic_hit * basic_attacks_per_second * target_multiplier("BASIC_ATTACK")
+basic_dps = 5 * basic_hit * basic_attacks_per_second * boss_normal_multiplier("BASIC_ATTACK", basic_s)
 
 skill_dps = {}
 for key, s in SKILLS.items():
@@ -483,7 +488,7 @@ for key, s in SKILLS.items():
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
-    skill_dps[key] = rate * proc * hd * target_multiplier(key)
+    skill_dps[key] = rate * proc * hd * boss_normal_multiplier(key, s)
 
 # Meteor Proc: no cooldown of its own — steady-state proc rate from the combined cast rate R of
 # every triggering attack (mirrors Summary!B14 + Calc!O14's formula in the real workbook).
@@ -501,7 +506,7 @@ meteor_chance = METEOR_PROC_CHANCE / 100
 meteor_proc_rate = (meteor_chance * meteor_trigger_rate) / (1 + METEOR_PROC_ICD * meteor_chance * meteor_trigger_rate)
 meteor_pct = coeff_pct(METEOR_PROC_BASE, METEOR_PROC_FIDX, True, 4)
 meteor_hit = hit_damage(meteor_pct, False, maple_mult("METEOR_PROC"), dict(mastery=0, mastery_boss=0, mastery_normal=0))
-skill_dps["METEOR_PROC"] = meteor_proc_rate * meteor_hit * target_multiplier("METEOR_PROC") if unlocked("METEOR_PROC") else 0.0
+skill_dps["METEOR_PROC"] = meteor_proc_rate * meteor_hit * boss_normal_multiplier("METEOR_PROC", dict(mastery_boss=0, mastery_normal=0)) if unlocked("METEOR_PROC") else 0.0
 
 # Level 126/130 Flame Haze burn-stacking mastery — independent re-derivation (Little's Law), not
 # transcribed from the Excel formula strings (see build_fp_mage_workbook's own docstrings for the

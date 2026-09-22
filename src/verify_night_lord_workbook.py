@@ -306,11 +306,21 @@ PASSIVE_MULT = {
 }
 
 
-def target_multiplier(targets):
+def boss_normal_multiplier(targets, mastery_boss, mastery_normal):
+    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
+    full (1+damage%/100)*targets treatment. The two branches are combined here as a plain dollar
+    blend for the real Total DPS (correct — this IS what actual DPS output looks like when
+    time-averaged across both target types); Sensitivity's marginal-value ranking uses a separate,
+    ratio-based blend instead (Excel-side only, not modeled in this Python script), since a dollar
+    blend would let a stat's reported "value" be dominated by whichever branch hits more targets."""
     if monster_type == "pvp":
         return 1
     targets = min(targets, max_enemies_hit)
-    return (1 - normal_weight) * 1 + normal_weight * targets
+    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
+    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
+    boss_branch = 1 + boss_term / 100
+    normal_branch = (1 + normal_term / 100) * targets
+    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
 
 
 def buff_uptime(cooldown, duration, bdi_extra=0.0):
@@ -455,20 +465,17 @@ print(f"Showdown/sec                = {showdown_per_second:.6f}")
 
 
 def hit_damage(coeff_pct_val, is_basic, maple_mult_val, mastery, mastery_boss, mastery_normal, mastery_final):
+    # mastery_boss/mastery_normal are unused here now (Boss/Normal Monster Damage% is applied by
+    # the caller via boss_normal_multiplier, not blended into base_hit) — kept in the signature so
+    # every existing call site (which passes each skill's own mastery values) doesn't need editing.
     effective_coeff = coeff_pct_val + mastery
     base_damage = attack * (effective_coeff / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
-    if monster_type == "pvp":
-        monster_dmg = 0
-    else:
-        boss_term = boss_damage + mastery_boss + monster_dmg_bonus
-        normal_term = normal_damage + mastery_normal + monster_dmg_bonus
-        monster_dmg = (1 - normal_weight) * boss_term + normal_weight * normal_term
     final_mult = (1 + final_damage / 100) * (1 + mastery_final / 100)
     source_pct = basic_attack_damage if is_basic else skill_damage
     extra_mult = avg_buff_mult * shadow_partner_mult * maple_mult_val
     base_hit = (
-        base_damage * (1 + stat_damage / 100) * (1 + damage / 100) * (1 + monster_dmg / 100)
+        base_damage * (1 + stat_damage / 100) * (1 + damage / 100)
         * (1 + damage_amp / 100) * dmg_reduction * final_mult * (1 + source_pct / 100) * extra_mult
     )
     non_crit_min = base_hit * min(min_damage, max_damage) / 100
@@ -484,7 +491,7 @@ hit_rate = {}  # per-skill hits/sec landing damage (target-multiplied), feeds To
 
 showdown_s = DAMAGE_SKILLS["SHOWDOWN"]
 showdown_hit = hit_damage(skill_coefficient_base, True, 1.0, showdown_mastery, showdown_mastery_boss, 0.0, 0.0)
-showdown_target_mult = target_multiplier(showdown_s["targets"])
+showdown_target_mult = boss_normal_multiplier(showdown_s["targets"], showdown_mastery_boss, 0.0)
 showdown_dps = showdown_hits * showdown_hit * showdown_per_second * showdown_target_mult
 hit_rate["SHOWDOWN"] = showdown_hits * showdown_per_second * showdown_target_mult if unlocked("SHOWDOWN") else 0.0
 skill_dps["SHOWDOWN"] = showdown_dps if unlocked("SHOWDOWN") else 0.0
@@ -504,7 +511,7 @@ for key, s in DAMAGE_SKILLS.items():
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
-    tm = target_multiplier(s["targets"])
+    tm = boss_normal_multiplier(s["targets"], s["mastery_boss"], s["mastery_normal"])
     skill_dps[key] = rate * hd * tm
     hit_rate[key] = rate * tm
 
@@ -514,7 +521,7 @@ if unlocked("TOXIC_VENOM"):
     total_hit_rate = sum(hit_rate[k] for k in TRIGGERS_TOXIC_VENOM)
     toxic_pct = coeff_pct(TOXIC_VENOM["base"], TOXIC_VENOM["fidx"], True, TOXIC_VENOM["job_step"])
     toxic_hd = hit_damage(toxic_pct, False, 1.0, toxic_venom_mastery, 0.0, 0.0, 0.0)
-    skill_dps["TOXIC_VENOM"] = 0.2 * total_hit_rate * toxic_hd
+    skill_dps["TOXIC_VENOM"] = 0.2 * total_hit_rate * toxic_hd * boss_normal_multiplier(1, 0.0, 0.0)
 else:
     skill_dps["TOXIC_VENOM"] = 0.0
 
@@ -522,7 +529,7 @@ else:
 if unlocked("SHADOW_SHIFTER"):
     shifter_pct = coeff_pct(SHADOW_SHIFTER["base"], SHADOW_SHIFTER["fidx"], True, SHADOW_SHIFTER["job_step"])
     shifter_hd = hit_damage(shifter_pct, False, 1.0, 0.0, 0.0, 0.0, 0.0)
-    skill_dps["SHADOW_SHIFTER"] = incoming_hit_rate * 0.2 * shifter_hd
+    skill_dps["SHADOW_SHIFTER"] = incoming_hit_rate * 0.2 * shifter_hd * boss_normal_multiplier(1, 0.0, 0.0)
 else:
     skill_dps["SHADOW_SHIFTER"] = 0.0
 

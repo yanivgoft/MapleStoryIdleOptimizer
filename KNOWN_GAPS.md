@@ -299,3 +299,47 @@ since "why did the DPS number change" is a fair question to be able to answer la
   will understate how tightly-packed a buff's recasts actually are (using the wider raw-cooldown
   spacing while the cast count itself already assumes the narrower CDR-reduced one), slightly
   underestimating that buff's uptime. Present in every class that has a recastable buff row.
+- **All 12 classes — Boss/Normal Monster Damage% were blended incorrectly in Breakthrough/Hero
+  Dungeon content, biasing Sensitivity's marginal-value reporting toward whichever branch hits
+  more targets**: the user reported that changing Boss Monster Damage% shifted how much marginal
+  DPS Normal Monster Damage% appeared to be worth, even with the Boss/Normal weight held constant.
+  Root cause, found in two stages:
+  1. Boss/Normal Monster Damage% were summed into one shared percentage bucket
+     (`(1-w)*boss_damage + w*normal_damage`) before a single multiplication — a flat +X to either
+     stat produced identical dollar DPS gain regardless of how disparate the current values were
+     (1000% vs 100%). Fixed by giving each branch (boss = 1 target, normal = capped target count)
+     its own independent `(1+damage%/100)*targets` multiplier, blended only as the two branches'
+     final DPS values — correct for the real Total DPS number, since hitting more targets really
+     does more total damage.
+  2. That fix alone was still wrong for Sensitivity specifically: blending the two branches'
+     *dollar* DPS totals weights the comparison by each branch's raw dollar size, and the normal
+     branch is inherently bigger (it hits several targets, boss hits one) — so any stat that helps
+     both branches got its reported marginal value dominated by the normal branch's dollar volume,
+     regardless of the actual time-weight `w` (confirmed via a regression test: Boss=1000%,
+     Normal=100%, Equal/50-50 weight showed Normal's gain at 6.35x Boss's — far more than the
+     ~5.5x pure diminishing-returns-from-current-value would predict). Fixed by changing
+     Sensitivity's "DPS Gain"/"% Gain" columns to a time-weighted average of each branch's own
+     *relative* growth ratio (`new/baseline`) instead of a dollar delta of the dollar-blended
+     total — a ratio cancels out any per-branch constant a swept stat doesn't touch (target count,
+     defense, crit), fixing the bias while still correctly reflecting real
+     diminishing-returns-from-current-value and within-branch skill-to-skill weighting (a skill
+     that hits 10 targets should still matter more to "how much does my normal-monster performance
+     improve" than one that hits 3 — that part was never the bug). This also fixes Potential Cubes
+     EV, which reads Sensitivity's DPS-gain numbers as its "$/unit" conversion factor for every
+     potential-line stat. Monster Defense stays a single shared value for both branches in
+     Breakthrough (not split) — out of scope, since splitting it would need currently-nonexistent
+     data on normal-monster defense in Breakthrough content.
+  While replicating this fix, found and fixed the same root-cause bug hiding in three
+  class-specific code paths that had grown their own independent (and non-obvious) boss/normal
+  handling: Bishop's Angel Ray boss-proc mastery (was additionally multiplying by
+  `(1-normal_weight_frac)` on top of the shared blend, letting Normal Monster Damage% leak into a
+  boss-only proc, and not excluding boss_damage% during PvP); Dark Knight's Sensitivity
+  shadow-block mirror (applied Evil Eye + Dark Resonance's combined bonus to only one branch there,
+  vs. both branches on the main Calc sheet — invisible under the old dollar-blend math since both
+  sides were equally wrong, but broke the new ratio-based math since baseline and swept values then
+  used inconsistent formulas); and Marksman's Bolt Surplus trigger-rate metric (derived via
+  `HitRate = O/N`, which used to accidentally cancel out the shared boss/normal factor since it
+  lived in both O and N — once the fix moved that factor out of N, HitRate silently absorbed a full
+  Boss Monster Damage%/Mastery multiplier it was never supposed to see, until it was rebuilt as a
+  dedicated target-count-only blend instead of reusing O/N division).
+

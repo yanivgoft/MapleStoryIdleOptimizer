@@ -507,12 +507,21 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
 
 
 def monster_blend_expr(monster_type_ref, w_ref, boss_expr, normal_expr, pvp_expr):
+    """Only for skill-intrinsic constants where a plain linear blend of the RAW VALUES is correct
+    (e.g. Frozen Orb's boss/normal damage-multiplier constant) — NOT for Boss/Normal Monster
+    Damage% or anything downstream of it (DPS), where the two branches must be kept independent
+    until blended as RATIOS — see boss_normal_dps_split_exprs below."""
     return f'IF({monster_type_ref}="pvp",{pvp_expr},(1-{w_ref})*({boss_expr})+{w_ref}*({normal_expr}))'
 
 
-def target_multiplier_expr(monster_type_ref, w_ref, targets_ref, max_enemies_ref):
-    capped_targets = f'MIN({targets_ref},{max_enemies_ref})'
-    return monster_blend_expr(monster_type_ref, w_ref, "1", capped_targets, "1")
+def boss_normal_dps_split_exprs(prefix_expr, monster_type_ref, boss_dmg_pct_expr,
+                                 normal_dmg_pct_expr, normal_targets_ref, max_enemies_ref):
+    """Splits a row's DPS into independent boss-only and normal-only values — see
+    build_fp_mage_workbook.py's copy of this function for the full rationale."""
+    capped_targets = f'MIN({normal_targets_ref},{max_enemies_ref})'
+    boss_mult = f'IF({monster_type_ref}="pvp",1,1+({boss_dmg_pct_expr})/100)'
+    normal_mult = f'IF({monster_type_ref}="pvp",1,(1+({normal_dmg_pct_expr})/100)*({capped_targets}))'
+    return f'({prefix_expr})*{boss_mult}', f'({prefix_expr})*{normal_mult}'
 
 
 def fixed_duration_active_expr(monster_type_ref, fight_duration_ref):
@@ -1006,6 +1015,8 @@ SUMMARY_ROW = {
     "TOTAL_DPS": 3,
     "BASIC_ATTACK_DPS": 60,
     "STARTUP_TIME": 61,
+    "BOSS_ONLY_TOTAL": 62,
+    "NORMAL_ONLY_TOTAL": 63,
 }
 
 
@@ -1034,17 +1045,12 @@ def build_calc_sheet(wb):
     elem_amp_gated = f'IF(C{ea_row}=TRUE,F{ea_row},0)'
     arcane_aim_gated = f'IF(C{aa_row}=TRUE,F{aa_row},0)'
 
-    # Single-target (boss/pvp) halving — Frozen Orb only ("if there is 1 target near the orb,
-    # the damage is halved"). A Chapter Breakthrough fight is itself a weighted blend of a
-    # single (boss-like) target and multiple normal-monster targets (Inputs!normal_weight_frac)
-    # — the halving should apply to that same boss-weighted portion, not be either fully on or
-    # fully off, so this blends the 0.5/1.0 multiplier by the same weight every other per-target
-    # effect in this workbook uses (monster_blend_expr's own pattern) rather than a binary IF.
-    # PvP is 1v1, so it halves there too, same as pure boss.
-    frozen_orb_single_target_mult = (
-        f'IF({IB("monster_type")}="pvp",0.5,'
-        f'(1-{IB("normal_weight_frac")})*0.5+{IB("normal_weight_frac")}*1)'
-    )
+    # Frozen Orb's single-target (boss/pvp) halving is now applied directly inside its own
+    # boss/normal branch split (see the FROZEN_ORB case below) rather than as a shared w-blended
+    # scalar here — folding a per-branch-dependent 0.5/1.0 multiplier into a value multiplied by
+    # BOTH branches equally would reintroduce the exact cross-branch contamination this fix
+    # removes elsewhere (see Bishop's ANGEL_RAY_BOSS_PROC comment for the detailed rationale).
+
 
     for key, r in ROW.items():
         ws.cell(row=r, column=1, value=f"={S('Key', r)}")
@@ -1128,16 +1134,9 @@ def build_calc_sheet(wb):
 
         if key == "CHAIN_LIGHTNING" or key in DAMAGE_ROW_KEYS:
             ws.cell(row=r, column=10, value=f'={IB("attack")}*(F{r}/100)')
-            monster_dmg_term = monster_blend_expr(
-                IB("monster_type"), IB("normal_weight_frac"),
-                f'{IB("boss_damage")}+{S("MasteryBossDamage%", r)}+Summary!$B${SUMMARY_ROW["MONSTER_DMG_BONUS"]}',
-                f'{IB("normal_damage")}+{S("MasteryNormalDamage%", r)}+Summary!$B${SUMMARY_ROW["MONSTER_DMG_BONUS"]}',
-                "0",
-            )
             ws.cell(row=r, column=11, value=(
                 f'=J{r}*(1+{IB("stat_damage")}/100)'
                 f'*(1+({IB("damage")}+Summary!$B${SUMMARY_ROW["DAMAGE_BONUS"]})/100)'
-                f'*(1+{monster_dmg_term}/100)'
                 f'*(1+{IB("damage_amp")}/100)'
                 f'*(5000/(6000+{IB("monster_defense")}*(1-{IB("def_pen")}/100)))'
                 f'*(1+{IB("final_damage")}/100)*(1+{elem_amp_gated}/100)'
@@ -1155,23 +1154,44 @@ def build_calc_sheet(wb):
             for col in (10, 11, 12, 13, 14):
                 ws.cell(row=r, column=col, value="")
 
+        boss_dmg_pct_r = f'{IB("boss_damage")}+{S("MasteryBossDamage%", r)}+Summary!$B${SUMMARY_ROW["MONSTER_DMG_BONUS"]}'
+        normal_dmg_pct_r = f'{IB("normal_damage")}+{S("MasteryNormalDamage%", r)}+Summary!$B${SUMMARY_ROW["MONSTER_DMG_BONUS"]}'
+
         if key == "CHAIN_LIGHTNING":
-            ws.cell(row=r, column=15, value=(
-                f"=IF(C{r},{S('HitsPerCast', r)}*N{r}*Summary!$B${SUMMARY_ROW['BASIC_ATTACKS_PER_SEC']}*"
-                f"{target_multiplier_expr(IB('monster_type'), IB('normal_weight_frac'), S('NormalMonsterTargets', r), IB('max_enemies_hit'))},0)"
-            ))
+            prefix = f"{S('HitsPerCast', r)}*N{r}*Summary!$B${SUMMARY_ROW['BASIC_ATTACKS_PER_SEC']}"
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                S("NormalMonsterTargets", r), IB("max_enemies_hit"),
+            )
+            ws.cell(row=r, column=19, value=f'=IF(C{r},{boss_expr},0)')
+            ws.cell(row=r, column=21, value=f'=IF(C{r},{normal_expr},0)')
         elif key == "FROZEN_ORB":
-            ws.cell(row=r, column=15, value=(
-                f'=IF(C{r},H{r}*N{r}*{rate_r}*{frozen_orb_single_target_mult}*'
-                f"{target_multiplier_expr(IB('monster_type'), IB('normal_weight_frac'), S('NormalMonsterTargets', r), IB('max_enemies_hit'))},0)"
-            ))
+            # Frozen Orb's own boss/normal damage-multiplier constant (0.5 vs single target,
+            # 1.0 vs normal-monster AoE) must be applied INSIDE each branch, not as a shared
+            # w-blended scalar multiplied on top — otherwise it reintroduces the same
+            # blend-then-multiply mismatch this whole fix removes elsewhere (see
+            # build_fp_mage_workbook.py's ANGEL_RAY_BOSS_PROC-equivalent comment in Bishop for the
+            # detailed rationale of why that's wrong).
+            frozen_orb_boss_mult = f'IF({IB("monster_type")}="pvp",1,1+({boss_dmg_pct_r})/100)'
+            frozen_orb_normal_mult = (
+                f'IF({IB("monster_type")}="pvp",1,(1+({normal_dmg_pct_r})/100)'
+                f'*(MIN({S("NormalMonsterTargets", r)},{IB("max_enemies_hit")})))'
+            )
+            ws.cell(row=r, column=19, value=f'=IF(C{r},H{r}*N{r}*{rate_r}*0.5*{frozen_orb_boss_mult},0)')
+            ws.cell(row=r, column=21, value=f'=IF(C{r},H{r}*N{r}*{rate_r}*1*{frozen_orb_normal_mult},0)')
         elif key in DAMAGE_ROW_KEYS:
-            ws.cell(row=r, column=15, value=(
-                f'=IF(C{r},H{r}*N{r}*{rate_r}*'
-                f"{target_multiplier_expr(IB('monster_type'), IB('normal_weight_frac'), S('NormalMonsterTargets', r), IB('max_enemies_hit'))},0)"
-            ))
+            prefix = f'H{r}*N{r}*{rate_r}'
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                S("NormalMonsterTargets", r), IB("max_enemies_hit"),
+            )
+            ws.cell(row=r, column=19, value=f'=IF(C{r},{boss_expr},0)')
+            ws.cell(row=r, column=21, value=f'=IF(C{r},{normal_expr},0)')
         else:
-            ws.cell(row=r, column=15, value=0)
+            ws.cell(row=r, column=19, value=0)
+            ws.cell(row=r, column=21, value=0)
+
+        ws.cell(row=r, column=15, value=f'=(1-{IB("normal_weight_frac")})*S{r}+{IB("normal_weight_frac")}*U{r}')
 
         ws.cell(row=r, column=16, value=f'=IF(Summary!$B${SUMMARY_ROW["TOTAL_DPS"]}=0,0,O{r}/Summary!$B${SUMMARY_ROW["TOTAL_DPS"]})')
 
@@ -1187,6 +1207,8 @@ def build_calc_sheet(wb):
 
     ws.cell(row=1, column=17, value="InvCooldown")
     ws.cell(row=1, column=18, value="CastsInFight")
+    ws.cell(row=1, column=19, value="BossOnlyDPS")
+    ws.cell(row=1, column=21, value="NormalOnlyDPS")
 
     widths = [22, 30, 10, 12, 9, 15, 13, 14, 17, 13, 15, 12, 12, 17, 12, 10]
     for i, w in enumerate(widths):
@@ -1272,7 +1294,7 @@ def build_summary_sheet(wb):
     # same tier as Night Lord's own Frailty Curse Lv.111 simplification). Elemental Reset's own
     # Damage Taken bonus is the SAME kind of bonus (target damage-taken%), so it's summed into
     # this same bucket rather than kept as its own separate multiplicative factor. Feeds into
-    # Calc!K's monster_dmg_term additively (both boss and normal branches).
+    # both boss_dmg_pct_r/row and normal_dmg_pct_r/row additively (both branches).
     fb_cd = S("Cooldown(s)", ROW["FREEZING_BREATH"])
     ws.cell(row=r_mdb, column=1, value="Monster Damage Taken Bonus % (Freezing Breath - Weaken + Elemental Reset, summed)")
     ws.cell(row=r_mdb, column=2, value=(
@@ -1325,6 +1347,12 @@ def build_summary_sheet(wb):
 
     ws.cell(row=r_total, column=1, value="TOTAL DPS").font = Font(bold=True, size=13)
     ws.cell(row=r_total, column=2, value=f"=SUM(Calc!O2:O{LAST_ROW})").font = Font(bold=True, size=13)
+
+    r_bot, r_not = SUMMARY_ROW["BOSS_ONLY_TOTAL"], SUMMARY_ROW["NORMAL_ONLY_TOTAL"]
+    ws.cell(row=r_bot, column=1, value="Boss-Only Total DPS (Sensitivity baseline)")
+    ws.cell(row=r_bot, column=2, value=f"=SUM(Calc!S2:S{LAST_ROW})")
+    ws.cell(row=r_not, column=1, value="Normal-Only Total DPS (Sensitivity baseline)")
+    ws.cell(row=r_not, column=2, value=f"=SUM(Calc!U2:U{LAST_ROW})")
 
     ws.cell(row=r_basic, column=1, value="Chain Lightning DPS")
     ws.cell(row=r_basic, column=2, value=f"=Calc!O{ROW['CHAIN_LIGHTNING']}")
@@ -1450,7 +1478,7 @@ def dps_per_unit_expr(stat_name):
 # row (2..LAST_ROW) + 8 local summary rows (ed/avgbuff/mdb/db/asb/aps/castrate/baps, same count
 # as FP-Mage's own 8: bm/ed/avgbuff/asbonus/aps/castrate/baps/meteor) + 1 blank + total + 2
 # blank spacer rows before the next block. Derived from LAST_ROW so it can't drift out of sync.
-BLOCK_HEIGHT = LAST_ROW + 14
+BLOCK_HEIGHT = LAST_ROW + 16
 BLOCK_START = SENSITIVITY_HEADER_ROW + len(STAT_SWEEP) + 3
 
 
@@ -1495,11 +1523,14 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     s_castrate = calc_end + 8
     s_baps = calc_end + 9
     s_startup = calc_end + 10
-    s_total = calc_end + 11
+    s_boss_total = calc_end + 11
+    s_normal_total = calc_end + 12
+    s_total = calc_end + 13
     avgbuff_ref, mdb_ref = f"B{s_avgbuff}", f"B{s_mdb}"
     db_ref, asb_ref, aps_ref = f"B{s_db}", f"B{s_asb}", f"B{s_aps}"
     castrate_ref, baps_ref, total_ref = f"B{s_castrate}", f"B{s_baps}", f"B{s_total}"
     startup_ref = f"B{s_startup}"
+    boss_total_ref, normal_total_ref = f"B{s_boss_total}", f"B{s_normal_total}"
 
     # Magic Critical pattern deltas — already baked into the matching Inputs field at the
     # current skill level, so only the marginal delta (this block's own F, reflecting any
@@ -1534,10 +1565,6 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ea_row_of, aa_row_of = row_of["ELEMENT_AMPLIFICATION"], row_of["ARCANE_AIM"]
     elem_amp_gated_block = f'IF(C{ea_row_of}=TRUE,F{ea_row_of},0)'
     arcane_aim_gated_block = f'IF(C{aa_row_of}=TRUE,F{aa_row_of},0)'
-    frozen_orb_single_target_mult_block = (
-        f'IF({ib("monster_type")}="pvp",0.5,'
-        f'(1-{ib("normal_weight_frac")})*0.5+{ib("normal_weight_frac")}*1)'
-    )
 
     ws.cell(row=row_label, column=1, value=f"Stat: {stat_label}").font = LABEL_FONT
     for i, name in enumerate(CALC_HEADERS):
@@ -1619,16 +1646,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             ws.cell(row=row, column=10, value=(
                 f'=({ib("attack")}+{mainstat_attack_delta}*(1+{ib("attack_pct")}/100))*(F{row}/100)'
             ))
-            monster_dmg_term = monster_blend_expr(
-                ib("monster_type"), ib("normal_weight_frac"),
-                f'{ib("boss_damage")}+{S("MasteryBossDamage%", r)}+{mdb_ref}',
-                f'{ib("normal_damage")}+{S("MasteryNormalDamage%", r)}+{mdb_ref}',
-                "0",
-            )
             ws.cell(row=row, column=11, value=(
                 f'=J{row}*(1+{ib("stat_damage")}/100)'
                 f'*(1+({ib("damage")}+{db_ref})/100)'
-                f'*(1+{monster_dmg_term}/100)'
                 f'*(1+{ib("damage_amp")}/100)'
                 f'*(5000/(6000+{ib("monster_defense")}*(1-{ib("def_pen")}/100)))'
                 f'*(1+{ib("final_damage")}/100)*(1+{elem_amp_gated_block}/100)'
@@ -1649,24 +1669,39 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             for col in (10, 11, 12, 13, 14):
                 ws.cell(row=row, column=col, value="")
 
+        boss_dmg_pct_row = f'{ib("boss_damage")}+{S("MasteryBossDamage%", r)}+{mdb_ref}'
+        normal_dmg_pct_row = f'{ib("normal_damage")}+{S("MasteryNormalDamage%", r)}+{mdb_ref}'
+
         if key == "CHAIN_LIGHTNING":
             chain_targets_expr = f'(6+{ib("basic_attack_target_increase")})'
-            ws.cell(row=row, column=15, value=(
-                f"=IF(C{row},{S('HitsPerCast', r)}*N{row}*{baps_ref}*"
-                f"{target_multiplier_expr(ib('monster_type'), ib('normal_weight_frac'), chain_targets_expr, ib('max_enemies_hit'))},0)"
-            ))
+            prefix = f"{S('HitsPerCast', r)}*N{row}*{baps_ref}"
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                chain_targets_expr, ib("max_enemies_hit"),
+            )
+            ws.cell(row=row, column=19, value=f'=IF(C{row},{boss_expr},0)')
+            ws.cell(row=row, column=21, value=f'=IF(C{row},{normal_expr},0)')
         elif key == "FROZEN_ORB":
-            ws.cell(row=row, column=15, value=(
-                f'=IF(C{row},H{row}*N{row}*{rate_row}*{frozen_orb_single_target_mult_block}*'
-                f"{target_multiplier_expr(ib('monster_type'), ib('normal_weight_frac'), S('NormalMonsterTargets', r), ib('max_enemies_hit'))},0)"
-            ))
+            frozen_orb_boss_mult_block = f'IF({ib("monster_type")}="pvp",1,1+({boss_dmg_pct_row})/100)'
+            frozen_orb_normal_mult_block = (
+                f'IF({ib("monster_type")}="pvp",1,(1+({normal_dmg_pct_row})/100)'
+                f'*(MIN({S("NormalMonsterTargets", r)},{ib("max_enemies_hit")})))'
+            )
+            ws.cell(row=row, column=19, value=f'=IF(C{row},H{row}*N{row}*{rate_row}*0.5*{frozen_orb_boss_mult_block},0)')
+            ws.cell(row=row, column=21, value=f'=IF(C{row},H{row}*N{row}*{rate_row}*1*{frozen_orb_normal_mult_block},0)')
         elif key in DAMAGE_ROW_KEYS:
-            ws.cell(row=row, column=15, value=(
-                f'=IF(C{row},H{row}*N{row}*{rate_row}*'
-                f"{target_multiplier_expr(ib('monster_type'), ib('normal_weight_frac'), S('NormalMonsterTargets', r), ib('max_enemies_hit'))},0)"
-            ))
+            prefix = f'H{row}*N{row}*{rate_row}'
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                S("NormalMonsterTargets", r), ib("max_enemies_hit"),
+            )
+            ws.cell(row=row, column=19, value=f'=IF(C{row},{boss_expr},0)')
+            ws.cell(row=row, column=21, value=f'=IF(C{row},{normal_expr},0)')
         else:
-            ws.cell(row=row, column=15, value=0)
+            ws.cell(row=row, column=19, value=0)
+            ws.cell(row=row, column=21, value=0)
+
+        ws.cell(row=row, column=15, value=f'=(1-{ib("normal_weight_frac")})*S{row}+{ib("normal_weight_frac")}*U{row}')
 
         ws.cell(row=row, column=16, value=f'=IF({total_ref}=0,0,O{row}/{total_ref})')
         ws.cell(row=row, column=17, value=f'=IFERROR(1/{eff_cd_row},0)')
@@ -1732,10 +1767,15 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         aps_ref, LAST_ROW,
     ))
 
+    ws.cell(row=s_boss_total, column=1, value="Boss-Only Total DPS (this block's swept value)")
+    ws.cell(row=s_boss_total, column=2, value=f"=SUM(S{calc_start}:S{calc_end})")
+    ws.cell(row=s_normal_total, column=1, value="Normal-Only Total DPS (this block's swept value)")
+    ws.cell(row=s_normal_total, column=2, value=f"=SUM(U{calc_start}:U{calc_end})")
+
     ws.cell(row=s_total, column=1, value="TOTAL DPS").font = LABEL_FONT
     ws.cell(row=s_total, column=2, value=f"=SUM(O{calc_start}:O{calc_end})").font = LABEL_FONT
 
-    return total_ref
+    return total_ref, boss_total_ref, normal_total_ref
 
 
 def build_sensitivity_sheet(wb):
@@ -1760,7 +1800,7 @@ def build_sensitivity_sheet(wb):
         base_row = BLOCK_START + idx * BLOCK_HEIGHT
         override_expr = override_expr_for(kind, key)
         ib = make_ib(key, override_expr)
-        total_ref = build_stat_block(ws, base_row, ib, key, label, override_expr)
+        total_ref, boss_total_ref, normal_total_ref = build_stat_block(ws, base_row, ib, key, label, override_expr)
 
         row = header_row + 1 + idx
         ws.cell(row=row, column=1, value=label)
@@ -1769,8 +1809,11 @@ def build_sensitivity_sheet(wb):
         ws.cell(row=row, column=5, value=f"={override_expr}")
         ws.cell(row=row, column=6, value=f"=Summary!$B${SUMMARY_ROW['TOTAL_DPS']}")
         ws.cell(row=row, column=7, value=f"={total_ref}")
-        ws.cell(row=row, column=8, value=f"=G{row}-F{row}")
-        ws.cell(row=row, column=9, value=f"=IF(F{row}=0,0,G{row}/F{row}*100)")
+        boss_ratio = f'IFERROR({boss_total_ref}/Summary!$B${SUMMARY_ROW["BOSS_ONLY_TOTAL"]},1)'
+        normal_ratio = f'IFERROR({normal_total_ref}/Summary!$B${SUMMARY_ROW["NORMAL_ONLY_TOTAL"]},1)'
+        weighted_ratio = f'((1-{IB("normal_weight_frac")})*{boss_ratio}+{IB("normal_weight_frac")}*{normal_ratio})'
+        ws.cell(row=row, column=8, value=f"=Summary!$B${SUMMARY_ROW['TOTAL_DPS']}*({weighted_ratio}-1)")
+        ws.cell(row=row, column=9, value=f"={weighted_ratio}*100")
         ws.cell(row=row, column=2, value=f'=IFERROR(1/(I{row}-100),"n/a")')
 
     # Cooldown Reduction Milestone Sweep — CDR's DPS impact is a step function in fixed-duration
@@ -1795,7 +1838,7 @@ def build_sensitivity_sheet(wb):
         base_row = cdr_blocks_base_row + i * BLOCK_HEIGHT
         override_expr = str(cdr_value)
         ib = make_ib("skill_cooldown_decrease", override_expr)
-        total_ref = build_stat_block(
+        total_ref, _boss_total_ref, _normal_total_ref = build_stat_block(
             ws, base_row, ib, "skill_cooldown_decrease", f"CDR = {cdr_value}s", override_expr,
         )
 

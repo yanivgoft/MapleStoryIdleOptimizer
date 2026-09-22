@@ -209,17 +209,21 @@ def buff_avg(pct, duration, cooldown, costs_action):
     return pct * uptime
 
 
-def target_multiplier(targets):
+def boss_normal_multiplier(targets, mastery_boss, mastery_normal):
+    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
+    full (1+damage%/100)*targets treatment. The two branches are combined here as a plain dollar
+    blend for the real Total DPS (correct — this IS what actual DPS output looks like when
+    time-averaged across both target types); Sensitivity's marginal-value ranking uses a separate,
+    ratio-based blend instead (Excel-side only, not modeled in this Python script), since a dollar
+    blend would let a stat's reported "value" be dominated by whichever branch hits more targets."""
     if monster_type == "pvp":
         return 1
     targets = min(targets, max_enemies_hit)
-    return (1 - normal_weight) * 1 + normal_weight * targets
-
-
-def monster_blend(boss_val, normal_val):
-    if monster_type == "pvp":
-        return boss_val
-    return (1 - normal_weight) * boss_val + normal_weight * normal_val
+    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
+    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
+    boss_branch = 1 + boss_term / 100
+    normal_branch = (1 + normal_term / 100) * targets
+    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
 
 
 def coeff_pct(base, fidx, scales, job_step):
@@ -298,11 +302,11 @@ monster_dmg_bonus = 0.0
 
 
 def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_ratio=0.0, ahoy_ratio=0.0):
+    # mastery_boss/mastery_normal are unused here now (Boss/Normal Monster Damage% is applied by
+    # the caller via boss_normal_multiplier, not blended into base_hit) — kept in the signature so
+    # every existing call site (which passes each skill's own mastery values) doesn't need editing.
     base_damage = attack * (coeff_pct_val / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
-    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
-    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
-    monster_dmg = 0 if monster_type == "pvp" else monster_blend(boss_term, normal_term)
     helper_mult = 1.0
     if maple_ratio:
         helper_mult *= (1 + maple_ratio * maple_hero_pct / 100)
@@ -311,7 +315,7 @@ def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_rati
     final_mult = (1 + (final_damage + final_damage_extra) / 100) * helper_mult
     source_pct = basic_attack_damage if is_basic else skill_damage
     base_hit = (
-        base_damage * (1 + stat_damage / 100) * (1 + damage / 100) * (1 + monster_dmg / 100)
+        base_damage * (1 + stat_damage / 100) * (1 + damage / 100)
         * (1 + damage_amp / 100) * dmg_reduction * final_mult * (1 + source_pct / 100)
         * attack_bucket_mult
     )
@@ -326,7 +330,7 @@ def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_rati
 # ---- Eight-Legs Easton (basic attack) ----
 eight_legs_easton_hit = hit_damage(eight_legs_easton_pct, True, eight_legs_easton_mastery_boss_damage, 0)
 eight_legs_easton_dps = (
-    EIGHT_LEGS_EASTON_HITS * eight_legs_easton_hit * eight_legs_easton_per_second * target_multiplier(eight_legs_easton_targets)
+    EIGHT_LEGS_EASTON_HITS * eight_legs_easton_hit * eight_legs_easton_per_second * boss_normal_multiplier(eight_legs_easton_targets, eight_legs_easton_mastery_boss_damage, 0)
     if unlocked("EIGHT_LEGS_EASTON") else 0.0
 )
 
@@ -385,7 +389,7 @@ for key, s in DAMAGE_SKILLS.items():
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
-    skill_dps[key] = proc_prob * rate * hd * target_multiplier(s["targets"])
+    skill_dps[key] = proc_prob * rate * hd * boss_normal_multiplier(s["targets"], s.get("mastery_boss", 0), s.get("mastery_normal", 0))
 
 # ---- Majestic Presence (procs off 3 independent sources: Basic Attack + Brain Scrambler + Rapid
 #      Fire — no Cooldown(s) of its own, combined trigger rate is the sum of the 3 sources' own
@@ -405,7 +409,7 @@ if unlocked("MAJESTIC_PRESENCE"):
         return hits / eff_cd
 
     mp_combined_rate = eight_legs_easton_per_second + _source_rate("BRAIN_SCRAMBLER") + _source_rate("RAPID_FIRE")
-    majestic_presence_dps = 0.25 * mp_combined_rate * mp_hit * target_multiplier(6)
+    majestic_presence_dps = 0.25 * mp_combined_rate * mp_hit * boss_normal_multiplier(6, 0, 0)
 else:
     majestic_presence_dps = 0.0
 skill_dps["MAJESTIC_PRESENCE"] = majestic_presence_dps

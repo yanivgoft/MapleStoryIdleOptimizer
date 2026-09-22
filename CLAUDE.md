@@ -136,6 +136,21 @@ you're building a new class, check for all of these *before* your first build, n
    (ICD>0), since only they use `remaining_after_last` for anything. Always verify a
    duration-related change against at least one ICD>0 row per class before trusting a clean
    verify-script diff on ICD=0 rows alone.
+9. **Sensitivity's marginal-value metric must weight branches by time, not by dollars — a plain
+   `NewBlendedTotal - BaselineBlendedTotal` is NOT the same as a fair per-stat comparison whenever
+   two blended branches (e.g. Boss/Normal Monster combat) have different raw DPS magnitudes.**
+   Blending two branches' dollar totals `(1-w)*DPS_boss + w*DPS_normal` is correct for the real
+   Total DPS (hitting more targets really does more damage), but using that same blended dollar
+   delta for Sensitivity lets a stat's reported value be dominated by whichever branch happens to
+   have a bigger dollar total (e.g. more targets), regardless of the user's actual time-weight `w`.
+   The fix: Sensitivity blends the two branches' *relative growth ratios* (`new/baseline`) by `w`
+   instead — a ratio cancels out any per-branch constant (target count, defense) the swept stat
+   doesn't touch. Any class-specific code path that independently reads/derives a boss/normal-blended
+   value (a mastery bonus, a HitRate-style metric built by dividing one blended column by another,
+   a Sensitivity shadow-block mirror recomputing the blend on its own) needs the SAME treatment —
+   check every such path individually; a clean pure-boss/pure-normal edge-case test does NOT catch
+   an asymmetric bug that's equally wrong on both branches (only a blended, both-nonzero regression
+   test does, since edge cases collapse to a single branch where symmetric bugs go unnoticed).
 
 ## Cross-checking a new class against its siblings
 

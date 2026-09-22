@@ -224,11 +224,20 @@ def buff_avg(pct, duration, cooldown, costs_action):
     return pct * uptime
 
 
-def target_multiplier(targets):
+def boss_normal_multiplier(mastery_boss, mastery_normal, targets):
+    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
+    full (1+damage%/100)*targets treatment, combined here as a plain dollar blend (correct for the
+    real Total DPS). Sensitivity's marginal-value ranking uses a separate, ratio-based blend
+    instead (see build_sensitivity_sheet), since a dollar blend would let a stat's reported
+    "value" be dominated by whichever branch hits more targets."""
     if monster_type == "pvp":
         return 1
     targets = min(targets, max_enemies_hit)
-    return (1 - normal_weight) * 1 + normal_weight * targets
+    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
+    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
+    boss_branch = 1 + boss_term / 100
+    normal_branch = (1 + normal_term / 100) * targets
+    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
 
 
 def monster_blend(boss_val, normal_val):
@@ -379,14 +388,14 @@ dark_impale_per_second = max(0, actions_per_second - cast_rate)
 def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_ratio=0.0):
     base_damage = attack * (coeff_pct_val / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
-    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
-    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
-    monster_dmg = 0 if monster_type == "pvp" else monster_blend(boss_term, normal_term)
     maple_mult = (1 + maple_ratio * maple_hero_pct / 100) if maple_ratio else 1.0
     final_mult = (1 + (final_damage + final_damage_extra) / 100) * maple_mult
     source_pct = basic_attack_damage if is_basic else skill_damage
+    # Boss/Normal Monster Damage% is deliberately NOT applied here — it's blended per-branch
+    # (its own multiplier * its own target count) in boss_normal_multiplier, applied by the
+    # caller, rather than summed into base_hit before a single shared multiplication.
     base_hit = (
-        base_damage * (1 + stat_damage / 100) * (1 + damage / 100) * (1 + monster_dmg / 100)
+        base_damage * (1 + stat_damage / 100) * (1 + damage / 100)
         * (1 + damage_amp / 100) * dmg_reduction * final_mult * (1 + source_pct / 100)
         * attack_bucket_mult
     )
@@ -400,7 +409,7 @@ def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_rati
 
 # ---- Dark Impale (basic attack) ----
 dark_impale_hit = hit_damage(dark_impale_pct, True, dark_impale_mastery_boss_damage, 0)
-dark_impale_dps = DARK_IMPALE_HITS * dark_impale_hit * dark_impale_per_second * target_multiplier(dark_impale_targets) if unlocked("DARK_IMPALE") else 0.0
+dark_impale_dps = DARK_IMPALE_HITS * dark_impale_hit * dark_impale_per_second * boss_normal_multiplier(dark_impale_mastery_boss_damage, 0, dark_impale_targets) if unlocked("DARK_IMPALE") else 0.0
 
 # ---- Damage skills ----
 magic_crash_targets = 5 + (4 if level >= 100 else 0)
@@ -458,7 +467,7 @@ for key, s in DAMAGE_SKILLS.items():
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
-    skill_dps[key] = proc_prob * rate * hd * target_multiplier(s["targets"])
+    skill_dps[key] = proc_prob * rate * hd * boss_normal_multiplier(s.get("mastery_boss", 0), s.get("mastery_normal", 0), s["targets"])
 
 total_dps = dark_impale_dps + sum(skill_dps.values())
 

@@ -221,11 +221,20 @@ def buff_avg(pct, duration, cooldown, costs_action):
     return pct * uptime
 
 
-def target_multiplier(targets):
+def boss_normal_multiplier(targets, mastery_boss, mastery_normal):
+    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
+    full (1+damage%/100)*targets treatment. The two branches are combined here as a plain dollar
+    blend for the real Total DPS (correct); Sensitivity's marginal-value ranking uses a separate,
+    ratio-based blend instead, since a dollar blend would let a stat's reported "value" be
+    dominated by whichever branch hits more targets."""
     if monster_type == "pvp":
         return 1
     targets = min(targets, max_enemies_hit)
-    return (1 - normal_weight) * 1 + normal_weight * targets
+    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
+    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
+    boss_branch = 1 + boss_term / 100
+    normal_branch = (1 + normal_term / 100) * targets
+    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
 
 
 def monster_blend(boss_val, normal_val):
@@ -339,18 +348,17 @@ else:
 arrow_stream_per_second = max(0, actions_per_second - cast_rate)
 
 
-def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_ratio=0.0, extra_fd_pct=0.0):
+def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0, extra_fd_pct=0.0):
     base_damage = attack * (coeff_pct_val / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
-    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
-    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
-    monster_dmg = 0 if monster_type == "pvp" else monster_blend(boss_term, normal_term)
     maple_mult = (1 + maple_ratio * maple_hero_pct / 100) if maple_ratio else 1.0
     extra_fd_mult = (1 + extra_fd_pct / 100)
     final_mult = (1 + (final_damage + mortal_blow_bonus) / 100) * maple_mult * extra_fd_mult
     source_pct = basic_attack_damage if is_basic else skill_damage
+    # Boss/Normal Monster Damage% is deliberately NOT applied here — it's blended per-branch in
+    # boss_normal_multiplier, applied by the caller.
     base_hit = (
-        base_damage * (1 + stat_damage / 100) * (1 + damage / 100) * (1 + monster_dmg / 100)
+        base_damage * (1 + stat_damage / 100) * (1 + damage / 100)
         * (1 + damage_amp / 100) * dmg_reduction * final_mult * (1 + source_pct / 100)
         * attack_bucket_mult
     )
@@ -367,9 +375,9 @@ arrow_stream_mastery_damage = level_gated_sum({98: 10, 104: 1, 113: 1, 118: 1, 1
 arrow_stream_mastery_boss_damage = level_gated_sum({108: 10, 122: 10})
 arrow_stream_pct = skill_coefficient_base + arrow_stream_final_attack_addition + arrow_stream_mastery_damage
 arrow_stream_targets = 6 + basic_attack_target_increase
-arrow_stream_hit = hit_damage(arrow_stream_pct, True, arrow_stream_mastery_boss_damage, 0)
+arrow_stream_hit = hit_damage(arrow_stream_pct, True)
 ARROW_STREAM_HITS = 6 if level >= 134 else 5
-arrow_stream_dps = ARROW_STREAM_HITS * arrow_stream_hit * arrow_stream_per_second * target_multiplier(arrow_stream_targets) if unlocked("ARROW_STREAM") else 0.0
+arrow_stream_dps = ARROW_STREAM_HITS * arrow_stream_hit * arrow_stream_per_second * boss_normal_multiplier(arrow_stream_targets, arrow_stream_mastery_boss_damage, 0) if unlocked("ARROW_STREAM") else 0.0
 
 # ---- Damage skills ----
 DAMAGE_SKILLS = {
@@ -405,7 +413,7 @@ for key, s in DAMAGE_SKILLS.items():
         continue
     pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) + s.get("mastery", 0)
     hd = hit_damage(
-        pct, False, s.get("mastery_boss", 0), s.get("mastery_normal", 0),
+        pct, False,
         maple_ratio=s.get("maple_ratio", 0.0), extra_fd_pct=s.get("extra_fd", 0.0),
     )
     proc_prob = 1 - (1 - s.get("proc_chance", 100) / 100) ** 1
@@ -415,7 +423,7 @@ for key, s in DAMAGE_SKILLS.items():
     else:
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
-    skill_dps[key] = proc_prob * rate * hd * target_multiplier(s["targets"])
+    skill_dps[key] = proc_prob * rate * hd * boss_normal_multiplier(s["targets"], s.get("mastery_boss", 0), s.get("mastery_normal", 0))
 
 total_dps = arrow_stream_dps + sum(skill_dps.values())
 
