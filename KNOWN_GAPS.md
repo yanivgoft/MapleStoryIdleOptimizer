@@ -81,6 +81,118 @@ Defense→STR conversion — were closed after this file was first written; see 
 
 ---
 
+## Artifacts (FP-Mage) — Documented simplifications
+
+Equip Effect for all 36 artifacts, plus a reference-only Artifact Potentials calculator (see its
+own bullet below) — Inventory Effect and Resonance Amplification remain out of scope entirely.
+Each item below is a **Documented simplification** (the mechanic is fully known, but exact
+state-machine tracking — real MP, real target buff/debuff state, real per-second enemy counts,
+real proc timing, companions — doesn't exist anywhere in this project), confirmed with the user.
+
+- **Book of Ancient / Athena Pierce's Old Gloves**: both the direct stat (Crit Rate%/Attack Speed%)
+  AND the dependent bonus computed from it (Crit Damage/Max Damage) are assumed already manually
+  folded into the character's own Inputs when equipped — only Sensitivity's marginal delta reacts
+  to them (the "baked into Inputs" convention, extended below to 3 more artifacts).
+- **Clear Spring Water / Soul Pouch**: same "baked into Inputs" convention — their Final Damage
+  bonus (active only in the 5 dungeon-named content types / PvP respectively) is assumed already
+  reflected in `Inputs!final_damage` when equipped.
+- **Reindeer's Spear**: only its BASE (1x, normal-monster) Defense Penetration is baked into
+  `Inputs!def_pen`; its Attack% and its extra PvP(2x total)/boss(3x total) Defense Penetration
+  multiple are real, live terms.
+- **"Growth Dungeon"** (Clear Spring Water's gate, Secret Map's tripling, part of Old Music Box's
+  "dungeons" clause) is mapped to all 5 dungeon-named content types (Weapon/Equipment/
+  Enhancement/EXP/Hero Dungeon) — confirmed by the user, since this content type doesn't exist by
+  that name in the workbook's own Content Type list.
+- **"Arena"** (Soul Pouch's gate) is mapped to the existing PvP content type — confirmed by the user.
+- **Old Music Box**: the real mechanic (a proc on being inflicted with a debuff, 25s duration, 20s
+  cooldown) isn't modeled — no debuff-infliction rate exists anywhere in this project. Collapsed to
+  a flat content-type uptime assumption per the user: 0% in Chapter Hunt/Breakthrough/the 5
+  Growth Dungeon types, 100% in World Boss/PvP, 60/70 (≈85.7%) in Chapter Boss.
+- **Flaming Lava**: the target's buff/debuff/barrier state isn't modeled at all — always assumes
+  the target has a debuff (the wiki's middle tier), per the user, except in Chapter Hunt, where the
+  target has none of the three (buff/debuff/barrier) and this is exactly 0.
+- **Icy Soul Rock**: MP isn't modeled (see `[[mp_cost_modeling_shelved]]`) — assumes 50% of time
+  at ≥75% MP (doubled Crit Damage bonus) and 50% at 50-75% MP (base bonus), averaging to 1.5x the
+  base star value, per the user.
+- **Secret Map / Reindeer's Spear enemy count**: no per-second enemy-count concept exists anywhere
+  in this project — "every content with normal monsters" is assumed to have 10+ enemies, "boss" is
+  assumed to have exactly 1, per the user. Secret Map's Final Damage bonus therefore only affects
+  the normal-monster branch of Breakthrough/Hero Dungeon's DPS split, never the boss branch (and
+  Reindeer's Spear's boss/PvP-only Defense Penetration correction is the mirror image — boss/PvP
+  branch only, never normal).
+- **Peach Tree Herb Pouch / Silver Pendant**: opponent buff-state (Peach Tree's "once per battle if
+  target has buffs" clause) and target-death resets against normal monsters (both would restart
+  the enemy-damage-taken debuff early) aren't modeled — no monster-time-to-kill concept exists
+  anywhere in this project. Silver Pendant's 5-slot FIFO queue is further approximated as an M/M/5/5
+  Erlang-loss queue (deterministic 5s window → exponential-mean-5s service), the same class of
+  approximation as the Potential Cubes EV model's plug-in reroll-count formula. Both are exactly 0
+  in Chapter Hunt, per the user (not relevant to that content type).
+- **Hexagon Necklace**: models a one-time, monotonic battle-start stack ramp (0→3 over 60s, never
+  decreasing within a fight) — confirmed directly from the user's own worked examples, not the
+  wiki's own (less precise) text.
+- **Cursed Doll / Lit Lamp / Star Rock**: extend the "baked into Inputs" convention further —
+  Cursed Doll's Final Damage (accuracy/evasion behavior not modeled at all — always assumes the
+  "give Final Damage" branch, never the evade-triggered loss), Lit Lamp's Final Damage (World Boss
+  content only), and Star Rock's Boss Monster Damage. Star Rock's wiki text also increases the
+  *character's own* incoming damage taken — a defensive downside with no DPS effect — ignored per
+  the user (not to be confused with *enemy* damage taken, an existing, different bucket).
+- **Bottle of Emotion**: its flat Attack% is real/live (same shared bucket as every other
+  Attack%-granting artifact); its Attack-Speed-*dependent* Final Damage (continuous "for every 3%
+  of Attack Speed exceeding 60%" scaling, converted to a continuous per-1%-point shape the same
+  way Ring of Cycles was fixed earlier this session) is baked into Inputs — delta-only in
+  Sensitivity, same shape as Book of Ancient's dependent Crit Damage.
+- **Horn Flute**: only the character's own Final Damage portion is modeled — the Companion's own
+  damage isn't modeled anywhere in this project (no companion DPS exists at all). Companion summon
+  timing (t=7s, 30s active) given directly by the user; 0 in PvP/Chapter Hunt (no discrete
+  battle-start event in either, matching Candle/Rainbow Snail Shell's existing convention).
+- **Arwen's Glass Shoes**: purely extends Companion summoning duration — no character-applicable
+  portion at all (unlike Horn Flute) — always 0, flagged, since companions aren't modeled.
+- **Alliance Badge / Charm of the Undead**: real, live Attack%, same shared bucket as every other
+  skill/artifact Attack% source. Charm of the Undead's periodic uptime (5s active every 10s,
+  starting at t=10s) is a new pattern for this project (distinct from Hexagon Necklace's monotonic
+  ramp) — verified by hand against the user's own timing description.
+- **Sayram's Necklace**: the wiki's 2+-target/1-target gating is ignored entirely per the user —
+  both the Normal Monster Damage and Boss Monster Damage bonuses are always granted simultaneously,
+  feeding the existing branch-specific `boss_damage%`/`normal_damage%` buckets directly.
+- **Ancient Text Piece**: gated on "[Guild Conquest]", a content type this project doesn't model at
+  all — always 0.
+- **Fire Flower**: the wiki's real per-nearby-target scaling (capped at 10) is replaced with a
+  fixed assumption per the user — always exactly 10 targets against normal monsters, always
+  exactly 1 against boss/PvP.
+- **Lunar Dew / Pig's Ribbon**: pure defensive/recovery procs (HP/MP regen, damage immunity) with
+  no DPS effect at all — always 0, per the user.
+- **Chalice**: the real mechanic (2%-chance-per-hit proc, 100% on a boss kill, granting a 30s Final
+  Damage buff, re-appliable) collapses to a single simplified model per the user: always active
+  during exactly the last 30 seconds of the fight (`[MAX(0,duration-30), duration]`), relevant
+  whenever `monster_type` is `"normal"` or `"breakthrough"` — 0 in pure boss-only content and PvP.
+  Uses branch-specific overlap math against the same `boss_appear_time` concept Candle already
+  uses (generalized to handle pure-"normal" content, where there's no boss phase at all); verified
+  against hand-worked numbers for Breakthrough, Hero Dungeon, and pure-normal content.
+- **Pink Bean's Giant Rib / Horntail's Scale / Zakum's Stone Piece**: each has a generic-looking
+  "+Final Damage%" clause on the wiki, but these are raid-boss-specific artifacts for content this
+  project doesn't model at all — always 0, unconditionally, per the user.
+- **Mushmom's Cap** (the user's "Mushroom Cap"): Accuracy-vs-target's-Evasion conditional damage,
+  not modeled (same category as Cursed Doll's ignored accuracy behavior) — always 0.
+- **The Contract of Darkness**: real, live Crit Rate, gated to the boss branch only (never PvP,
+  never normal) — the first artifact needing a *crit-blend* ratio correction (analogous to
+  Reindeer's Spear's defense-factor ratio correction, but against `N = L*(1-cr/100)+M*(cr/100)`
+  instead of the defense formula).
+- **Shamaness Marble**: baked directly into the *existing* `Inputs!buff_duration_increase_pct`
+  stat — no new bucket needed.
+- **Artifact Potentials** (up to 3 rollable stat lines per artifact, gated by the artifact's own
+  Star Level — 2 lines for Epic/Unique, 3 for Legendary): modeled as a **pure reference
+  calculator** on the ArtifactsInput sheet, not a live Calc-sheet term — per the user, a line's
+  real stat impact is assumed already manually folded into the character's own Inputs once kept
+  (same "baked into Inputs" convention as Book of Ancient etc.), so no potential selection changes
+  Total DPS. Reuses the same `Sensitivity!H<row>` DPS-per-unit values and stat-name conventions as
+  equipment Potential Cubes. 4 of the 12 possible stats (Damage Taken Decrease %, Defense %,
+  Accuracy, Status Effect Damage %) have no matching DPS bucket anywhere in this project and always
+  show 0% DPS gain — Defense % in particular will need real modeling once this expands to Dark
+  Knight (Iron Wall's Defense→STR conversion) and Bishop.
+
+---
+
+
 ## Systemic gaps — the wiki itself lacks the data
 
 These classes were added to `idle.maplestorywiki.net` without individual per-skill pages ever
