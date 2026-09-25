@@ -192,6 +192,274 @@ real proc timing, companions — doesn't exist anywhere in this project), confir
 
 ---
 
+## Artifacts (Bishop) — Documented simplifications
+
+Same Equip Effect model, data tables, and per-artifact simplifications as FP-Mage (see the
+section above) — no Bishop-specific differences in any artifact's own assumptions. One forward
+reference now applies for real rather than hypothetically: Bishop's own Invincible mechanic
+converts a level-scaling % of Defense into INT, so a "Defense %" potential-line roll is not
+*entirely* inert for Bishop the way it is for every other class modeled so far — it's still 0 DPS
+impact for now (no Defense-related potential bucket is wired into that conversion), but Bishop is
+the first class where modeling it for real would actually change a number, not just be a
+theoretical gap. Not modeled this pass; flagged for whenever Defense-related potentials get
+real treatment project-wide.
+
+## Artifacts (Bowmaster) — Documented simplifications
+
+Same Equip Effect model, data tables, and per-artifact simplifications as FP-Mage/Bishop (see
+above) — no Bowmaster-specific differences in any artifact's own assumptions. Two Bowmaster-
+specific wiring decisions from this port, both verified numerically (Book of Ancient's compounding-
+order hand-check, matched exactly):
+
+- Book of Ancient's dependent Crit-Damage-from-Crit-Rate bonus reacts to Bowmaster's own **live**
+  global Crit Rate source (Sharp Eyes, duty-cycle averaged) in addition to Inputs!crit_rate and any
+  other equipped artifacts — unlike FP-Mage/Bishop, where every Crit Rate source besides artifacts
+  is already baked into Inputs. Both the add case (currently unequipped) and the remove case
+  (currently equipped) include Summary's own Sharp Eyes bonus row, matching whatever real total
+  crit rate actually produced today's baked-in Inputs!crit_damage value.
+- The previously-unused "Global Monster Damage-Taken Bonus %" placeholder on the Summary sheet
+  (`R_MONSTER_DMG_BONUS`, a hardcoded 0 stub with no real source in this kit) now holds
+  `AGG_ENEMY_DMG_TAKEN` (Peach Tree/Silver Pendant's combined bonus), applied additively to both the
+  boss and normal branches — reusing an existing bucket rather than adding a new one, since the
+  semantics (an unconditional, both-branches-equally additive %) already matched exactly.
+
+Two real bugs in this port were found later, while porting Artifacts to other classes by
+comparison against Bowmaster's own file, and have since been fixed directly in
+`build_bowmaster_workbook.py` (both re-verified: zero-error `formulas` scan, `verify_bowmaster_workbook.py`
+exact match, unaffected at default Inputs):
+- Soul Contract's Chapter-Hunt-only cooldown decrease was computed (`artifact_soul_contract_pct_expr`)
+  but never actually multiplied into any skill's effective cooldown, on either the main Calc sheet or
+  its Sensitivity-sheet mirror — found while porting to Corsair, which does wire it correctly.
+- The PotentialCubes-EV "Critical Rate %" cap-check (`dps_per_unit_expr`) tested raw `Inputs!crit_rate`
+  against the 100% cap, ignoring Sharp Eyes' own live bonus (`R_CRIT_RATE_BONUS`) and any equipped
+  artifacts' `AGG_CRIT_RATE` — meaning the cap could flip late (still recommending Crit Rate% potential
+  lines past the point they're actually worth 0) — found while porting to Night Lord.
+
+---
+
+## Artifacts (Buccaneer) — Documented simplifications
+
+Same Equip Effect model, data tables, and per-artifact simplifications as FP-Mage/Bishop/Bowmaster
+(see above) — no Buccaneer-specific differences in any artifact's own assumptions. Unlike
+Bowmaster, Buccaneer has no live global Crit Rate/Attack Speed/Crit Damage buff bucket of its own
+(`R_CRIT_RATE_BONUS`/`R_AS_BONUS`/`R_CRIT_DAMAGE_BONUS` are unused placeholders on Buccaneer's
+Summary sheet), so Book of Ancient/Athena's Gloves' dependent-bonus deltas only need
+`Inputs!crit_rate`/`Inputs!attack_speed` plus other artifacts — the same shape as FP-Mage/Bishop,
+not Bowmaster's Sharp-Eyes wrinkle.
+
+
+## Artifacts (Ice-Lightning-Mage) — Documented simplifications
+
+Same Equip Effect model, data tables, and per-artifact simplifications as FP-Mage/Bishop/Bowmaster/
+Buccaneer (see above) — no ILM-specific differences in any artifact's own assumptions. Like
+Buccaneer (not Bowmaster/Marksman), ILM has no live global Crit Rate/Attack Speed buff bucket, so
+Book of Ancient/Athena's Gloves' dependent-bonus deltas only need `Inputs!crit_rate`/
+`Inputs!attack_speed` plus other equipped artifacts. The "Global Monster Damage-Taken Bonus %"
+bucket (`AGG_ENEMY_DMG_TAKEN`) is folded additively into ILM's existing `MONSTER_DMG_BONUS` Summary
+row rather than a separate placeholder, since ILM has no unused `R_MONSTER_DMG_BONUS` stub the way
+Bowmaster did. Both mandatory hand-spot-checks pass: Book of Ancient's compounding-order delta
+(Sensitivity's reported DPS Gain) matches an independent full-rebuild-vs-baseline delta exactly;
+Reindeer's Spear's Sensitivity "% Gain" row decreases (113.92% → 107.43%) as `def_pen` sweeps
+50→99.9, confirming diminishing-returns saturation.
+
+---
+
+## Artifacts (Marksman) — Documented simplifications
+
+Same Equip Effect model, data tables, and per-artifact simplifications as FP-Mage/Bishop/Bowmaster
+(see above) — no Marksman-specific differences in any artifact's own assumptions. Like Bowmaster,
+Marksman has its own live global Crit Rate source (Sharp Eyes, duty-cycle averaged) — Book of
+Ancient's dependent Crit-Damage-from-Crit-Rate bonus correctly includes it in both the add case
+(currently unequipped) and remove case (currently equipped), matching Bowmaster's precedent exactly.
+Both mandatory hand-spot-checks pass: Book of Ancient's compounding-order delta (Sensitivity's
+reported DPS Gain, 220,890.895) matches an independent full-rebuild-vs-baseline delta exactly;
+Reindeer's Spear's Sensitivity "% Gain" row decreases (112.00% → 105.62%) as `def_pen` sweeps
+50→99.9, confirming diminishing-returns saturation.
+
+---
+
+## Artifacts (Corsair) — Documented simplifications
+
+Same Equip Effect model, data tables, and per-artifact simplifications as FP-Mage/Bishop/Bowmaster
+(see above) — no Corsair-specific differences in any artifact's own assumptions. Like Buccaneer/
+Ice-Lightning-Mage (not Bowmaster/Marksman), Corsair has no live global Crit Rate buff bucket
+(`R_CRIT_RATE_BONUS` is an unused placeholder), so Book of Ancient's dependent Crit-Damage bonus
+only needs `Inputs!crit_rate` plus other equipped artifacts. Unlike Bowmaster, Corsair's Soul
+Contract cooldown-decrease IS correctly wired into `eff_cd_r`/`eff_cd_row` on both the main Calc
+sheet and its Sensitivity mirror (this port is what surfaced the Bowmaster gap, since fixed there —
+see "Artifacts (Bowmaster)" above). Both mandatory hand-spot-checks pass: Book of Ancient's
+compounding-order delta (Sensitivity's reported DPS Gain, 29,076.492) matches an independent
+full-rebuild-vs-baseline delta exactly; Reindeer's Spear's Sensitivity "% Gain" row decreases
+(116.40% → 109.77%) as `def_pen` sweeps 50→99.9, confirming diminishing-returns saturation.
+
+## Artifacts (Dark Knight) — Documented simplifications
+
+Same Equip Effect model, data tables, and per-artifact simplifications as FP-Mage/Bishop/Bowmaster
+(see above) — no Dark-Knight-specific differences in any artifact's own assumptions. Like
+Bowmaster/Marksman, Dark Knight has its own live global Crit Rate/Crit Damage source (Lord of
+Darkness, proc-chance × duty-cycle averaged) — Book of Ancient's dependent Crit-Damage-from-Crit-
+Rate bonus correctly includes it (via `R_CRIT_RATE_BONUS`) in both the add case (currently
+unequipped) and remove case (currently equipped), matching Bowmaster/Marksman's precedent exactly.
+The "Global Monster Damage-Taken Bonus %" bucket (`AGG_ENEMY_DMG_TAKEN`) is folded additively into
+Dark Knight's existing `R_MONSTER_DMG_BONUS` Summary row (Evil Eye, all-types + Dark Resonance,
+boss-only), applied to both the boss and normal branches — reusing an existing bucket rather than
+adding a new one, since Dark Knight has no unused placeholder row the way Bowmaster did.
+
+One forward reference now applies for real rather than hypothetically, same as Bishop's own
+Invincible note above: Dark Knight's Iron Wall mechanic converts a level-scaling % of Defense into
+STR, so a "Defense %" potential-line roll is not *entirely* inert for Dark Knight the way it is for
+every other class without such a conversion — it's still 0 DPS impact for now (no Defense-related
+potential bucket is wired into that conversion, matching Bishop's own choice), but flagged for
+whenever Defense-related potentials get real treatment project-wide. Nothing added by this port
+touches, duplicates, or otherwise interacts with the Iron Wall conversion itself
+(`iron_wall_str_bonus_expr`/`STAT_DAMAGE`) — it remains exactly as it was before Artifacts.
+
+Both mandatory hand-spot-checks pass: Book of Ancient's compounding-order delta (Sensitivity's
+reported DPS Gain, 246,061.971) matches an independent full-rebuild-vs-baseline delta exactly
+(2,045,318.352 equipped − 1,799,256.381 unequipped = 246,061.971); Reindeer's Spear's Sensitivity
+"% Gain" row decreases (106.94% → 103.07%) as `def_pen` sweeps 50→99.9, confirming diminishing-
+returns saturation.
+
+---
+
+## Artifacts (Hero) — Documented simplifications
+
+Same Equip Effect model, data tables, and per-artifact simplifications as FP-Mage/Bishop/Bowmaster
+(see above) — no Hero-specific differences in any artifact's own assumptions. Like Buccaneer/
+Ice-Lightning-Mage/Corsair (not Bowmaster/Marksman/Dark Knight), Hero has **no live global Crit
+Rate buff bucket** — `R_CRIT_RATE_BONUS` on the Summary sheet is an unused placeholder ("no live
+Crit-Rate-buff source exists in this kit") — so Book of Ancient's dependent Crit-Damage-from-
+Crit-Rate bonus only needs `Inputs!crit_rate` plus other equipped artifacts, the same shape as
+FP-Mage/Bishop. The "Global Monster Damage-Taken Bonus %" bucket (`AGG_ENEMY_DMG_TAKEN`) has no
+existing multiplicative bucket to fold into (Hero has neither an Elemental Decrease Multiplier nor
+a spare placeholder row the way Bowmaster/Dark Knight/ILM did), so it's combined additively with
+`AGG_DAMAGE` into a single new `(1+(AGG_DAMAGE+AGG_ENEMY_DMG_TAKEN)/100)` multiplicative term in
+the main damage formula (and its Sensitivity mirror) instead of reusing an existing row.
+
+While porting, also found and fixed two of the same real bugs already documented above (both
+existed in Hero's own file before this port, matching the same root causes found for Bowmaster/
+Night Lord and fixed the same way here):
+- Soul Contract's Chapter-Hunt-only cooldown decrease was computed on the Artifacts sheet but never
+  actually multiplied into any skill's effective cooldown (`eff_cd_r`/`eff_cd_row`) on either the
+  main Calc sheet or its Sensitivity mirror — fixed by wrapping both with the same
+  `*(1-artifact_soul_contract_pct_expr(...)/100)` factor Corsair already uses.
+- The PotentialCubes-EV "Critical Rate %" cap-check (`dps_per_unit_expr`) tested raw
+  `Inputs!crit_rate` against the 100% cap, ignoring equipped artifacts' `AGG_CRIT_RATE` (Hero has
+  no live Crit Rate bonus bucket to also ignore, unlike Bowmaster/Night Lord's version of this same
+  bug) — fixed to include `Summary!$B$R_CRIT_RATE_BONUS+AGG_CRIT_RATE` in the cap check, same as
+  Night Lord's fix.
+
+Both mandatory hand-spot-checks pass: Book of Ancient's compounding-order delta (Sensitivity's
+reported DPS Gain, 63,383.274) matches an independent full-rebuild-vs-baseline delta exactly
+(1,152,442.960 equipped [crit_rate=20, crit_damage=12, star 5] − 1,089,059.686 unequipped
+[crit_rate=0, crit_damage=0] = 63,383.274); Reindeer's Spear's Sensitivity "% Gain" row decreases
+(113.45% → 106.99%) as `def_pen` sweeps 50→99.9, confirming diminishing-returns saturation.
+
+---
+
+## Artifacts (Night Lord) — Documented simplifications
+
+Same Equip Effect model, data tables, and per-artifact simplifications as FP-Mage/Bishop/Bowmaster
+(see above) — no Night-Lord-specific differences in any artifact's own assumptions. Like Bowmaster/
+Marksman/Dark Knight, Night Lord has its own live global Crit Rate source (`R_CRIT_RATE_BONUS`:
+Critical Throw Lv.47 mastery + Dark Sight Crit Rate, duty-cycle averaged) — Book of Ancient's
+dependent Crit-Damage-from-Crit-Rate bonus correctly includes it in both the add case (currently
+unequipped) and remove case (currently equipped), matching Bowmaster's precedent exactly. The
+"Global Monster Damage-Taken Bonus %" bucket (`AGG_ENEMY_DMG_TAKEN`) is added as its own extra
+additive term inside `boss_dmg_pct_r`/`normal_dmg_pct_r` (and their Sensitivity mirror) rather than
+folded into an existing Summary row — Night Lord's own `R_MONSTER_DMG_BONUS` (Venom Lv.82 Weaken +
+Frailty Curse enemy debuff) is a real, already-in-use bucket, not an unused placeholder the way
+Bowmaster's was, so reusing it would have double-purposed a row that already has its own meaning.
+
+While porting, also found and fixed the same PotentialCubes-EV "Critical Rate %" cap-check bug
+later found in Bowmaster's own file (see "Artifacts (Bowmaster)" above) directly in this port
+before it ever shipped: `dps_per_unit_expr`'s cap-check now tests
+`Inputs!crit_rate+Summary!$B$R_CRIT_RATE_BONUS+AGG_CRIT_RATE` against the 100% cap, not raw
+`Inputs!crit_rate` alone.
+
+Both mandatory hand-spot-checks pass: Book of Ancient's compounding-order delta (Sensitivity's
+reported DPS Gain, 1,896,399.813) matches an independent full-rebuild-vs-baseline delta exactly
+(8,734,040.572 equipped [crit_rate=50, crit_damage=77.096, star 5] − 6,837,640.759 unequipped
+[crit_rate=30, crit_damage=40] = 1,896,399.813); Reindeer's Spear's Sensitivity "% Gain" row
+decreases (117.00% → 109.42%) as `def_pen` sweeps 50→99.9, confirming diminishing-returns
+saturation.
+
+---
+
+## Artifacts (Shadower) — Documented simplifications
+
+Same Equip Effect model, data tables, and per-artifact simplifications as FP-Mage/Bishop/Bowmaster
+(see above) — no Shadower-specific differences in any artifact's own assumptions. Like Bowmaster/
+Marksman/Dark Knight/Night Lord, Shadower has its own live global Crit Rate source
+(`R_CRIT_RATE_BONUS`: Dark Sight Crit, duty-cycle averaged) — Book of Ancient's dependent
+Crit-Damage-from-Crit-Rate bonus correctly includes it in both the add case (currently unequipped)
+and remove case (currently equipped), matching Bowmaster's precedent exactly. The "Global Monster
+Damage-Taken Bonus %" bucket (`AGG_ENEMY_DMG_TAKEN`) is folded directly into the existing
+`R_MONSTER_DMG_BONUS` Summary row's own formula (which already carries a real bucket, Venom Lv.82
+Weaken) on the main Calc/Summary sheets, since addition is associative and doing so needed no new
+row; the Sensitivity shadow-block mirror instead adds it as its own separate additive term
+alongside the block-local (level-gated) Venom Weaken recompute, since the shadow block can't
+reference a single live Summary cell's sub-components — both produce the identical total.
+
+While porting, also found and fixed the same PotentialCubes-EV "Critical Rate %" cap-check bug
+documented in Bowmaster's own entry above (see "Artifacts (Bowmaster)"), directly in this port
+before it ever shipped: `dps_per_unit_expr`'s cap-check now tests
+`Inputs!crit_rate+Summary!$B$R_CRIT_RATE_BONUS+AGG_CRIT_RATE` against the 100% cap, not raw
+`Inputs!crit_rate` alone.
+
+Both mandatory hand-spot-checks pass: Book of Ancient's compounding-order delta (Sensitivity's
+reported DPS Gain, 343,976.690) matches an independent full-rebuild-vs-baseline delta exactly
+(5,409,770.342 equipped [crit_rate=20, crit_damage=14.296, star 5] − 5,065,793.650 unequipped
+[crit_rate=0, crit_damage=0] = 343,976.692); Reindeer's Spear's Sensitivity "% Gain" row decreases
+(116.78% → 109.42%) as `def_pen` sweeps 50→99.9, confirming diminishing-returns saturation.
+
+---
+
+## Artifacts (Paladin) — Documented simplifications
+
+Same Equip Effect model, data tables, and per-artifact simplifications as FP-Mage/Bishop/Bowmaster
+(see above) — no Paladin-specific differences in any artifact's own assumptions. Like Buccaneer/
+Ice-Lightning-Mage/Corsair/Hero (not Bowmaster/Marksman/Dark Knight/Night Lord/Shadower), Paladin
+has **no live global Crit Rate buff bucket** — `R_CRIT_RATE_BONUS` on the Summary sheet is an
+unused placeholder ("no live Crit-Rate-buff source exists") — so Book of Ancient's dependent
+Crit-Damage-from-Crit-Rate bonus only needs `Inputs!crit_rate` plus other equipped artifacts, the
+same shape as FP-Mage/Bishop/Hero. The "Global Monster Damage-Taken Bonus %" bucket
+(`AGG_ENEMY_DMG_TAKEN`) is written directly into Paladin's own previously-unused
+`R_MONSTER_DMG_BONUS` placeholder (a hardcoded 0 stub — Close Combat/Noble Demand/Divine Mark's own
+weaken effects are flagged but not modeled), same pattern as Bowmaster's own port. The "Attack%
+Bucket Multiplier" (`R_AVGBUFF`, Vessel of Light + HP Recovery) similarly gained `AGG_ATTACK_PCT`
+as one more additive term inside the existing bucket.
+
+Before any of the above could be wired in, this port found and fixed a real corruption bug left
+over from an earlier session's data-model extraction: a stray, over-long FP-Mage text extraction
+had duplicated `COMPUTED_INPUT_ROWS`/`IB()`/`build_readme_sheet` into `build_paladin_workbook.py`.
+Since Python keeps the *last* definition of a duplicated top-level name, the duplicate
+`build_readme_sheet` — still titled "Fire/Poison Arch Mage — DPS Calculator: How to Use This
+Workbook" — would have silently overridden Paladin's real README sheet on every rebuild. Fixed by
+deleting the duplicate block and merging its one genuinely new addition (the `ARTIFACT_INPUT_CELL`
+lookup) into the original, correctly-titled `IB()`.
+
+While porting, also found and fixed the same two bugs already documented for Bowmaster/Night
+Lord/Hero above (both existed in Paladin's own file before this port, matching the same root
+causes):
+- Soul Contract's Chapter-Hunt-only cooldown decrease was computed on the Artifacts sheet but never
+  actually multiplied into any skill's effective cooldown (`eff_cd_r`/`eff_cd_row`) on either the
+  main Calc sheet or its Sensitivity mirror — fixed by wrapping both with the same
+  `*(1-artifact_soul_contract_pct_expr(...)/100)` factor Corsair already uses.
+- The PotentialCubes-EV "Critical Rate %" cap-check (`dps_per_unit_expr`) tested raw
+  `Inputs!crit_rate` against the 100% cap, ignoring equipped artifacts' `AGG_CRIT_RATE` (Paladin has
+  no live Crit Rate bonus bucket to also ignore, unlike Bowmaster/Night Lord/Shadower's version of
+  this same bug) — fixed to include `Summary!$B$R_CRIT_RATE_BONUS+AGG_CRIT_RATE` in the cap check,
+  same as Night Lord/Hero's fix.
+
+Both mandatory hand-spot-checks pass: Book of Ancient's compounding-order delta (Sensitivity's
+reported DPS Gain, 99,562.236) matches an independent full-rebuild-vs-baseline delta exactly
+(1,106,247.071 equipped [crit_rate=50, crit_damage=0, star 5] − 1,006,684.834 unequipped
+[real crit_rate=50, frozen at the moment of removal] = 99,562.236); Reindeer's Spear's Sensitivity
+"% Gain" row decreases (114.75% → 109.50%) as `def_pen` sweeps 0→80, confirming diminishing-returns
+saturation.
+
+---
 
 ## Systemic gaps — the wiki itself lacks the data
 

@@ -16,7 +16,7 @@ import numpy as np
 REPO = Path(__file__).resolve().parent.parent
 XLSX_PATH = REPO / "Paladin" / "Paladin-DPS-Calculator.xlsx"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_paladin_workbook import ROW, IN, UNLOCK_LEVEL, MAPLE_HERO_RATIOS, R_TOTAL  # noqa: E402
+from build_paladin_workbook import ROW, IN, UNLOCK_LEVEL, MAPLE_HERO_RATIOS, R_TOTAL, CONTENT_TYPES  # noqa: E402
 
 FACTOR_TABLE = json.loads((REPO / "data/factor_table.json").read_text())
 FACTOR_TABLE = {int(k): v for k, v in FACTOR_TABLE.items()}
@@ -41,9 +41,19 @@ import openpyxl  # noqa: E402
 
 _inputs_ws = openpyxl.load_workbook(XLSX_PATH)["Inputs"]
 
+_ct_col = {}
+for _c in range(3, 13):
+    _name = _inputs_ws.cell(row=2, column=_c).value
+    if _name in CONTENT_TYPES:
+        _ct_col[_name] = _c
+
 
 def _in(key):
-    return _inputs_ws.cell(row=IN[key], column=2).value
+    if key in ("level", "content_type"):
+        return _inputs_ws.cell(row=IN[key], column=2).value
+    active_ct = _inputs_ws.cell(row=IN["content_type"], column=2).value
+    val = _inputs_ws.cell(row=IN[key], column=_ct_col.get(active_ct, 2)).value
+    return 0 if val is None else val
 
 
 level = _in("level")

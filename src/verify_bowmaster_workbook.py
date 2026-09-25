@@ -42,9 +42,31 @@ import openpyxl  # noqa: E402
 
 _inputs_ws = openpyxl.load_workbook(XLSX_PATH)["Inputs"]
 
+# Most Inputs rows are now per-content-type (columns C-L, one per CONTENT_TYPES entry); column B
+# holds a live =INDEX(...) formula picking the active one, which openpyxl can't evaluate (this
+# script never round-trips through Excel, so there's no cached value either). Resolve the active
+# content type first, then read straight from its own column instead of B.
+from build_bowmaster_workbook import CONTENT_TYPES  # noqa: E402
+
+_ct_col = {}
+for _c in range(3, 3 + len(CONTENT_TYPES)):
+    _name = _inputs_ws.cell(row=2, column=_c).value
+    if _name in CONTENT_TYPES:
+        _ct_col[_name] = _c
+
 
 def _in(key):
-    return _inputs_ws.cell(row=IN[key], column=2).value
+    if key in ("level", "content_type"):
+        return _inputs_ws.cell(row=IN[key], column=2).value
+    active_ct = _inputs_ws.cell(row=IN["content_type"], column=2).value
+    value = _inputs_ws.cell(row=IN[key], column=_ct_col.get(active_ct, 2)).value
+    # A blank per-content-type cell (this key isn't applicable to the active content type — see
+    # INPUT_ROW_APPLICABLE_CONTENT_TYPES) mirrors Excel's own INDEX-into-an-empty-cell behavior
+    # (0, not blank/None) for the live =INDEX(...) formula in column B — matching that here keeps
+    # this script's numeric comparisons consistent with what the real workbook actually computes,
+    # instead of crashing on a None where the real formula would have used a harmless 0 (only the
+    # already-zero-weighted branch for that content type ever reads it).
+    return 0 if value is None else value
 
 
 level = _in("level")

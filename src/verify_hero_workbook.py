@@ -16,7 +16,7 @@ import numpy as np
 REPO = Path(__file__).resolve().parent.parent
 XLSX_PATH = REPO / "Hero" / "Hero-DPS-Calculator.xlsx"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_hero_workbook import ROW, IN, UNLOCK_LEVEL, MAPLE_HERO_RATIOS, R_TOTAL  # noqa: E402
+from build_hero_workbook import ROW, IN, UNLOCK_LEVEL, MAPLE_HERO_RATIOS, R_TOTAL, CONTENT_TYPES  # noqa: E402
 
 FACTOR_TABLE = json.loads((REPO / "data/factor_table.json").read_text())
 FACTOR_TABLE = {int(k): v for k, v in FACTOR_TABLE.items()}
@@ -41,9 +41,25 @@ import openpyxl  # noqa: E402
 
 _inputs_ws = openpyxl.load_workbook(XLSX_PATH)["Inputs"]
 
+# Most Inputs rows are now per-content-type (columns C-L, one per CONTENT_TYPES entry); column B
+# holds a live =INDEX(...) formula picking the active one, which openpyxl can't evaluate (this
+# script never round-trips through Excel, so there's no cached value either). Resolve the active
+# content type first, then read straight from its own column instead of B. A few rows are
+# deliberately left blank for content types they don't apply to (e.g. max_enemies_hit for boss-
+# only content) — read those as 0 rather than None.
+_ct_col = {}
+for _c in range(3, 3 + len(CONTENT_TYPES)):
+    _name = _inputs_ws.cell(row=2, column=_c).value
+    if _name in CONTENT_TYPES:
+        _ct_col[_name] = _c
+
 
 def _in(key):
-    return _inputs_ws.cell(row=IN[key], column=2).value
+    if key in ("level", "content_type"):
+        return _inputs_ws.cell(row=IN[key], column=2).value
+    active_ct = _inputs_ws.cell(row=IN["content_type"], column=2).value
+    val = _inputs_ws.cell(row=IN[key], column=_ct_col.get(active_ct, 2)).value
+    return 0 if val is None else val
 
 
 level = _in("level")

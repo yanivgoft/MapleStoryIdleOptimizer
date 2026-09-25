@@ -18,7 +18,9 @@ import numpy as np
 REPO = Path(__file__).resolve().parent.parent
 XLSX_PATH = REPO / "Ice-Lightning-Mage" / "Ice-Lightning-Mage-DPS-Calculator.xlsx"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_ice_lightning_mage_workbook import ROW, IN, UNLOCK_LEVEL, SUMMARY_ROW  # noqa: E402
+from build_ice_lightning_mage_workbook import (  # noqa: E402
+    ROW, IN, UNLOCK_LEVEL, SUMMARY_ROW, CONTENT_TYPES, PER_CONTENT_TYPE_INPUT_KEYS,
+)
 
 FACTOR_TABLE = json.loads((REPO / "data/factor_table.json").read_text())
 FACTOR_TABLE = {int(k): v for k, v in FACTOR_TABLE.items()}
@@ -43,9 +45,29 @@ import openpyxl  # noqa: E402
 
 _inputs_ws = openpyxl.load_workbook(XLSX_PATH)["Inputs"]
 
+# Inputs is now per-content-type (columns C-L, one per CONTENT_TYPES entry, resolved into column
+# B via an INDEX/MATCH formula keyed on the active Content Type) — read the RAW per-content-type
+# cell for the currently active content type directly, since column B itself now holds a formula
+# string (not a static value) that plain openpyxl can't evaluate. Mirrors the same fix applied to
+# verify_fp_mage_workbook.py / verify_bishop_workbook.py's own _in().
+_col_for_ct = {}
+for _c in range(3, 3 + len(CONTENT_TYPES)):
+    _name = _inputs_ws.cell(row=2, column=_c).value
+    if _name in CONTENT_TYPES:
+        _col_for_ct[_name] = _c
+_active_content_type = _inputs_ws.cell(row=IN["content_type"], column=2).value
+
 
 def _in(key):
-    return _inputs_ws.cell(row=IN[key], column=2).value
+    if key not in PER_CONTENT_TYPE_INPUT_KEYS:
+        return _inputs_ws.cell(row=IN[key], column=2).value
+    col = _col_for_ct.get(_active_content_type)
+    value = _inputs_ws.cell(row=IN[key], column=col).value if col else None
+    # A handful of per-content-type rows (Boss/Normal Emphasis, Max Enemies Actually In Range)
+    # are blank/gray for content types where they're not applicable (see
+    # INPUT_ROW_APPLICABLE_CONTENT_TYPES in build_inputs_sheet) — guard against None so downstream
+    # numeric use (e.g. min(targets, max_enemies_hit)) doesn't blow up on a blank cell.
+    return value if value is not None else 0
 
 
 level = _in("level")

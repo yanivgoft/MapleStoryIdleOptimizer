@@ -23,7 +23,7 @@ import numpy as np
 REPO = Path(__file__).resolve().parent.parent
 XLSX_PATH = REPO / "Bishop" / "Bishop-DPS-Calculator.xlsx"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_bishop_workbook import ROW, IN, UNLOCK_LEVEL, SUMMARY_ROW  # noqa: E402
+from build_bishop_workbook import ROW, IN, UNLOCK_LEVEL, SUMMARY_ROW, CONTENT_TYPES  # noqa: E402
 
 FACTOR_TABLE = json.loads((REPO / "data/factor_table.json").read_text())
 FACTOR_TABLE = {int(k): v for k, v in FACTOR_TABLE.items()}
@@ -48,9 +48,22 @@ import openpyxl  # noqa: E402
 
 _inputs_ws = openpyxl.load_workbook(XLSX_PATH)["Inputs"]
 
+# Most Inputs rows are now per-content-type (columns C-L, one per CONTENT_TYPES entry); column B
+# holds a live =INDEX(...) formula picking the active one, which openpyxl can't evaluate (this
+# script never round-trips through Excel, so there's no cached value either). Resolve the active
+# content type first, then read straight from its own column instead of B.
+_ct_col = {}
+for _c in range(3, 3 + len(CONTENT_TYPES)):
+    _name = _inputs_ws.cell(row=2, column=_c).value
+    if _name in CONTENT_TYPES:
+        _ct_col[_name] = _c
+
 
 def _in(key):
-    return _inputs_ws.cell(row=IN[key], column=2).value
+    if key in ("level", "content_type"):
+        return _inputs_ws.cell(row=IN[key], column=2).value
+    active_ct = _inputs_ws.cell(row=IN["content_type"], column=2).value
+    return _inputs_ws.cell(row=IN[key], column=_ct_col.get(active_ct, 2)).value
 
 
 level = _in("level")
@@ -152,7 +165,7 @@ skill_cooldown_decrease = _in("skill_cooldown_decrease")
 basic_attack_target_increase = _in("basic_attack_target_increase")
 buff_duration_increase_pct = _in("buff_duration_increase_pct")
 fight_duration = _compute_fight_duration(content_type)
-max_enemies_hit = _in("max_enemies_hit")
+max_enemies_hit = _in("max_enemies_hit") or 0  # blank for content types where it's not applicable (Excel treats blank as 0 in MIN(); doesn't affect result since normal_weight is 0 there)
 
 fixed_duration_active = monster_type != "pvp" and fight_duration > 0
 
