@@ -42,7 +42,11 @@ your own stats, and every other sheet recalculates live.
 4. Check **Summary** for your Total DPS, a per-skill DPS breakdown, and a Marginal DPS & Stat
    Value table (how much DPS you gain per +1 of each stat — use this to decide what to invest in).
 5. **Sensitivity** has the full detail behind that marginal-value table, one block per stat.
-6. **CubeData / PotentialCubes** model your current gear's Potential Cube lines. For the
+6. **Artifacts / ArtifactsInput** model all 36 artifacts' Equip Effects (pick up to 4 equipped
+   slots per Content Type on the Inputs sheet) plus a reference-only Artifact Potentials
+   calculator — see `KNOWN_GAPS.md` for exactly which effects are modeled live vs. assumed
+   already folded into your own Inputs.
+7. **CubeData / PotentialCubes** model your current gear's Potential Cube lines. For the
    standalone version of that same math — a command-line tool that reads your gear straight out
    of the workbook — grab the prebuilt executable for your OS from the
    **[latest Release](../../releases/latest)** (`potential_cubes_ev-macos` or
@@ -159,6 +163,6 @@ and requests are welcome.
 `KNOWN_GAPS.md` for exactly what's flagged in each) — these four classes have the least complete
 wiki data of the twelve and are the current priority.
 
-**Further out:** none of the twelve workbooks model MP consumption, Artifacts, or Companions yet
-— these are all planned additions once the class-data gaps above are settled.
+**Further out:** none of the twelve workbooks model MP consumption or Companions yet — these are
+planned additions now that Artifacts is done, project-wide, for all twelve classes.
 

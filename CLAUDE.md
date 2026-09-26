@@ -6,13 +6,16 @@ all 12 classes; following them will save you from re-discovering the same bugs.
 
 **Current priority** (see README.md's "Future work" section): verifying and closing the data
 gaps in Bishop, Paladin, Buccaneer, and Corsair — `KNOWN_GAPS.md` lists exactly what's flagged in
-each. MP consumption, Artifacts, and Companions are planned after that, project-wide.
+each. MP consumption and Companions are planned after that, project-wide. Artifacts (Equip Effects
+for all 36 artifacts, plus a reference-only Artifact Potentials calculator) has already shipped for
+all 12 classes — see the "Artifacts (\<Class\>)" sections in `KNOWN_GAPS.md` for each class's own
+wiring decisions.
 
 ## What this project is
 
 Per-class Excel DPS calculators for MapleStory Idle RPG. Each class gets:
 - `<Class>/<Class>-DPS-Calculator.xlsx` — a live-formula workbook (Inputs, FactorTable, Skills,
-  Calc, Summary, Sensitivity, CubeData, PotentialCubes sheets).
+  Calc, Summary, Sensitivity, Artifacts, ArtifactsInput, CubeData, PotentialCubes sheets).
 - `src/build_<class>_workbook.py` — generates that workbook from a `SKILL_ROWS` data table.
 - `src/verify_<class>_workbook.py` — an independent, from-scratch Python re-derivation of the
   same DPS math, checked cell-for-cell against the live Excel formulas via the `formulas` package.
@@ -151,6 +154,37 @@ you're building a new class, check for all of these *before* your first build, n
    check every such path individually; a clean pure-boss/pure-normal edge-case test does NOT catch
    an asymmetric bug that's equally wrong on both branches (only a blended, both-nonzero regression
    test does, since edge cases collapse to a single branch where symmetric bugs go unnoticed).
+10. **Artifact Star Level is 0-indexed.** `star_lookup_expr` resolves a star tier via
+    `CHOOSE(star_ref+1, v0,v1,v2,v3,v4,v5)` — star levels run 0 to 5 (6 tiers), where 5 is the
+    MAXIMUM tier, not "5th of 6." When hand-spot-checking an artifact by setting its Star Level
+    cell directly via openpyxl, use `ARTIFACT_STAR_VALUES[key][star]` (not `[star-1]`) as the
+    expected value, or you'll chase a numeric mismatch that isn't a real bug.
+11. **An artifact effect that wraps an existing helper function must be wired at every call site
+    of that helper, in both the main Calc sheet and its Sensitivity mirror — not just given a
+    reference-only row on the Artifacts sheet.** Soul Contract's Chapter-Hunt-only cooldown
+    decrease shipped in several classes' Artifacts sheet as a correctly-computed value that was
+    never actually multiplied into any skill's `effective_cooldown_expr(...)` result — the
+    artifact looked "modeled" (it had its own row, its own star-value lookup) but had zero actual
+    DPS effect. Any new artifact that modifies an existing per-skill quantity (cooldown, cast
+    rate, hit count) needs its own grep across every call site of that quantity's helper function,
+    not just a single wiring point.
+12. **Once artifact equip-toggle bool entries are added to `STAT_SWEEP`, `build_summary_sheet`'s
+    "Marginal DPS & Stat Value" mirror loop must iterate `STAT_SWEEP_STAT_ENTRIES`, never raw
+    `STAT_SWEEP`** — `SENSITIVITY_ROW_FOR` is keyed only by stat entries, so iterating the full
+    list (including the 36 new bool entries) throws a `KeyError` the first time that loop runs.
+    Found and fixed in every class's port; check for this specifically before considering a new
+    class's Artifacts port "done."
+13. **PotentialCubes-EV's "Critical Rate %" cap-check must test the FULL live crit rate total**
+    (`Inputs!crit_rate` + any live global crit-rate bonus the class has, e.g. Sharp Eyes/Dark
+    Sight Crit + `art_ref("AGG_CRIT_RATE")` from other equipped artifacts) **against the 100% cap
+    — not raw `Inputs!crit_rate` alone.** Testing the raw Inputs value lets the cap-check fire
+    late, still recommending Crit Rate% potential lines past the point they're actually worth 0%
+    DPS gain. Shipped incorrectly in more than one class; always re-derive this check's comparison
+    value the same way the real Calc-sheet crit-rate-total formula does.
+14. **A big artifacts-feature splice copied verbatim from a template class's file can leave that
+    template class's own literal strings behind** — e.g. a new `ArtifactsInput` sheet's title
+    still reading "Fire/Poison Arch Mage" after being spliced into a different class. Grep the
+    finished file for the template class's own name after any large copy-paste splice.
 
 ## Cross-checking a new class against its siblings
 
@@ -187,6 +221,19 @@ Nimble Feet, and more verbatim). When adding a class to an existing sibling grou
    table (the Skills sheet). The Summary sheet's own "info dump" block is a fixed, always-the-same
    layout across every class, so *that* block's row constants are legitimately hardcoded — don't
    confuse the two.
+8. Two mandatory Artifacts hand-spot-checks, since a clean zero-error scan + verify-script pass
+   alone does not catch wiring bugs in artifact-toggle math (see item 11 above for a real example
+   that slipped through both): (a) **Book of Ancient compounding-order test** — build two
+   `openpyxl`-edited copies of the rebuilt workbook, one with Book equipped (remember Star Level
+   is 0-indexed — item 10 above) and its direct + dependent bonus manually folded into
+   `Inputs!crit_rate`/`crit_damage`, one without; the `formulas`-package Total DPS delta between
+   them must exactly match Sensitivity's own "Book of Ancient (Equip)" row's reported DPS Gain
+   (found by searching resolved cells for the literal label text, since the visible sorted column
+   is an INDEX/MATCH formula). Include any live global crit-rate bonus (Sharp Eyes, Dark Sight
+   Crit, etc.) in the folded-in total if the class has one. (b) **Reindeer's Spear
+   diminishing-returns test** — unlock star 5 but leave unequipped, sweep `Inputs!def_pen` from 50
+   to 99.9, confirm the Sensitivity "Reindeer's Spear (Equip)" row's % Gain *decreases* as
+   `def_pen` rises (saturating).
 
 ### Running sweeps without hanging
 
@@ -213,7 +260,10 @@ package, which takes ~30-40s per full load+calculate. Two hard-won lessons:
 3. Identify shared skills with any existing sibling class up front — build the richer/more
    wiki-complete sibling first if there's a choice, then derive the other from it.
 4. Work incrementally: reverse-engineer script → build script sheet-by-sheet → verify script →
-   categorical sweep → level-boundary sweep → additive-vs-multiplicative audit. Don't write 2000
+   categorical sweep → level-boundary sweep → additive-vs-multiplicative audit → Artifacts port
+   (copy the data model and ~32 `artifact_*_expr()` helpers verbatim from any existing class, then
+   adapt the class-specific wiring points — see items 10-14 above and each existing class's
+   "Artifacts (\<Class\>)" section in `KNOWN_GAPS.md` for the exact pattern). Don't write 2000
    lines and try to debug it as a whole afterward.
 5. Update `KNOWN_GAPS.md` and this class's own workbook README sheet with anything you had to
    assume, approximate, or leave out of scope.

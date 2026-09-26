@@ -30,8 +30,13 @@ a value you can no longer return to. That "best you could still achieve" is itse
 this is a proper optimal-stopping problem, solved exactly via backward induction:
 
   1. Per (rarity, slot): the full distribution of one roll's total DPS value, by enumerating
-     every (line1, line2, line3) combination (the 3 lines are independent draws) and summing
-     each combination's DPS contribution (value x DPS-per-unit, read from the workbook).
+     every (line1, line2, line3) combination (the 3 lines are independent draws) and combining
+     each combination's DPS contribution via `combined_dps_gain` — lines on the SAME stat add
+     (two 5% Max Damage lines really are one 10% Max Damage bucket), but lines on DIFFERENT stats
+     combine multiplicatively (each stat's own marginal DPS-per-unit is exact only holding
+     everything else fixed, so two different stats' independent 1% gains compound to
+     1.01*1.01-1=2.0201%, not a naive 2%) — see combined_dps_gain's own docstring for the full
+     reasoning.
   2. Define W_k(tier, pity) = the expected value of optimal play, GIVEN you are about to use a
      cube while at that (tier, pity) state, with k cubes remaining after this one. Solved via
      backward induction from W_0 = -infinity (no cubes left after this one — forced to accept
@@ -199,6 +204,49 @@ def dps_per_unit(stat_name):
     return DPS_PER_UNIT.get(stat_name, 0.0)
 
 
+def find_total_dps():
+    ws = _wb["Summary"]
+    row = find_row_by_label(ws, "TOTAL DPS", column=1, max_row=40)
+    return read_formula_num("SUMMARY", f"B{row}")
+
+
+# The character's current Total DPS — a single constant for the whole script run, needed by
+# combined_dps_gain() below to convert an absolute DPS delta into "how many percentage points of
+# my current Total DPS is this," which is what the group-then-multiply combining math actually
+# operates on (see combined_dps_gain's own docstring).
+BASELINE_DPS = find_total_dps()
+
+
+def combined_dps_gain(stat_value_pairs):
+    """Combines multiple (stat, raw_value) lines into one true DPS-Gain number, instead of the
+    naive `sum(value*dps_per_unit(stat) for ...)` this project used everywhere until now.
+
+    Two lines of the SAME stat are correctly additive before any DPS math happens at all — two 5%
+    Max Damage lines really are just one 10% Max Damage bucket, so their combined DPS effect is
+    exactly double a single 5% line's effect, not more. But two DIFFERENT stats, each independently
+    worth (say) 1% DPS on its own, do NOT simply add to 2% when both are applied together — they
+    live in different multiplicative buckets of the damage formula, so the true combined effect is
+    `1.01 * 1.01 - 1 = 2.0201%`, not `2%`. The naive sum silently drops that second-order
+    cross-term (small for small individual gains, but growing for larger ones).
+
+    Implementation: group by stat first (sum raw values within a group, so same-stat lines combine
+    additively as they should), convert each DISTINCT stat's grouped value to a DPS-Gain via its
+    own dps_per_unit rate, express that as a multiplicative factor relative to BASELINE_DPS, then
+    take the product of all distinct stats' factors — exactly the "1.01 * 1.01" shape above,
+    generalized to any number of distinct stats. Returns an absolute DPS delta (same units as the
+    old naive sum), so every caller downstream is unaffected by this change in how it's computed.
+    """
+    grouped = {}
+    for stat, value in stat_value_pairs:
+        if not stat or stat == "(none)":
+            continue
+        grouped[stat] = grouped.get(stat, 0.0) + value
+    factor = 1.0
+    for stat, total_value in grouped.items():
+        factor *= 1.0 + (total_value * dps_per_unit(stat)) / BASELINE_DPS
+    return BASELINE_DPS * (factor - 1.0)
+
+
 # ---------------------------------------------------------------------------
 # Rarity order + upgrade rates/pity caps (CubeData!M:O) — literal values, no live formulas.
 # ---------------------------------------------------------------------------
@@ -224,15 +272,15 @@ RARITY_ORDER, RARITY_UPGRADE_RATES = load_rarity_table()
 
 
 # ---------------------------------------------------------------------------
-# Flattened per-(slot, rarity, line) roll table (CubeData!A:G — value/weight/prime; DPSPerUnit
-# is recomputed here from the Stat->DPSPerUnit table above rather than re-read from CubeData!H,
-# since they're guaranteed identical for a given stat name and this avoids one `formulas` lookup
-# per row).
+# Flattened per-(slot, rarity, line) roll table (CubeData!A:G — value/weight/prime). Stores the
+# raw (stat, value) pair rather than pre-converting to a DPS number — roll_distribution() needs
+# the stat identity preserved so it can correctly group same-stat lines before applying
+# combined_dps_gain()'s multiplicative combining across different stats.
 # ---------------------------------------------------------------------------
 def load_roll_table():
     ws_cube_data = _wb["CubeData"]
     header_row = find_row_by_label(ws_cube_data, "Slot", column=1, max_row=5)
-    table = {}  # (slot, rarity, line_num) -> list of (value_dps, weight)
+    table = {}  # (slot, rarity, line_num) -> list of (stat, value, weight)
     row = header_row + 1
     while True:
         slot = ws_cube_data.cell(row=row, column=1).value
@@ -244,7 +292,7 @@ def load_roll_table():
         value = float(ws_cube_data.cell(row=row, column=5).value)
         weight = float(ws_cube_data.cell(row=row, column=6).value)
         key = (slot, rarity, line_num)
-        table.setdefault(key, []).append((value * dps_per_unit(stat), weight))
+        table.setdefault(key, []).append((stat, value, weight))
         row += 1
     return table
 
@@ -281,12 +329,14 @@ def read_current_state():
 
 
 def current_dps_value(lines):
-    return sum(val * dps_per_unit(stat) for stat, val in lines if stat and stat != "(none)")
+    return combined_dps_gain(lines)
 
 
 # ---------------------------------------------------------------------------
 # Step 1: exact per-roll distribution at a given (rarity, slot) — full line1 x line2 x line3
-# enumeration, collapsed by identical total value.
+# enumeration, collapsed by identical combined DPS-Gain value (via combined_dps_gain, so two lines
+# landing on the same stat correctly group/sum before any two DIFFERENT stats' lines are combined
+# multiplicatively).
 # ---------------------------------------------------------------------------
 _roll_dist_cache = {}
 
@@ -305,14 +355,14 @@ def roll_distribution(rarity, slot):
         # *some* rows beyond "ALL"). Both must be merged — "ALL" is never a substitute.
         entries = list(ROLL_TABLE.get(("ALL", rarity, line_num), []))
         entries += ROLL_TABLE.get((slot, rarity, line_num), [])
-        total_weight = sum(w for _, w in entries)
-        per_line.append([(v, w / total_weight) for v, w in entries])
+        total_weight = sum(w for _, _, w in entries)
+        per_line.append([(stat, v, w / total_weight) for stat, v, w in entries])
 
     combos = {}
-    for v1, p1 in per_line[0]:
-        for v2, p2 in per_line[1]:
-            for v3, p3 in per_line[2]:
-                v = v1 + v2 + v3
+    for stat1, v1, p1 in per_line[0]:
+        for stat2, v2, p2 in per_line[1]:
+            for stat3, v3, p3 in per_line[2]:
+                v = combined_dps_gain([(stat1, v1), (stat2, v2), (stat3, v3)])
                 combos[v] = combos.get(v, 0.0) + p1 * p2 * p3
 
     values = np.array(sorted(combos))
@@ -468,14 +518,10 @@ def smallest_n_for_probability(prob_any, threshold):
 # ---------------------------------------------------------------------------
 # Run for every (slot, potential type) row in the workbook's PotentialCubes sheet.
 # ---------------------------------------------------------------------------
-def find_total_dps():
-    ws = _wb["Summary"]
-    row = find_row_by_label(ws, "TOTAL DPS", column=1, max_row=40)
-    return read_formula_num("SUMMARY", f"B{row}")
 
 
 def main():
-    baseline_dps = find_total_dps()
+    baseline_dps = BASELINE_DPS
     rows = read_current_state()
     results = []
     for state in rows:

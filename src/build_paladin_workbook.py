@@ -3439,6 +3439,174 @@ def build_sensitivity_sheet(wb):
     return ws
 
 
+# ---------------------------------------------------------------------------
+# Equipment Compare — pick a "Current Equip" and a "New Equip" (an Attack line + up to 5 more
+# stat lines each) and see which is the bigger upgrade, as a DPS % delta. Reuses the exact same
+# Sensitivity!H<row> "$/unit" marginal-DPS values Potential Cubes/Artifact Potentials already use
+# — a pure calculator sheet, nothing else in the workbook reads from it, so no Calc/Summary/
+# Sensitivity/verify_paladin_workbook.py changes are needed for this feature at all.
+# ---------------------------------------------------------------------------
+EQUIP_COMPARE_STAT_TO_SWEEP_KEY = {
+    "Main Stat (flat)": "flat_str",
+    "Main Stat %": "str_pct",
+    "Attack (flat)": "flat_attack",
+    "Min Damage %": "min_damage",
+    "Max Damage %": "max_damage",
+    "Damage %": "damage",
+    "Critical Rate %": "crit_rate",
+    "Critical Damage %": "crit_damage",
+    "Boss Monster Damage %": "boss_damage",
+    "Normal Monster Damage %": "normal_damage",
+    "Defense Penetration %": "def_pen",
+    "Defense (flat)": "defense",
+    "Skill Level Bonus — 1st Job": "skill_lvl_1st",
+    "Skill Level Bonus — 2nd Job": "skill_lvl_2nd",
+    "Skill Level Bonus — 3rd Job": "skill_lvl_3rd",
+    "Skill Level Bonus — 4th Job": "skill_lvl_4th",
+    "Skill Level Bonus — All Skills": "skill_lvl_all",
+    "Final Damage %": "final_damage",
+    "Basic Attack Damage %": "basic_attack_damage",
+    "Skill Damage %": "skill_damage",
+    "Attack Speed %": "attack_speed",
+}
+EQUIP_COMPARE_DROPDOWN_STATS = list(EQUIP_COMPARE_STAT_TO_SWEEP_KEY.keys())
+EQUIP_COMPARE_LINE_ROWS = list(range(6, 11))  # 5 dropdown lines; row 5 is the fixed Attack line
+EQUIP_COMPARE_ALL_ROWS = [5] + EQUIP_COMPARE_LINE_ROWS
+
+
+def equip_compare_per_unit_rate_expr(stat_name):
+    """A stat's $/unit DPS rate — reuses dps_per_unit_expr's own Critical-Rate-at-cap fallback
+    logic verbatim rather than reimplementing it (same reasoning as Potential Cubes). Falls back
+    to "0" for stats with no Sensitivity row in this particular class (e.g. "Defense (flat)" has
+    no DPS effect at all except in Dark Knight/Bishop, which convert part of it into STR/INT via
+    Iron Wall/Invincible — same defensive fallback dps_per_unit_expr itself uses)."""
+    if stat_name == "Critical Rate %":
+        return dps_per_unit_expr("Critical Rate %").lstrip("=")
+    key = EQUIP_COMPARE_STAT_TO_SWEEP_KEY[stat_name]
+    row = SENSITIVITY_ROW_FOR.get(key)
+    return f"Sensitivity!H{row}" if row is not None else "0"
+
+
+def equip_compare_dropdown_rate_expr(dropdown_ref):
+    """Nested-IF chain resolving whichever stat is LIVE-selected in `dropdown_ref` to its $/unit
+    rate — same shape as ArtifactsInput's own potential-line stat lookup, just without a rarity
+    multiplier (the roll's raw value is typed directly here, not derived from a rarity table)."""
+    body = "0"
+    for name in reversed(EQUIP_COMPARE_DROPDOWN_STATS):
+        body = f'IF({dropdown_ref}="{name}",{equip_compare_per_unit_rate_expr(name)},{body})'
+    return body
+
+
+def build_equipment_compare_sheet(wb, existing=None):
+    existing = existing or {}
+    ws = wb.create_sheet("Equipment Compare")
+    HEADER_FILL = PatternFill("solid", fgColor="1F4E78")
+    HEADER_FONT = Font(bold=True, color="FFFFFF")
+    INPUT_FILL = PatternFill("solid", fgColor="FFF2CC")
+    COMPUTED_FILL = PatternFill("solid", fgColor="D9D9D9")
+
+    ws["A1"] = "Paladin — Equipment Compare"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["A2"] = (
+        "Compare a candidate replacement equip against what you currently have, one Attack line "
+        "plus up to 5 more stat lines each. Uses the same $/unit marginal-DPS values as Potential "
+        "Cubes/Artifact Potentials: two lines of the SAME stat correctly add (two 5% Max Damage "
+        "lines = one 10% Max Damage bucket), but two DIFFERENT stats correctly compound "
+        "multiplicatively rather than just summing (two independent 1% gains combine to "
+        "1.01x1.01-1=2.0201%, not a naive 2%) — exact, not an approximation, since both equips are "
+        "concrete/fixed sets of lines rather than an open-ended reroll search."
+    )
+
+    blocks = [
+        ("Current Equip", 2, 3, 4, 5, 6, 7),   # (label, stat_col, val_col, gain_col, grp_col, first_col, factor_col)
+        ("New Equip", 9, 10, 11, 12, 13, 14),
+    ]
+
+    for title, stat_c, val_c, gain_c, grp_c, first_c, factor_c in blocks:
+        ws.cell(row=4, column=stat_c, value=title).font = HEADER_FONT
+        for c in (stat_c, val_c, gain_c, grp_c, first_c, factor_c):
+            ws.cell(row=4, column=c).fill = HEADER_FILL
+
+    ws.cell(row=5, column=1, value="Attack (flat)").font = LABEL_FONT
+    for i, row in enumerate(EQUIP_COMPARE_LINE_ROWS):
+        ws.cell(row=row, column=1, value=f"Line {i + 2}").font = LABEL_FONT
+
+    # Dropdown option list: a hidden helper range (Excel's inline-list formula1 is capped at ~255
+    # chars, far too short for 21 names) — same range-reference pattern as Inputs' own
+    # dv_slot_options_range for equipped-artifact slots.
+    dv_options_col = 17
+    for i, name in enumerate(EQUIP_COMPARE_DROPDOWN_STATS):
+        ws.cell(row=1 + i, column=dv_options_col, value=name)
+    dv_range = f"${get_column_letter(dv_options_col)}$1:${get_column_letter(dv_options_col)}${len(EQUIP_COMPARE_DROPDOWN_STATS)}"
+    dv_stat = DataValidation(type="list", formula1=f"={dv_range}", allow_blank=False)
+    ws.add_data_validation(dv_stat)
+
+    existing_lines = existing.get("lines", {})  # {"current"/"new": {row: {"stat":..,"value":..}}}
+    for equip_key, (title, stat_c, val_c, gain_c, grp_c, first_c, factor_c) in zip(("current", "new"), blocks):
+        saved = existing_lines.get(equip_key, {})
+
+        # Row 5 — Attack (flat): fixed stat identity (no dropdown), still participates in the same
+        # grouping logic below so a dropdown line that ALSO picks "Attack (flat)" combines with it
+        # correctly instead of double-counting.
+        ws.cell(row=5, column=stat_c, value="Attack (flat)").fill = COMPUTED_FILL
+        val_cell = ws.cell(row=5, column=val_c, value=saved.get(5, {}).get("value", 0))
+        val_cell.fill = INPUT_FILL
+        ws.cell(row=5, column=gain_c, value=(
+            f"={get_column_letter(val_c)}5*{equip_compare_per_unit_rate_expr('Attack (flat)')}"
+        ))
+        ws.cell(row=5, column=first_c, value="=TRUE")
+
+        for row in EQUIP_COMPARE_LINE_ROWS:
+            row_saved = saved.get(row, {})
+            stat_cell = ws.cell(row=row, column=stat_c, value=row_saved.get("stat", "(none)"))
+            stat_cell.fill = INPUT_FILL
+            dv_stat.add(stat_cell)
+            val_cell = ws.cell(row=row, column=val_c, value=row_saved.get("value", 0))
+            val_cell.fill = INPUT_FILL
+            stat_ref = f"{get_column_letter(stat_c)}{row}"
+            val_ref = f"{get_column_letter(val_c)}{row}"
+            ws.cell(row=row, column=gain_c, value=(
+                f'=IF({stat_ref}="(none)",0,{val_ref}*({equip_compare_dropdown_rate_expr(stat_ref)}))'
+            ))
+            prior_range = f"${get_column_letter(stat_c)}$5:{get_column_letter(stat_c)}{row - 1}"
+            ws.cell(row=row, column=first_c, value=(
+                f'=AND({stat_ref}<>"(none)",COUNTIF({prior_range},{stat_ref})=0)'
+            ))
+
+        stat_range = f"${get_column_letter(stat_c)}$5:${get_column_letter(stat_c)}$10"
+        gain_range = f"${get_column_letter(gain_c)}$5:${get_column_letter(gain_c)}$10"
+        for row in EQUIP_COMPARE_ALL_ROWS:
+            stat_ref = f"{get_column_letter(stat_c)}{row}"
+            first_ref = f"{get_column_letter(first_c)}{row}"
+            ws.cell(row=row, column=grp_c, value=f"=SUMIF({stat_range},{stat_ref},{gain_range})")
+            ws.cell(row=row, column=factor_c, value=(
+                f"=IF(NOT({first_ref}),1,1+{get_column_letter(grp_c)}{row}/Summary!$B$3)"
+            ))
+            for c in (grp_c, first_c, factor_c):
+                ws.column_dimensions[get_column_letter(c)].hidden = True
+
+        factor_range = f"${get_column_letter(factor_c)}$5:${get_column_letter(factor_c)}$10"
+        ws.cell(row=12, column=1, value="Total DPS Gain").font = LABEL_FONT
+        ws.cell(row=12, column=gain_c, value=f"=Summary!$B$3*(PRODUCT({factor_range})-1)")
+        ws.cell(row=13, column=1, value="% of Total DPS").font = LABEL_FONT
+        pct_cell = ws.cell(row=13, column=gain_c, value=f"={get_column_letter(gain_c)}12/Summary!$B$3*100")
+        pct_cell.number_format = '0.00"%"'
+
+    ws.cell(row=15, column=1, value="New vs Current — DPS % Delta").font = Font(bold=True, size=12)
+    delta_cell = ws.cell(row=15, column=4, value="=K13-D13")
+    delta_cell.font = Font(bold=True, size=12)
+    delta_cell.number_format = '+0.00"%";-0.00"%";0.00"%"'
+
+    ws.column_dimensions["A"].width = 26
+    for c in (2, 9):
+        ws.column_dimensions[get_column_letter(c)].width = 22
+    for c in (3, 10):
+        ws.column_dimensions[get_column_letter(c)].width = 12
+    ws.column_dimensions[get_column_letter(dv_options_col)].hidden = True
+    ws.freeze_panes = "A5"
+    return ws
+
+
 def build_cube_data_sheet(wb):
     """Raw data for the PotentialCubes sheet — verbatim structure, class-agnostic in shape."""
     ws = wb.create_sheet("CubeData")
@@ -3605,7 +3773,20 @@ def build_artifacts_input_sheet(wb, existing=None):
         # Line 3 columns (I/J/K) simply don't exist for Epic/Unique rows (2-line cap regardless of
         # Star Level, per the user) — left entirely blank, not just gated to 0.
 
-        ws.cell(row=row, column=12, value=f'=E{row}+H{row}+K{row}')
+        # Total Potential DPS Gain: group lines by stat first (two lines on the SAME stat are
+        # correctly additive — two 5% Max Damage lines really are one 10% Max Damage bucket), then
+        # combine DIFFERENT stats' groups multiplicatively (each stat's own DPS Gain is only exact
+        # holding every other stat fixed, so two different stats each independently worth 1% DPS
+        # truly compound to 1.01*1.01-1=2.0201%, not a naive 2% sum) — same methodology as
+        # potential_cubes_ev.py's combined_dps_gain(). J/K (Line 3) may be entirely blank for
+        # Epic/Unique rows, hence the extra J{row}="" guard on factor_3.
+        grouped_1 = f'E{row}+IF(G{row}=D{row},H{row},0)+IF(J{row}=D{row},K{row},0)'
+        grouped_2 = f'H{row}+IF(D{row}=G{row},E{row},0)+IF(J{row}=G{row},K{row},0)'
+        grouped_3 = f'K{row}+IF(D{row}=J{row},E{row},0)+IF(G{row}=J{row},H{row},0)'
+        factor_1 = f'IF(D{row}="(none)",1,1+({grouped_1})/Summary!$B$3)'
+        factor_2 = f'IF(OR(G{row}="(none)",G{row}=D{row}),1,1+({grouped_2})/Summary!$B$3)'
+        factor_3 = f'IF(OR(J{row}="",J{row}="(none)",J{row}=D{row},J{row}=G{row}),1,1+({grouped_3})/Summary!$B$3)'
+        ws.cell(row=row, column=12, value=f'=Summary!$B$3*(({factor_1})*({factor_2})*({factor_3})-1)')
 
         # Columns M/N — resolved Equipped?/Star Level, consumed by IB() (see ARTIFACT_INPUT_CELL)
         # instead of anything on the Inputs sheet.
@@ -3683,12 +3864,12 @@ def load_existing_workbook_state(path):
     defaults. No older Artifacts-era layout to migrate from (brand new to this class) — only the
     pre-per-content-type single-column Inputs format needs a migration path."""
     if not path.exists():
-        return {}, {}, {}
+        return {}, {}, {}, {}
     try:
         wb = openpyxl.load_workbook(path)
     except Exception as e:
         print(f"Warning: couldn't read existing {path} to carry over values ({e}); using defaults.")
-        return {}, {}, {}
+        return {}, {}, {}, {}
 
     existing_inputs = {}
     if "Inputs" in wb.sheetnames:
@@ -3794,11 +3975,30 @@ def load_existing_workbook_state(path):
                 pity=ws.cell(row=row, column=4).value or 0,
                 lines=lines,
             )
-    return existing_inputs, existing_artifacts_input, existing_potential_cubes
+    existing_equipment_compare = {}
+    if "Equipment Compare" in wb.sheetnames:
+        ws = wb["Equipment Compare"]
+        blocks = [("current", 2, 3), ("new", 9, 10)]  # (equip_key, stat_col, val_col)
+        for equip_key, stat_c, val_c in blocks:
+            lines = {}
+            for row in EQUIP_COMPARE_ALL_ROWS:
+                val = ws.cell(row=row, column=val_c).value
+                if row == 5:
+                    lines[row] = {"value": val if val is not None else 0}
+                    continue
+                stat = ws.cell(row=row, column=stat_c).value
+                lines[row] = {
+                    "stat": stat if stat is not None else "(none)",
+                    "value": val if val is not None else 0,
+                }
+            existing_equipment_compare[equip_key] = lines
+        existing_equipment_compare = {"lines": existing_equipment_compare}
+
+    return existing_inputs, existing_artifacts_input, existing_potential_cubes, existing_equipment_compare
 
 
 def main():
-    existing_inputs, existing_artifacts_input, existing_potential_cubes = load_existing_workbook_state(OUT_PATH)
+    existing_inputs, existing_artifacts_input, existing_potential_cubes, existing_equipment_compare = load_existing_workbook_state(OUT_PATH)
     wb = openpyxl.Workbook()
     build_readme_sheet(wb)
     build_inputs_sheet(wb, existing=existing_inputs)
@@ -3808,13 +4008,14 @@ def main():
     build_calc_sheet(wb)
     build_summary_sheet(wb)
     build_sensitivity_sheet(wb)
+    build_equipment_compare_sheet(wb, existing=existing_equipment_compare)
     build_cube_data_sheet(wb)
     build_artifacts_input_sheet(wb, existing=existing_artifacts_input)
     build_potential_cubes_sheet(wb, existing=existing_potential_cubes)
     wb.active = 0
     wb.save(OUT_PATH)
     print(f"Wrote {OUT_PATH}")
-    if existing_inputs or existing_artifacts_input or existing_potential_cubes:
+    if existing_inputs or existing_artifacts_input or existing_potential_cubes or existing_equipment_compare:
         print("Carried over Inputs/PotentialCubes values from the previous workbook.")
 
 

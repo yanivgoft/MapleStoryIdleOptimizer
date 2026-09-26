@@ -461,6 +461,55 @@ saturation.
 
 ---
 
+## Equipment Compare (new sheet) + a real DPS-Gain compounding fix (all 12 classes)
+
+Every per-line "DPS Gain" total in this project — Artifact Potentials' `Total Potential DPS Gain`,
+Potential Cubes EV's "current value," and the new Equipment Compare sheet below — is built from
+`Sensitivity!H<row>` "$/unit" marginal-DPS values. Those are true partial derivatives (each one
+computed holding every other stat fixed), so combining *two lines of the same stat* by simply
+adding their raw values first is exact (two 5% Max Damage lines really are one 10% Max Damage
+bucket before the damage formula ever sees it), but combining *two different stats'* independently-
+computed gains by summing them is a linear/first-order approximation that silently drops a real
+second-order compounding term — two stats each independently worth 1% DPS truly combine to
+`1.01×1.01−1=2.0201%`, not a naive `2%`, since they live in different multiplicative buckets of the
+damage formula. The gap is quadratically small for small individual gains and grows for larger
+ones (two 10% lines: `21%` true vs `20%` naive).
+
+Fixed project-wide by grouping lines by stat first (summing raw values within a group), then
+combining the resulting *distinct-stat* groups multiplicatively — `combined_multiplier =
+∏(1+group_i_gain/BaselineTotalDPS)`, `TotalDPSGain = BaselineTotalDPS×(combined_multiplier−1)`:
+- **Artifact Potentials' `Total Potential DPS Gain`** (`ArtifactsInput!L<row>`, all 12 classes):
+  was a naive `=E+H+K` sum of the 3 lines' independent gains; now grouped-then-multiplied. Hand-
+  verified per class: 2-same-stat-lines still collapses to exactly the old sum (proving the fix
+  doesn't change anything for the common case), 2-different-stat-lines now exceeds the old sum by
+  the expected second-order amount.
+- **`potential_cubes_ev.py`'s `current_dps_value()`** (what your currently-rolled 3 lines are
+  worth) and its core `roll_distribution()` enumeration (the `line1×line2×line3` combinatorial
+  model every EV/optimal-stopping calculation is built on) both had the same bug — `roll_distribution`
+  in particular used to pre-convert each rolled line straight to a DPS number and discard *which
+  stat it was* before summing, meaning a single cube's own 3 lines already compounded incorrectly,
+  not just across separate items. Both now route through one shared `combined_dps_gain()` helper.
+  This is a single canonical script (`src/potential_cubes_ev.py`), copied identically into all 12
+  class folders — the fix only had to happen once.
+- **New "Equipment Compare" sheet** (all 12 classes): lets you enter a "Current Equip" and a
+  "New Equip" — a fixed Attack line plus up to 5 more stat lines each, picked from a 21-stat
+  dropdown (Main Stat flat/%, Attack, Min/Max Damage %, Damage %, Crit Rate/Damage %, Boss/Normal
+  Monster Damage %, Defense Penetration %, Defense (flat), the 5 Skill Level Bonus tiers, Final
+  Damage %, Basic Attack Damage %, Skill Damage %, Attack Speed %) — and reports the DPS% delta
+  between them (`New% − Current%`), using the same grouped-then-multiplied math, made *exact* here
+  (not an approximation) since both equips are concrete, fixed sets of lines rather than an
+  open-ended reroll search. Pure calculator sheet — nothing else in the workbook reads from it, so
+  it needed no Calc/Summary/Sensitivity/`verify_<class>_workbook.py` changes anywhere. "Defense
+  (flat)" has no DPS effect (and no Sensitivity row) in any class except Dark Knight (Iron Wall) and
+  Bishop (Invincible), which convert part of it into a damage stat — the dropdown option exists
+  everywhere for consistency but resolves to 0 DPS gain in the other 10 classes.
+
+Every hand-spot-check (compounding vs. naive sum, same-stat-collapses-to-a-plain-sum, and the
+Equipment Compare delta cell) matched the expected math exactly in all 12 classes — see each class's
+own git history for the exact numbers if needed.
+
+---
+
 ## Systemic gaps — the wiki itself lacks the data
 
 These classes were added to `idle.maplestorywiki.net` without individual per-skill pages ever
