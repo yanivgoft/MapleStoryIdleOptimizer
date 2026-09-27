@@ -265,26 +265,22 @@ def monster_blend(boss_val, normal_val):
     return (1 - normal_weight) * boss_val + normal_weight * normal_val
 
 
-# ---- Helper rows (Final Attack: Bow, Advanced Final Attack, Enchanted Quiver, Maple Hero,
-#      Flash Mirage II) — own D/E/F only, no independent DPS. ----
+# ---- Helper rows (Advanced Final Attack, Enchanted Quiver, Maple Hero, Flash Mirage II) — own
+#      D/E/F only, no independent DPS of their own; feed another row's coefficient/extra-FD term.
+#      Final Attack: Bow used to be one of these (folded into Arrow Stream's own coefficient) but
+#      is now its own independent DAMAGE_SKILLS entry below, since it's affected by Skill Damage%,
+#      not Basic Attack Damage% (Arrow Stream's own bucket) — split out per a Discord bug report.
 final_attack_bow_pct = (
-    coeff_pct(350, 21, True, 2) + level_gated_sum({52: 50})
-    if unlocked("FINAL_ATTACK_BOW_HELPER") else 0.0
+    coeff_pct(350, 21, True, 2) + level_gated_sum({54: 50})
+    if unlocked("FINAL_ATTACK_BOW") else 0.0
 )
 advanced_final_attack_pct = (
-    coeff_pct(5000, 21, True, 4) + level_gated_sum({111: 50})
+    coeff_pct(5000, 21, True, 4) + level_gated_sum({113: 50})
     if unlocked("ADVANCED_FINAL_ATTACK_HELPER") else 0.0
 )
 enchanted_quiver_pct = coeff_pct(3000, 21, True, 4) if unlocked("ENCHANTED_QUIVER_HELPER") else 0.0
 maple_hero_pct = coeff_pct(250, 23, True, 4) if unlocked("MAPLE_HERO_HELPER") else 0.0
 flash_mirage_ii_pct = coeff_pct(4000, 21, True, 4) if unlocked("FLASH_MIRAGE_II_HELPER") else 0.0
-
-# Arrow Stream's own coefficient includes Final Attack: Bow + Advanced Final Attack folded in
-# (see build_bowmaster_workbook.py's ARROW_STREAM row Note for the exact formula shape).
-arrow_stream_final_attack_addition = (
-    final_attack_bow_pct / 100 * (1 + advanced_final_attack_pct / 100) * 25
-    if unlocked("FINAL_ATTACK_BOW_HELPER") else 0.0
-)
 
 # ---- Attack% bucket: Marksmanship (base + conditional) + Illusion Step, summed additively ----
 marksmanship_base_pct = coeff_pct(100, 22, True, 3) if unlocked("MARKSMANSHIP_BASE") else 0.0
@@ -357,6 +353,7 @@ COST_ACTION_ROWS = [
     ("COVERING_FIRE", 19, True, 1),
     ("PHOENIX", (60 * 0.6) if level >= 102 else 60, True, 1),
     ("ARROW_PLATTER", 40, True, 1),
+    ("HURRICANE", 40, True, 1),
     ("SHARP_EYES", 35, True, 1),
     ("NIMBLE_FEET", 60, True, 1),
 ]
@@ -395,7 +392,7 @@ def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0, extra_fd_pct=0.0):
 # ---- Arrow Stream (basic attack) ----
 arrow_stream_mastery_damage = level_gated_sum({98: 10, 104: 1, 113: 1, 118: 1, 126: 1, 130: 1})
 arrow_stream_mastery_boss_damage = level_gated_sum({108: 10, 122: 10})
-arrow_stream_pct = skill_coefficient_base + arrow_stream_final_attack_addition + arrow_stream_mastery_damage
+arrow_stream_pct = skill_coefficient_base + arrow_stream_mastery_damage
 arrow_stream_targets = 6 + basic_attack_target_increase
 arrow_stream_hit = hit_damage(arrow_stream_pct, True)
 ARROW_STREAM_HITS = 6 if level >= 134 else 5
@@ -421,10 +418,21 @@ DAMAGE_SKILLS = {
                            scales=True, mastery=0, mastery_boss=0, mastery_normal=200,
                            costs_action=True, targets=(3 + (1 if level >= 98 else 0)),
                            maple_ratio=MAPLE_HERO_RATIOS.get("ARROW_PLATTER", 0)),
-    "FLASH_MIRAGE": dict(job_step=3, cooldown=5, hits=1, base=50, fidx=0, scales=False,
-                          mastery=0, mastery_boss=0, mastery_normal=0, costs_action=False,
-                          targets=(5 + (1 if level >= 136 else 0)), proc_chance=20,
+    "FLASH_MIRAGE": dict(job_step=3, cooldown=(1 / ((20 + 30 * (actions_per_second - 1) * 100 / 150) / 100 * ARROW_STREAM_HITS * actions_per_second)),
+                          hits=1, base=5500, fidx=0, scales=False,
+                          mastery=level_gated_sum({68: 50}), mastery_boss=0, mastery_normal=0,
+                          costs_action=False,
+                          targets=(5 + (1 if level >= 136 else 0)), proc_chance=100,
                           extra_fd=flash_mirage_ii_pct if unlocked("FLASH_MIRAGE_II_HELPER") else 0.0),
+    "HURRICANE": dict(job_step=4, cooldown=40, hits=(20 + (15 if level >= 134 else 0)), base=8000,
+                       fidx=0, scales=False, mastery=level_gated_sum({108: 50}), mastery_boss=0,
+                       mastery_normal=0, costs_action=True, targets=7),
+    "FINAL_ATTACK_BOW": dict(job_step=2, cooldown=(1 / (0.25 * ARROW_STREAM_HITS * actions_per_second)),
+                              hits=1, base=350, fidx=21, scales=True,
+                              mastery=level_gated_sum({54: 50}), mastery_boss=0, mastery_normal=0,
+                              costs_action=False, targets=(6 + basic_attack_target_increase),
+                              proc_chance=100,
+                              extra_fd=advanced_final_attack_pct if unlocked("ADVANCED_FINAL_ATTACK_HELPER") else 0.0),
 }
 NORMAL_MONSTER_TARGETS = {k: v["targets"] for k, v in DAMAGE_SKILLS.items()}
 

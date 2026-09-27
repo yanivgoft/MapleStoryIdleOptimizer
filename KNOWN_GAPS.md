@@ -53,9 +53,35 @@ page with a full level 1→200 curve; every mastery bonus is a real, directly-so
 ## Minor, self-contained flags
 
 ### Bowmaster
-- **Flash Mirage**: its own "activation chance/damage increases based on Attack Speed" text is
-  self-contradictory between English and Korean wiki text (0.4× vs 2×) — left at a flat,
-  non-AS-scaled proc rate. *Documented simplification.*
+- **Flash Mirage**: real mechanic confirmed via a second, more authoritative source
+  (maplestoryidle.info/jobs.html — added to the project's domain allowlist specifically for this
+  cross-check) after a Discord report flagged the wiki's own numbers as wrong. Real: 20% chance
+  (scaling up to 50% with Attack Speed, same 150%-AS-cap convention as Quiver Cartridge's own tick
+  rate — resolves what was previously an unmodelable ambiguity, since the new source states plainly
+  that it's the *chance*, not the damage, that scales) to hit up to 5 nearby enemies for **550%**
+  damage (previously modeled as a flat 20% chance for 5% damage — off by two orders of magnitude).
+  Also has no real internal cooldown at all (the wiki's own infobox claim of "Cooldown: 5 sec" was
+  wrong too) and a previously-unmodeled mastery ("Flash Mirage - Damage" +50% at Lv.68). Modeled as
+  a formula-derived Cooldown(s) that reproduces the exact average proc rate
+  (chance × Arrow Stream's own hit rate) rather than a real timer — an exact reformulation, not an
+  approximation, same trick Quiver Cartridge's own AS-scaled tick rate already uses.
+- **Hurricane**: was missing entirely from this workbook until a Discord bug report caught it, and
+  once added, a second report + the same maplestoryidle.info cross-reference caught the wiki's own
+  numbers as wrong too: real Lv.103 4th-job active skill, 20 hits (35 once Lv.134 mastery unlocks)
+  for **800% damage to up to 7 enemies** in front (previously modeled as 7% to a single target —
+  again off by roughly two orders of magnitude, and single-target instead of AoE). Real 40s
+  cooldown (confirmed by both sources). Mastery level thresholds also corrected (Lv.108/134, not
+  the wiki Mastery page's Lv.106/132). Its own "fire faster with higher Attack Speed" text remains
+  too vague to model precisely (unclear what specifically speeds up) — *Documented simplification*
+  for that part only; the skill itself is now fully and correctly modeled.
+- **Final Attack: Bow**: previously folded into Arrow Stream's own coefficient as a steady-state
+  average addition (scaling with Basic Attack Damage%, since that's Arrow Stream's own bucket) —
+  per user direction, split out into its own independent skill row, since Final Attack is actually
+  affected by Skill Damage%, not Basic Attack Damage%. Modeled as a real proc (25% chance "when
+  attacking") with a formula-derived Cooldown(s) reproducing the exact average rate, same technique
+  as Flash Mirage above. Also corrected two mastery level thresholds against maplestoryidle.info
+  (Final Attack - Damage: Lv.54 not the wiki's Lv.52; Advanced Final Attack - Enhance: Lv.113 not
+  the wiki's Lv.111).
 
 ### Marksman
 - **Blink Bolt**: a toggle mechanic (recasting consumes/teleports the mark, ending the buff early)
@@ -507,6 +533,49 @@ combining the resulting *distinct-stat* groups multiplicatively — `combined_mu
 Every hand-spot-check (compounding vs. naive sum, same-stat-collapses-to-a-plain-sum, and the
 Equipment Compare delta cell) matched the expected math exactly in all 12 classes — see each class's
 own git history for the exact numbers if needed.
+
+---
+
+## Sensitivity "mult"-kind invariant fix — checked and fixed across all 12 classes
+
+A real bug, found via a Discord bug report: a purely multiplicative stat (currently only "Final
+Damage %", `STAT_SWEEP` kind `"mult"`) is tested in Sensitivity via a "+1% of the current
+multiplier" bump — `override_expr_for("mult", key)`. Since Total DPS is exactly proportional to
+`(1+FinalDamage/100)` (it's just one factor in a product), this test should **always** report
+exactly 101% (+1.00% DPS) in every class, at every character state — a simple, universal invariant
+worth spot-checking after any change near this bucket. Bowmaster's own Sensitivity sheet reported
+less than that (confirmed independently against the real Calc sheet, not just the Sensitivity
+shadow block: ~100.896% instead of 101%) whenever Mortal Blow's steady-state Final Damage bonus was
+nonzero — root cause: `override_expr_for`'s "mult" branch only bumped the raw `Inputs!final_damage`
+value, but the K-column formula's actual Final-Damage bucket is `(1+(Inputs!final_damage+Mortal
+Blow's bonus)/100)` — two terms sharing one bucket. A flat +1%-of-raw-value bump undershoots a true
++1%-of-the-combined-bucket bump whenever the bucket has *other* baked-in additive terms besides the
+raw Input.
+
+Fix, applied identically in every affected class: `override_expr_for` now bumps `(base+extra)`
+together (via a small `MULT_KIND_EXTRA_REF` map, `{"final_damage": "Summary!$B$<row>"}` pointing at
+whatever skill's bonus shares the bucket) and solves back for the correct raw override value; the
+Sensitivity table's displayed Old/New Value columns for "mult" kind now also show the combined
+bucket total (not just the raw Input) so a user's own manual new/old sanity check matches the real
+DPS ratio.
+
+Checked all 12 classes' Sensitivity Final Damage row against the "always exactly 101%" invariant —
+**6 needed the fix, 6 were already correct** (either no same-bucket extra term exists, or none is
+currently nonzero by default):
+
+| Class | Extra bucket-mate | Fixed? |
+|---|---|---|
+| Bowmaster | Mortal Blow (steady-state FD bonus) | Yes |
+| Marksman | Mortal Blow (steady-state FD bonus) | Yes |
+| Buccaneer | Crossbones + Time Leap + Speed Infusion (live AS-linked) | Yes |
+| Corsair | Jolly Roger (live, always-active-once-unlocked) | Yes |
+| Hero | Enrage (FD half) + Combo Synergy (steady-state/duty-cycled) | Yes |
+| Paladin | Divine Shield + Guardian + Divine Blessing + Greater Vessel of Light | Yes |
+| Bishop, FP-Mage, Ice-Lightning-Mage, Dark Knight, Night Lord, Shadower | none / already correct | No fix needed |
+
+Verified per fixed class: Sensitivity's Final Damage row now reads exactly 101.00000...% regardless
+of the extra bucket-mate's value, Total DPS unchanged, `verify_<class>_workbook.py` still matches,
+zero-error `formulas` scan clean.
 
 ---
 

@@ -2810,6 +2810,19 @@ PASSIVE_DELTA_SLOT = {
 }
 
 
+# For "mult"-kind stats, a +1% test must bump the FULL effective bucket that stat's own K-column
+# term lives in, not just the raw Inputs value alone — otherwise, if anything else is baked
+# additively into that same bucket (e.g. a live passive Final Damage source sharing the same
+# `(1+X/100)` parenthetical), the tested delta undershoots a true 1% multiplier bump. Final Damage
+# should ALWAYS show exactly 101% (+1.00% DPS) in Sensitivity, since it's a pure multiplicative
+# factor — confirmed bug, found via a Discord report on Bowmaster and confirmed present here too:
+# R_FD_BONUS (Enrage's FD half + Combo Synergy, steady-state/duty-cycled) shares
+# Inputs!final_damage's own bucket in the K-column formula, diluting the tested ratio below 101%.
+MULT_KIND_EXTRA_REF = {
+    "final_damage": f"Summary!$B${R_FD_BONUS}",
+}
+
+
 def override_expr_for(kind, key):
     base = IB(key)
     if kind == "dr150":
@@ -2817,7 +2830,8 @@ def override_expr_for(kind, key):
     if kind == "dr100":
         return f'((1-(1-{base}/100)*(1-1/100))*100)'
     if kind == "mult":
-        return f'((((1+{base}/100)*(1.01))-1)*100)'
+        extra = MULT_KIND_EXTRA_REF.get(key, "0")
+        return f'((((1+({base}+{extra})/100)*(1.01))-1)*100-({extra}))'
     if kind == "bool":
         # Equip-toggle test: always report "the value of having this equipped," in the same
         # positive direction regardless of current state (confirmed by the user — otherwise
@@ -3429,8 +3443,9 @@ def build_sensitivity_sheet(wb):
             stat_idx += 1
             ws.cell(row=row, column=1, value=label)
             ws.cell(row=row, column=3, value=kind)
-            ws.cell(row=row, column=4, value=f"={IB(key)}")
-            ws.cell(row=row, column=5, value=f"={override_expr}")
+            _mult_extra = MULT_KIND_EXTRA_REF.get(key, "0") if kind == "mult" else "0"
+            ws.cell(row=row, column=4, value=f"={IB(key)}+{_mult_extra}")
+            ws.cell(row=row, column=5, value=f"={override_expr}+{_mult_extra}")
             ws.cell(row=row, column=6, value=f"=Summary!$B${R_TOTAL}")
             ws.cell(row=row, column=7, value=f"={total_ref}")
             ws.cell(row=row, column=8, value=dps_gain_expr)

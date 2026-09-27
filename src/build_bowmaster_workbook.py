@@ -1849,9 +1849,9 @@ SC = {name: get_column_letter(i + 1) for i, name in enumerate(SKILL_COLUMNS)}
 
 # Row order (2..LAST_ROW) — derived from this list, never hand-numbered.
 ROW_ORDER = [
-    "ARROW_STREAM", "FINAL_ATTACK_BOW_HELPER", "ADVANCED_FINAL_ATTACK_HELPER",
+    "ARROW_STREAM", "FINAL_ATTACK_BOW", "ADVANCED_FINAL_ATTACK_HELPER",
     "COVERING_FIRE", "QUIVER_CARTRIDGE", "ENCHANTED_QUIVER_HELPER",
-    "PHOENIX", "ARROW_PLATTER", "MAPLE_HERO_HELPER",
+    "PHOENIX", "ARROW_PLATTER", "HURRICANE", "MAPLE_HERO_HELPER",
     "FLASH_MIRAGE", "FLASH_MIRAGE_II_HELPER",
     "MARKSMANSHIP_BASE", "MARKSMANSHIP_COND", "ILLUSION_STEP",
     "SHARP_EYES", "CONCENTRATION", "MORTAL_BLOW",
@@ -1894,13 +1894,14 @@ SUMMARY_BREAKDOWN_HEADER_ROW = R_NORMAL_ONLY_TOTAL + 3
 # this session (Sept 2026).
 UNLOCK_LEVEL = {
     "ARROW_STREAM": 100,
-    "FINAL_ATTACK_BOW_HELPER": 50,
+    "FINAL_ATTACK_BOW": 50,
     "ADVANCED_FINAL_ATTACK_HELPER": 105,
     "COVERING_FIRE": 35,
     "QUIVER_CARTRIDGE": 40,
     "ENCHANTED_QUIVER_HELPER": 107,
     "PHOENIX": 69,
     "ARROW_PLATTER": 63,
+    "HURRICANE": 103,
     "MAPLE_HERO_HELPER": 100,
     "FLASH_MIRAGE": 60,
     "FLASH_MIRAGE_II_HELPER": 110,
@@ -1948,17 +1949,14 @@ SKILL_ROWS = [
     ("ARROW_STREAM", "Arrow Stream", 4, "", False, 1,
      f'=IF({IB("level")}>=134,6,5)', 0, 0, 100, 1,
      2900, 21, True,
-     # Final Attack: Bow (25% chance, 35%->49% additional dmg) + Advanced Final Attack (+500%->
-     # 900% FD to Final Attack specifically) folded together as a steady-state average addition,
-     # PLUS Arrow Stream's own real Damage mastery chain (98/104/113/118/126/130, cumulative
+     # Real Arrow Stream - Damage mastery chain only (98/104/113/118/126/130, cumulative
      # +10/11/12/13/14/15%, confirmed live via idle.maplestorywiki.net/w/Bowmaster/Mastery —
      # identical level breakpoints/deltas to Night Lord's own Showdown mastery chain, the same
-     # universal 4th-job-basic-attack mastery pattern) — see FINAL_ATTACK_BOW_HELPER/
-     # ADVANCED_FINAL_ATTACK_HELPER rows below for the Final Attack piece.
-     f"=Calc!F{{FINAL_ATTACK_BOW_HELPER}}*IF(Calc!C{{FINAL_ATTACK_BOW_HELPER}}=TRUE,1,0)/100"
-     f"*(1+Calc!F{{ADVANCED_FINAL_ATTACK_HELPER}}*IF(Calc!C{{ADVANCED_FINAL_ATTACK_HELPER}}=TRUE,1,0)/100)"
-     f"*25"
-     f"+{level_gated_sum_raw(IB('level'), {98: 10, 104: 1, 113: 1, 118: 1, 126: 1, 130: 1}).replace('{', '{{').replace('}', '}}')}",
+     # universal 4th-job-basic-attack mastery pattern). Final Attack: Bow used to be folded in
+     # here as a steady-state average addition, but Final Attack is affected by Skill Damage%,
+     # not Basic Attack Damage% (which is what this row's own K-column term applies) — per user
+     # direction, split out into its own independent FINAL_ATTACK_BOW row below instead.
+     level_gated_sum(IB("level"), {98: 10, 104: 1, 113: 1, 118: 1, 126: 1, 130: 1}),
      level_gated_sum(IB("level"), {108: 10, 122: 10}), 0,
      f'=6+{IB("basic_attack_target_increase")}', "", 0, "", "",
      "4th-job basic-attack effect (supersedes Wind Arrow/Wind Arrow II/Arrow Blow, confirmed "
@@ -1966,33 +1964,44 @@ SKILL_ROWS = [
      "class's own 4th-job basic attack). factorIndex 21, baseDamage 2900 tenths%. HitsPerCast "
      "= 5 (the wiki's own 'time(s)' figure), bumping to 6 once Mastery Lv.134 'Arrow Stream - "
      "Strike' unlocks — same pattern/level as Night Lord's own Showdown mastery. "
-     "SkillMasteryBonus% is Final Attack: Bow + Advanced Final Attack's own combined "
-     "steady-state contribution (ProcChance x AdditionalDamage% x (1+AdvancedFD%/100) x 25, the "
-     "x25 converting Final Attack's own attack-triggered percentage into an equivalent addition "
-     "to Arrow Stream's per-hit coefficient at Arrow Stream's own 5-hit-per-cast rate — see the "
-     "module docstring for why this is folded in rather than an independent pipeline) PLUS the "
-     "real Arrow Stream - Damage mastery chain (98/104/113/118/126/130, cumulative "
-     "+10/11/12/13/14/15%). MasteryBossDamage% is the real 2-tier Arrow Stream - Boss Monster "
-     "Damage chain (108, 122), each independently +10%, totaling +20% — this and the Damage "
-     "mastery chain above were both caught missing entirely during the Marksman build's own "
-     "shared-skill cross-check (Verification item 5) and fixed here."),
-    ("FINAL_ATTACK_BOW_HELPER", "Final Attack: Bow (helper)", 2, "", False, 1, 1, 0, 0, 100, 1,
+     "SkillMasteryBonus% is ONLY the real Arrow Stream - Damage mastery chain (98/104/113/118/"
+     "126/130, cumulative +10/11/12/13/14/15%) — Final Attack: Bow's own contribution moved to "
+     "its own FINAL_ATTACK_BOW row (see there for why). MasteryBossDamage% is the real 2-tier "
+     "Arrow Stream - Boss Monster Damage chain (108, 122), each independently +10%, totaling "
+     "+20% — this and the Damage mastery chain above were both caught missing entirely during "
+     "the Marksman build's own shared-skill cross-check (Verification item 5) and fixed here."),
+    ("FINAL_ATTACK_BOW", "Final Attack: Bow", 2,
+     # Uses the raw Summary!APS (R_APS), NOT Arrow Stream's own post-cast-rate Summary!R_BAPS —
+     # R_BAPS is itself derived from a SUMPRODUCT over every row's own CastsInFight/InvCooldown
+     # column (R_CASTRATE), which would need THIS row's own Cooldown(s) (and thus R_BAPS itself)
+     # already resolved first if referenced here — a genuine circular reference, not just a loose
+     # approximation choice. R_APS is a clean, non-circular Attack-Speed-only figure.
+     f'=1/(0.25*Skills!G{ROW["ARROW_STREAM"]}*Summary!$B${R_APS})', False, 1, 1, 0, 0, 100, 1,
      350, 21, True,
-     level_gated_sum(IB("level"), {52: 50}), 0, 0, 0, "", 0, "", "",
-     "Helper row only (no independent O-column DPS) — feeds Arrow Stream's own coefficient. "
-     "25% chance, 35%->49% additional damage (levels 1-100). factorIndex 21, baseDamage 350 "
-     "tenths%. Mastery Lv.52 'Final Attack - Damage' +50% (real SkillMasteryBonus%, confirmed "
-     "via Bowmaster/Mastery — same pattern/level as Marksman's own Final Attack: Crossbow "
-     "helper, missing from this row until caught during the Marksman build's own cross-check). "
-     "Not otherwise patched (Aug 13 2026 patch notes make no mention of this skill)."),
+     level_gated_sum(IB("level"), {54: 50}), 0, 0,
+     f'=6+{IB("basic_attack_target_increase")}', "", 0, "", "",
+     "Previously folded into Arrow Stream's own coefficient as a steady-state average addition —"
+     " split out into its own independent row per a Discord bug report/user direction, since "
+     "Final Attack is affected by Skill Damage%, not Basic Attack Damage% (Arrow Stream's own "
+     "bucket). Real proc: 25% chance 'when attacking' to deal 35%->49% additional damage (levels "
+     "1-100) to the same target(s) Arrow Stream just hit. Modeled as its own cooldown-gated row "
+     "with ProcChance%=100 and Cooldown(s) = 1/(0.25 x Arrow Stream's own hit rate) — an exact "
+     "average-rate-preserving reformulation (not an approximation) that fits this project's "
+     "existing has_cooldown machinery, same trick already used for Quiver Cartridge's own "
+     "AS-scaled tick rate. factorIndex 21, baseDamage 350 tenths%. Mastery 'Final Attack - "
+     "Damage' +50% at Lv.54 (RESOLVED this session via maplestoryidle.info/jobs.html — the wiki's "
+     "own Mastery page had this at Lv.52, confirmed wrong by the new source). Its own Final "
+     "Damage bonus (Advanced Final Attack, +500%->900% FD to Final Attack specifically) is a "
+     "separate multiplicative term from ADVANCED_FINAL_ATTACK_HELPER (same shape as Quiver "
+     "Cartridge/Enchanted Quiver or Flash Mirage/Flash Mirage II's own extra_fd_term pattern)."),
     ("ADVANCED_FINAL_ATTACK_HELPER", "Advanced Final Attack (helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
      5000, 21, True,
-     level_gated_sum(IB("level"), {111: 50}), 0, 0, 0, "", 0, "", "",
-     "Helper row only — feeds Arrow Stream's own coefficient (Final Attack's own Final Damage "
-     "bonus). +500%->900% FD (levels 1-200). factorIndex 21, baseDamage 5000 tenths%. Mastery "
-     "Lv.111 'Advanced Final Attack - Enhance' +50% (real SkillMasteryBonus%, confirmed via "
-     "Bowmaster/Mastery — same treatment as FINAL_ATTACK_BOW_HELPER above). Not otherwise "
-     "patched."),
+     level_gated_sum(IB("level"), {113: 50}), 0, 0, 0, "", 0, "", "",
+     "Helper row only — feeds FINAL_ATTACK_BOW's own K-column extra Final Damage term (Final "
+     "Attack's own Final Damage bonus, not a global bucket). +500%->900% FD (levels 1-200). "
+     "factorIndex 21, baseDamage 5000 tenths%. Mastery 'Advanced Final Attack - Enhance' +50% at "
+     "Lv.113 (RESOLVED this session via maplestoryidle.info/jobs.html — the wiki's own Mastery "
+     "page had this at Lv.111, confirmed wrong by the new source)."),
     ("COVERING_FIRE", "Covering Fire", 1, 19, True, 1, 3, 0, 0, 100, 1,
      2500, 12, True,
      level_gated_sum(IB("level"), {39: 50}), 0, 0, 1, "", 0, 250, 0,
@@ -2058,6 +2067,27 @@ SKILL_ROWS = [
      "base targets 1->3, +1 more once Lv.98 mastery unlocks (patched from +2). Own +200% Normal "
      "Monster Damage baked into MasteryNormalDamage% (scoped to this row only, per its own skill "
      "description, not the global bucket). Maple Hero target — see MAPLE_HERO_RATIOS."),
+    ("HURRICANE", "Hurricane", 4, 40, True, 1,
+     f'=20+IF({IB("level")}>=134,15,0)', 0, 0, 100, 1,
+     8000, 0, False,
+     level_gated_sum(IB("level"), {108: 50}), 0, 0, 7, "", 0, "", "",
+     "Previously entirely missing from this workbook — found and added after a Discord bug "
+     "report flagged it absent from the DPS breakdown. Real Lv.103 4th-job active skill. "
+     "idle.maplestorywiki.net/w/Hurricane's own numbers turned out wrong (confirmed by a "
+     "second Discord report and cross-referenced against maplestoryidle.info/jobs.html, the "
+     "new authoritative source used to fix this): the wiki claimed 20 hits, 7% damage 'to the "
+     "target' (single-target); the real skill is 20 hits, **800%** damage to **up to 7 "
+     "enemies** in front. Confirmed non-scaling (flat, no per-level growth) — factorIndex 0, "
+     "baseDamage 8000 tenths%. Real Cooldown=40s (matches both sources), CostsActionSlot=True "
+     "(Active type). Not one of Maple Hero's 3 buffed skills (Arrow Platter/Phoenix/Covering "
+     "Fire only) — no MapleHeroBase/FactorIndex. Two real mastery bonuses, level thresholds "
+     "also corrected against maplestoryidle.info/jobs.html (the wiki's own Mastery page had "
+     "these 2 levels lower each): Lv.108 'Hurricane - Damage' +50% (flat SkillMasteryBonus%), "
+     "Lv.134 'Hurricane - Extend' raises hit count 20->35 (baked into the HitsPerCast formula, "
+     "same level-gated-hit-count-flip pattern as Dark Knight's Gungnir's Descent). Its own "
+     "'fire faster with higher Attack Speed' text is the same category of too-vague-to-model-"
+     "precisely ambiguity already flagged for this class's own Flash Mirage — FLAGGED, not "
+     "modeled, real 40s Cooldown(s) used unmodified by Attack Speed."),
     ("MAPLE_HERO_HELPER", "Maple Hero (helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
      250, 23, True,
      0, 0, 0, 0, "", 0, "", "",
@@ -2068,21 +2098,34 @@ SKILL_ROWS = [
      "row of its own (Calc columns J-N blank/0, only D/E/F computed, read directly by each "
      "target row's own K-column formula — same 'no independent row' pattern as Shadower's own "
      "Maple Hero)."),
-    ("FLASH_MIRAGE", "Flash Mirage", 3, 5, False, 1, 1, 0, 0, 20, 1,
-     50, 0, False,
-     0, 0, 0,
+    ("FLASH_MIRAGE", "Flash Mirage", 3,
+     # Uses raw Summary!APS (R_APS), not Arrow Stream's own post-cast-rate R_BAPS — same
+     # circular-reference reasoning as FINAL_ATTACK_BOW's own Cooldown(s) formula above.
+     f'=1/((20+30*(Summary!$B${R_APS}-1)*100/150)/100*Skills!G{ROW["ARROW_STREAM"]}*Summary!$B${R_APS})',
+     False, 1, 1, 0, 0, 100, 1,
+     5500, 0, False,
+     level_gated_sum(IB("level"), {68: 50}), 0, 0,
      f'=5+IF({IB("level")}>=136,1,0)', "", 0, "", "",
-     "Passive proc with a real 5s internal cooldown (own wiki infobox lists 'Cooldown: 5 sec' "
-     "despite Type=Passive) — modeled as a normal Cooldown(s)-gated row (CostsActionSlot=False) "
-     "so effective proc rate is capped at once per 5s x 20% chance. Own damage% (5%) confirmed "
-     "non-scaling across all sampled levels 1-200 — factorIndex 0, baseDamage 50 tenths%. Its "
-     "own 'activation chance/damage increases based on Attack Speed' text (550->990 across "
-     "levels) is too vague to model precisely (unclear whether it means chance, damage, or a "
-     "hard cap) — FLAGGED, not modeled, flat 20%/5% used throughout. Wiki calls this skill "
-     "'Flash Mirage'; the Aug 13 patch notes call the SAME skill 'Speed Mirage' (confirmed via "
-     "mechanic match — targets 5->7, detection range +~14%, target count not modeled here since "
-     "this row is single-target-proc shaped). Flash Mirage II (Lv.110, see "
-     "FLASH_MIRAGE_II_HELPER) adds +targets/+FD once unlocked, baked into "
+     "Passive proc, real mechanic per maplestoryidle.info/jobs.html (used to fix two real data "
+     "errors found via Discord bug reports — the wiki's own numbers here were badly wrong): "
+     "'When attacking, an illusion is created with a 20% chance to attack up to 5 nearby "
+     "enemies around the target and deal 550% damage. The activation chance increases up to "
+     "50% based on Attack Speed.' PATCHED from the wiki's own (confirmed wrong) 5%/flat-20% — "
+     "baseDamage now 5500 tenths% (factorIndex 0, non-scaling), and the chance is now REAL "
+     "AS-scaling (20%->50%, same 150%-AS-cap convention as Quiver Cartridge's own tick rate) "
+     "rather than the flat rate this file used before this session's fix (the wiki's ambiguous "
+     "'activation chance/damage increases based on Attack Speed' text — unclear whether chance "
+     "or damage scaled — is resolved by the new source: it's chance, not damage). No real "
+     "internal cooldown exists (unlike the wiki's own infobox, which claimed 'Cooldown: 5 sec' "
+     "despite Type=Passive, and which this file previously modeled) — instead, Cooldown(s) is "
+     "a formula solving for the exact average interval implied by "
+     "(chance/100)*(Arrow Stream's own hit rate), with ProcChance%=100 so the chance isn't "
+     "double-counted — an exact reformulation (not an approximation), same trick as Quiver "
+     "Cartridge's/FINAL_ATTACK_BOW's own formula-based Cooldown(s). Also added a real, "
+     "previously-unmodeled mastery: 'Flash Mirage - Damage' +50% at Lv.68. Wiki calls this "
+     "skill 'Flash Mirage'; the Aug 13 patch notes call the SAME skill 'Speed Mirage' "
+     "(confirmed via mechanic match — targets 5->7, detection range +~14%). Flash Mirage II "
+     "(Lv.110, see FLASH_MIRAGE_II_HELPER) adds +targets/+FD once unlocked, baked into "
      "NormalMonsterTargets/K-column."),
     ("FLASH_MIRAGE_II_HELPER", "Flash Mirage II (helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
      4000, 21, True,
@@ -2227,16 +2270,6 @@ SKILL_ROWS = [
      "baseDamage 80 tenths%."),
 ]
 
-# Resolve the {ROW_KEY} placeholders in ARROW_STREAM's own SkillMasteryBonus% formula (Python
-# f-string braces collide with Excel's own {..} SUMPRODUCT array-constant syntax elsewhere in
-# this file, so this one row's cross-references are patched in after the fact instead).
-_arrow_stream_row = [list(row) for row in SKILL_ROWS if row[0] == "ARROW_STREAM"][0]
-_arrow_stream_row[14] = _arrow_stream_row[14].format(
-    FINAL_ATTACK_BOW_HELPER=ROW["FINAL_ATTACK_BOW_HELPER"],
-    ADVANCED_FINAL_ATTACK_HELPER=ROW["ADVANCED_FINAL_ATTACK_HELPER"],
-)
-SKILL_ROWS = [tuple(_arrow_stream_row) if row[0] == "ARROW_STREAM" else row for row in SKILL_ROWS]
-
 # Rows with a real Cooldown(s) value (literal or a live formula reference).
 ROW_HAS_COOLDOWN = {row[0]: row[3] not in ("", None) for row in SKILL_ROWS}
 CDR_COSTS_ACTION_ROW = {key: r for key, r in ROW.items()}
@@ -2265,7 +2298,7 @@ def build_skills_sheet(wb):
 # ---------------------------------------------------------------------------
 # Row categories consumed by build_calc_sheet/build_summary_sheet/build_sensitivity_sheet.
 # ---------------------------------------------------------------------------
-DAMAGE_ROW_KEYS = ["COVERING_FIRE", "QUIVER_CARTRIDGE", "PHOENIX", "ARROW_PLATTER", "FLASH_MIRAGE"]
+DAMAGE_ROW_KEYS = ["COVERING_FIRE", "QUIVER_CARTRIDGE", "PHOENIX", "ARROW_PLATTER", "FLASH_MIRAGE", "HURRICANE", "FINAL_ATTACK_BOW"]
 # Real, always-on buff rows (NOT baked into Inputs) whose (F * uptime) feeds the shared
 # multiplicative avg_buff_mult chain via BuffTargetStat="ATTACK" or duty-cycle FD sources.
 ATTACK_BUFF_ROW_KEYS = ["MARKSMANSHIP_BASE", "MARKSMANSHIP_COND", "ILLUSION_STEP"]
@@ -2283,7 +2316,7 @@ PASSIVE_MULT_ROW_KEYS = [
     "BOW_EXPERT_MAXDMG", "SOUL_ARROW_BOW_ATK",
 ]
 HELPER_ROW_KEYS = [
-    "FINAL_ATTACK_BOW_HELPER", "ADVANCED_FINAL_ATTACK_HELPER", "ENCHANTED_QUIVER_HELPER",
+    "ADVANCED_FINAL_ATTACK_HELPER", "ENCHANTED_QUIVER_HELPER",
     "MAPLE_HERO_HELPER", "FLASH_MIRAGE_II_HELPER",
 ]
 MAPLE_HERO_ROW_KEYS = ["MAPLE_HERO_HELPER"]
@@ -2402,6 +2435,9 @@ def build_calc_sheet(wb):
             elif key == "FLASH_MIRAGE":
                 fm2_row = ROW["FLASH_MIRAGE_II_HELPER"]
                 extra_fd_term = f'*(1+IF(C{fm2_row}=TRUE,F{fm2_row},0)/100)'
+            elif key == "FINAL_ATTACK_BOW":
+                afa_row = ROW["ADVANCED_FINAL_ATTACK_HELPER"]
+                extra_fd_term = f'*(1+IF(C{afa_row}=TRUE,F{afa_row},0)/100)'
             ws.cell(row=r, column=11, value=(
                 f'=J{r}*(1+{IB("stat_damage")}/100)*(1+{IB("damage")}/100)'
                 f'*(1+{IB("damage_amp")}/100)'
@@ -2798,6 +2834,19 @@ PASSIVE_DELTA_SLOT = {
 }
 
 
+# For "mult"-kind stats, a +1% test must bump the FULL effective bucket that stat's own K-column
+# term lives in, not just the raw Inputs value alone — otherwise, if anything else is baked
+# additively into that same bucket (e.g. a steady-state passive bonus sharing the same
+# `(1+X/100)` parenthetical), the tested delta undershoots a true 1% multiplier bump and the
+# Sensitivity row's %Gain comes out below 101% even though Final Damage (like every purely
+# multiplicative stat) should ALWAYS show exactly 101% (+1.00% DPS) — confirmed with the user,
+# real reproduced bug: Mortal Blow's own steady-state Final Damage bonus (R_MORTAL_BLOW_BONUS)
+# shares Inputs!final_damage's own bucket in the K-column formula, diluting the tested ratio.
+MULT_KIND_EXTRA_REF = {
+    "final_damage": f"Summary!$B${R_MORTAL_BLOW_BONUS}",
+}
+
+
 def override_expr_for(kind, key):
     base = IB(key)
     if kind == "dr150":
@@ -2805,7 +2854,8 @@ def override_expr_for(kind, key):
     if kind == "dr100":
         return f'((1-(1-{base}/100)*(1-1/100))*100)'
     if kind == "mult":
-        return f'((((1+{base}/100)*(1.01))-1)*100)'
+        extra = MULT_KIND_EXTRA_REF.get(key, "0")
+        return f'((((1+({base}+{extra})/100)*(1.01))-1)*100-({extra}))'
     if kind == "bool":
         # Equip-toggle test: always report "the value of having this equipped," in the same
         # positive direction regardless of current state (confirmed by the user — otherwise
@@ -3212,6 +3262,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             elif key == "FLASH_MIRAGE":
                 fm2_row_of = row_of["FLASH_MIRAGE_II_HELPER"]
                 extra_fd_term = f'*(1+IF(C{fm2_row_of}=TRUE,F{fm2_row_of},0)/100)'
+            elif key == "FINAL_ATTACK_BOW":
+                afa_row_of = row_of["ADVANCED_FINAL_ATTACK_HELPER"]
+                extra_fd_term = f'*(1+IF(C{afa_row_of}=TRUE,F{afa_row_of},0)/100)'
             ws.cell(row=row, column=11, value=(
                 f'=J{row}*(1+{ib("stat_damage")}/100)*(1+{ib("damage")}/100)'
                 f'*(1+{ib("damage_amp")}/100)'
@@ -3413,8 +3466,9 @@ def build_sensitivity_sheet(wb):
             stat_idx += 1
             ws.cell(row=row, column=1, value=label)
             ws.cell(row=row, column=3, value=kind)
-            ws.cell(row=row, column=4, value=f"={IB(key)}")
-            ws.cell(row=row, column=5, value=f"={override_expr}")
+            _mult_extra = MULT_KIND_EXTRA_REF.get(key, "0") if kind == "mult" else "0"
+            ws.cell(row=row, column=4, value=f"={IB(key)}+{_mult_extra}")
+            ws.cell(row=row, column=5, value=f"={override_expr}+{_mult_extra}")
             ws.cell(row=row, column=6, value=f"=Summary!$B${R_TOTAL}")
             ws.cell(row=row, column=7, value=f"={total_ref}")
             ws.cell(row=row, column=8, value=dps_gain_expr)
