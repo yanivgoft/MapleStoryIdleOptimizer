@@ -1918,13 +1918,17 @@ def unlock_expr(key):
 
 # Maple Hero (Buccaneer) — the wiki's own source text is genuinely TRUNCATED mid-sentence
 # ("Increases Final Damage of the following skills: Serpent Assault 60%, Corkscrew...") and no
-# individual Maple_Hero_(Buccaneer) page exists to confirm its own growth curve either. Per direct
-# user decision: model ONLY Serpent Assault's confirmed 60% (ratio 1.0), FLAGGED-ASSUMPTION curve
-# (factorIndex 23, matching the universal Maple Hero convention confirmed on every other class -
-# baseDamage 600 tenths% = 60% at level 1). Corkscrew Blow and the missing third skill are left
-# completely unmodeled — a known incomplete gap, not guessed.
+# individual Maple_Hero_(Buccaneer) page exists to confirm its own growth curve. RESOLVED via
+# maplestoryidle.info cross-reference, which gives the full, untruncated text: "Increases Final
+# Damage of the following skills: Serpent Assault 60%, Corkscrew Blow 40%." — only TWO skills, not
+# a guessed third. factorIndex 23 (matching the universal Maple Hero convention confirmed on every
+# other class), baseDamage 600 tenths% = 60% at level 1 for Serpent Assault's own 1.0x share;
+# Corkscrew Blow's 40% share is ratio 40/60 below. The growth curve past level 1 is still an
+# assumed shape (matching every other class's own Maple Hero), since neither source gives a full
+# per-level table for this specific skill.
 MAPLE_HERO_RATIOS = {
     "SERPENT_ASSAULT": 60 / 60,
+    "CORKSCREW_BLOW": 40 / 60,
 }
 
 # Assault Mode resource-economy uptime — Sea Serpent Burst procs on every basic attack (PATCHED:
@@ -2013,13 +2017,13 @@ SKILL_ROWS = [
      "2%, stacks up to 5 times' — a SEPARATE, smaller FD buff active BEFORE reaching Assault "
      "Mode) is NOT modeled — stacking an approximation on top of an already-approximated "
      "resource economy was judged out of scope for this session."),
-    ("CORKSCREW_BLOW", "Corkscrew Blow", 3, 20, True, 1, 2, 0, 0, 100, 1,
+    ("CORKSCREW_BLOW", "Corkscrew Blow", 3, 21, True, 1, 2, 0, 0, 100, 1,
      3400, 12, True,
      level_gated_sum(IB("level"), {73: 80}), 0, 0, 7, "", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists, no cooldown stated anywhere on the "
-     "wiki either — 20s assumed by convention matching similarly-shaped 3rd-job burst skills "
-     "elsewhere in this project): 'Charges to the front...to deal 340% damage to 7 target(s) 2 "
-     "time(s) and stun them' (stun not modeled). factorIndex 12, baseDamage 3400 tenths%. "
+     "'Charges to the front...to deal 340% damage to 7 target(s) 2 "
+     "time(s) and stun them' (stun not modeled), 21s cooldown — confirmed via maplestoryidle.info "
+     "cross-reference (corrected from a previously-assumed 20s, since no cooldown existed on the "
+     "wiki either). factorIndex 12, baseDamage 3400 tenths%. "
      "Mastery Lv.73 'Corkscrew Blow - Damage' +80% (real SkillMasteryBonus%). CONFIRMED, "
      "EXPLAINED level-boundary DPS DIP at unlock (Lv.63, not a bug): this skill's own "
      "CostsActionSlot=True consumes basic-attack action-slot time, lowering Hook Bomber's own "
@@ -2031,52 +2035,66 @@ SKILL_ROWS = [
      "Corkscrew Blow's own +5476 outweighed by Serpent Assault's -9725 and Sea Serpent Burst's "
      "-256). A genuine emergent consequence of the resource-economy approximation interacting "
      "with the shared action-slot budget, not a coding error — flagged explicitly here rather "
-     "than silently accepted or hidden, per this project's own level-boundary-sweep rigor bar."),
-    ("OCTOPUNCH", "Octopunch", 4, 15, True, 1,
+     "than silently accepted or hidden, per this project's own level-boundary-sweep rigor bar. "
+     "Maple Hero target (own confirmed 40% share, ratio 40/60) — see MAPLE_HERO_RATIOS, "
+     "resolved from the wiki's own previously-truncated Maple Hero text via maplestoryidle.info."),
+    ("OCTOPUNCH", "Octopunch", 4, 16, True, 1,
      f'=3+IF(OR({IB("monster_type")}="boss",{IB("monster_type")}="pvp"),2,0)', 0, 0, 100, 1,
      9000, 12, True,
      level_gated_sum(IB("level"), {108: 50}), 0, 0,
      4, "", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists, no cooldown stated — 15s assumed by "
-     "convention matching similarly-shaped 4th-job burst skills elsewhere): 'Throws a series of "
-     "punches to deal 900% damage to 4 target(s) in front 3 time(s).' factorIndex 12, baseDamage "
+     "'Throws a series of "
+     "punches to deal 900% damage to 4 target(s) in front 3 time(s).' 16s cooldown — confirmed "
+     "via maplestoryidle.info cross-reference (corrected from a previously-assumed 15s, since no "
+     "cooldown existed on the wiki either). factorIndex 12, baseDamage "
      "9000 tenths%. Mastery Lv.108 'Octopunch - Damage' +50% (real SkillMasteryBonus%). The "
      "skill's own 'if the target is a boss, deals the same damage 2 more time(s)' clause is "
-     "modeled via HitsPerCast (see below), NOT via this row's own NormalMonsterTargets field."),
-    ("SEA_SERPENTS_RAGE", "Sea Serpent's Rage", 4, 15, False, 1, 2, 0, 0, 100, 1,
+     "modeled via HitsPerCast (see below), NOT via this row's own NormalMonsterTargets field. "
+     "Mastery Lv.134 'Octopunch - Reuse' (-30% cooldown) not separately modeled, same treatment "
+     "as Hero's own Rush cooldown masteries."),
+    ("SEA_SERPENTS_RAGE", "Sea Serpent's Rage", 4, 16, False, 1, 2, 0, 0, 100, 1,
      17000, 12, True,
-     0, 0, 0, 8, "", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists): 'When Octopunch is activated, a Sea "
+     level_gated_sum(IB("level"), {122: 100}), 0, 0, 8, "", 0, "", "",
+     "'When Octopunch is activated, a Sea "
      "Serpent appears and deals 1700% additional damage to 8 target(s) in front 2 time(s)' — "
      "UNCONDITIONAL on every Octopunch cast (own damage-taken-increase debuff on hit targets, "
      "15% for 5s, not modeled). Modeled as its own row sharing Octopunch's own Cooldown(s) value "
-     "with CostsActionSlot=False and effectively guaranteed (ProcChance 100, RollsPerCast 1) — "
+     "(16s, kept in manual lockstep — this row has no live formula reference to Octopunch's own "
+     "cooldown cell, so both must be updated together) with CostsActionSlot=False and effectively "
+     "guaranteed (ProcChance 100, RollsPerCast 1) — "
      "same 'shares parent's cast timing, doesn't double-count in the action economy' pattern as "
      "Hero's own PUNCTURE_WOUND sharing PUNCTURE's cooldown, chosen over folding into Octopunch's "
      "own coefficient because the two skills' target counts/hit counts differ (4/3 vs 8/2) and "
      "coefficient-folding assumes a shared target/hit shape. factorIndex 12, baseDamage 17000 "
-     "tenths%."),
-    ("RAGING_SERPENT_ASSAULT", "Raging Serpent Assault", 4, 15, False, 1, 1, 1, 5,
+     "tenths%. Mastery Lv.122 'Sea Serpent's Rage - Damage' +100% (real SkillMasteryBonus%, "
+     "confirmed via maplestoryidle.info — previously missing entirely)."),
+    ("RAGING_SERPENT_ASSAULT", "Raging Serpent Assault", 4, 16, False, 1, 1, 1, 5,
      f'=100*{assault_uptime_expr()}', 1,
      13000, 12, True,
-     0, 0, 0, 9, "", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists): 'When attacking with Sea Serpent's "
+     level_gated_sum(IB("level"), {130: 50}), 0, 0, 9, "", 0, "", "",
+     "'When attacking with Sea Serpent's "
      "Rage in Assault Mode, calls upon an enraged Sea Serpent...to deal 1300% damage to 9 nearby "
      "target(s) every 1 sec' for 5 sec (EffectiveHits = ActiveWindow/ICD = 5 ticks/cast). Shares "
-     "SEA_SERPENTS_RAGE's own Cooldown(s) (same cast timing, CostsActionSlot=False) — gated "
+     "SEA_SERPENTS_RAGE's own Cooldown(s) (16s, same cast timing, CostsActionSlot=False, kept in "
+     "manual lockstep) — gated "
      "ADDITIONALLY by the SAME Assault-Mode-uptime fraction as SEA_SERPENT_BURST/SERPENT_ASSAULT "
      "(ProcChance% = 100*uptime, see assault_uptime_expr) since this effect only fires while in "
      "Assault Mode, on top of Sea Serpent's Rage's own already-guaranteed trigger. factorIndex "
-     "12, baseDamage 13000 tenths%."),
-    ("NAUTILUS_STRIKE", "Nautilus Strike", 4, 45, True, 1, 5, 0, 0, 100, 1,
+     "12, baseDamage 13000 tenths%. Mastery Lv.130 'Raging Serpent Assault - Damage' +50% (real "
+     "SkillMasteryBonus%, confirmed via maplestoryidle.info — previously missing entirely)."),
+    ("NAUTILUS_STRIKE", "Nautilus Strike", 4, 33, True, 1, 5, 0, 0, 100, 1,
      19500, 12, True,
-     0, 0, 0, 15, "", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists, no cooldown stated — 45s assumed by "
-     "convention matching similarly-shaped big single-cast 4th-job nukes elsewhere): 'Orders the "
-     "Nautilus to attack to deal 1950% damage to 15 nearby target(s) 5 time(s).' factorIndex 12, "
-     "baseDamage 19500 tenths%. CONFIRMED SHARED VERBATIM WITH CORSAIR (byte-identical wiki "
-     "description on both classes' overview pages) — Corsair's own build should reuse this exact "
-     "(19500, 12) tuple directly rather than re-deriving it."),
+     level_gated_sum(IB("level"), {126: 50}), 0, 0, 15, "", 0, "", "",
+     "'Orders the "
+     "Nautilus to attack to deal 1950% damage to 15 nearby target(s) 5 time(s).' 33s cooldown — "
+     "confirmed via maplestoryidle.info cross-reference (corrected from a previously-assumed 45s, "
+     "since no cooldown existed on the wiki either — a real, sizable fix: ~36% faster casts). "
+     "factorIndex 12, "
+     "baseDamage 19500 tenths%. Mastery Lv.126 'Nautilus Strike - Damage' +50% (real "
+     "SkillMasteryBonus%, confirmed via maplestoryidle.info — previously missing entirely). "
+     "CONFIRMED SHARED VERBATIM WITH CORSAIR (byte-identical wiki description on both classes' "
+     "overview pages) — Corsair's own build should reuse this exact (19500, 12, 33s cooldown, "
+     "Lv.126 +50% mastery) tuple directly rather than re-deriving it."),
     ("NAUTILUS_FINAL_ATTACK", "Nautilus Strike - Final Attack", 4, 1, False, 1, 1, 0, 0, 30, 1,
      8500, 21, True,
      0, 0, 0, 1, "", 0, "", "",
@@ -2123,28 +2141,38 @@ SKILL_ROWS = [
      "no per-level growth on THIS component isn't reliable evidence it's truly non-scaling "
      "(same lesson as Bowmaster's Hurricane/Flash Mirage/Soul Arrow, all previously mis-flagged "
      "factorIndex 0 for the same reason)."),
-    ("CROSSBONES_FD", "Crossbones", 4, "", False, 1, 1, 0, 0, 100, 1,
+    ("CROSSBONES_FD", "Crossbones", 4, 28, True, 1, 1, 0, 0, 100, 1,
      100, 22, True,
-     0, 0, 0, 0, "FINAL_DAMAGE", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists, no cooldown/duration mechanics stated "
-     "beyond 'for 12 sec' — modeled as always-active steady-state once unlocked rather than "
-     "duty-cycled, since no cooldown is known to compute a real uptime fraction): 'Increases "
+     0, 0, 0, 0, "FINAL_DAMAGE", 12, "", "",
+     "Confirmed via maplestoryidle.info cross-reference: a real Type=Active cast (mpCost 90, 28s "
+     "cooldown), not a passive — CostsActionSlot corrected from False to True and given its real "
+     "28s cooldown/12s duration (previously modeled as an always-active, no-cooldown-known "
+     "passive, which both overstated its uptime to 100% AND wrongly gave it a free action-economy "
+     "ride). Duty-cycle averaged now via the standard buff_uptime() helper, same treatment as "
+     "Nimble Feet. 'Increases "
      "Final Damage by 10% and Defense Penetration by 5% for 12 sec.' Only the Final Damage "
      "component is modeled — this project has no live per-skill Defense-Penetration-bucket "
      "mechanism anywhere to reuse (Def Pen is normally a static Inputs field with its own "
      "diminishing-returns formula, not something a skill can contribute to live). factorIndex "
      "22, baseDamage 100 tenths%."),
-    ("TIME_LEAP_FD", "Time Leap", 4, "", False, 1, 1, 0, 0, 100, 1,
+    ("TIME_LEAP_FD", "Time Leap", 4, 65, True, 1, 1, 0, 0, 100, 1,
      150, 22, True,
-     0, 0, 0, 0, "FINAL_DAMAGE", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists, no real cooldown stated beyond 'a "
-     "12-sec cooldown is applied at the start of battle when this skill is in slot' — modeled as "
-     "always-active steady-state once unlocked after that initial delay, since no repeat-cast "
-     "cooldown is known): 'Instantly decreases the cooldown of Active Skills by 50% and "
+     0, 0, 0, 0, "FINAL_DAMAGE", 40, "", "",
+     "Confirmed via maplestoryidle.info cross-reference: a real Type=Active cast (mpCost 40, 65s "
+     "cooldown, 40s duration), not a passive — CostsActionSlot corrected from False to True and "
+     "given its real cooldown/duration (previously modeled as an always-active, no-cooldown-known "
+     "passive after an assumed initial delay). Duty-cycle averaged now via the standard "
+     "buff_uptime() helper, same treatment as Nimble Feet/Crossbones. The skill's own 'a 12-sec "
+     "cooldown is applied at the start of battle when this skill is in slot' quirk (a one-time "
+     "delayed-first-cast behavior) is NOT modeled — this project has no start-of-battle-delay "
+     "mechanic beyond the shared buff-casting-startup-delay, and layering a skill-specific one on "
+     "top was judged out of scope. 'Instantly decreases the cooldown of Active Skills by 50% and "
      "increases Final Damage by 30% for 40 sec.' PATCHED: Final Damage 30%->15% (a nerf) — "
-     "modeled value already reflects the patch. The cooldown-reduction-for-other-skills effect "
+     "modeled value already reflects the patch. The cooldown-reduction-for-self/allies effect "
      "is not modeled (no mechanic exists in this project for one skill's cooldown to modify "
-     "another's). factorIndex 22, baseDamage 150 tenths% (already the patched 15%)."),
+     "another's, nor for other players). factorIndex 22, baseDamage 150 tenths% (already the "
+     "patched 15%). Mastery Lv.138 'Time Leap - Grant' (+10%p own Final Damage boost, plus an "
+     "ally-CDR-grant effect) not modeled — no other players exist in this project's model."),
     ("SHADOW_HEART", "Shadow Heart", 1, "", False, 1, 1, 0, 0, 100, 1,
      50, 22, True,
      0, 0, 0, 0, "CRIT_RATE", 0, "", "",
@@ -2152,15 +2180,17 @@ SKILL_ROWS = [
      "Level Bonus delta. FLAGGED ASSUMPTION (no individual wiki page exists): 'Increases "
      "Critical Rate by 5%.' factorIndex 22, baseDamage 50 tenths%."),
     ("QUICK_MOTION", "Quick Motion", 1, "", False, 1, 1, 0, 0, 100, 1,
-     60, 22, True,
-     0, 0, 0, 0, "ATTACK_SPEED", 0, "", "",
+     61, 22, True,
+     level_gated_sum(IB("level"), {24: 5}), 0, 0, 0, "ATTACK_SPEED", 0, "", "",
      "Magic Critical pattern — already baked into Inputs!ATTACK_SPEED%; feeds the 1st-Job Skill "
-     "Level Bonus delta. FLAGGED ASSUMPTION (no individual wiki page exists): 'Increases Attack "
-     "Speed by 6% and Speed by 8%' (Speed component not modeled). Unlike every other class in "
+     "Level Bonus delta. Confirmed via maplestoryidle.info cross-reference: 'Increases Attack "
+     "Speed by 6.1% and Speed by 8.1%' (Speed component not modeled; baseDamage corrected from a "
+     "previously-rounded 60 tenths% to the real 61 tenths% = 6.1%). Unlike every other class in "
      "this project, Buccaneer has NO Nimble-Feet-style live AS buff at all — Quick Motion is a "
      "flat passive instead, confirmed by its own overview text having no duration/cooldown "
      "language whatsoever (unlike Nimble Feet's explicit 'for 15 sec'). factorIndex 22, "
-     "baseDamage 60 tenths%."),
+     "baseDamage 61 tenths%. Mastery Lv.24 'Quick Motion - Speed' +5%p Attack Speed (real "
+     "SkillMasteryBonus%, confirmed via maplestoryidle.info — previously missing entirely)."),
     ("AGILE_KNUCKLES", "Agile Knuckles", 2, "", False, 1, 1, 0, 0, 100, 1,
      50, 22, True,
      level_gated_sum(IB("level"), {44: 7}), 0, 0, 0, "ATTACK_SPEED", 0, "", "",
@@ -2245,9 +2275,10 @@ DAMAGE_ROW_KEYS = [
 ]
 ATTACK_BUFF_ROW_KEYS = ["ROLL_OF_THE_DICE_DICE"]
 # Buff-casting-startup-delay feature: rows with a real BuffDuration(s) that the character actively
-# casts. Nimble Feet is the one real timed buff with live BuffDuration>0 — every other buff-like
-# source is an always-on "FD" passive with no live BuffDuration (per this class's own Notes).
-BUFF_ROW_KEYS = ["NIMBLE_FEET"]
+# casts. Nimble Feet/Crossbones/Time Leap are all real timed, action-costing buffs with live
+# BuffDuration>0 (confirmed via maplestoryidle.info — Crossbones/Time Leap were previously assumed
+# passive with no cooldown).
+BUFF_ROW_KEYS = ["NIMBLE_FEET", "CROSSBONES_FD", "TIME_LEAP_FD"]
 PASSIVE_MULT_ROW_KEYS = [
     "SHADOW_HEART", "QUICK_MOTION", "AGILE_KNUCKLES", "DARK_CLARITY",
     "KNUCKLE_MASTERY", "PHYSICAL_TRAINING", "GROGGY_MASTERY_FD",
@@ -2546,15 +2577,21 @@ def build_summary_sheet(wb):
     # Serpent Scale's Assault-Mode FD buff: active for the assault_uptime_expr() fraction of the
     # time (a resource-economy duty cycle, NOT the standard cooldown-driven buff_uptime() helper).
     serpent_scale_avg = f'((Calc!C{r_ssfd}=TRUE)*Calc!F{r_ssfd}*{assault_uptime_expr()})'
-    # Crossbones/Time Leap: no cooldown known for either, modeled always-active once unlocked.
-    crossbones_avg = f'((Calc!C{r_cb}=TRUE)*Calc!F{r_cb})'
-    time_leap_avg = f'((Calc!C{r_tl}=TRUE)*Calc!F{r_tl})'
+    # Crossbones/Time Leap: real, action-costing, cooldown-gated buffs (confirmed via
+    # maplestoryidle.info) — duty-cycle averaged via the standard buff_uptime() helper, same as
+    # Nimble Feet, not always-active.
+    crossbones_avg = f'((Calc!C{r_cb}=TRUE)*Calc!F{r_cb}*{buff_uptime(r_cb)})'
+    time_leap_avg = f'((Calc!C{r_tl}=TRUE)*Calc!F{r_tl}*{buff_uptime(r_tl)})'
     # Speed Infusion's Final Damage component is a LIVE formula (20% of the character's own total
     # Attack Speed%), not a flat baseDamage/factorIndex curve — no Skills-sheet row exists for it;
     # gated by its own assumed Lv.110 unlock (see UNLOCK_LEVEL's own commentary on Speed Infusion's
     # sibling skills), computed directly from Summary!$B$R_APS (Actions Per Second) since
-    # TotalAS% = (APS-1)*100.
-    speed_infusion_avg = f'(({IB("level")}>=110)*20*(B{R_APS}-1))'
+    # TotalAS% = (APS-1)*100. Real 35s cooldown/15s duration confirmed via maplestoryidle.info —
+    # duty-cycle averaged (steady-state, not fixed-duration-exact, since this is a live formula
+    # rather than a Skills-sheet row with its own Calc!R CastsInFight column to reference).
+    speed_infusion_avg = (
+        f'(({IB("level")}>=110)*20*(B{R_APS}-1)*{uptime_fraction_expr(IB("monster_type"), 15, 35, bdi_main)})'
+    )
 
     ws.cell(row=R_AVGBUFF, column=1, value="Attack%% Bucket Multiplier (Roll of the Dice's dice component + Artifact Attack%, summed additively)")
     ws.cell(row=R_AVGBUFF, column=2, value=f'=1+({roll_of_dice_avg}+{art_ref("AGG_ATTACK_PCT")})/100')
@@ -3099,9 +3136,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         f'((C{row_of["SERPENT_SCALE_FD"]}=TRUE)*F{row_of["SERPENT_SCALE_FD"]}*'
         f'{assault_uptime_expr(baps_ref, ib)})'
     )
-    crossbones_avg = f'((C{row_of["CROSSBONES_FD"]}=TRUE)*F{row_of["CROSSBONES_FD"]})'
-    time_leap_avg = f'((C{row_of["TIME_LEAP_FD"]}=TRUE)*F{row_of["TIME_LEAP_FD"]})'
-    speed_infusion_avg = f'(({ib("level")}>=110)*20*({aps_ref}-1))'
+    crossbones_avg = f'((C{row_of["CROSSBONES_FD"]}=TRUE)*F{row_of["CROSSBONES_FD"]}*{buff_uptime_block(row_of["CROSSBONES_FD"], ROW["CROSSBONES_FD"])})'
+    time_leap_avg = f'((C{row_of["TIME_LEAP_FD"]}=TRUE)*F{row_of["TIME_LEAP_FD"]}*{buff_uptime_block(row_of["TIME_LEAP_FD"], ROW["TIME_LEAP_FD"])})'
+    speed_infusion_avg = f'(({ib("level")}>=110)*20*({aps_ref}-1)*{uptime_fraction_expr(ib("monster_type"), 15, 35, bdi_block)})'
     # Attack% bucket: every live skill/buff Attack% source and every Attack%-granting artifact sum
     # additively into ONE combined percentage before a single multiplication — matches
     # Verification item 6.

@@ -1890,11 +1890,12 @@ SUMMARY_BREAKDOWN_HEADER_ROW = R_NORMAL_ONLY_TOTAL + 3
 # in this class's kit — Roll of the Dice's dice component is modeled as an always-active flat
 # approximation instead, see ATTACK_BUFF_ROW_KEYS/PASSIVE_DELTA_SLOT). Kept as an explicit empty
 # list (not omitted) for architectural consistency with the other 11 classes' identical
-# buff-casting-startup-delay wiring — currently always 0 for Corsair as a result.
-# Nimble Feet is the one real, live BuffDuration(s)>0 CostsActionSlot skill in this kit (Roll of
-# the Dice's dice component uses a real 5s/7s duty cycle now too, but it isn't a recast-able
-# cast-and-buff skill of its own — see ROLL_OF_THE_DICE_DICE's own Note).
-BUFF_ROW_KEYS = ["NIMBLE_FEET"]
+# buff-casting-startup-delay wiring.
+# Nimble Feet and Jolly Roger are both real, live BuffDuration(s)>0 CostsActionSlot skills in this
+# kit (Roll of the Dice's dice component uses a real 5s/7s duty cycle too, but it isn't a
+# recast-able cast-and-buff skill of its own — see ROLL_OF_THE_DICE_DICE's own Note). Jolly Roger
+# was previously assumed passive with no cooldown — confirmed real via maplestoryidle.info.
+BUFF_ROW_KEYS = ["NIMBLE_FEET", "JOLLY_ROGER_FD"]
 
 # NOTE: Corsair's wiki overview page is EVEN WORSE than Buccaneer's — no Req.Level column, AND no
 # Mastery page at all (confirmed 404/redlink). Every unlock level below is a FLAGGED ASSUMPTION
@@ -1988,82 +1989,102 @@ SKILL_ROWS = [
      "Bomber chain — this is the same universal 4th-job-basic-attack mastery pattern confirmed "
      "across every class in this project, so this specific mapping is high-confidence despite "
      "the overall lack of Corsair mastery data."),
-    ("SWIFT_FIRE", "Swift Fire", 2, 18, True, 1, 3, 0, 0, 100, 1,
+    ("SWIFT_FIRE", "Swift Fire", 2, 17, True, 1, 3, 0, 0, 100, 1,
      1800, 12, True,
      level_gated_sum(IB("level"), {39: 50}), 0, 0, 8, "", 0, 200, 23,
-     "FLAGGED ASSUMPTION (no individual wiki page exists, no cooldown stated — 18s assumed by "
-     "convention matching similarly-shaped 2nd-job burst skills elsewhere): 'Fires three bullets "
-     "consecutively at the target to deal 180% damage each.' factorIndex 12, baseDamage 1800 "
-     "tenths%. PATCHED: single-target -> up to 8 enemies ahead (targets field reflects this). "
-     "Mastery mapped from Buccaneer's own Sea Serpent Burst - Damage @39 (+50%) slot — no exact "
-     "1:1 analog exists since Corsair has no mastery data at all, but both are the class's own "
-     "2nd-job attack-proc-shaped skill, so this role-mapping is a reasonable assumption. Maple "
-     "Hero target — see MAPLE_HERO_RATIOS (biggest share, 4x Siege Bomber's own)."),
-    ("SCURVY_SUMMONS", "Scurvy Summons", 2, 20, True, 1, 2, 1.5, 20, 100, 1,
+     "Confirmed via maplestoryidle.info cross-reference (a direct game capture, not a wiki page): "
+     "'Fires three bullets consecutively ahead to attack up to 8 target(s), dealing 180% damage "
+     "each', real 17s cooldown (corrected from a previously-assumed 18s). factorIndex 12, "
+     "baseDamage 1800 tenths%. Mastery mapped from Buccaneer's own Sea Serpent Burst - Damage "
+     "@39 (+50%) slot — no exact 1:1 analog exists since Corsair has no mastery data at all, but "
+     "both are the class's own 2nd-job attack-proc-shaped skill, so this role-mapping is a "
+     "reasonable assumption. Mastery Lv.54 'Swift Fire - Weaken' (+3% target damage taken per "
+     "strike, max 3 stacks/9%, confirmed via maplestoryidle.info) not modeled — same complexity "
+     "tier as Paladin's own Weaken debuffs, judged out of scope for this pass. Maple Hero "
+     "target — see MAPLE_HERO_RATIOS (biggest share, 4x Siege Bomber's own)."),
+    ("SCURVY_SUMMONS", "Scurvy Summons", 2, 35, True, 1, 2, 1.5, 20, 100, 1,
      950, 12, True,
      0, 0, 0, 3, "", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists, cooldown assumed = its own 20s "
-     "duration, recast-on-expiry, same convention as every other summon/turret skill in this "
-     "project): 'Summons the Dual Pistol Crew of the Nautilus for 20 sec. The Dual Pistol Crew "
-     "deals 95% damage to the target 2 time(s) every 3 sec.' factorIndex 12, baseDamage 950 "
-     "tenths%. PATCHED: tick interval 3s->1.5s (baked into ICD(s)), crew now hits up to 3 nearby "
-     "targets instead of single-target (targets field reflects this). Standard "
+     "Confirmed via maplestoryidle.info cross-reference (a direct game capture, not a wiki page): "
+     "real 35s cooldown (corrected from a previously-wrong assumption that cooldown = the crew's "
+     "own 20s active duration with immediate recast-on-expiry — the real mechanic has a genuine "
+     "~15s gap with no crew active between casts). 'Summons the Dual Pistol Crew of the Nautilus "
+     "for 20 sec. The Dual Pistol Crew attacks up to 3 nearby target(s) for 95% damage 2 time(s) "
+     "every 1.5 sec' (Aug 13 patch wording, ICD 3s->1.5s already reflected). factorIndex 12, "
+     "baseDamage 950 tenths%. Standard "
      "ActiveWindow/ICD tick machinery (EffectiveHits = 2*(20/1.5) per cast) — no bespoke "
      "mechanics needed, unlike Buccaneer's own resource-economy skills. No clean Buccaneer "
      "mastery-slot analog exists for this specific crew-summon mechanic — left unmodeled "
      "(SkillMasteryBonus%=0) rather than forcing a poor mapping. Ahoy Mateys target — see "
-     "AHOY_MATEYS_RATIOS (biggest share, ratio 1.0)."),
-    ("ALL_ABOARD", "All Aboard", 2, 20, False, 1, 3, 2, 20, 100, 1,
+     "AHOY_MATEYS_RATIOS (biggest share, ratio 1.0). Mastery Lv.122 'Ahoy Mateys - Final Damage' "
+     "(+20% FD for 20s upon using Scurvy Summons, confirmed via maplestoryidle.info) is modeled "
+     "separately as a duty-cycle FD term — see AHOY_MATEYS_PROC_FD in build_summary_sheet."),
+    ("ALL_ABOARD", "All Aboard", 2, 35, False, 1, 3, 2, 20, 100, 1,
      1100, 12, True,
      0, 0, 0, 8, "", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists): 'Summons the Sharpshooter Crew upon "
-     "using Scurvy Summons. The Sharpshooter Crew fires bullets every 4 sec to deal 190% damage "
-     "to 3 target(s) near the main target 3 time(s).' Triggered BY Scurvy Summons — shares its "
-     "own Cooldown(s)/duration values directly (CostsActionSlot=False so it doesn't double-count "
+     "Confirmed via maplestoryidle.info cross-reference: 'Summons the Sharpshooter Crew upon "
+     "using Scurvy Summons. The Sharpshooter Crew fires bullets every 2 sec to deal 110% damage "
+     "to 8 target(s) near the main target 3 time(s)' (Aug 13 patch wording, all fields already "
+     "matching). Triggered BY Scurvy Summons — shares its "
+     "own Cooldown(s) value (now corrected to 35s, matching Scurvy Summons' own real cooldown "
+     "fix — this row has no live formula reference to that cell, so both must be kept in manual "
+     "lockstep) and duration/ActiveWindow (20s, CostsActionSlot=False so it doesn't double-count "
      "the action economy), same 'rides the parent skill's cast timing' pattern as Buccaneer's "
-     "own Sea Serpent's Rage riding Octopunch. factorIndex 12, baseDamage 1100 tenths%. PATCHED: "
-     "tick interval 4s->2s (baked into ICD(s)), damage 190%->110%, targets 3->8. No clean "
+     "own Sea Serpent's Rage riding Octopunch. factorIndex 12, baseDamage 1100 tenths%. No clean "
      "Buccaneer mastery-slot analog — left unmodeled. Ahoy Mateys target — see "
      "AHOY_MATEYS_RATIOS (0.4x Scurvy Summons' own share)."),
-    ("BLACKBOOT_BILL", "Blackboot Bill", 3, 20, True, 1, 4, 0, 0, 100, 1,
+    ("BLACKBOOT_BILL", "Blackboot Bill", 3, 23, True, 1, 4, 0, 0, 100, 1,
      1700, 12, True,
      level_gated_sum(IB("level"), {73: 80}), 0, 0, 9, "", 0, 400, 23,
-     "FLAGGED ASSUMPTION (no individual wiki page exists, no cooldown stated — 20s assumed by "
-     "convention matching Buccaneer's own similarly-shaped Corkscrew Blow): 'Fires a giant "
-     "bullet to deal 170% damage to 6 target(s) in front 4 time(s) and stun them for 2 sec' "
-     "(stun not modeled). factorIndex 12, baseDamage 1700 tenths%. PATCHED: targets 6->9. "
+     "Confirmed via maplestoryidle.info cross-reference: real 23s cooldown (corrected from a "
+     "previously-assumed 20s). 'Fires a giant "
+     "bullet to deal 170% damage to 9 target(s) in front 4 time(s) and stun them for 2 sec' "
+     "(stun not modeled, targets already matching the Aug 13 patch's 6->9). factorIndex 12, "
+     "baseDamage 1700 tenths%. "
      "Mastery mapped from Buccaneer's own Corkscrew Blow - Damage @73 (+80%) slot — both are "
      "the class's own 3rd-job unique burst skill. Maple Hero target — see MAPLE_HERO_RATIOS "
      "(2x Siege Bomber's own share)."),
-    ("SIEGE_BOMBER", "Siege Bomber", 3, 30, True, 1, 1, 1.5, 30, 100, 1,
+    ("SIEGE_BOMBER", "Siege Bomber", 3, 22, True, 1, 1, 1.5, 22, 100, 1,
      1900, 12, True,
      0, 0, 0, 6, "", 0, 100, 23,
-     "FLAGGED ASSUMPTION (no individual wiki page exists, cooldown assumed = its own 30s "
-     "duration, recast-on-expiry): 'Installs a fixed cannon for 30 sec to deal 290% damage to 4 "
-     "target(s) near the main target every 2.5 sec.' factorIndex 12, baseDamage 1900 tenths%. "
-     "PATCHED: tick interval 2.5s->1.5s (baked into ICD(s)), damage 290%->190%, targets 4->6. "
-     "Standard ActiveWindow/ICD turret machinery, same as Bowmaster's own Arrow Platter. No "
-     "clean Buccaneer mastery-slot analog — left unmodeled. Maple Hero target — see "
-     "MAPLE_HERO_RATIOS (smallest share, ratio 1.0)."),
-    ("BRAIN_SCRAMBLER", "Brain Scrambler", 4, 15, True, 1, 2, 0, 0, 100, 1,
+     "Confirmed via maplestoryidle.info cross-reference: real 22s cooldown (corrected from a "
+     "previously-wrong assumption that cooldown = the cannon's own 30s active duration). Real "
+     "mechanic confirmed EVEN MORE specifically by the Aug 13 patch text: 'it can immediately "
+     "replace itself in auto mode' — since the real cooldown (22s) is SHORTER than the cannon's "
+     "own natural 30s duration, recasting replaces the still-active cannon before it would "
+     "naturally expire, so ActiveWindow(s) is capped to the cooldown (22, not 30) — otherwise "
+     "the standard ActiveWindow/ICD tick formula would overcount ticks from a cannon instance "
+     "that no longer exists past the recast point. 'Installs a fixed cannon for 30 sec to deal "
+     "190% damage to up to 6 target(s) near the main target every 1.5 sec' (Aug 13 patch "
+     "wording, all fields already matching except cooldown/window). factorIndex 12, baseDamage "
+     "1900 tenths%. Mastery Lv.68 'Siege Bomber - Setup' (+1 max setup count, first setup after "
+     "combat start gets -15s cooldown) not modeled — a multi-instance/stacking economy this "
+     "project has no mechanism for. No "
+     "clean Buccaneer mastery-slot analog for a base damage% mastery — left unmodeled. Maple Hero "
+     "target — see MAPLE_HERO_RATIOS (smallest share, ratio 1.0)."),
+    ("BRAIN_SCRAMBLER", "Brain Scrambler", 4, 18, True, 1, 2, 0, 0, 100, 1,
      29000, 12, True,
-     level_gated_sum(IB("level"), {108: 50}), 0, 0, 1, "", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists, no cooldown stated — 15s assumed by "
-     "convention matching Buccaneer's own similarly-shaped 4th-job burst skill Octopunch): "
+     level_gated_sum(IB("level"), {108: 100}), 0, 0, 1, "", 0, "", "",
+     "Confirmed via maplestoryidle.info cross-reference: real 18s cooldown (corrected from a "
+     "previously-assumed 15s), and Mastery Lv.108 'Brain Scrambler - Damage' is a real +100% "
+     "(corrected from a previously role-mapped +50%, taken from Buccaneer's own Octopunch — "
+     "Corsair's own real mastery is double that). "
      "'Hits the target's head to deal 2900% damage 2 time(s).' factorIndex 12, baseDamage 29000 "
-     "tenths%, single target. Mastery mapped from Buccaneer's own Octopunch - Damage @108 "
-     "(+50%) slot — both are the class's own 4th-job single-target burst skill. Also feeds "
+     "tenths%, single target. Also feeds "
      "Majestic Presence's own combined trigger rate — see MAJESTIC_PRESENCE's own Note."),
-    ("NAUTILUS_STRIKE", "Nautilus Strike", 4, 45, True, 1, 5, 0, 0, 100, 1,
+    ("NAUTILUS_STRIKE", "Nautilus Strike", 4, 33, True, 1, 5, 0, 0, 100, 1,
      19500, 12, True,
      level_gated_sum(IB("level"), {126: 50}), 0, 0, 15, "", 0, "", "",
-     "CONFIRMED SHARED VERBATIM WITH BUCCANEER (byte-identical wiki description on both "
-     "classes' overview pages: 'Orders the Nautilus to attack to deal 1950% damage to 15 nearby "
-     "target(s) 5 time(s).') — reuses Buccaneer's exact FLAGGED-ASSUMPTION (19500, 12) tuple "
-     "directly, not re-derived. Cooldown (45s) also reused from Buccaneer's own assumption. "
+     "CONFIRMED SHARED VERBATIM WITH BUCCANEER (byte-identical description on both classes' "
+     "overview pages, on both the wiki and maplestoryidle.info: 'Orders the Nautilus to attack "
+     "to deal 1950% damage to 15 nearby target(s) 5 time(s).') — reuses Buccaneer's exact "
+     "(19500, 12) tuple directly. Real 33s cooldown (corrected from a previously-assumed 45s, "
+     "same fix as Buccaneer's own copy — confirmed via maplestoryidle.info, a ~36% faster cast "
+     "rate). "
      "Mastery mapped from Buccaneer's own Nautilus Strike - Damage @126 (+50%) slot — since "
      "this is the SAME shared skill, this mapping is higher-confidence than most other "
-     "role-mapped masteries in this workbook."),
+     "role-mapped masteries in this workbook, and independently confirmed correct via "
+     "maplestoryidle.info showing the identical mastery text on both classes."),
     ("NAUTILUS_FINAL_ATTACK", "Nautilus Strike - Final Attack", 4, 1, False, 1, 1, 0, 0, 30, 1,
      8500, 21, True,
      0, 0, 0, 1, "", 0, "", "",
@@ -2076,46 +2097,63 @@ SKILL_ROWS = [
     ("RAPID_FIRE", "Rapid Fire", 4, 17, True, 1, 7, 0, 0, 100, 1,
      18000, 12, True,
      0, 0, 0, 9, "", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists, but cooldown IS explicitly stated in "
-     "the patch notes — see below): 'Fires bullets at a very high speed 7 time(s) to deal 1350% "
-     "damage each.' factorIndex 12, baseDamage 18000 tenths% (already reflects the patch). "
-     "PATCHED: single-target -> up to 9 enemies (targets field), damage 1350%->1800% (curve "
-     "rescaled 1800/1350=1.333x before applying), cooldown 21s->17s (Cooldown(s) already "
-     "reflects the patched value directly, unlike every other assumed cooldown in this "
-     "workbook — this one has an actual documented number). No clean Buccaneer mastery-slot "
-     "analog — left unmodeled. Also feeds Majestic Presence's own combined trigger rate."),
-    ("BROADSIDE_BURST", "Broadside (initial burst)", 4, 30, True, 1, 2, 0, 0, 100, 1,
+     "CONFIRMED via maplestoryidle.info's own Aug 13 patch overlay (not just the base skill "
+     "text, which shows the PRE-patch 21s/1350%/single-target values): 'Fires bullets at a very "
+     "high speed 7 time(s) to deal 1800% damage each to up to 9 targets in front', cooldown "
+     "'17 sec' — every field here (17s cooldown, 18000 tenths%=1800%, 9 targets) already exactly "
+     "matches this project's own prior PATCHED assumption, now independently confirmed correct "
+     "rather than inferred from patch notes alone. factorIndex 12, baseDamage 18000 tenths%. No "
+     "clean Buccaneer mastery-slot analog — left unmodeled. Also feeds Majestic Presence's own "
+     "combined trigger rate."),
+    ("BROADSIDE_BURST", "Broadside (initial burst)", 4, 20, True, 1, 2, 0, 0, 100, 1,
      50000, 12, True,
-     level_gated_sum(IB("level"), {122: 100}), 0, 0, 10, "", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists, cooldown assumed = its own 30s "
-     "sustained-phase duration, recast-on-expiry): 'Summons the Nautilus's Battleship. The "
-     "Battleship arrives behind 3 sec later and deals 3800% damage to 5 nearby target(s) 2 "
-     "time(s).' (the 3s arrival delay is not modeled — folded into a same-cast instant hit, "
-     "same simplification tier as every other 'delayed burst' skill in this project). "
-     "factorIndex 12, baseDamage 50000 tenths% (already reflects the patch). PATCHED: damage "
-     "3800%->5000%, targets 5->10. This row pays the real Cooldown(s)/action-slot cost; see "
+     0, 0, 0, 10, "", 0, "", "",
+     "Confirmed via maplestoryidle.info's own Aug 13 patch overlay: 'Summons the Nautilus's "
+     "Battleship. The Battleship arrives behind 3 sec later and deals 5000% damage to 10 nearby "
+     "target(s) 2 time(s)...During auto-combat, the Battleship immediately replaces itself even "
+     "when already deployed' (the 3s arrival delay is not modeled — folded into a same-cast "
+     "instant hit, same simplification tier as every other 'delayed burst' skill in this "
+     "project). Real 20s cooldown (corrected from a previously-wrong assumption that cooldown = "
+     "the sustained phase's own 30s duration). "
+     "factorIndex 12, baseDamage 50000 tenths% (matches the patch's 5000%, already correct). "
+     "The previously-assumed Mastery Lv.122 '+100% damage' (role-mapped from Buccaneer's own Sea "
+     "Serpent's Rage) is REMOVED: Corsair's own real Broadside masteries (confirmed via "
+     "maplestoryidle.info) are only Lv.118 'Bombardment' and Lv.138 'Setup' — neither is a flat "
+     "damage% bonus, so the role-mapped Lv.122 entry was a phantom, not a real mastery. This row "
+     "pays the real Cooldown(s)/action-slot cost; see "
      "BROADSIDE_SUSTAINED for the follow-up turret phase, which rides this row's own cast "
-     "timing. Mastery mapped from Buccaneer's own Sea Serpent's Rage - Damage @122 (+100%) "
-     "slot — both are the class's own 4th-job summon-triggered burst effect."),
-    ("BROADSIDE_SUSTAINED", "Broadside (sustained turret)", 4, 30, False, 1, 1, 2, 30, 100, 1,
-     33000, 12, True,
+     "timing. Mastery Lv.118 'Broadside - Bombardment' (every attack becomes a bombardment "
+     "dealing 1900% damage to 8 targets 3 times, replacing the normal sustained-turret tick) and "
+     "Lv.138 'Broadside - Setup' (+1 max setup, first setup gets -15s cooldown) are both real but "
+     "unmodeled — a mastery-gated attack-pattern swap and a multi-instance stacking economy, "
+     "respectively, judged out of scope for this pass."),
+    ("BROADSIDE_SUSTAINED", "Broadside (sustained turret)", 4, 20, False, 1, 1, 2, 20, 100, 1,
+     3300, 12, True,
      0, 0, 0, 5, "", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists, target count assumed = the burst "
-     "phase's own PRE-patch value of 5, since the Aug 13 patch notes only cover the initial "
-     "burst numbers, not this sustained phase — its patch status is genuinely unstated, not "
-     "necessarily unchanged): 'Afterward it stays for 30 sec and deals 3300% damage to "
-     "target(s) in front of the Battleship every 2 sec.' factorIndex 12, baseDamage 33000 "
+     "FIXED A REAL 10x MAGNITUDE BUG: the wiki's own text read '3300% damage...every 2 sec' "
+     "(now confirmed a wiki content error, corrected baseDamage from 33000 to 3300 tenths%) — "
+     "maplestoryidle.info (both its base skill text AND its Aug 13 patch overlay, matching "
+     "consistently) confirms the real value is '330% damage to target(s) in front of the "
+     "Battleship every 2 sec', a full order of magnitude smaller. Also corrected the shared "
+     "Cooldown(s)/ActiveWindow(s) from 30 to 20 to match BROADSIDE_BURST's own real cooldown fix "
+     "(this row has no live formula reference to that cell, so both must be kept in manual "
+     "lockstep). Target count (5) matches the Aug 13 patch's own confirmed value (unchanged from "
+     "the pre-patch baseline, unlike the burst phase's own 5->10 change) — the earlier "
+     "'genuinely unstated whether patched' flag is resolved. factorIndex 12, baseDamage 3300 "
      "tenths%. Shares BROADSIDE_BURST's own Cooldown(s) value (same cast timing, "
      "CostsActionSlot=False so it doesn't double-count the action economy) — same 'rides the "
-     "parent's cast timing' pattern as ALL_ABOARD riding SCURVY_SUMMONS."),
+     "parent's cast timing' pattern as ALL_ABOARD riding SCURVY_SUMMONS. Mastery Lv.118 "
+     "'Bombardment' (see BROADSIDE_BURST's own Note) would replace this row's own tick pattern "
+     "entirely once unlocked — not modeled, same as that row's own documented gap."),
     ("MAJESTIC_PRESENCE", "Majestic Presence", 4, "", False, 1, 1, 0, 0, 25, 1,
      18000, 12, True,
-     0, 0, 0, 6, "", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists): 'When attacking with Basic Attacks "
-     "Brain Scrambler or Rapid Fire deals 1800% additional damage with a 25% chance.' PATCHED: "
-     "single-target -> up to 6 enemies near target (targets field). factorIndex 12, baseDamage "
-     "18000 tenths%. Procs off THREE independent sources (Basic Attack + Brain Scrambler + "
-     "Rapid Fire) — has no Cooldown(s) of its own at all (CostsActionSlot=False); its own "
+     level_gated_sum(IB("level"), {134: 50}), 0, 0, 6, "", 0, "", "",
+     "Confirmed via maplestoryidle.info's own Aug 13 patch overlay: 'deals 1800% additional "
+     "damage to up to 6 nearby targets with a 25% chance' — every field here (18000 tenths%, 6 "
+     "targets, 25% chance) already matched. Mastery Lv.134 'Majestic Presence - Damage' +50% "
+     "(real SkillMasteryBonus%, confirmed via maplestoryidle.info — previously missing entirely). "
+     "Procs off THREE independent sources (Basic Attack + Brain Scrambler + Rapid Fire) — has no "
+     "Cooldown(s) of its own at all (CostsActionSlot=False); its own "
      "combined trigger rate is built directly in build_calc_sheet/build_stat_block as "
      "Summary!$B$R_BAPS (basic attack rate) + Brain Scrambler's own HitRate(perSec) + Rapid "
      "Fire's own HitRate(perSec), extending Marksman's own Bolt Surplus dual-trigger pattern to "
@@ -2160,30 +2198,39 @@ SKILL_ROWS = [
      "Inputs!ATTACK_PCT, see PASSIVE_DELTA_SLOT). factorIndex 22 (matches every other "
      "Magic-Critical-pattern flat buff row, e.g. Crossbones/Jolly Roger) — same correction as "
      "Buccaneer's own copy, see that build script's Note for the full reasoning."),
-    ("JOLLY_ROGER_FD", "Jolly Roger", 4, "", False, 1, 1, 0, 0, 100, 1,
+    ("JOLLY_ROGER_FD", "Jolly Roger", 4, 42, True, 1, 1, 0, 0, 100, 1,
      150, 22, True,
-     0, 0, 0, 0, "FINAL_DAMAGE", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists, no cooldown stated — modeled as "
-     "always-active steady-state once unlocked, same tier as Buccaneer's own Crossbones/Time "
-     "Leap): 'Increases Final Damage by 18% for 18 sec but decreases Evasion by 5' (Evasion not "
+     0, 0, 0, 0, "FINAL_DAMAGE", 18, "", "",
+     "Confirmed via maplestoryidle.info cross-reference: a real Type=Active cast (mpCost 110, "
+     "42s cooldown), not a passive — CostsActionSlot corrected from False to True and given its "
+     "real 42s cooldown/18s duration (previously modeled as an always-active, no-cooldown-known "
+     "passive, which both overstated its uptime to 100% AND wrongly gave it a free action-economy "
+     "ride, same fix as Buccaneer's own Crossbones/Time Leap). Duty-cycle averaged now via the "
+     "standard buff_uptime() helper. 'Increases Final Damage by 18% for 18 sec but decreases "
+     "Evasion by 5' (Evasion not "
      "modeled). PATCHED: Final Damage 18%->15% (a nerf — baseDamage already reflects this). "
      "factorIndex 22, baseDamage 150 tenths%. Corsair's ONLY live (non-Magic-Critical) Final "
      "Damage source — feeds R_FD_BONUS directly."),
     ("SHADOW_HEART", "Shadow Heart", 1, "", False, 1, 1, 0, 0, 100, 1,
-     50, 22, True,
+     54, 22, True,
      0, 0, 0, 0, "CRIT_RATE", 0, "", "",
      "Magic Critical pattern — already baked into Inputs!CRIT_RATE%; feeds the 1st-Job Skill "
-     "Level Bonus delta. FLAGGED ASSUMPTION (no individual wiki page exists, though byte-"
-     "identical wording to Buccaneer's own Shadow Heart): 'Increases Critical Rate by 5%.' "
-     "factorIndex 22, baseDamage 50 tenths%."),
+     "Level Bonus delta. Confirmed via maplestoryidle.info cross-reference (a real, class-"
+     "specific value, NOT identical to Buccaneer's own 5% as previously assumed): 'Increases "
+     "Critical Rate by 5.4%.' "
+     "factorIndex 22, baseDamage 54 tenths% (corrected from a previously-assumed 50)."),
     ("QUICK_MOTION", "Quick Motion", 1, "", False, 1, 1, 0, 0, 100, 1,
-     60, 22, True,
-     0, 0, 0, 0, "ATTACK_SPEED", 0, "", "",
+     65, 22, True,
+     level_gated_sum(IB("level"), {24: 5}), 0, 0, 0, "ATTACK_SPEED", 0, "", "",
      "Magic Critical pattern — already baked into Inputs!ATTACK_SPEED%; feeds the 1st-Job "
-     "Skill Level Bonus delta. FLAGGED ASSUMPTION (no individual wiki page exists, though "
-     "byte-identical wording to Buccaneer's own Quick Motion): 'Increases Attack Speed by 6% "
-     "and Speed by 8%' (Speed not modeled). Like Buccaneer, Corsair has NO Nimble-Feet-style "
-     "live AS buff — Quick Motion is a flat passive. factorIndex 22, baseDamage 60 tenths%."),
+     "Skill Level Bonus delta. Confirmed via maplestoryidle.info cross-reference (a real, class-"
+     "specific value, NOT identical to Buccaneer's own 6.1% as previously assumed): 'Increases "
+     "Attack Speed by 6.5% and Speed by 8.7%' (Speed not modeled). Like Buccaneer, Corsair has "
+     "NO Nimble-Feet-style "
+     "live AS buff — Quick Motion is a flat passive. factorIndex 22, baseDamage 65 tenths% "
+     "(corrected from a previously-assumed 60). Mastery Lv.24 'Quick Motion - Speed' +5%p Attack "
+     "Speed (real SkillMasteryBonus%, confirmed via maplestoryidle.info — previously missing "
+     "entirely)."),
     ("AGILE_GUNS", "Agile Guns", 2, "", False, 1, 1, 0, 0, 100, 1,
      50, 22, True,
      level_gated_sum(IB("level"), {44: 7}), 0, 0, 0, "ATTACK_SPEED", 0, "", "",
@@ -2612,10 +2659,16 @@ def build_summary_sheet(wb):
     # Roll of the Dice's dice component: real 5s-buff/7s-roll duty cycle (CONFIRMED SHARED
     # VERBATIM WITH BUCCANEER — same skill, same treatment).
     roll_of_dice_avg = f'((Calc!C{r_rd}=TRUE)*Calc!F{r_rd}*5/7)'
-    # Jolly Roger: no cooldown known, modeled always-active once unlocked — Corsair's ONLY live
-    # (non-Magic-Critical) Final Damage source, much simpler than Buccaneer's own 4-source bucket
-    # since Corsair has no Assault-Mode-style resource economy.
-    jolly_roger_avg = f'((Calc!C{r_jr}=TRUE)*Calc!F{r_jr})'
+    # Jolly Roger: real, action-costing, cooldown-gated buff (confirmed via maplestoryidle.info) —
+    # duty-cycle averaged via the standard buff_uptime() helper, same treatment as Buccaneer's own
+    # Crossbones/Time Leap, not always-active.
+    jolly_roger_avg = f'((Calc!C{r_jr}=TRUE)*Calc!F{r_jr}*{buff_uptime(r_jr)})'
+    # Ahoy Mateys - Final Damage (Mastery Lv.122, confirmed via maplestoryidle.info): +20% Final
+    # Damage for 20s upon casting Scurvy Summons — duty-cycle averaged against Scurvy Summons' own
+    # (now-corrected) 35s cooldown, steady-state (no dedicated Skills-sheet row for this proc).
+    ahoy_mateys_proc_fd = (
+        f'IF({IB("level")}>=122,20*{uptime_fraction_expr(IB("monster_type"), 20, S("Cooldown(s)", ROW["SCURVY_SUMMONS"]), bdi_main)},0)'
+    )
 
     ws.cell(row=R_AVGBUFF, column=1, value="Attack%% Bucket Multiplier (Roll of the Dice's dice component only)")
     ws.cell(row=R_AVGBUFF, column=2, value=f'=1+({roll_of_dice_avg}+{art_ref("AGG_ATTACK_PCT")})/100')
@@ -2651,8 +2704,8 @@ def build_summary_sheet(wb):
     ws.cell(row=R_CRIT_DAMAGE_BONUS, column=1, value="Global Critical Damage Bonus % (unused — no live Crit-Damage-buff source exists)")
     ws.cell(row=R_CRIT_DAMAGE_BONUS, column=2, value=0)
 
-    ws.cell(row=R_FD_BONUS, column=1, value="Global Final Damage Bonus % (Jolly Roger only)")
-    ws.cell(row=R_FD_BONUS, column=2, value=f'={jolly_roger_avg}')
+    ws.cell(row=R_FD_BONUS, column=1, value="Global Final Damage Bonus % (Jolly Roger + Ahoy Mateys - Final Damage proc)")
+    ws.cell(row=R_FD_BONUS, column=2, value=f'={jolly_roger_avg}+{ahoy_mateys_proc_fd}')
 
     ws.cell(row=R_STARTUP_TIME, column=1, value=(
         "Buff-Casting Startup Delay (s, before first damage-skill cast; fixed-duration only)"
@@ -2949,7 +3002,10 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     r_jr = ROW["JOLLY_ROGER_FD"]
 
     roll_of_dice_avg = f'((C{row_of["ROLL_OF_THE_DICE_DICE"]}=TRUE)*F{row_of["ROLL_OF_THE_DICE_DICE"]}*5/7)'
-    jolly_roger_avg = f'((C{row_of["JOLLY_ROGER_FD"]}=TRUE)*F{row_of["JOLLY_ROGER_FD"]})'
+    jolly_roger_avg = f'((C{row_of["JOLLY_ROGER_FD"]}=TRUE)*F{row_of["JOLLY_ROGER_FD"]}*{buff_uptime_block(row_of["JOLLY_ROGER_FD"], ROW["JOLLY_ROGER_FD"])})'
+    ahoy_mateys_proc_fd = (
+        f'IF({ib("level")}>=122,20*{uptime_fraction_expr(ib("monster_type"), 20, S("Cooldown(s)", ROW["SCURVY_SUMMONS"]), bdi_block)},0)'
+    )
 
     # --- Artifacts: block-local mirror of build_artifacts_sheet, so a swept stat correctly
     # propagates through whichever artifact depends on it (Book of Ancient/Ring of Cycles via
@@ -3403,8 +3459,8 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ws.cell(row=s_crit_damage_bonus, column=1, value="Global Critical Damage Bonus % (unused)")
     ws.cell(row=s_crit_damage_bonus, column=2, value=0)
 
-    ws.cell(row=s_fd_bonus, column=1, value="Global Final Damage Bonus % (Jolly Roger only)")
-    ws.cell(row=s_fd_bonus, column=2, value=f'={jolly_roger_avg}')
+    ws.cell(row=s_fd_bonus, column=1, value="Global Final Damage Bonus % (Jolly Roger + Ahoy Mateys - Final Damage proc)")
+    ws.cell(row=s_fd_bonus, column=2, value=f'={jolly_roger_avg}+{ahoy_mateys_proc_fd}')
 
     ws.cell(row=s_startup, column=1, value="Buff-Casting Startup Delay (s, fixed-duration only)")
     ws.cell(row=s_startup, column=2, value="=" + buff_cast_startup_time_expr(

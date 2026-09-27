@@ -258,20 +258,35 @@ def exact_buff_uptime(cooldown, buff_duration):
     return (casts - 1) * buff_duration + last_uptime
 
 
+def duty_cycle_uptime(cooldown, duration):
+    """Exact/fixed-duration-aware uptime fraction for a real cooldown-gated buff — shared by
+    Nimble Feet/Jolly Roger (both real Type=Active casts confirmed via maplestoryidle.info)."""
+    eff_cd = eff_cooldown(cooldown, True)
+    if fixed_duration_active:
+        return exact_buff_uptime(eff_cd, eff_duration(duration)) / fight_duration
+    elif monster_type == "pvp":
+        return min(eff_duration(duration), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
+    return eff_duration(duration) / eff_cd
+
+
+def uptime_fraction_steady(duration, cooldown):
+    """Steady-state duty cycle (matches the build script's own uptime_fraction_expr exactly, NOT
+    duty_cycle_uptime's fixed-duration-exact math) — used for the Ahoy Mateys - Final Damage
+    proc, which is a live formula with no Skills-sheet row/Calc!R CastsInFight column to drive
+    the exact version."""
+    scaled_duration = duration * (1 + buff_duration_increase_pct / 100)
+    if monster_type == "pvp":
+        return min(scaled_duration, PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
+    return scaled_duration / cooldown
+
+
 def _nimble_feet_as_avg():
     """Nimble Feet's own duty-cycle-averaged Attack Speed% — independent of actions_per_second
     (fixed 60s cooldown/15s duration, not AS-scaled), so no circularity computing this first."""
     if not unlocked("NIMBLE_FEET"):
         return 0.0
     pct = coeff_pct(150, 0, False, 1)
-    eff_cd = eff_cooldown(60, True)
-    if fixed_duration_active:
-        uptime = exact_buff_uptime(eff_cd, eff_duration(15)) / fight_duration
-    elif monster_type == "pvp":
-        uptime = min(eff_duration(15), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
-    else:
-        uptime = eff_duration(15) / eff_cd
-    return pct * uptime
+    return pct * duty_cycle_uptime(60, 15)
 
 
 _nimble_feet_as_bonus = _nimble_feet_as_avg()
@@ -281,7 +296,9 @@ actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 
 # CostsActionSlot skill in this kit (Roll of the Dice's dice component is a real 5s/7s duty cycle
 # now too, but it isn't a recast-able cast-and-buff skill of its own).
 if fixed_duration_active:
-    buff_cast_startup_time = (1 if unlocked("NIMBLE_FEET") else 0) / actions_per_second
+    buff_cast_startup_time = (
+        (1 if unlocked("NIMBLE_FEET") else 0) + (1 if unlocked("JOLLY_ROGER_FD") else 0)
+    ) / actions_per_second
 else:
     buff_cast_startup_time = 0.0
 
@@ -309,26 +326,30 @@ eight_legs_easton_pct = skill_coefficient_base + eight_legs_easton_mastery_damag
 
 # ---- Cast rate (subtracted from Eight-Legs Easton) — action-costing skills only ----
 COST_ACTION_ROWS = [
-    ("SWIFT_FIRE", 18, True, 1),
-    ("SCURVY_SUMMONS", 20, True, 1),
-    ("BLACKBOOT_BILL", 20, True, 1),
-    ("SIEGE_BOMBER", 30, True, 1),
-    ("BRAIN_SCRAMBLER", 15, True, 1),
-    ("NAUTILUS_STRIKE", 45, True, 1),
+    ("SWIFT_FIRE", 17, True, 1),
+    ("SCURVY_SUMMONS", 35, True, 1),
+    ("BLACKBOOT_BILL", 23, True, 1),
+    ("SIEGE_BOMBER", 22, True, 1),
+    ("BRAIN_SCRAMBLER", 18, True, 1),
+    ("NAUTILUS_STRIKE", 33, True, 1),
     ("RAPID_FIRE", 17, True, 1),
-    ("BROADSIDE_BURST", 30, True, 1),
+    ("BROADSIDE_BURST", 20, True, 1),
 ]
 if fixed_duration_active:
     cast_rate = sum(non_buff_casts(eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)) / fight_duration
     cast_rate += (exact_casts(eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0) / fight_duration
+    cast_rate += (exact_casts(eff_cooldown(42, True)) if unlocked("JOLLY_ROGER_FD") else 0) / fight_duration
 else:
     cast_rate = sum((1 / eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k))
     cast_rate += (1 / eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0
+    cast_rate += (1 / eff_cooldown(42, True)) if unlocked("JOLLY_ROGER_FD") else 0
 eight_legs_easton_per_second = max(0, actions_per_second - cast_rate)
 
-# ---- Global Final Damage bucket: Jolly Roger only (always-active once unlocked, no cooldown known) ----
-jolly_roger_pct = coeff_pct(150, 22, True, 4) if unlocked("JOLLY_ROGER_FD") else 0.0
-final_damage_extra = jolly_roger_pct
+# ---- Global Final Damage bucket: Jolly Roger (real 42s/18s duty cycle) + Ahoy Mateys - Final
+#      Damage proc (Mastery Lv.122, +20% FD for 20s on Scurvy Summons cast) ----
+jolly_roger_pct = coeff_pct(150, 22, True, 4) * duty_cycle_uptime(42, 18) if unlocked("JOLLY_ROGER_FD") else 0.0
+ahoy_mateys_proc_fd = 20 * uptime_fraction_steady(20, 35) if level >= 122 else 0.0
+final_damage_extra = jolly_roger_pct + ahoy_mateys_proc_fd
 
 # ---- Attack% bucket: Roll of the Dice's dice component only (shared verbatim w/ Buccaneer) ----
 roll_of_dice_pct = coeff_pct(25, 22, True, 3) * 5 / 7 if unlocked("ROLL_OF_THE_DICE_DICE") else 0.0
@@ -374,25 +395,25 @@ eight_legs_easton_dps = (
 
 # ---- Other damage skills ----
 DAMAGE_SKILLS = {
-    "SWIFT_FIRE": dict(job_step=2, cooldown=18, hits=3, base=1800, fidx=12, scales=True,
+    "SWIFT_FIRE": dict(job_step=2, cooldown=17, hits=3, base=1800, fidx=12, scales=True,
                         mastery=level_gated_sum({39: 50}), mastery_boss=0, mastery_normal=0,
                         costs_action=True, targets=8, maple_ratio=MAPLE_HERO_RATIOS.get("SWIFT_FIRE", 0)),
-    "SCURVY_SUMMONS": dict(job_step=2, cooldown=20, hits=2, icd=1.5, window=20, base=950, fidx=12,
+    "SCURVY_SUMMONS": dict(job_step=2, cooldown=35, hits=2, icd=1.5, window=20, base=950, fidx=12,
                             scales=True, mastery=0, mastery_boss=0, mastery_normal=0,
                             costs_action=True, targets=3, ahoy_ratio=AHOY_MATEYS_RATIOS.get("SCURVY_SUMMONS", 0)),
-    "ALL_ABOARD": dict(job_step=2, cooldown=20, hits=3, icd=2, window=20, base=1100, fidx=12,
+    "ALL_ABOARD": dict(job_step=2, cooldown=35, hits=3, icd=2, window=20, base=1100, fidx=12,
                         scales=True, mastery=0, mastery_boss=0, mastery_normal=0,
                         costs_action=False, targets=8, ahoy_ratio=AHOY_MATEYS_RATIOS.get("ALL_ABOARD", 0)),
-    "BLACKBOOT_BILL": dict(job_step=3, cooldown=20, hits=4, base=1700, fidx=12, scales=True,
+    "BLACKBOOT_BILL": dict(job_step=3, cooldown=23, hits=4, base=1700, fidx=12, scales=True,
                             mastery=level_gated_sum({73: 80}), mastery_boss=0, mastery_normal=0,
                             costs_action=True, targets=9, maple_ratio=MAPLE_HERO_RATIOS.get("BLACKBOOT_BILL", 0)),
-    "SIEGE_BOMBER": dict(job_step=3, cooldown=30, hits=1, icd=1.5, window=30, base=1900, fidx=12,
+    "SIEGE_BOMBER": dict(job_step=3, cooldown=22, hits=1, icd=1.5, window=22, base=1900, fidx=12,
                           scales=True, mastery=0, mastery_boss=0, mastery_normal=0,
                           costs_action=True, targets=6, maple_ratio=MAPLE_HERO_RATIOS.get("SIEGE_BOMBER", 0)),
-    "BRAIN_SCRAMBLER": dict(job_step=4, cooldown=15, hits=2, base=29000, fidx=12, scales=True,
-                             mastery=level_gated_sum({108: 50}), mastery_boss=0, mastery_normal=0,
+    "BRAIN_SCRAMBLER": dict(job_step=4, cooldown=18, hits=2, base=29000, fidx=12, scales=True,
+                             mastery=level_gated_sum({108: 100}), mastery_boss=0, mastery_normal=0,
                              costs_action=True, targets=1),
-    "NAUTILUS_STRIKE": dict(job_step=4, cooldown=45, hits=5, base=19500, fidx=12, scales=True,
+    "NAUTILUS_STRIKE": dict(job_step=4, cooldown=33, hits=5, base=19500, fidx=12, scales=True,
                              mastery=level_gated_sum({126: 50}), mastery_boss=0, mastery_normal=0,
                              costs_action=True, targets=15),
     "NAUTILUS_FINAL_ATTACK": dict(job_step=4, cooldown=1, hits=1, base=8500, fidx=21, scales=True,
@@ -401,10 +422,10 @@ DAMAGE_SKILLS = {
     "RAPID_FIRE": dict(job_step=4, cooldown=17, hits=7, base=18000, fidx=12, scales=True,
                         mastery=0, mastery_boss=0, mastery_normal=0,
                         costs_action=True, targets=9),
-    "BROADSIDE_BURST": dict(job_step=4, cooldown=30, hits=2, base=50000, fidx=12, scales=True,
-                             mastery=level_gated_sum({122: 100}), mastery_boss=0, mastery_normal=0,
+    "BROADSIDE_BURST": dict(job_step=4, cooldown=20, hits=2, base=50000, fidx=12, scales=True,
+                             mastery=0, mastery_boss=0, mastery_normal=0,
                              costs_action=True, targets=10),
-    "BROADSIDE_SUSTAINED": dict(job_step=4, cooldown=30, hits=1, icd=2, window=30, base=33000,
+    "BROADSIDE_SUSTAINED": dict(job_step=4, cooldown=20, hits=1, icd=2, window=20, base=3300,
                                  fidx=12, scales=True, mastery=0, mastery_boss=0, mastery_normal=0,
                                  costs_action=False, targets=5),
 }
@@ -433,7 +454,7 @@ for key, s in DAMAGE_SKILLS.items():
 #      Fire — no Cooldown(s) of its own, combined trigger rate is the sum of the 3 sources' own
 #      hit rates) ----
 if unlocked("MAJESTIC_PRESENCE"):
-    mp_pct = coeff_pct(18000, 12, True, 4)
+    mp_pct = coeff_pct(18000, 12, True, 4) + level_gated_sum({134: 50})
     mp_hit = hit_damage(mp_pct, False, 0, 0)
 
     def _source_rate(key):

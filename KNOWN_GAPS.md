@@ -669,49 +669,86 @@ any of Buccaneer's 28 skills (worse than Bishop). Hook Bomber (basic attack) is 
 reusing the universal cross-class constant.
 
 Additional gaps specific to Buccaneer:
-- **Maple Hero (Buccaneer)**: the wiki's own source text is genuinely truncated mid-sentence —
-  `"Increases Final Damage of the following skills: Serpent Assault 60%, Corkscrew..."` — cutting
-  off before Corkscrew Blow's own percentage and a likely third buffed skill (Corsair's own Maple
-  Hero has exactly 3 entries, so Buccaneer's probably does too). Only Serpent Assault's confirmed
-  60% is modeled; Corkscrew Blow's share and the missing third skill are unmodeled. **Incomplete,
-  flagged for later** — if the wiki is ever fixed, or another source surfaces the real numbers,
-  this should be revisited.
+- **Maple Hero (Buccaneer)**: RESOLVED via maplestoryidle.info cross-reference (a direct game
+  capture, not a wiki page), which gives the full, untruncated text: "Increases Final Damage of
+  the following skills: Serpent Assault 60%, Corkscrew Blow 40%." — only TWO skills, not a guessed
+  third. Corkscrew Blow's own 40% share is now modeled (MAPLE_HERO_RATIOS).
 - **Perseverance**'s Mastery "+5% Attack when HP≥50%" needs HP tracking that doesn't exist
   anywhere in this project — unmodeled.
-- **Mastery Lv.54 "Advanced Dash - Protection"** references a skill ("Advanced Dash") absent from
-  the entire skill overview list — unmodeled, no base skill to attach the bonus to.
-- **Crossbones, Speed Infusion, Time Leap** have no cooldown data anywhere on either source — still
-  modeled as always-active once unlocked, a likely overestimate versus their real (unknown)
-  cooldowns. **Roll of the Dice's own dice component** is no longer in this category: confirmed via
-  maplestoryidle.info (identical wording to the wiki) to have a real 7s-roll/5s-duration duty
-  cycle, now modeled as a 5/7 multiplier instead of always-active; its factorIndex was also
-  corrected from 0 to 22 (matches every other Magic-Critical-pattern flat buff row).
+- **Mastery Lv.54 "Advanced Dash - Protection"** now has a real base skill to attach to (Advanced
+  Dash's own full kit is visible via maplestoryidle.info — mobility skill, 6s cooldown, "cancels
+  the skill being used") — still unmodeled, since its usage pattern in an auto-combat rotation is
+  ambiguous (it's not a normal damage/buff cast).
+- **Crossbones, Time Leap**: RESOLVED — both are real, action-costing Type=Active casts (confirmed
+  via maplestoryidle.info, not passives as previously assumed), with real cooldowns (Crossbones
+  28s/12s duration, Time Leap 65s/40s duration). CostsActionSlot corrected False->True, duty-cycle
+  averaged instead of always-active.
+- **Speed Infusion**: RESOLVED — real 35s cooldown/15s duration confirmed via maplestoryidle.info
+  (previously modeled as always-active once unlocked); its live AS-linked Final Damage formula is
+  now multiplied by the real duty cycle.
+- **Roll of the Dice's own dice component**: RESOLVED — confirmed via maplestoryidle.info
+  (identical wording to the wiki) to have a real 7s-roll/5s-duration duty cycle, now modeled as a
+  5/7 multiplier instead of always-active; factorIndex corrected from 0 to 22.
+- **Several real cooldown/mastery bugs found via maplestoryidle.info cross-reference** (a direct
+  game capture, treated as more authoritative than the wiki's own assumed-by-convention values):
+  Corkscrew Blow cooldown 20s->21s, Octopunch 15s->16s (Sea Serpent's Rage/Raging Serpent Assault
+  share this cooldown, updated in lockstep), Nautilus Strike 45s->33s (~36% faster casts). Three
+  masteries were missing entirely and are now added: Sea Serpent's Rage - Damage +100% @Lv.122,
+  Raging Serpent Assault - Damage +50% @Lv.130, Nautilus Strike - Damage +50% @Lv.126. Quick
+  Motion's own AS%/mastery corrected (6%->6.1%, added a previously-missing +5%p @Lv.24 mastery).
 - **Assault Mode** (Sea Serpent Burst ↔ Serpent Assault ↔ Serpent Scale's stacking resource economy)
   is modeled as a steady-state duty cycle, not an exact stack-gain/mode-toggle state machine.
   *Documented simplification.*
 
 ### Corsair
-**The deepest gap of any class in this project.** In addition to every base curve being FLAGGED
-ASSUMPTION (same as Buccaneer, zero individual pages), **Corsair has no Mastery page at all** —
-confirmed via a redlink on its own overview page's navigation footer and a direct 404. No other
-class in this project — including Bishop, Paladin, and Buccaneer — is missing its Mastery data
-entirely.
+**The deepest gap of any class in this project** — until this session. In addition to every base
+curve being FLAGGED ASSUMPTION (same as Buccaneer, zero individual wiki pages), **Corsair has no
+Mastery page on idle.maplestorywiki.net at all** — confirmed via a redlink on its own overview
+page's navigation footer and a direct 404. maplestoryidle.info, however, has a full "game capture
+provided by player" data set for Corsair (same as Buccaneer) — cross-referencing it closed the
+overwhelming majority of this class's gaps.
 
-Per direct project decision, every Corsair mastery bonus is an **ASSUMED MASTERY SHAPE** — mapped
-from Buccaneer's own real mastery table by matching skill-slot roles (e.g. Corsair's own basic
-attack, Eight-Legs Easton, assumes the identical level breakpoints/deltas as Buccaneer's Hook
-Bomber chain). This mapping is **incomplete, flagged for later**: five skills — Scurvy Summons,
-All Aboard, Siege Bomber, Rapid Fire, Majestic Presence — got no mastery bonus at all, because no
-clean Buccaneer analog exists for their crew-summon/resource-economy mechanics; they're left at
-`SkillMasteryBonus% = 0` rather than forcing a poor mapping.
+Per direct project decision (pre-dating this session), every Corsair mastery bonus had been an
+**ASSUMED MASTERY SHAPE** — mapped from Buccaneer's own real mastery table by matching skill-slot
+roles. maplestoryidle.info now provides Corsair's own REAL, independent mastery/cooldown data,
+which **confirmed several of those role-mapped assumptions were exactly right** (Eight-Legs
+Easton's full damage/boss-damage/strike mastery chain, Nautilus Strike's shared-with-Buccaneer
+tuple and mastery) but also **found real, sizable errors**:
+- **A genuine 10x magnitude bug**: Broadside's sustained-turret phase was modeled at 3300%
+  damage/tick (following the wiki's own text) — maplestoryidle.info (both its base skill
+  description AND its own Aug 13 patch overlay, consistently) confirms the real value is **330%**,
+  a full order of magnitude smaller. Fixed.
+- **Several real cooldown corrections**, all confirmed via maplestoryidle.info's direct game
+  capture (more authoritative than this project's own by-convention assumptions): Swift Fire
+  18s->17s, Scurvy Summons 20s->35s (previously wrongly assumed = the crew's own 20s duration with
+  immediate recast — the real mechanic has a genuine ~15s gap with no crew active), All Aboard
+  updated to match Scurvy Summons' real cooldown, Blackboot Bill 20s->23s, Siege Bomber 30s->22s
+  (with ActiveWindow also capped 30s->22s, since the real mechanic — confirmed by the Aug 13 patch
+  text "it can immediately replace itself in auto mode" — recasts before the cannon's own natural
+  30s duration ends), Brain Scrambler 15s->18s, Nautilus Strike 45s->33s, Broadside (both rows)
+  30s->20s, Jolly Roger given a real 42s cooldown/18s duration (previously modeled as an
+  always-active passive — it's a real Type=Active cast).
+- **Real mastery corrections**: Brain Scrambler - Damage is a real +100% (not the role-mapped
+  +50% taken from Buccaneer's Octopunch — Corsair's own value is double that). Majestic Presence -
+  Damage +50% @Lv.134 was missing entirely, now added. The previously role-mapped Broadside +100%
+  damage mastery @Lv.122 (from Buccaneer's Sea Serpent's Rage) is REMOVED — Corsair's own real
+  Broadside masteries are only Lv.118 "Bombardment" (a mastery-gated attack-pattern swap, not a
+  flat damage bonus) and Lv.138 "Setup" (a stacking economy), neither modeled here; the phantom
+  +100% flat bonus was never real.
+- **Ahoy Mateys - Final Damage** (Mastery Lv.122, +20% Final Damage for 20s upon casting Scurvy
+  Summons) was entirely unmodeled — now added as a duty-cycle-averaged Final Damage term.
+- Shadow Heart (5%->5.4% Crit Rate) and Quick Motion (6%->6.5% AS, +5%p @Lv.24 mastery added) were
+  both assumed byte-identical to Buccaneer's own copies — maplestoryidle.info shows Corsair's real
+  values are close but not identical; corrected.
+- **Swift Fire - Weaken** (Mastery Lv.54, +3% target damage taken per strike, max 3 stacks/9%) and
+  **Siege Bomber - Setup** / **Broadside - Setup** (max-instance-count increases) are all now known
+  precisely but remain unmodeled — same complexity tier as Paladin's own Weaken debuffs / a
+  multi-instance stacking economy this project has no mechanism for, judged out of scope for this
+  pass.
 
-The wiki also provides **no job-tier, Type, Required Level, or Cooldown data whatsoever** for any
-Corsair skill (a flat two-column Skill/Description table only) — every cooldown value used in
-Corsair's workbook is itself an assumption by convention, not sourced.
-
-One item with only partial patch coverage: **Broadside**'s Aug 13 patch note only covers its
-initial summon-burst damage (3800%→5000%); the sustained "3300% every 2s" follow-up phase's patch
-status is unstated, so it's left at its (also-assumed) wiki level-1 value.
+The wiki still provides **no job-tier, Type, Required Level, or Cooldown data whatsoever** for any
+Corsair skill on idle.maplestorywiki.net (a flat two-column Skill/Description table only) — but
+this is now moot for every skill maplestoryidle.info covers (all of them).
 
 **Roll of the Dice's own dice component** (shared verbatim with Buccaneer) got the same fix: real
 7s-roll/5s-duration duty cycle (5/7 multiplier) confirmed via maplestoryidle.info, factorIndex
