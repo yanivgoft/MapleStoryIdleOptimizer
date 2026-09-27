@@ -1689,7 +1689,7 @@ ROW_ORDER = [
     "THUNDER_SPHERE", "FREEZING_BREATH", "BLIZZARD", "BLIZZARD_FINAL_ATTACK", "FROZEN_ORB",
     "ELQUINES", "MP_EATER_MP_BOOST", "ELEMENTAL_RESET", "ELEMENT_AMPLIFICATION", "INFINITY",
     "MAGIC_ACCELERATION", "SPELL_MASTERY", "HIGH_WISDOM", "MAGIC_CRITICAL_RATE",
-    "MAGIC_CRITICAL_DAMAGE", "BUFF_MASTERY", "ARCANE_AIM",
+    "MAGIC_CRITICAL_DAMAGE", "BUFF_MASTERY", "ARCANE_AIM", "NIMBLE_FEET",
 ]
 ROW = {key: i for i, key in enumerate(ROW_ORDER, start=2)}
 LAST_ROW = 1 + len(ROW_ORDER)
@@ -1725,6 +1725,7 @@ UNLOCK_LEVEL = {
     "MAGIC_CRITICAL_DAMAGE": 74,
     "BUFF_MASTERY": 117,
     "ARCANE_AIM": 120,
+    # NIMBLE_FEET: no threshold (shared Explorer skill, level 0) — stays unconditionally unlocked.
 }
 
 
@@ -1991,6 +1992,16 @@ SKILL_ROWS = [
      "always-on-proc-stack precedent as Elemental Reset/FP-Mage's own Arcane Aim). Combined "
      "MULTIPLICATIVELY into the Final Damage chain as (1+Calc!F/100)^5 in a later build stage. "
      "factorIndex 22, baseDamage 30 tenths%. Shared w/ FP-Mage."),
+    ("NIMBLE_FEET", "Nimble Feet", 1, 60, True, 1, 0, 0, 100, 1,
+     150, 0, False,
+     0, 0, 0, 1, "ATTACK_SPEED", 15, "", "", "",
+     "Universal 1st-Job Explorer skill (identical wording on both idle.maplestorywiki.net and "
+     "maplestoryidle.info — 'Increases Attack Speed by 15% and Speed by 10% for 15 sec', 60s "
+     "cooldown, reqLevel 5) — was missing from this workbook entirely (a real gap found by "
+     "cross-class comparison, not a class-design difference: Bowmaster/Dark Knight/FP-Mage/Hero/"
+     "Marksman/Night Lord/Paladin/Shadower all already have it). Flat +15% Attack Speed / +10% "
+     "Speed for 15s, non-scaling. Speed component not modeled (no Speed stat anywhere in this "
+     "project). FactorIndex unused placeholder."),
 ]
 
 # Rows with a real Cooldown(s) value (literal or a live formula reference) — CastsInFight
@@ -2035,7 +2046,7 @@ DAMAGE_ROW_KEYS = [
     "THUNDER_BOLT", "GLACIER_WALL", "THUNDER_SPHERE", "FREEZING_BREATH", "BLIZZARD",
     "BLIZZARD_FINAL_ATTACK", "FROZEN_ORB", "ELQUINES",
 ]
-BUFF_ROW_KEYS = ["MAGIC_GUARD", "MEDITATION", "INFINITY"]
+BUFF_ROW_KEYS = ["MAGIC_GUARD", "MEDITATION", "INFINITY", "NIMBLE_FEET"]
 SPECIAL_ROW_KEYS = ["ELEMENTAL_RESET"]
 # Every row that can ever post a nonzero Calc!O DPS value — used to filter the Summary sheet's
 # per-skill breakdown table down to real damage sources (buffs/passives always show 0.0000 there).
@@ -2430,8 +2441,10 @@ def build_summary_sheet(wb):
     # (not baked into Inputs), so it's read directly here rather than via the generic
     # buff-uptime machinery (it isn't a timed buff at all).
     me = ROW["MP_EATER_MP_BOOST"]
-    ws.cell(row=r_asb, column=1, value="Attack Speed Bonus % (MP Eater - MP Boost, always-on once unlocked)")
-    ws.cell(row=r_asb, column=2, value=f'=IF(Calc!C{me}=TRUE,Calc!F{me},0)')
+    r_nf = ROW["NIMBLE_FEET"]
+    nimble_feet_avg = f'((Calc!C{r_nf}=TRUE)*Calc!F{r_nf}*{buff_uptime(r_nf)})'
+    ws.cell(row=r_asb, column=1, value="Attack Speed Bonus % (MP Eater - MP Boost, always-on + Nimble Feet, duty-cycle averaged)")
+    ws.cell(row=r_asb, column=2, value=f'=IF(Calc!C{me}=TRUE,Calc!F{me},0)+{nimble_feet_avg}')
 
     ws.cell(row=r_aps, column=1, value="Actions Per Second (Attack Speed combined via diminishing-returns stack, factor 150, then capped)")
     ws.cell(row=r_aps, column=2, value=(
@@ -3080,8 +3093,10 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ))
 
     me = row_of["MP_EATER_MP_BOOST"]
-    ws.cell(row=s_asb, column=1, value="Attack Speed Bonus % (MP Eater - MP Boost, always-on once unlocked)")
-    ws.cell(row=s_asb, column=2, value=f'=IF(C{me}=TRUE,F{me}+{attack_speed_delta},0)')
+    nf = row_of["NIMBLE_FEET"]
+    nimble_feet_avg_block = f'((C{nf}=TRUE)*F{nf}*{buff_uptime_block(nf, ROW["NIMBLE_FEET"])})'
+    ws.cell(row=s_asb, column=1, value="Attack Speed Bonus % (MP Eater - MP Boost, always-on + Nimble Feet, duty-cycle averaged)")
+    ws.cell(row=s_asb, column=2, value=f'=IF(C{me}=TRUE,F{me}+{attack_speed_delta},0)+{nimble_feet_avg_block}')
 
     ws.cell(row=s_aps, column=1, value="Actions Per Second")
     ws.cell(row=s_aps, column=2, value=f'=1+MIN(150,150*(1-(1-{attack_speed_total_block}/150)*(1-{asb_ref}/150)))/100')

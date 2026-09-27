@@ -1851,7 +1851,7 @@ ROW_ORDER = [
     "NAUTILUS_STRIKE", "NAUTILUS_FINAL_ATTACK", "MAPLE_HERO_HELPER",
     "ROLL_OF_THE_DICE_DICE", "CROSSBONES_FD", "TIME_LEAP_FD",
     "SHADOW_HEART", "QUICK_MOTION", "AGILE_KNUCKLES", "DARK_CLARITY",
-    "KNUCKLE_MASTERY", "PHYSICAL_TRAINING", "GROGGY_MASTERY_FD",
+    "KNUCKLE_MASTERY", "PHYSICAL_TRAINING", "GROGGY_MASTERY_FD", "NIMBLE_FEET",
 ]
 ROW = {key: i for i, key in enumerate(ROW_ORDER, start=2)}
 LAST_ROW = 1 + len(ROW_ORDER)
@@ -1864,7 +1864,7 @@ R_TOTAL = 3
 R_AVGBUFF = 13                      # Attack% bucket (Roll of the Dice's dice component only)
 R_CRIT_RATE_BONUS = 14              # unused placeholder (no live Crit-Rate-buff source exists)
 R_MONSTER_DMG_BONUS = 15            # unused placeholder (no live monster-dmg-taken-buff source)
-R_AS_BONUS = 16                     # unused placeholder (no live AS-buff source exists — Buccaneer has no Nimble-Feet-equivalent buff, Quick Motion is a flat passive)
+R_AS_BONUS = 16                     # Attack Speed Buff Bonus % (Nimble Feet, duty-cycle averaged)
 R_APS = 17                          # Actions Per Second
 R_CASTRATE = 18                     # Skill + buff cast rate (subtracted from Hook Bomber)
 R_BAPS = 19                         # Hook Bomber (basic attack) Casts Per Second
@@ -1907,6 +1907,7 @@ UNLOCK_LEVEL = {
     "KNUCKLE_MASTERY": 43,
     "PHYSICAL_TRAINING": 38,
     "GROGGY_MASTERY_FD": 75,
+    # NIMBLE_FEET: no threshold (shared Explorer skill, level 0) — stays unconditionally unlocked.
 }
 
 
@@ -2102,18 +2103,26 @@ SKILL_ROWS = [
      "guessed, per direct user decision. No independent DPS row of its own (Calc columns J-N "
      "blank/0, only D/E/F computed, read directly by Serpent Assault's own K-column formula)."),
     ("ROLL_OF_THE_DICE_DICE", "Roll of the Dice (dice component)", 2, "", False, 1, 1, 0, 0, 100, 1,
-     25, 0, False,
+     25, 22, True,
      0, 0, 0, 0, "ATTACK", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists, no cooldown stated): 'Rolls a "
-     "six-sided die every 7 sec to increase Attack by 0-5% in proportion to the number on the "
-     "die for 5 sec.' The flat, unconditional '+20% Attack' base effect of this same skill is "
+     "Confirmed via maplestoryidle.info cross-reference (same wording as the wiki, now with no "
+     "ambiguity): 'Increases Attack by 20%. Rolls a six-sided die every 7 sec to increase Attack "
+     "by 0-5% in proportion to the number on the die for 5 sec. A number that has appeared once "
+     "does not appear again for 30 sec.' The flat, unconditional +20% Attack base effect is "
      "Magic-Critical-pattern (assumed already reflected in your own Inputs!ATTACK_PCT, see "
-     "PASSIVE_DELTA_SLOT) — this row models ONLY the random dice component, approximated at its "
-     "average roll (2.5%, the midpoint of 0-5%) treated as an always-active flat bonus once "
-     "unlocked, rather than an actual RNG/duty-cycle process (the 'no repeat within 30s' rule "
-     "and the 7s-roll/5s-duration timing are not modeled). factorIndex 0 (non-scaling "
-     "placeholder — no data exists on whether the 0-5% range itself grows with level), "
-     "baseDamage 25 tenths%."),
+     "PASSIVE_DELTA_SLOT) — this row models ONLY the random dice component. The 'no repeat within "
+     "30s' rule guarantees a uniform long-run frequency over the 6 faces regardless of draw order, "
+     "so the time-averaged roll magnitude is exactly the simple mean of 0/1/2/3/4/5% = 2.5% (not "
+     "an approximation) — baseDamage 25 tenths% is this mean. The 7s-roll/5s-duration timing IS "
+     "now modeled as a real duty cycle: the buff is only up 5 of every 7 sec, so the row's own use "
+     "site (the Attack%% bucket multiplier) multiplies this row's coefficient by 5/7, not treated "
+     "as always-active (previously a FLAGGED ASSUMPTION gap; ProcChance% is left at 100/unused "
+     "since this row type reads Calc!F directly rather than through the ProcChance-derived column "
+     "— see the 5/7 factor at its use site instead). factorIndex 22 (matches every other "
+     "Magic-Critical-pattern flat buff row, e.g. Crossbones/Jolly Roger) — a wiki table showing "
+     "no per-level growth on THIS component isn't reliable evidence it's truly non-scaling "
+     "(same lesson as Bowmaster's Hurricane/Flash Mirage/Soul Arrow, all previously mis-flagged "
+     "factorIndex 0 for the same reason)."),
     ("CROSSBONES_FD", "Crossbones", 4, "", False, 1, 1, 0, 0, 100, 1,
      100, 22, True,
      0, 0, 0, 0, "FINAL_DAMAGE", 0, "", "",
@@ -2189,6 +2198,17 @@ SKILL_ROWS = [
      "project). Magic Critical pattern — already baked into Inputs!FINAL_DAMAGE%; feeds the "
      "2nd-Job Skill Level Bonus delta. FLAGGED ASSUMPTION (no individual wiki page exists). "
      "factorIndex 22, baseDamage 80 tenths% (already the patched 8%)."),
+    ("NIMBLE_FEET", "Nimble Feet", 1, 60, True, 1, 1, 0, 0, 100, 1,
+     150, 0, False,
+     0, 0, 0, 1, "ATTACK_SPEED", 15, "", "",
+     "Universal 1st-Job Explorer skill (identical wording on both idle.maplestorywiki.net and "
+     "maplestoryidle.info — 'Increases Attack Speed by 15% and Speed by 10% for 15 sec', 60s "
+     "cooldown, reqLevel 5) — was missing from this workbook entirely (a real gap found by "
+     "cross-class comparison, not a class-design difference: Bowmaster/Dark Knight/FP-Mage/Hero/"
+     "Marksman/Night Lord/Paladin/Shadower all already have it; Buccaneer's own Quick Motion is a "
+     "separate, unrelated flat passive). Flat +15% Attack Speed / +10% Speed for 15s, "
+     "non-scaling. Speed component not modeled (no Speed stat anywhere in this project). "
+     "FactorIndex unused placeholder."),
 ]
 
 # Rows with a real Cooldown(s) value (literal or a live formula reference).
@@ -2225,10 +2245,9 @@ DAMAGE_ROW_KEYS = [
 ]
 ATTACK_BUFF_ROW_KEYS = ["ROLL_OF_THE_DICE_DICE"]
 # Buff-casting-startup-delay feature: rows with a real BuffDuration(s) that the character actively
-# casts. Buccaneer has no such row (every buff-like source is an always-on "FD" passive with no
-# live BuffDuration>0, per this class's own Notes) — kept empty rather than omitted so the shared
-# startup-delay plumbing (build_calc_sheet/build_stat_block) has a consistent list to check.
-BUFF_ROW_KEYS = []
+# casts. Nimble Feet is the one real timed buff with live BuffDuration>0 — every other buff-like
+# source is an always-on "FD" passive with no live BuffDuration (per this class's own Notes).
+BUFF_ROW_KEYS = ["NIMBLE_FEET"]
 PASSIVE_MULT_ROW_KEYS = [
     "SHADOW_HEART", "QUICK_MOTION", "AGILE_KNUCKLES", "DARK_CLARITY",
     "KNUCKLE_MASTERY", "PHYSICAL_TRAINING", "GROGGY_MASTERY_FD",
@@ -2521,8 +2540,9 @@ def build_summary_sheet(wb):
     r_ssfd = ROW["SERPENT_SCALE_FD"]
     r_cb, r_tl = ROW["CROSSBONES_FD"], ROW["TIME_LEAP_FD"]
 
-    # Roll of the Dice's dice component: no cooldown known, modeled always-active once unlocked.
-    roll_of_dice_avg = f'((Calc!C{r_rd}=TRUE)*Calc!F{r_rd})'
+    # Roll of the Dice's dice component: real 5s-buff/7s-roll duty cycle (confirmed via
+    # maplestoryidle.info), not always-active.
+    roll_of_dice_avg = f'((Calc!C{r_rd}=TRUE)*Calc!F{r_rd}*5/7)'
     # Serpent Scale's Assault-Mode FD buff: active for the assault_uptime_expr() fraction of the
     # time (a resource-economy duty cycle, NOT the standard cooldown-driven buff_uptime() helper).
     serpent_scale_avg = f'((Calc!C{r_ssfd}=TRUE)*Calc!F{r_ssfd}*{assault_uptime_expr()})'
@@ -2545,8 +2565,10 @@ def build_summary_sheet(wb):
     ws.cell(row=R_MONSTER_DMG_BONUS, column=1, value="Global Monster Damage-Taken Bonus % (Artifact Enemy Damage Taken Bonus)")
     ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=f'={art_ref("AGG_ENEMY_DMG_TAKEN")}')
 
-    ws.cell(row=R_AS_BONUS, column=1, value="Attack Speed Buff Bonus % (unused — Buccaneer has no Nimble-Feet-style live AS buff)")
-    ws.cell(row=R_AS_BONUS, column=2, value=0)
+    r_nf = ROW["NIMBLE_FEET"]
+    nimble_feet_as_avg = f'((Calc!C{r_nf}=TRUE)*Calc!F{r_nf}*{buff_uptime(r_nf)})'
+    ws.cell(row=R_AS_BONUS, column=1, value="Attack Speed Buff Bonus % (Nimble Feet, duty-cycle averaged)")
+    ws.cell(row=R_AS_BONUS, column=2, value=f'={nimble_feet_as_avg}')
 
     ws.cell(row=R_APS, column=1, value="Actions Per Second")
     ws.cell(row=R_APS, column=2, value=(
@@ -3072,7 +3094,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     r_ssfd = ROW["SERPENT_SCALE_FD"]
     r_cb, r_tl = ROW["CROSSBONES_FD"], ROW["TIME_LEAP_FD"]
 
-    roll_of_dice_avg = f'((C{row_of["ROLL_OF_THE_DICE_DICE"]}=TRUE)*F{row_of["ROLL_OF_THE_DICE_DICE"]})'
+    roll_of_dice_avg = f'((C{row_of["ROLL_OF_THE_DICE_DICE"]}=TRUE)*F{row_of["ROLL_OF_THE_DICE_DICE"]}*5/7)'
     serpent_scale_avg = (
         f'((C{row_of["SERPENT_SCALE_FD"]}=TRUE)*F{row_of["SERPENT_SCALE_FD"]}*'
         f'{assault_uptime_expr(baps_ref, ib)})'
@@ -3272,8 +3294,10 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ws.cell(row=s_crit_rate_bonus, column=1, value="Global Crit Rate Bonus %")
     ws.cell(row=s_crit_rate_bonus, column=2, value=0)
 
-    ws.cell(row=s_as_bonus, column=1, value="Attack Speed Buff Bonus % (unused)")
-    ws.cell(row=s_as_bonus, column=2, value=0)
+    nf = row_of["NIMBLE_FEET"]
+    nimble_feet_as_avg_block = f'((C{nf}=TRUE)*F{nf}*{buff_uptime_block(nf, ROW["NIMBLE_FEET"])})'
+    ws.cell(row=s_as_bonus, column=1, value="Attack Speed Buff Bonus % (Nimble Feet, duty-cycle averaged)")
+    ws.cell(row=s_as_bonus, column=2, value=f'={nimble_feet_as_avg_block}')
 
     ws.cell(row=s_aps, column=1, value="Actions Per Second")
     ws.cell(row=s_aps, column=2, value=(

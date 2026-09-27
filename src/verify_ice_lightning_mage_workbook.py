@@ -369,7 +369,20 @@ for key, b in BUFFS.items():
 avg_buff_mult = (1 + attack_bucket_sum / 100) * final_damage_mult
 
 # MP Eater - MP Boost: flat +7% Attack Speed once unlocked, no uptime averaging (not a timed buff).
-as_bonus = mp_eater_as_pct if unlocked("MP_EATER_MP_BOOST") else 0.0
+# Nimble Feet: universal 1st-Job Explorer AS buff, duty-cycle averaged (real duration/cooldown,
+# not the ATTACK/FINAL_DAMAGE bucket loop above since Attack Speed combines via diminishing
+# returns, not straight addition/multiplication).
+nimble_feet_pct = coeff_pct(150, 0, False, 1)
+nimble_feet_eff_cd = eff_cooldown(60, True)
+if fixed_duration_active:
+    nimble_feet_uptime = exact_buff_uptime(nimble_feet_eff_cd, eff_duration(15)) / fight_duration
+elif monster_type == "pvp":
+    nimble_feet_uptime = min(eff_duration(15), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
+else:
+    nimble_feet_uptime = eff_duration(15) / nimble_feet_eff_cd
+nimble_feet_avg = nimble_feet_pct * nimble_feet_uptime if unlocked("NIMBLE_FEET") else 0.0
+
+as_bonus = (mp_eater_as_pct if unlocked("MP_EATER_MP_BOOST") else 0.0) + nimble_feet_avg
 
 actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - as_bonus / 150))) / 100
 
@@ -390,7 +403,10 @@ def _cdr_costs_action(key, s):
 # usable window is reduced by this amount. Buffs themselves keep their own t=0 uptime math
 # unchanged (they're what causes the delay, not affected further by it).
 if fixed_duration_active:
-    buff_cast_startup_time = sum(1 for key, b in BUFFS.items() if b["costs_action"] and unlocked(key)) / actions_per_second
+    buff_cast_startup_time = (
+        sum(1 for key, b in BUFFS.items() if b["costs_action"] and unlocked(key))
+        + (1 if unlocked("NIMBLE_FEET") else 0)
+    ) / actions_per_second
 else:
     buff_cast_startup_time = 0.0
 
@@ -418,6 +434,8 @@ if fixed_duration_active:
         exact_casts(eff_cooldown(b["cooldown"], b["costs_action"]))
         for key, b in BUFFS.items() if b["costs_action"] and unlocked(key)
     )
+    if unlocked("NIMBLE_FEET"):
+        cast_rate += exact_casts(eff_cooldown(60, True))
     cast_rate /= fight_duration
 else:
     cast_rate = sum(
@@ -428,6 +446,8 @@ else:
         1 / eff_cooldown(b["cooldown"], b["costs_action"])
         for key, b in BUFFS.items() if b["costs_action"] and unlocked(key)
     )
+    if unlocked("NIMBLE_FEET"):
+        cast_rate += 1 / eff_cooldown(60, True)
 chain_lightning_per_second = max(0, actions_per_second - cast_rate)
 
 maple_lvl = input_level(4, level, skill1, skill2, skill3, skill4, skill_all)

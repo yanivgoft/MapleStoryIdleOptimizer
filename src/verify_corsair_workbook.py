@@ -249,15 +249,41 @@ def coeff_pct(base, fidx, scales, job_step):
 maple_hero_pct = coeff_pct(200, 23, True, 4) if unlocked("MAPLE_HERO_HELPER") else 0.0
 ahoy_mateys_pct = coeff_pct(2500, 22, True, 4) if unlocked("AHOY_MATEYS_HELPER") else 0.0
 
-# ---- Actions Per Second — no live AS-buff source in this kit (no Nimble-Feet-equivalent),
-#      same as Buccaneer ----
-actions_per_second = 1 + min(150, 150 * (attack_speed_base / 150)) / 100
+# ---- Actions Per Second — combines raw Inputs!attack_speed with Nimble Feet's own duty-cycle-
+#      averaged AS bonus via the standard diminishing-returns stack (factor 150) ----
+def exact_buff_uptime(cooldown, buff_duration):
+    casts = exact_casts(cooldown)
+    remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
+    last_uptime = min(buff_duration, remaining_after_last)
+    return (casts - 1) * buff_duration + last_uptime
 
-# Buff-Casting Startup Delay: Corsair has no recast-able buff skills (no BUFFS-equivalent dict
-# exists in this model — Roll of the Dice's dice component is an always-active flat
-# approximation, not a timed recast), so this is always 0 — kept for architectural consistency
-# with the other 11 classes' identical wiring.
-buff_cast_startup_time = 0.0
+
+def _nimble_feet_as_avg():
+    """Nimble Feet's own duty-cycle-averaged Attack Speed% — independent of actions_per_second
+    (fixed 60s cooldown/15s duration, not AS-scaled), so no circularity computing this first."""
+    if not unlocked("NIMBLE_FEET"):
+        return 0.0
+    pct = coeff_pct(150, 0, False, 1)
+    eff_cd = eff_cooldown(60, True)
+    if fixed_duration_active:
+        uptime = exact_buff_uptime(eff_cd, eff_duration(15)) / fight_duration
+    elif monster_type == "pvp":
+        uptime = min(eff_duration(15), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
+    else:
+        uptime = eff_duration(15) / eff_cd
+    return pct * uptime
+
+
+_nimble_feet_as_bonus = _nimble_feet_as_avg()
+actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - _nimble_feet_as_bonus / 150))) / 100
+
+# Buff-Casting Startup Delay: Nimble Feet is now the one real, live BuffDuration(s)>0
+# CostsActionSlot skill in this kit (Roll of the Dice's dice component is a real 5s/7s duty cycle
+# now too, but it isn't a recast-able cast-and-buff skill of its own).
+if fixed_duration_active:
+    buff_cast_startup_time = (1 if unlocked("NIMBLE_FEET") else 0) / actions_per_second
+else:
+    buff_cast_startup_time = 0.0
 
 
 def non_buff_casts(cooldown):
@@ -294,8 +320,10 @@ COST_ACTION_ROWS = [
 ]
 if fixed_duration_active:
     cast_rate = sum(non_buff_casts(eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)) / fight_duration
+    cast_rate += (exact_casts(eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0) / fight_duration
 else:
     cast_rate = sum((1 / eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k))
+    cast_rate += (1 / eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0
 eight_legs_easton_per_second = max(0, actions_per_second - cast_rate)
 
 # ---- Global Final Damage bucket: Jolly Roger only (always-active once unlocked, no cooldown known) ----
@@ -303,7 +331,7 @@ jolly_roger_pct = coeff_pct(150, 22, True, 4) if unlocked("JOLLY_ROGER_FD") else
 final_damage_extra = jolly_roger_pct
 
 # ---- Attack% bucket: Roll of the Dice's dice component only (shared verbatim w/ Buccaneer) ----
-roll_of_dice_pct = coeff_pct(25, 0, False, 3) if unlocked("ROLL_OF_THE_DICE_DICE") else 0.0
+roll_of_dice_pct = coeff_pct(25, 22, True, 3) * 5 / 7 if unlocked("ROLL_OF_THE_DICE_DICE") else 0.0
 attack_bucket_mult = 1 + roll_of_dice_pct / 100
 
 crit_rate_bonus = 0.0

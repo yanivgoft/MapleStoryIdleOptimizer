@@ -217,10 +217,10 @@ def exact_total_hits(cooldown, hits_per_cast, icd, window, duration=None):
     return hits_per_cast * ((casts - 1) * full_window_ticks + last_cast_ticks)
 
 
-# Buccaneer has no live BuffDuration(s)>0 skill rows (every buff-like source is an always-on "FD"
-# passive gated by its own checkbox, not a cast-and-recast buff — see BUFF_ROW_KEYS in the build
-# script), so the buff-casting startup delay is always 0 here; kept as a named value (rather than
-# inlining 0 at each call site) so this file stays structurally in sync with every other class.
+# Nimble Feet is now the one real, live BuffDuration(s)>0 CostsActionSlot skill in this kit
+# (every other buff-like source is an always-on "FD" passive gated by its own checkbox, not a
+# cast-and-recast buff — see BUFF_ROW_KEYS in the build script); the real value is computed below
+# once actions_per_second is known, and reassigned before any function that reads it is called.
 buff_cast_startup_time = 0.0
 
 
@@ -286,10 +286,34 @@ hook_bomber_mastery_boss_damage = level_gated_sum({111: 10, 124: 10})
 hook_bomber_pct = skill_coefficient_base + hook_bomber_mastery_damage
 
 
+def exact_buff_uptime(cooldown, buff_duration):
+    casts = exact_casts(cooldown)
+    remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
+    last_uptime = min(buff_duration, remaining_after_last)
+    return (casts - 1) * buff_duration + last_uptime
+
+
+def _nimble_feet_as_avg():
+    """Nimble Feet's own duty-cycle-averaged Attack Speed% — independent of actions_per_second
+    (fixed 60s cooldown/15s duration, not AS-scaled), so no circularity computing this first."""
+    if not unlocked("NIMBLE_FEET"):
+        return 0.0
+    pct = coeff_pct(150, 0, False, 1)
+    eff_cd = eff_cooldown(60, True)
+    if fixed_duration_active:
+        uptime = exact_buff_uptime(eff_cd, eff_duration(15)) / fight_duration
+    elif monster_type == "pvp":
+        uptime = min(eff_duration(15), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
+    else:
+        uptime = eff_duration(15) / eff_cd
+    return pct * uptime
+
+
 def _actions_per_second_placeholder():
-    # Actions Per Second has no live AS-buff source in this kit (no Nimble-Feet-equivalent),
-    # so it's just a function of the raw Inputs!attack_speed value.
-    return 1 + min(150, 150 * (attack_speed_base / 150)) / 100
+    # Actions Per Second combines raw Inputs!attack_speed with Nimble Feet's own duty-cycle-
+    # averaged AS bonus via the standard diminishing-returns stack (factor 150).
+    as_bonus = _nimble_feet_as_avg()
+    return 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - as_bonus / 150))) / 100
 
 
 # Two-step resolution: Hook Bomber's cast rate (BAPS) feeds the Assault-Mode uptime fraction,
@@ -297,6 +321,11 @@ def _actions_per_second_placeholder():
 # BAPS itself only depends on the ACTION-COSTING skills' own cast rates, none of which depend on
 # the Assault-Mode uptime, so there's no real circularity, just an ordering requirement.
 actions_per_second = _actions_per_second_placeholder()
+
+# Real value, now that actions_per_second is known (non_buff_casts/non_buff_total_hits are only
+# actually called further below, so this reassignment lands before any use).
+if fixed_duration_active:
+    buff_cast_startup_time = (1 if unlocked("NIMBLE_FEET") else 0) / actions_per_second
 
 
 def assault_duration():
@@ -321,8 +350,10 @@ COST_ACTION_ROWS = [
 ]
 if fixed_duration_active:
     cast_rate = sum(non_buff_casts(eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)) / fight_duration
+    cast_rate += (exact_casts(eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0) / fight_duration
 else:
     cast_rate = sum((1 / eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k))
+    cast_rate += (1 / eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0
 hook_bomber_per_second = max(0, actions_per_second - cast_rate)
 
 uptime = assault_uptime(hook_bomber_per_second)
@@ -336,8 +367,8 @@ time_leap_pct = coeff_pct(150, 22, True, 4) if unlocked("TIME_LEAP_FD") else 0.0
 speed_infusion_avg = 20 * (actions_per_second - 1) if level >= 110 else 0.0
 final_damage_extra = serpent_scale_avg + crossbones_pct + time_leap_pct + speed_infusion_avg
 
-# ---- Attack% bucket: Roll of the Dice's dice component only (always-active, no cooldown known) ----
-roll_of_dice_pct = coeff_pct(25, 0, False, 2) if unlocked("ROLL_OF_THE_DICE_DICE") else 0.0
+# ---- Attack% bucket: Roll of the Dice's dice component only (real 5s/7s duty cycle) ----
+roll_of_dice_pct = coeff_pct(25, 22, True, 2) * 5 / 7 if unlocked("ROLL_OF_THE_DICE_DICE") else 0.0
 attack_bucket_mult = 1 + roll_of_dice_pct / 100
 
 crit_rate_bonus = 0.0

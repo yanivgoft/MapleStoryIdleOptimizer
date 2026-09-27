@@ -352,7 +352,22 @@ divine_blessing_avg = buff_avg(divine_blessing_pct, 22, 30, True) if unlocked("D
 crit_rate_bonus = 0.0  # no live Crit-Rate-buff source exists in this kit
 crit_damage_bonus = 0.0  # no live Crit-Damage-buff source exists in this kit
 final_damage_extra = divine_shield_avg + guardian_avg + divine_blessing_avg + greater_vessel_avg
-monster_dmg_bonus = 0.0  # no live monster-dmg-taken source modeled (Close Combat/Noble Demand/Divine Mark's own weaken effects flagged)
+def weaken_avg(pct, duration, cooldown):
+    """Steady-state duty-cycle average for a Weaken-style debuff — matches the build script's own
+    uptime_fraction_expr exactly (NOT the fixed-duration-exact buff_avg() above): always the
+    simple duration/cooldown ratio, no CastsInFight branching, same documented-simplification
+    tier as Ice-Lightning-Mage's own Freezing Breath - Weaken."""
+    if monster_type == "pvp":
+        scaled_duration = min(duration * (1 + buff_duration_increase_pct / 100), PVP_FIGHT_DURATION)
+        return pct * scaled_duration / PVP_FIGHT_DURATION
+    scaled_duration = duration * (1 + buff_duration_increase_pct / 100)
+    return pct * scaled_duration / cooldown
+
+
+close_combat_weaken = weaken_avg(10, 10, 18) if level >= 44 else 0.0
+noble_demand_weaken = weaken_avg(12, 10, 30)
+divine_mark_weaken = weaken_avg(20, 10, 16) if level >= 138 else 0.0
+monster_dmg_bonus = close_combat_weaken + noble_demand_weaken + divine_mark_weaken
 
 
 def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_ratio=0.0):

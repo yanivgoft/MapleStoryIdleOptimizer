@@ -1417,7 +1417,7 @@ ROW_ORDER = [
     "ADVANCED_BLESSING", "TRIUMPH_FEATHER", "MAPLE_HERO_BISHOP", "MP_EATER_MP_BOOST",
     "ELEMENT_AMPLIFICATION", "INFINITY", "BLOOD_OF_THE_DIVINE", "MAGIC_ACCELERATION",
     "SPELL_MASTERY", "HIGH_WISDOM", "MAGIC_CRITICAL_RATE", "MAGIC_CRITICAL_DAMAGE",
-    "BUFF_MASTERY", "ARCANE_AIM",
+    "BUFF_MASTERY", "ARCANE_AIM", "NIMBLE_FEET",
 ]
 ROW = {key: i for i, key in enumerate(ROW_ORDER, start=2)}
 LAST_ROW = 1 + len(ROW_ORDER)
@@ -1453,6 +1453,7 @@ UNLOCK_LEVEL = {
     "MAGIC_CRITICAL_DAMAGE": 74,
     "BUFF_MASTERY": 117,
     "ARCANE_AIM": 120,
+    # NIMBLE_FEET: no threshold (shared Explorer skill, level 0) — stays unconditionally unlocked.
 }
 
 
@@ -1780,6 +1781,16 @@ SKILL_ROWS = [
      "", "", "",
      "Shared verbatim w/ FP-Mage/Ice-Lightning-Mage: 25% chance, +Final Damage% for 10s, stacks "
      "x5 — modeled always at max 5 stacks, combined multiplicatively as (1+Calc!F/100)^5."),
+    ("NIMBLE_FEET", "Nimble Feet", 1, 60, True, 1, 0, 0, 100, 1,
+     150, 0, False,
+     0, 0, 0, 1, "ATTACK_SPEED", 15, "", "", "",
+     "Universal 1st-Job Explorer skill (identical wording on both idle.maplestorywiki.net and "
+     "maplestoryidle.info — 'Increases Attack Speed by 15% and Speed by 10% for 15 sec', 60s "
+     "cooldown, reqLevel 5) — was missing from this workbook entirely (a real gap found by "
+     "cross-class comparison, not a class-design difference: Bowmaster/Dark Knight/FP-Mage/Hero/"
+     "Marksman/Night Lord/Paladin/Shadower all already have it). Flat +15% Attack Speed / +10% "
+     "Speed for 15s, non-scaling. Speed component not modeled (no Speed stat anywhere in this "
+     "project). FactorIndex unused placeholder."),
 ]
 
 # Rows with a real Cooldown(s) value (literal or a live formula reference) — CastsInFight
@@ -1819,7 +1830,7 @@ def build_skills_sheet(wb):
 # Row categories consumed by build_calc_sheet/build_summary_sheet/build_sensitivity_sheet.
 # ---------------------------------------------------------------------------
 DAMAGE_ROW_KEYS = ["ANGEL_RAY", "ANGEL_RAY_BOSS_PROC", "GENESIS", "BAHAMUT", "TRIUMPH_FEATHER"]
-BUFF_ROW_KEYS = ["MAGIC_GUARD", "HEAL", "BLESS", "HOLY_MAGIC_SHELL", "ADVANCED_BLESSING", "INFINITY"]
+BUFF_ROW_KEYS = ["MAGIC_GUARD", "HEAL", "BLESS", "HOLY_MAGIC_SHELL", "ADVANCED_BLESSING", "INFINITY", "NIMBLE_FEET"]
 # Every row that can ever post a nonzero Calc!O DPS value — used to filter the Summary sheet's
 # per-skill breakdown table down to real damage sources (buffs/passives always show 0.0000 there).
 DAMAGE_DEALING_KEYS = ["BIG_BANG"] + DAMAGE_ROW_KEYS
@@ -2737,11 +2748,13 @@ def build_summary_sheet(wb):
 
     # MP Eater - MP Boost (flat +7% AS once unlocked) + Blood of the Divine's own Lv.134 mastery
     # (+1.5% AS per 10% HP -> flat +15% at assumed 100% HP) — both real, always-on contributors,
-    # no uptime averaging (neither is a timed buff).
+    # no uptime averaging (neither is a timed buff) — plus Nimble Feet, duty-cycle averaged.
     me = ROW["MP_EATER_MP_BOOST"]
-    ws.cell(row=r_asb, column=1, value="Attack Speed Bonus % (MP Eater - MP Boost + Blood of the Divine - Attack Speed, always-on)")
+    r_nf = ROW["NIMBLE_FEET"]
+    nimble_feet_avg = f'((Calc!C{r_nf}=TRUE)*Calc!F{r_nf}*{buff_uptime(r_nf)})'
+    ws.cell(row=r_asb, column=1, value="Attack Speed Bonus % (MP Eater - MP Boost + Blood of the Divine - Attack Speed + Nimble Feet, always-on/duty-cycle)")
     ws.cell(row=r_asb, column=2, value=(
-        f'=IF(Calc!C{me}=TRUE,Calc!F{me},0)+IF({IB("level")}>=134,15,0)'
+        f'=IF(Calc!C{me}=TRUE,Calc!F{me},0)+IF({IB("level")}>=134,15,0)+{nimble_feet_avg}'
     ))
 
     ws.cell(row=r_aps, column=1, value="Actions Per Second (Attack Speed combined via diminishing-returns stack, factor 150, then capped)")
@@ -3443,9 +3456,11 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ws.cell(row=s_cdb, column=2, value=f'=4*IF(C{bd}=TRUE,F{bd},0)')
 
     me = row_of["MP_EATER_MP_BOOST"]
+    nf = row_of["NIMBLE_FEET"]
+    nimble_feet_avg_block = f'((C{nf}=TRUE)*F{nf}*{buff_uptime_block(nf, ROW["NIMBLE_FEET"])})'
     ws.cell(row=s_asb, column=1, value="Attack Speed Bonus %")
     ws.cell(row=s_asb, column=2, value=(
-        f'=IF(C{me}=TRUE,F{me}+{attack_speed_delta},0)+IF({ib("level")}>=134,15,0)'
+        f'=IF(C{me}=TRUE,F{me}+{attack_speed_delta},0)+IF({ib("level")}>=134,15,0)+{nimble_feet_avg_block}'
     ))
 
     ws.cell(row=s_aps, column=1, value="Actions Per Second")

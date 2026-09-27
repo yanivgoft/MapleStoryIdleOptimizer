@@ -2136,18 +2136,22 @@ SKILL_ROWS = [
      "(Mastery Lv.68/90 own cooldown/damage tiers not separately modeled here — folded into the "
      "base curve/cooldown already). Maple Hero target (1.5x share) — see MAPLE_HERO_RATIOS."),
     ("FLASH_SLASH", "Flash Slash", 2, 16, True, 1, 1, 0, 0, 100, 1,
-     3500, 0, False,
+     3500, 12, True,
      level_gated_sum(IB("level"), {39: 50}), 0, 0, 7, "", 0, 800, 23,
-     "Deals a flat, non-scaling 350% damage to 7 target(s) in front (own wiki page's prose "
-     "claims '+5%/level' but the actual level 1-200 table shows a constant 350% at every "
-     "sampled level — a wiki content bug, trust the table). If combo stack >=3, damage +50% — "
-     "assumed always active once Combo Attack is unlocked (Lv.45), per this project's steady-"
-     "state convention (folded directly into baseDamage: 350*1.5=525 tenths%->3500... actually "
+     "Deals 350% damage to 7 target(s) in front, scaling '+5%/level' per the wiki page's own "
+     "prose (the level 1-200 sampled table showed a constant 350% at every sampled level, which "
+     "was wrongly trusted over the prose as a 'wiki content bug' — per direct user correction, "
+     "the flat table was itself the error, same failure mode already caught on Bowmaster's "
+     "Hurricane/Flash Mirage/Soul Arrow: a wiki per-level table reading flat is not reliable "
+     "evidence a skill is truly non-scaling). factorIndex 12 (burst-damage active-skill "
+     "convention, matching Close Combat/Puncture/Noble Demand's own curve), baseDamage 3500 "
+     "tenths% (=350%) treated as the level-1 anchor. If combo stack >=3, damage +50% — assumed "
+     "always active once Combo Attack is unlocked (Lv.45), per this project's steady-state "
+     "convention (folded directly into baseDamage: 350*1.5=525 tenths%->3500... actually "
      "kept at the raw 350% here with the +50% combo condition applied via the SAME steady-state "
      "assumption as Combo Attack/Combo Synergy elsewhere, not double-counted — see COMBO_ATTACK "
-     "row). factorIndex 0 (non-scaling placeholder), baseDamage 3500 tenths% (=350%), 16s "
-     "cooldown. Mastery Lv.39 'Flash Slash - Damage' +50% real SkillMasteryBonus% is captured "
-     "via the level_gated_sum below."),
+     "row). 16s cooldown. Mastery Lv.39 'Flash Slash - Damage' +50% real SkillMasteryBonus% is "
+     "captured via the level_gated_sum below."),
     ("MAPLE_HERO_HELPER", "Maple Hero (helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
      200, 23, True,
      0, 0, 0, 0, "", 0, "", "",

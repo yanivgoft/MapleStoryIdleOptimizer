@@ -366,8 +366,21 @@ damage_bonus = holy_symbol_mastery_pct
 # Blood of the Divine: assumed 100% HP -> +20% Crit Damage (4x its own Final-Damage F-value).
 crit_damage_bonus = 4 * blood_divine_pct
 
-# MP Eater + Blood of the Divine's own AS mastery (flat, always-on, no uptime averaging).
-as_bonus = (mp_eater_as_pct if unlocked("MP_EATER_MP_BOOST") else 0.0) + (15 if level >= 134 else 0)
+# MP Eater + Blood of the Divine's own AS mastery (flat, always-on, no uptime averaging), plus
+# Nimble Feet (universal 1st-Job Explorer AS buff, duty-cycle averaged — real duration/cooldown,
+# not the ATTACK/FINAL_DAMAGE bucket loop above since Attack Speed combines via diminishing
+# returns, not straight addition/multiplication).
+nimble_feet_pct = coeff_pct(150, 0, False, 1)
+nimble_feet_eff_cd = eff_cooldown(60, True)
+if fixed_duration_active:
+    nimble_feet_uptime = exact_buff_uptime(nimble_feet_eff_cd, eff_duration(15)) / fight_duration
+elif monster_type == "pvp":
+    nimble_feet_uptime = min(eff_duration(15), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
+else:
+    nimble_feet_uptime = eff_duration(15) / nimble_feet_eff_cd
+nimble_feet_avg = nimble_feet_pct * nimble_feet_uptime if unlocked("NIMBLE_FEET") else 0.0
+
+as_bonus = (mp_eater_as_pct if unlocked("MP_EATER_MP_BOOST") else 0.0) + (15 if level >= 134 else 0) + nimble_feet_avg
 
 actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - as_bonus / 150))) / 100
 
@@ -377,7 +390,10 @@ actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 
 # usable window is reduced by this amount. Buffs themselves keep their own t=0 uptime math
 # unchanged (they're what causes the delay, not affected further by it).
 if fixed_duration_active:
-    buff_cast_startup_time = sum(1 for key, b in BUFFS.items() if b["costs_action"] and unlocked(key)) / actions_per_second
+    buff_cast_startup_time = (
+        sum(1 for key, b in BUFFS.items() if b["costs_action"] and unlocked(key))
+        + (1 if unlocked("NIMBLE_FEET") else 0)
+    ) / actions_per_second
 else:
     buff_cast_startup_time = 0.0
 
@@ -400,11 +416,13 @@ if fixed_duration_active:
     cast_rate = sum(non_buff_casts(eff_cooldown(SKILLS[k]["cooldown"], SKILLS[k]["costs_action"])) for k, s in SKILLS.items() if s["costs_action"] and unlocked(k))
     cast_rate += sum(exact_casts(eff_cooldown(b["cooldown"], b["costs_action"])) for key, b in BUFFS.items() if b["costs_action"] and unlocked(key))
     cast_rate += non_buff_casts(eff_cooldown(holy_fountain_cooldown, True)) if unlocked("HOLY_FOUNTAIN") else 0
+    cast_rate += exact_casts(nimble_feet_eff_cd) if unlocked("NIMBLE_FEET") else 0
     cast_rate /= fight_duration
 else:
     cast_rate = sum(1 / eff_cooldown(SKILLS[k]["cooldown"], s["costs_action"]) for k, s in SKILLS.items() if s["costs_action"] and unlocked(k))
     cast_rate += sum(1 / eff_cooldown(b["cooldown"], b["costs_action"]) for key, b in BUFFS.items() if b["costs_action"] and unlocked(key))
     cast_rate += (1 / eff_cooldown(holy_fountain_cooldown, True)) if unlocked("HOLY_FOUNTAIN") else 0
+    cast_rate += (1 / nimble_feet_eff_cd) if unlocked("NIMBLE_FEET") else 0
 big_bang_per_second = max(0, actions_per_second - cast_rate)
 
 # Average buff multiplier. Magic Guard, Heal, Bless, and Holy Magic Shell are all "+X% Attack"

@@ -1933,12 +1933,15 @@ def unlock_expr(key):
     return "=TRUE" if level is None else f"={IB('level')}>={level}"
 
 
-# Maple Hero (Lv.100) — FLAGGED ASSUMPTION, no wiki page exists for Maple Hero (Paladin) at all
-# (confirmed 404, unlike Hero/Bowmaster/Dark Knight's own Maple Hero pages). Using the level-1
-# baseline values only (Noble Demand 20%, Rush 30%, Close Combat 80%, Final Attack 150% — the
-# biggest share) as ratios against Noble Demand's own 1x share, factorIndex 23 convention
-# (matching every other class's own Maple Hero), assumed to follow the same curve shape already
-# confirmed on Hero/Bowmaster/Dark Knight's own Maple Hero (80%-growth-reduction after Lv.120).
+# Maple Hero (Lv.100) — no individual wiki page exists for Maple Hero (Paladin) at all (confirmed
+# 404, unlike Hero/Bowmaster/Dark Knight's own Maple Hero pages), so the level-1 baseline values
+# (Noble Demand 20%, Rush 30%, Close Combat 80%, Final Attack 150% — the biggest share) were
+# originally a FLAGGED ASSUMPTION taken purely from the wiki's own level-1 tooltip. CONFIRMED
+# exactly via maplestoryidle.info cross-reference this session ("Increases Final Damage of Noble
+# Demand by 20%, Rush by 30%, Close Combat by 80%, and Final Attack by 150%.") — no longer flagged
+# for the level-1 VALUES. The growth CURVE past level 1 is still assumed to follow the same shape
+# already confirmed on Hero/Bowmaster/Dark Knight's own Maple Hero (80%-growth-reduction after
+# Lv.120), since neither source gives a full per-level table for this specific skill.
 # Final Attack's own 7.5x share is folded directly into BLAST's own SkillMasteryBonus% formula
 # below (a bespoke pattern, since Final Attack is a HELPER row, not a DAMAGE_ROW_KEYS/basic-attack
 # row — the generic MAPLE_HERO_RATIOS.get() mechanism only applies to those).
@@ -1986,21 +1989,25 @@ SKILL_ROWS = [
      "FLAGGED ASSUMPTION (no individual wiki page exists — confirmed genuine 404, same root-cause "
      "gap as Bishop): factorIndex 12 (burst convention), baseDamage 4600 tenths% (460% level-1). "
      "'Deals 460% damage to 7 nearby target(s)', 18s cooldown. Mastery Lv.39 'Close Combat - "
-     "Damage' +50% (real SkillMasteryBonus%). Mastery Lv.44 'Close Combat - Weaken' (+10%p target "
-     "damage taken for an unstated duration) is FLAGGED, not modeled — no duration/chance given "
-     "on the Mastery table to drive a duty-cycle calc. Maple Hero target (4x share, the biggest) "
-     "— see MAPLE_HERO_RATIOS."),
+     "Damage' +50% (real SkillMasteryBonus%). Mastery Lv.44 'Close Combat - Weaken' (+10% target "
+     "damage taken for 10 sec, confirmed via maplestoryidle.info cross-reference — the wiki alone "
+     "never gave a duration) is now modeled as a duty-cycle-averaged addition to Global Monster "
+     "Damage-Taken Bonus % (Summary!R_MONSTER_DMG_BONUS), not this row's own Mastery columns — "
+     "same pattern as Ice-Lightning-Mage's own Freezing Breath - Weaken. Maple Hero target (4x "
+     "share, the biggest) — see MAPLE_HERO_RATIOS."),
     ("NOBLE_DEMAND", "Noble Demand", 3, 30, True, 1, 1, 0, 0, 100, 1,
      16000, 12, True,
      level_gated_sum(IB("level"), {73: 50}), 0, 0, 8, "", 0, "", "",
      "FLAGGED ASSUMPTION (no individual wiki page exists): factorIndex 12, baseDamage 16000 "
      "tenths% (1600% level-1). 'Deals 1600% damage to 8 nearby target(s) and increases their "
-     "damage taken by 12% for 10 sec' — the damage-taken-increase component is FLAGGED, not "
-     "modeled (would need its own duty-cycle bucket wiring, judged out of scope for a flagged-"
-     "assumption skill). 30s cooldown. Mastery Lv.73 'Noble Demand - Damage' +50% (real "
-     "SkillMasteryBonus%). Mastery Lv.94 'Noble Demand - Reuse' (-30% cooldown) not separately "
-     "modeled, same treatment as Hero's own Rush cooldown masteries. Maple Hero target (1x "
-     "share, the smallest) — see MAPLE_HERO_RATIOS."),
+     "damage taken by 12% for 10 sec' — the damage-taken-increase component (confirmed 10s "
+     "duration via maplestoryidle.info cross-reference — the wiki alone never gave one) is now "
+     "modeled as a duty-cycle-averaged addition to Global Monster Damage-Taken Bonus % "
+     "(Summary!R_MONSTER_DMG_BONUS), innate (no mastery gate — this is the skill's own base "
+     "effect, unlike Close Combat/Divine Mark's own mastery-gated Weaken). 30s cooldown. Mastery "
+     "Lv.73 'Noble Demand - Damage' +50% (real SkillMasteryBonus%). Mastery Lv.94 'Noble Demand - "
+     "Reuse' (-30% cooldown) not separately modeled, same treatment as Hero's own Rush cooldown "
+     "masteries. Maple Hero target (1x share, the smallest) — see MAPLE_HERO_RATIOS."),
     ("HEAVENS_HAMMER", "Heaven's Hammer", 4, 18, True, 1, 5, 0, 0, 100, 1,
      7800, 12, True,
      level_gated_sum(IB("level"), {108: 50}),
@@ -2023,7 +2030,9 @@ SKILL_ROWS = [
      "same cooldown/targets). 16s cooldown. Mastery Lv.122 'Divine Mark - Damage' +50% (real "
      "SkillMasteryBonus%, applies to the main hit only — the wiki doesn't specify it applying to "
      "the detonation too). Mastery Lv.138 'Divine Mark - Weaken' (+20% target damage taken for "
-     "10s) is FLAGGED, not modeled (same reasoning as Noble Demand's own weaken effect)."),
+     "10s, confirmed via maplestoryidle.info cross-reference) is now modeled as a duty-cycle-"
+     "averaged addition to Global Monster Damage-Taken Bonus % (Summary!R_MONSTER_DMG_BONUS), "
+     "same pattern as Close Combat's own Weaken above."),
     ("DIVINE_MARK_DETONATION", "Divine Mark (detonation)", 4, 16, False, 1, 4, 0, 0, 100, 1,
      4000, 12, True,
      0, 0, 0, 8, "", 0, "", "",
@@ -2499,8 +2508,26 @@ def build_summary_sheet(wb):
     ws.cell(row=R_CRIT_RATE_BONUS, column=1, value="Global Crit Rate Bonus % (unused — no live Crit-Rate-buff source exists)")
     ws.cell(row=R_CRIT_RATE_BONUS, column=2, value=0)
 
-    ws.cell(row=R_MONSTER_DMG_BONUS, column=1, value="Global Monster Damage-Taken Bonus % (Artifact Enemy Damage Taken Bonus)")
-    ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=f'={art_ref("AGG_ENEMY_DMG_TAKEN")}')
+    # Close Combat - Weaken (Mastery Lv.44, +10% Damage Taken for 10s), Noble Demand's own innate
+    # +12% Damage Taken for 10s, and Divine Mark - Weaken (Mastery Lv.138, +20% Damage Taken for
+    # 10s) — all confirmed via maplestoryidle.info cross-reference (previously FLAGGED, unmodeled,
+    # since the wiki alone never gave a duration to drive a duty-cycle calc). Steady-state
+    # duty-cycle averaged (not fixed-duration-exact), same documented-simplification tier as
+    # Ice-Lightning-Mage's own Freezing Breath - Weaken / Night Lord's own Frailty Curse.
+    close_combat_weaken = (
+        f'IF({IB("level")}>=44,10*{uptime_fraction_expr(IB("monster_type"), 10, S("Cooldown(s)", ROW["CLOSE_COMBAT"]), bdi_main)},0)'
+    )
+    noble_demand_weaken = f'12*{uptime_fraction_expr(IB("monster_type"), 10, S("Cooldown(s)", ROW["NOBLE_DEMAND"]), bdi_main)}'
+    divine_mark_weaken = (
+        f'IF({IB("level")}>=138,20*{uptime_fraction_expr(IB("monster_type"), 10, S("Cooldown(s)", ROW["DIVINE_MARK_MAIN"]), bdi_main)},0)'
+    )
+    ws.cell(row=R_MONSTER_DMG_BONUS, column=1, value=(
+        "Global Monster Damage-Taken Bonus % (Close Combat/Noble Demand/Divine Mark Weaken + "
+        "Artifact Enemy Damage Taken Bonus)"
+    ))
+    ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=(
+        f'={close_combat_weaken}+{noble_demand_weaken}+{divine_mark_weaken}+{art_ref("AGG_ENEMY_DMG_TAKEN")}'
+    ))
 
     ws.cell(row=R_AS_BONUS, column=1, value="Attack Speed Buff Bonus % (Nimble Feet, duty-cycle averaged)")
     ws.cell(row=R_AS_BONUS, column=2, value=f'={nimble_feet_avg}')
@@ -3004,7 +3031,17 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     )
     agg_boss_damage_block = f'({candle_boss_dmg_block}+{sayrams_boss_block}+{star_rock_delta_block})'
     agg_normal_damage_block = f'({sayrams_normal_block})'
-    agg_enemy_dmg_taken_block = f'({peach_tree_block}+{silver_pendant_block})'
+    close_combat_weaken_block = (
+        f'IF({ib("level")}>=44,10*{uptime_fraction_expr(ib("monster_type"), 10, S("Cooldown(s)", ROW["CLOSE_COMBAT"]), bdi_block)},0)'
+    )
+    noble_demand_weaken_block = f'12*{uptime_fraction_expr(ib("monster_type"), 10, S("Cooldown(s)", ROW["NOBLE_DEMAND"]), bdi_block)}'
+    divine_mark_weaken_block = (
+        f'IF({ib("level")}>=138,20*{uptime_fraction_expr(ib("monster_type"), 10, S("Cooldown(s)", ROW["DIVINE_MARK_MAIN"]), bdi_block)},0)'
+    )
+    agg_enemy_dmg_taken_block = (
+        f'({peach_tree_block}+{silver_pendant_block}+{close_combat_weaken_block}'
+        f'+{noble_demand_weaken_block}+{divine_mark_weaken_block})'
+    )
     agg_max_damage_block = f'({athena_max_dmg_delta})'
     agg_damage_block = f'({hexagon_dmg_block})'
     agg_attack_pct_block = (

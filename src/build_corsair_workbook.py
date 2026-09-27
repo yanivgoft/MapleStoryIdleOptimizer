@@ -1854,7 +1854,7 @@ ROW_ORDER = [
     "ROLL_OF_THE_DICE_DICE", "JOLLY_ROGER_FD",
     "SHADOW_HEART", "QUICK_MOTION", "AGILE_GUNS", "GUN_MASTERY",
     "PHYSICAL_TRAINING", "INFINITY_BLAST_ATK", "FULLMETAL_JACKET_CD",
-    "CROSS_CUT_BLAST_FD", "QUICKDRAW_BAD",
+    "CROSS_CUT_BLAST_FD", "QUICKDRAW_BAD", "NIMBLE_FEET",
 ]
 ROW = {key: i for i, key in enumerate(ROW_ORDER, start=2)}
 LAST_ROW = 1 + len(ROW_ORDER)
@@ -1871,7 +1871,7 @@ R_TOTAL = 3
 R_AVGBUFF = 13                      # Attack% bucket (Roll of the Dice's dice component only — shared skill w/ Buccaneer)
 R_CRIT_RATE_BONUS = 14              # unused placeholder (no live Crit-Rate-buff source exists)
 R_MONSTER_DMG_BONUS = 15            # unused placeholder (no live monster-dmg-taken-buff source)
-R_AS_BONUS = 16                     # unused placeholder (no live AS-buff source exists — Corsair has no Nimble-Feet-equivalent buff, Quick Motion is a flat passive, same as Buccaneer)
+R_AS_BONUS = 16                     # Attack Speed Buff Bonus % (Nimble Feet, duty-cycle averaged)
 R_APS = 17                          # Actions Per Second
 R_CASTRATE = 18                     # Skill + buff cast rate (subtracted from Eight-Legs Easton)
 R_BAPS = 19                         # Eight-Legs Easton (basic attack) Casts Per Second
@@ -1891,7 +1891,10 @@ SUMMARY_BREAKDOWN_HEADER_ROW = R_NORMAL_ONLY_TOTAL + 3
 # approximation instead, see ATTACK_BUFF_ROW_KEYS/PASSIVE_DELTA_SLOT). Kept as an explicit empty
 # list (not omitted) for architectural consistency with the other 11 classes' identical
 # buff-casting-startup-delay wiring — currently always 0 for Corsair as a result.
-BUFF_ROW_KEYS = []
+# Nimble Feet is the one real, live BuffDuration(s)>0 CostsActionSlot skill in this kit (Roll of
+# the Dice's dice component uses a real 5s/7s duty cycle now too, but it isn't a recast-able
+# cast-and-buff skill of its own — see ROLL_OF_THE_DICE_DICE's own Note).
+BUFF_ROW_KEYS = ["NIMBLE_FEET"]
 
 # NOTE: Corsair's wiki overview page is EVEN WORSE than Buccaneer's — no Req.Level column, AND no
 # Mastery page at all (confirmed 404/redlink). Every unlock level below is a FLAGGED ASSUMPTION
@@ -1925,6 +1928,7 @@ UNLOCK_LEVEL = {
     "FULLMETAL_JACKET_CD": 72,
     "CROSS_CUT_BLAST_FD": 75,
     "QUICKDRAW_BAD": 117,
+    # NIMBLE_FEET: no threshold (shared Explorer skill, level 0) — stays unconditionally unlocked.
 }
 
 
@@ -2140,17 +2144,22 @@ SKILL_ROWS = [
      "No individual wiki page exists for this skill at all — even its unlock level is a bare "
      "position-in-list assumption."),
     ("ROLL_OF_THE_DICE_DICE", "Roll of the Dice (dice component)", 3, "", False, 1, 1, 0, 0, 100, 1,
-     25, 0, False,
+     25, 22, True,
      0, 0, 0, 0, "ATTACK", 0, "", "",
-     "CONFIRMED SHARED VERBATIM WITH BUCCANEER (byte-identical wiki description, discovered "
-     "during this build — not called out by the original research report): 'Increases Attack "
-     "by 20%. Rolls a six-sided die every 7 sec to increase Attack by 0-5% in proportion to the "
-     "number on the die for 5 sec. A number that has appeared once does not appear again for "
-     "30 sec.' Reuses Buccaneer's exact treatment: this row models ONLY the random dice "
-     "component, approximated at its average roll (2.5%, the midpoint of 0-5%) treated as an "
-     "always-active flat bonus once unlocked. The flat, unconditional '+20% Attack' base effect "
-     "is Magic-Critical-pattern (assumed already reflected in your own Inputs!ATTACK_PCT, see "
-     "PASSIVE_DELTA_SLOT). factorIndex 0 (non-scaling placeholder), baseDamage 25 tenths%."),
+     "CONFIRMED SHARED VERBATIM WITH BUCCANEER (byte-identical wording on both wiki and "
+     "maplestoryidle.info): 'Increases Attack by 20%. Rolls a six-sided die every 7 sec to "
+     "increase Attack by 0-5% in proportion to the number on the die for 5 sec. A number that has "
+     "appeared once does not appear again for 30 sec.' Reuses Buccaneer's exact treatment: this "
+     "row models ONLY the random dice component. The 'no repeat within 30s' rule guarantees a "
+     "uniform long-run frequency over the 6 faces regardless of draw order, so the time-averaged "
+     "roll magnitude is exactly the simple mean of 0/1/2/3/4/5% = 2.5% (not an approximation) — "
+     "baseDamage 25 tenths% is this mean. The 7s-roll/5s-duration timing IS now modeled as a real "
+     "duty cycle: the buff is only up 5 of every 7 sec, applied as a 5/7 multiplier at this row's "
+     "own use site (the Attack%% bucket multiplier), not always-active. The flat, unconditional "
+     "+20% Attack base effect is Magic-Critical-pattern (assumed already reflected in your own "
+     "Inputs!ATTACK_PCT, see PASSIVE_DELTA_SLOT). factorIndex 22 (matches every other "
+     "Magic-Critical-pattern flat buff row, e.g. Crossbones/Jolly Roger) — same correction as "
+     "Buccaneer's own copy, see that build script's Note for the full reasoning."),
     ("JOLLY_ROGER_FD", "Jolly Roger", 4, "", False, 1, 1, 0, 0, 100, 1,
      150, 22, True,
      0, 0, 0, 0, "FINAL_DAMAGE", 0, "", "",
@@ -2228,6 +2237,17 @@ SKILL_ROWS = [
      "Rapid Fire cooldown by 1.5s' proc — no mechanic exists in this project for one skill's "
      "cast count to modify another's cooldown, and stacking that on top of an already-assumed "
      "kit was judged out of scope for this session."),
+    ("NIMBLE_FEET", "Nimble Feet", 1, 60, True, 1, 1, 0, 0, 100, 1,
+     150, 0, False,
+     0, 0, 0, 1, "ATTACK_SPEED", 15, "", "",
+     "Universal 1st-Job Explorer skill (identical wording on both idle.maplestorywiki.net and "
+     "maplestoryidle.info — 'Increases Attack Speed by 15% and Speed by 10% for 15 sec', 60s "
+     "cooldown, reqLevel 5) — was missing from this workbook entirely (a real gap found by "
+     "cross-class comparison, not a class-design difference: Bowmaster/Dark Knight/FP-Mage/Hero/"
+     "Marksman/Night Lord/Paladin/Shadower all already have it; Corsair's own Quick Motion is a "
+     "separate, unrelated flat passive, same as Buccaneer). Flat +15% Attack Speed / +10% Speed "
+     "for 15s, non-scaling. Speed component not modeled (no Speed stat anywhere in this "
+     "project). FactorIndex unused placeholder."),
 ]
 
 # Rows with a real Cooldown(s) value (literal or a live formula reference).
@@ -2589,9 +2609,9 @@ def build_summary_sheet(wb):
     r_rd = ROW["ROLL_OF_THE_DICE_DICE"]
     r_jr = ROW["JOLLY_ROGER_FD"]
 
-    # Roll of the Dice's dice component: no cooldown known, modeled always-active once unlocked
-    # (CONFIRMED SHARED VERBATIM WITH BUCCANEER — same skill, same treatment).
-    roll_of_dice_avg = f'((Calc!C{r_rd}=TRUE)*Calc!F{r_rd})'
+    # Roll of the Dice's dice component: real 5s-buff/7s-roll duty cycle (CONFIRMED SHARED
+    # VERBATIM WITH BUCCANEER — same skill, same treatment).
+    roll_of_dice_avg = f'((Calc!C{r_rd}=TRUE)*Calc!F{r_rd}*5/7)'
     # Jolly Roger: no cooldown known, modeled always-active once unlocked — Corsair's ONLY live
     # (non-Magic-Critical) Final Damage source, much simpler than Buccaneer's own 4-source bucket
     # since Corsair has no Assault-Mode-style resource economy.
@@ -2606,8 +2626,10 @@ def build_summary_sheet(wb):
     ws.cell(row=R_MONSTER_DMG_BONUS, column=1, value="Global Monster Damage-Taken Bonus % (Peach/Silver artifact bonuses only — no other live source in this kit)")
     ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=f'={art_ref("AGG_ENEMY_DMG_TAKEN")}')
 
-    ws.cell(row=R_AS_BONUS, column=1, value="Attack Speed Buff Bonus % (unused — Corsair has no Nimble-Feet-style live AS buff, same as Buccaneer)")
-    ws.cell(row=R_AS_BONUS, column=2, value=0)
+    r_nf = ROW["NIMBLE_FEET"]
+    nimble_feet_as_avg = f'((Calc!C{r_nf}=TRUE)*Calc!F{r_nf}*{buff_uptime(r_nf)})'
+    ws.cell(row=R_AS_BONUS, column=1, value="Attack Speed Buff Bonus % (Nimble Feet, duty-cycle averaged)")
+    ws.cell(row=R_AS_BONUS, column=2, value=f'={nimble_feet_as_avg}')
 
     ws.cell(row=R_APS, column=1, value="Actions Per Second")
     ws.cell(row=R_APS, column=2, value=(
@@ -2926,7 +2948,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     r_rd = ROW["ROLL_OF_THE_DICE_DICE"]
     r_jr = ROW["JOLLY_ROGER_FD"]
 
-    roll_of_dice_avg = f'((C{row_of["ROLL_OF_THE_DICE_DICE"]}=TRUE)*F{row_of["ROLL_OF_THE_DICE_DICE"]})'
+    roll_of_dice_avg = f'((C{row_of["ROLL_OF_THE_DICE_DICE"]}=TRUE)*F{row_of["ROLL_OF_THE_DICE_DICE"]}*5/7)'
     jolly_roger_avg = f'((C{row_of["JOLLY_ROGER_FD"]}=TRUE)*F{row_of["JOLLY_ROGER_FD"]})'
 
     # --- Artifacts: block-local mirror of build_artifacts_sheet, so a swept stat correctly
@@ -3356,8 +3378,10 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ws.cell(row=s_crit_rate_bonus, column=1, value="Global Crit Rate Bonus %")
     ws.cell(row=s_crit_rate_bonus, column=2, value=0)
 
-    ws.cell(row=s_as_bonus, column=1, value="Attack Speed Buff Bonus % (unused)")
-    ws.cell(row=s_as_bonus, column=2, value=0)
+    nf = row_of["NIMBLE_FEET"]
+    nimble_feet_as_avg_block = f'((C{nf}=TRUE)*F{nf}*{buff_uptime_block(nf, ROW["NIMBLE_FEET"])})'
+    ws.cell(row=s_as_bonus, column=1, value="Attack Speed Buff Bonus % (Nimble Feet, duty-cycle averaged)")
+    ws.cell(row=s_as_bonus, column=2, value=f'={nimble_feet_as_avg_block}')
 
     ws.cell(row=s_aps, column=1, value="Actions Per Second")
     ws.cell(row=s_aps, column=2, value=(

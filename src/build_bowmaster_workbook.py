@@ -1971,12 +1971,21 @@ SKILL_ROWS = [
      "+20% — this and the Damage mastery chain above were both caught missing entirely during "
      "the Marksman build's own shared-skill cross-check (Verification item 5) and fixed here."),
     ("FINAL_ATTACK_BOW", "Final Attack: Bow", 2,
-     # Uses the raw Summary!APS (R_APS), NOT Arrow Stream's own post-cast-rate Summary!R_BAPS —
+     # Cooldown(s) here is the REAL average interval between ATTACK LINES — one per cast of any
+     # of the character's own active-slot attacks (Arrow Stream, Covering Fire, Phoenix, Arrow
+     # Platter, Hurricane, ...), each counted ONCE regardless of how many individual hits it has
+     # (confirmed by the user: a 20-hit Hurricane cast is still just 1 attack line, gated by its
+     # own 40s cooldown — NOT 20 independent proc opportunities). Summary!APS (R_APS) already IS
+     # exactly this combined total rate by construction: R_BAPS (Arrow Stream's own remaining
+     # cast rate) + R_CASTRATE (every OTHER active-slot skill's own cast rate, each counted once
+     # per cast via its own ActionsPerCast=1) sum to R_APS exactly — no separate accounting
+     # needed, just reference R_APS directly. The real 25% proc chance lives in its own
+     # ProcChance% column (below), not folded into Cooldown(s), so the Skills sheet reads
+     # honestly. Uses raw Summary!APS, NOT Arrow Stream's own post-cast-rate Summary!R_BAPS —
      # R_BAPS is itself derived from a SUMPRODUCT over every row's own CastsInFight/InvCooldown
      # column (R_CASTRATE), which would need THIS row's own Cooldown(s) (and thus R_BAPS itself)
-     # already resolved first if referenced here — a genuine circular reference, not just a loose
-     # approximation choice. R_APS is a clean, non-circular Attack-Speed-only figure.
-     f'=1/(0.25*Skills!G{ROW["ARROW_STREAM"]}*Summary!$B${R_APS})', False, 1, 1, 0, 0, 100, 1,
+     # already resolved first if referenced here — a genuine circular reference.
+     f'=1/Summary!$B${R_APS}', False, 1, 1, 0, 0, 25, 1,
      350, 21, True,
      level_gated_sum(IB("level"), {54: 50}), 0, 0,
      f'=6+{IB("basic_attack_target_increase")}', "", 0, "", "",
@@ -1984,16 +1993,17 @@ SKILL_ROWS = [
      " split out into its own independent row per a Discord bug report/user direction, since "
      "Final Attack is affected by Skill Damage%, not Basic Attack Damage% (Arrow Stream's own "
      "bucket). Real proc: 25% chance 'when attacking' to deal 35%->49% additional damage (levels "
-     "1-100) to the same target(s) Arrow Stream just hit. Modeled as its own cooldown-gated row "
-     "with ProcChance%=100 and Cooldown(s) = 1/(0.25 x Arrow Stream's own hit rate) — an exact "
-     "average-rate-preserving reformulation (not an approximation) that fits this project's "
-     "existing has_cooldown machinery, same trick already used for Quiver Cartridge's own "
-     "AS-scaled tick rate. factorIndex 21, baseDamage 350 tenths%. Mastery 'Final Attack - "
-     "Damage' +50% at Lv.54 (RESOLVED this session via maplestoryidle.info/jobs.html — the wiki's "
-     "own Mastery page had this at Lv.52, confirmed wrong by the new source). Its own Final "
-     "Damage bonus (Advanced Final Attack, +500%->900% FD to Final Attack specifically) is a "
-     "separate multiplicative term from ADVANCED_FINAL_ATTACK_HELPER (same shape as Quiver "
-     "Cartridge/Enchanted Quiver or Flash Mirage/Flash Mirage II's own extra_fd_term pattern)."),
+     "1-100) to the same target(s) that attack just hit. Modeled as a real ProcChance%=25 tested "
+     "against the character's own total attack-LINE rate (Cooldown(s) = 1/Summary!APS — one "
+     "attack line per cast, across every active-slot skill, per user direction; earlier versions "
+     "of this row incorrectly multiplied by Arrow Stream's own HitsPerCast, over-counting each "
+     "of its 5-6 individual arrows as a separate attack line). factorIndex 21, baseDamage 350 "
+     "tenths%. Mastery 'Final Attack - Damage' +50% at Lv.54 (RESOLVED this session via "
+     "maplestoryidle.info/jobs.html — the wiki's own Mastery page had this at Lv.52, confirmed "
+     "wrong by the new source). Its own Final Damage bonus (Advanced Final Attack, +500%->900% "
+     "FD to Final Attack specifically) is a separate multiplicative term from "
+     "ADVANCED_FINAL_ATTACK_HELPER (same shape as Quiver Cartridge/Enchanted Quiver or Flash "
+     "Mirage/Flash Mirage II's own extra_fd_term pattern)."),
     ("ADVANCED_FINAL_ATTACK_HELPER", "Advanced Final Attack (helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
      5000, 21, True,
      level_gated_sum(IB("level"), {113: 50}), 0, 0, 0, "", 0, "", "",
@@ -2069,7 +2079,7 @@ SKILL_ROWS = [
      "description, not the global bucket). Maple Hero target — see MAPLE_HERO_RATIOS."),
     ("HURRICANE", "Hurricane", 4, 40, True, 1,
      f'=20+IF({IB("level")}>=134,15,0)', 0, 0, 100, 1,
-     8000, 0, False,
+     8000, 12, True,
      level_gated_sum(IB("level"), {108: 50}), 0, 0, 7, "", 0, "", "",
      "Previously entirely missing from this workbook — found and added after a Discord bug "
      "report flagged it absent from the DPS breakdown. Real Lv.103 4th-job active skill. "
@@ -2077,17 +2087,24 @@ SKILL_ROWS = [
      "second Discord report and cross-referenced against maplestoryidle.info/jobs.html, the "
      "new authoritative source used to fix this): the wiki claimed 20 hits, 7% damage 'to the "
      "target' (single-target); the real skill is 20 hits, **800%** damage to **up to 7 "
-     "enemies** in front. Confirmed non-scaling (flat, no per-level growth) — factorIndex 0, "
-     "baseDamage 8000 tenths%. Real Cooldown=40s (matches both sources), CostsActionSlot=True "
-     "(Active type). Not one of Maple Hero's 3 buffed skills (Arrow Platter/Phoenix/Covering "
-     "Fire only) — no MapleHeroBase/FactorIndex. Two real mastery bonuses, level thresholds "
-     "also corrected against maplestoryidle.info/jobs.html (the wiki's own Mastery page had "
-     "these 2 levels lower each): Lv.108 'Hurricane - Damage' +50% (flat SkillMasteryBonus%), "
-     "Lv.134 'Hurricane - Extend' raises hit count 20->35 (baked into the HitsPerCast formula, "
-     "same level-gated-hit-count-flip pattern as Dark Knight's Gungnir's Descent). Its own "
-     "'fire faster with higher Attack Speed' text is the same category of too-vague-to-model-"
-     "precisely ambiguity already flagged for this class's own Flash Mirage — FLAGGED, not "
-     "modeled, real 40s Cooldown(s) used unmodified by Attack Speed."),
+     "enemies** in front. FactorIndex corrected from an earlier 0 (non-scaling) — that "
+     "assumption came from the wiki's own per-level table showing a uniform value at every "
+     "sampled level, which we now know is unreliable for this skill (the same page also had the "
+     "damage/target numbers themselves wrong, likely the same underlying data corruption).  "
+     "Real factorIndex 12 (per user direction — the same multi-hit-active-skill curve already "
+     "used by Covering Fire/Phoenix/Arrow Platter, the closest mechanical siblings), baseDamage "
+     "8000 tenths% treated as the level-1 anchor (FLAGGED ASSUMPTION — maplestoryidle.info gives "
+     "only a single snapshot value with no level context, no independently-confirmed second "
+     "data point exists to verify which level this value anchors to). Real Cooldown=40s (matches "
+     "both sources), CostsActionSlot=True (Active type). Not one of Maple Hero's 3 buffed skills "
+     "(Arrow Platter/Phoenix/Covering Fire only) — no MapleHeroBase/FactorIndex. Two real mastery "
+     "bonuses, level thresholds also corrected against maplestoryidle.info/jobs.html (the wiki's "
+     "own Mastery page had these 2 levels lower each): Lv.108 'Hurricane - Damage' +50% (flat "
+     "SkillMasteryBonus%), Lv.134 'Hurricane - Extend' raises hit count 20->35 (baked into the "
+     "HitsPerCast formula, same level-gated-hit-count-flip pattern as Dark Knight's Gungnir's "
+     "Descent). Its own 'fire faster with higher Attack Speed' text is the same category of "
+     "too-vague-to-model-precisely ambiguity already flagged for this class's own Flash Mirage — "
+     "FLAGGED, not modeled, real 40s Cooldown(s) used unmodified by Attack Speed."),
     ("MAPLE_HERO_HELPER", "Maple Hero (helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
      250, 23, True,
      0, 0, 0, 0, "", 0, "", "",
@@ -2099,11 +2116,22 @@ SKILL_ROWS = [
      "target row's own K-column formula — same 'no independent row' pattern as Shadower's own "
      "Maple Hero)."),
     ("FLASH_MIRAGE", "Flash Mirage", 3,
-     # Uses raw Summary!APS (R_APS), not Arrow Stream's own post-cast-rate R_BAPS — same
-     # circular-reference reasoning as FINAL_ATTACK_BOW's own Cooldown(s) formula above.
-     f'=1/((20+30*(Summary!$B${R_APS}-1)*100/150)/100*Skills!G{ROW["ARROW_STREAM"]}*Summary!$B${R_APS})',
+     # Real mechanic, confirmed with the user: a genuine 5s hard internal cooldown (the wiki's own
+     # infobox was right about this after all — an earlier version of this row wrongly discarded
+     # it based on maplestoryidle.info's schema simply not surfacing a cooldown field), PLUS a
+     # real chance-per-attack-line (20%->50%, linear with Attack Speed) that only starts rolling
+     # again once the cooldown has expired — the very next attack line after expiry rolls, and
+     # rolling repeats every attack line until one succeeds, then the cooldown restarts. Average
+     # cycle time = 5s + the expected wait for the first success at the combined attack-line rate
+     # (Summary!APS — see FINAL_ATTACK_BOW's own Note for why this already correctly counts every
+     # active-slot skill's own cast, e.g. Hurricane's 20-hit volley, as exactly ONE attack line).
+     # This doesn't decompose into independent Cooldown(s)/ProcChance% columns the way a pure
+     # no-floor chance does (the +5 is additive, not multiplicative, with the chance term) — so
+     # the whole average-cycle expression is folded into Cooldown(s) with ProcChance%=100, same
+     # as Quiver Cartridge's own formula-based Cooldown(s).
+     f'=5+1/(((20+30*(Summary!$B${R_APS}-1)*100/150)/100)*Summary!$B${R_APS})',
      False, 1, 1, 0, 0, 100, 1,
-     5500, 0, False,
+     5500, 21, True,
      level_gated_sum(IB("level"), {68: 50}), 0, 0,
      f'=5+IF({IB("level")}>=136,1,0)', "", 0, "", "",
      "Passive proc, real mechanic per maplestoryidle.info/jobs.html (used to fix two real data "
@@ -2111,21 +2139,27 @@ SKILL_ROWS = [
      "'When attacking, an illusion is created with a 20% chance to attack up to 5 nearby "
      "enemies around the target and deal 550% damage. The activation chance increases up to "
      "50% based on Attack Speed.' PATCHED from the wiki's own (confirmed wrong) 5%/flat-20% — "
-     "baseDamage now 5500 tenths% (factorIndex 0, non-scaling), and the chance is now REAL "
-     "AS-scaling (20%->50%, same 150%-AS-cap convention as Quiver Cartridge's own tick rate) "
-     "rather than the flat rate this file used before this session's fix (the wiki's ambiguous "
-     "'activation chance/damage increases based on Attack Speed' text — unclear whether chance "
-     "or damage scaled — is resolved by the new source: it's chance, not damage). No real "
-     "internal cooldown exists (unlike the wiki's own infobox, which claimed 'Cooldown: 5 sec' "
-     "despite Type=Passive, and which this file previously modeled) — instead, Cooldown(s) is "
-     "a formula solving for the exact average interval implied by "
-     "(chance/100)*(Arrow Stream's own hit rate), with ProcChance%=100 so the chance isn't "
-     "double-counted — an exact reformulation (not an approximation), same trick as Quiver "
-     "Cartridge's/FINAL_ATTACK_BOW's own formula-based Cooldown(s). Also added a real, "
-     "previously-unmodeled mastery: 'Flash Mirage - Damage' +50% at Lv.68. Wiki calls this "
-     "skill 'Flash Mirage'; the Aug 13 patch notes call the SAME skill 'Speed Mirage' "
-     "(confirmed via mechanic match — targets 5->7, detection range +~14%). Flash Mirage II "
-     "(Lv.110, see FLASH_MIRAGE_II_HELPER) adds +targets/+FD once unlocked, baked into "
+     "baseDamage now 5500 tenths%, and the chance is a real live AS-scaling formula (20%->50%, "
+     "linear with Attack Speed 0%->150%, per user direction). FactorIndex corrected from an "
+     "earlier 0 (non-scaling) — that assumption came from the wiki's own per-level table showing "
+     "a uniform value at every sampled level, unreliable for the same reason as Hurricane's own "
+     "factorIndex correction above (the same page's damage/target numbers were also wrong, "
+     "likely the same underlying data corruption). Real factorIndex 21 (per user direction — the "
+     "same curve as this class's own Final Attack: Bow/Advanced Final Attack, both also "
+     "Type=Passive skills that deal a direct % damage proc, the closest mechanical siblings), "
+     "baseDamage 5500 tenths% treated as the level-1 anchor (FLAGGED ASSUMPTION — same caveat as "
+     "Hurricane's own: maplestoryidle.info gives only a single snapshot value with no level "
+     "context). The wiki's own infobox 'Cooldown: 5 sec' claim turned out to be real after all (a "
+     "mid-session correction wrongly discarded it, inferring 'no cooldown' purely from "
+     "maplestoryidle.info's schema not listing one — caught by a user follow-up question) — "
+     "modeled as a genuine 5s floor between procs, with the chance re-rolling on every attack "
+     "line once the floor expires (per user direction on the exact combination mechanic), folded "
+     "into Cooldown(s) as 5+1/(chance*Summary!APS) with ProcChance%=100 (see the comment above "
+     "this row for why it can't cleanly decompose into separate Cooldown/ProcChance columns "
+     "here). Also added a real, previously-unmodeled mastery: 'Flash Mirage - Damage' +50% at "
+     "Lv.68. Wiki calls this skill 'Flash Mirage'; the Aug 13 patch notes call the SAME skill "
+     "'Speed Mirage' (confirmed via mechanic match — targets 5->7, detection range +~14%). Flash "
+     "Mirage II (Lv.110, see FLASH_MIRAGE_II_HELPER) adds +targets/+FD once unlocked, baked into "
      "NormalMonsterTargets/K-column."),
     ("FLASH_MIRAGE_II_HELPER", "Flash Mirage II (helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
      4000, 21, True,
@@ -2259,15 +2293,17 @@ SKILL_ROWS = [
      "Critical pattern — already baked into Inputs!MAX_DAMAGE%; feeds the 4th-Job Skill Level "
      "Bonus delta (Max Damage Multiplier side). factorIndex 22, baseDamage 200 tenths%."),
     ("SOUL_ARROW_BOW_ATK", "Soul Arrow: Bow (Attack%)", 2, "", False, 1, 1, 0, 0, 100, 1,
-     80, 0, False,
+     80, 22, True,
      0, 0, 0, 0, "ATTACK", 0, "", "",
      "Own flat +8% Attack component only (patch-added; the DEX+150->900(AS-scaled) component "
      "has NO row here at all — assume your own Inputs!Flat DEX already includes it, per the "
      "README; no percentage-bucket exists in this template for a flat sub-stat bonus, a "
      "deliberate scope-reduction). Magic Critical pattern — already baked into Inputs!ATTACK_"
      "PCT (folds into the attack_mult delta bucket, same slot as Shadower's own Channel Karma); "
-     "feeds the 2nd-Job Skill Level Bonus delta. factorIndex 0 (non-scaling, flat 8%), "
-     "baseDamage 80 tenths%."),
+     "feeds the 2nd-Job Skill Level Bonus delta. factorIndex 22 (per user direction — every "
+     "OTHER 'Magic Critical pattern' row in this file, e.g. ARMOR_BREAK_FD/BOW_EXPERT_SKILL, "
+     "already uses 22; this row was an inconsistent outlier at 0/non-scaling, corrected), "
+     "baseDamage 80 tenths% treated as the level-1 anchor."),
 ]
 
 # Rows with a real Cooldown(s) value (literal or a live formula reference).

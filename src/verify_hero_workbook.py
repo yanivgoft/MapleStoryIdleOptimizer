@@ -418,7 +418,7 @@ DAMAGE_SKILLS = {
     "RUSH": dict(job_step=3, cooldown=22, hits=1, base=6000, fidx=12, scales=True,
                  mastery=0, mastery_boss=0, mastery_normal=0, costs_action=True,
                  targets=12, maple_ratio=MAPLE_HERO_RATIOS.get("RUSH", 0)),
-    "FLASH_SLASH": dict(job_step=2, cooldown=16, hits=1, base=3500, fidx=0, scales=False,
+    "FLASH_SLASH": dict(job_step=2, cooldown=16, hits=1, base=3500, fidx=12, scales=True,
                          mastery=level_gated_sum({39: 50}), mastery_boss=0, mastery_normal=0,
                          costs_action=True, targets=7, maple_ratio=MAPLE_HERO_RATIOS.get("FLASH_SLASH", 0)),
 }
