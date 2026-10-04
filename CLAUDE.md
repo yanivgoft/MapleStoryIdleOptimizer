@@ -4,9 +4,12 @@ This file is for anyone — human or AI — picking up this codebase to add a cl
 or extend the tooling. It captures conventions and pitfalls that were only discovered by building
 all 12 classes; following them will save you from re-discovering the same bugs.
 
-**Current priority** (see README.md's "Future work" section): verifying and closing the data
-gaps in Bishop, Paladin, Buccaneer, and Corsair — `KNOWN_GAPS.md` lists exactly what's flagged in
-each. MP consumption and Companions are planned after that, project-wide. Artifacts (Equip Effects
+**Current priority** (see README.md's "Future work" section): Bishop's own remaining gap (Divine
+Protection's growth curve) is the last significant per-skill data hole in the four historically
+weakest classes — Paladin, Buccaneer, and Corsair were substantially closed out via
+`maplestoryidle.info` (see "Ground truth sourcing" below). MP consumption and Companions are
+planned after that, project-wide, though MP consumption specifically has no scaling data on either
+source (see that section) and may stay permanently out of scope. Artifacts (Equip Effects
 for all 36 artifacts, plus a reference-only Artifact Potentials calculator) has already shipped for
 all 12 classes — see the "Artifacts (\<Class\>)" sections in `KNOWN_GAPS.md` for each class's own
 wiring decisions.
@@ -47,6 +50,22 @@ assumption instead of a verified wiki value, and why.
 - The wiki is usually **behind** the current patch — most classes' wiki pages showed pre-patch
   numbers well after the patch had shipped. Apply patch deltas manually on top of the wiki's base
   curve/shape; never assume the wiki is current.
+- **`maplestoryidle.info`** is a second, independent data source — structured skill data embedded
+  directly in that site's own `app.js` (fetch it directly and regex/parse the `jobs` array's
+  `skills`/`masteries` objects, plus a separate `AUGUST_13_SKILL_UPDATES` overlay object keyed by
+  job id that represents the CURRENT, patched state layered on top of the base `skills` array's
+  pre-patch values — check both). For Buccaneer and Corsair specifically, this source is marked
+  `"Game capture provided by player"` — a direct screenshot/capture of the live game client, not a
+  community-edited wiki page — and should be trusted over `idle.maplestorywiki.net` on any
+  disagreement. It has independently caught: two skills with damage/target counts wrong by ~100x
+  on the wiki (Bowmaster's Hurricane, Flash Mirage), a **10x magnitude bug** (Corsair's Broadside
+  sustained-turret tick, wiki said 3300%/tick, real value is 330%/tick), several wrong/missing
+  masteries, and numerous wrong assumed cooldowns across Buccaneer/Corsair (both classes had *no*
+  cooldown data on the wiki at all, so this is a straight resolve, not just a cross-check). Caveat
+  learned the hard way: this site's own schema NOT listing a field (e.g. no `cooldown:` key) is
+  NOT reliable evidence that field doesn't apply to that skill — confirm the real mechanic (e.g. by
+  asking the user, who may have direct in-game knowledge) before inferring absence-of-data means
+  absence-of-mechanic.
 
 ## The FLAGGED ASSUMPTION convention
 
@@ -185,6 +204,25 @@ you're building a new class, check for all of these *before* your first build, n
     template class's own literal strings behind** — e.g. a new `ArtifactsInput` sheet's title
     still reading "Fire/Poison Arch Mage" after being spliced into a different class. Grep the
     finished file for the template class's own name after any large copy-paste splice.
+15. **An equip-toggle artifact's "% Gain" column must divide by the HYPOTHETICAL-UNEQUIPPED
+    total in both toggle directions, not whichever total happens to be real right now.** The
+    "bool"-kind `artifact_pct_gain_expr` tests on->off when currently equipped and off->on when
+    not — its own code comment said this should "reciprocal the % gain so both directions report
+    the same...convention," but the actual formula in all 12 classes computed
+    `(Summary!TOTAL_DPS + dollar_gain)/Summary!TOTAL_DPS*100` unconditionally, i.e. always divided
+    by the CURRENT real total. Since the dollar gain is correctly direction-invariant (confirmed:
+    equipping or unequipping the same real pair of states always nets the identical $ delta either
+    way) but the real total itself differs between "equipped" and "unequipped," this made the same
+    artifact report two different % Gain values depending purely on which state you happened to be
+    testing from — found by a user noticing Reindeer's Spear showed 115.98% unequipped vs 113.78%
+    equipped for the mathematically identical real state (def_pen manually adjusted to match).
+    Fix: `IF(currently_equipped, TOTAL/(TOTAL-dollar_gain)*100, (TOTAL+dollar_gain)/TOTAL*100)` —
+    i.e. actually implement the "reciprocal" the comment already promised. The $ `DPS Gain` column
+    itself was never wrong; only `% Gain` needed the fix. Ground-truth-tested by directly editing
+    `Inputs!def_pen`/the ArtifactsInput equip slot in a scratch copy and comparing
+    `Summary!TOTAL_DPS` before/after against the Sensitivity row's own reported numbers — the same
+    technique as the Book of Ancient/Reindeer's Spear hand-spot-checks in the Verification
+    checklist below, just run in BOTH toggle directions instead of one.
 
 ## Cross-checking a new class against its siblings
 
@@ -221,7 +259,7 @@ Nimble Feet, and more verbatim). When adding a class to an existing sibling grou
    table (the Skills sheet). The Summary sheet's own "info dump" block is a fixed, always-the-same
    layout across every class, so *that* block's row constants are legitimately hardcoded — don't
    confuse the two.
-8. Two mandatory Artifacts hand-spot-checks, since a clean zero-error scan + verify-script pass
+8. Three mandatory Artifacts hand-spot-checks, since a clean zero-error scan + verify-script pass
    alone does not catch wiring bugs in artifact-toggle math (see item 11 above for a real example
    that slipped through both): (a) **Book of Ancient compounding-order test** — build two
    `openpyxl`-edited copies of the rebuilt workbook, one with Book equipped (remember Star Level
@@ -233,7 +271,12 @@ Nimble Feet, and more verbatim). When adding a class to an existing sibling grou
    Crit, etc.) in the folded-in total if the class has one. (b) **Reindeer's Spear
    diminishing-returns test** — unlock star 5 but leave unequipped, sweep `Inputs!def_pen` from 50
    to 99.9, confirm the Sensitivity "Reindeer's Spear (Equip)" row's % Gain *decreases* as
-   `def_pen` rises (saturating).
+   `def_pen` rises (saturating). (c) **Equip-toggle direction-invariance test** (added after item
+   15's bug) — for any bool-kind artifact, build the matched equipped/unequipped pair as in (a)
+   (same real state, just toggled, with any "baked into Inputs" dependent value — e.g.
+   `def_pen` — manually adjusted to match), and confirm the Sensitivity row's **% Gain**, not just
+   its $ `DPS Gain`, is identical to full floating-point precision from EITHER direction — testing
+   only the dollar column does not catch item 15's bug, since that column was never wrong.
 
 ### Running sweeps without hanging
 

@@ -3393,8 +3393,9 @@ def build_sensitivity_sheet(wb):
             artifact_idx += 1
             # Already-equipped artifacts test on->off (see override_expr_for's "bool" branch), so
             # weighted_ratio is hypothetical-removed/real (<1 if beneficial) instead of
-            # hypothetical-added/real (>1) — sign-flip the dollar gain and reciprocal the %
-            # gain so both directions report the same "value of having this equipped" convention
+            # hypothetical-added/real (>1) — sign-flip the dollar gain and divide by the
+            # HYPOTHETICAL-UNEQUIPPED total (not whichever total happens to be "real" right now)
+            # so both directions report the exact same "value of having this equipped" %
             # (>100%/positive $ = beneficial).
             currently_equipped_expr = IB(key)
             # Potential lines only apply while the artifact is actually equipped, so equipping/
@@ -3411,7 +3412,11 @@ def build_sensitivity_sheet(wb):
                 f'+{potential_dps_ref})'
             )
             artifact_dps_gain_expr = f"={total_gain_dollar_expr}"
-            artifact_pct_gain_expr = f"=(Summary!$B${R_TOTAL}+{total_gain_dollar_expr})/Summary!$B${R_TOTAL}*100"
+            artifact_pct_gain_expr = (
+                f"=IF({currently_equipped_expr},"
+                f"Summary!$B${R_TOTAL}/(Summary!$B${R_TOTAL}-{total_gain_dollar_expr})*100,"
+                f"(Summary!$B${R_TOTAL}+{total_gain_dollar_expr})/Summary!$B${R_TOTAL}*100)"
+            )
             # Raw (unsorted, wiki-order) values go into the hidden staging block; the visible row
             # instead shows whichever artifact ranks (among unlocked artifacts only) in THIS row's
             # display position (artifact_idx, 1=best) via INDEX/MATCH against the staging block's

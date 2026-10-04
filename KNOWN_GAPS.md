@@ -2,7 +2,8 @@
 
 This file catalogs every place where a class's DPS workbook relies on an assumption, an
 approximation, or an unmodeled mechanic — as opposed to a value directly confirmed from the
-live wiki (`idle.maplestorywiki.net`) and cross-referenced against the official patch notes.
+live wiki (`idle.maplestorywiki.net`), a second independent source (`maplestoryidle.info` — see
+below), and cross-referenced against the official patch notes.
 Each class's own workbook (`README` sheet, and the `Note` column on the `Skills` sheet for
 individual rows) documents the same information in context; this file exists as a single
 project-wide index so gaps are easy to audit without opening every workbook.
@@ -774,6 +775,37 @@ wired into each class's own Attack Speed Bonus / Actions-Per-Second chain, `BUFF
 (for Buccaneer/Corsair, which previously had zero live timed buffs) the buff-casting-startup-delay
 and cast-rate machinery, which needed real wiring instead of a hardcoded 0/empty-list placeholder.
 Verified per class: zero-error `formulas` scan, `verify_<class>_workbook.py` exact match.
+
+
+
+## Artifact Equip-Toggle "% Gain" direction-dependence bug — fixed across all 12 classes
+
+User-reported: the Sensitivity page's "Artifact Equip-Toggle DPS Gain" table showed a *different*
+% Gain for the same artifact depending on whether it happened to currently be equipped or not,
+even after manually adjusting the dependent Inputs value (e.g. Defense Penetration, for Reindeer's
+Spear) to match. Example repro (FP-Mage, Reindeer's Spear, World Boss content): unequipped with
+Inputs!def_pen=65.0526% showed 115.980%; equipped with Inputs!def_pen=66.8% (the same real state,
+1 dose folded in) showed 113.778%.
+
+Root cause: the underlying **dollar** gain (`DPS Gain` column) was already correct and perfectly
+direction-invariant — confirmed via ground-truth testing (building a scratch copy of the workbook,
+manually equipping/unequipping Reindeer's Spear and adjusting `def_pen` to match, then reading
+`Summary!TOTAL_DPS` directly) across three scenarios (World Boss star 0, normal-monster star 0,
+World Boss star 5): the reported `DPS Gain` matched the real difference to floating-point
+precision every time. The bug was specifically in **% Gain**: its own code comment said the
+"already equipped" (test-removal) direction should "reciprocal the % gain so both directions
+report the same...convention" — but the formula actually implemented never did that. It divided
+by `Summary!TOTAL_DPS` unconditionally in both directions, i.e. by whichever total happens to be
+"real" right now — which differs depending on current equip state, even though the dollar gain
+itself doesn't.
+
+Fix: when currently equipped (testing removal), divide by the **hypothetical-unequipped** total
+(`Summary!TOTAL_DPS − DollarGain`, i.e. undoing this same signed gain) instead of the real/current
+total — this exactly reconstructs the invariant `(DPS with item)/(DPS without item)×100` ratio in
+both directions. Verified: both equip states now report the identical % Gain to full floating-point
+precision in all three re-tested scenarios. Present identically in all 12 classes (copy-pasted
+code); fixed in all 12. Zero-error `formulas` scan clean on every rebuilt workbook. The underlying
+`DPS Gain` ($) column was never wrong and needed no change.
 
 
 

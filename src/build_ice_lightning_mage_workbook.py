@@ -3205,8 +3205,9 @@ def build_sensitivity_sheet(wb):
             )
             artifact_dps_gain_expr = f"={total_gain_dollar_expr}"
             artifact_pct_gain_expr = (
-                f"=(Summary!$B${SUMMARY_ROW['TOTAL_DPS']}+{total_gain_dollar_expr})"
-                f"/Summary!$B${SUMMARY_ROW['TOTAL_DPS']}*100"
+                f"=IF({currently_equipped_expr},"
+                f"Summary!$B${SUMMARY_ROW['TOTAL_DPS']}/(Summary!$B${SUMMARY_ROW['TOTAL_DPS']}-{total_gain_dollar_expr})*100,"
+                f"(Summary!$B${SUMMARY_ROW['TOTAL_DPS']}+{total_gain_dollar_expr})/Summary!$B${SUMMARY_ROW['TOTAL_DPS']}*100)"
             )
             ws.cell(row=row, column=artifact_staging_col["label"], value=label)
             ws.cell(row=row, column=artifact_staging_col["dps_gain"], value=artifact_dps_gain_expr)

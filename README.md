@@ -133,6 +133,12 @@ the two don't auto-sync.
   [Creative Commons Attribution-NonCommercial-ShareAlike](https://creativecommons.org/licenses/by-nc-sa/4.0/)
   license — credit to that wiki's editors for compiling the underlying game data these
   calculators are built from.
+- **[maplestoryidle.info](https://maplestoryidle.info)** is a second, independent data source used
+  to cross-check the wiki above and to fill in classes the wiki itself never fully documented
+  (Buccaneer and Corsair's own skill data there is a direct game-client capture, not a
+  community-edited page). It has caught several real wiki errors this project would otherwise
+  still have — including a skill's damage value off by a full order of magnitude (10x) and two
+  skills off by roughly 100x — see `KNOWN_GAPS.md` for the specifics.
 - Post-patch numeric deltas (where the wiki lagged behind a game update) are cross-referenced
   against the game's own official in-game patch notes.
 
@@ -159,10 +165,15 @@ not the spreadsheet math — is uncertain.
 Have a feature you want, a bug you've found, or a class that feels off? Open an issue — feedback
 and requests are welcome.
 
-**Next up:** verifying and closing the data gaps in Bishop, Paladin, Buccaneer, and Corsair (see
-`KNOWN_GAPS.md` for exactly what's flagged in each) — these four classes have the least complete
-wiki data of the twelve and are the current priority.
+**Next up:** Bishop's own remaining data gap (Divine Protection's growth curve past level 1) is
+the last significant hole among the four classes with the weakest wiki coverage — Paladin,
+Buccaneer, and Corsair have since been substantially closed out using a second data source
+(`maplestoryidle.info`, see "Credits & data sources" above), which also caught a real 10x
+magnitude bug in Corsair's own Broadside skill. See `KNOWN_GAPS.md` for exactly what's still
+flagged in each class.
 
-**Further out:** none of the twelve workbooks model MP consumption or Companions yet — these are
-planned additions now that Artifacts is done, project-wide, for all twelve classes.
+**Further out:** none of the twelve workbooks model Companions yet — planned, now that Artifacts
+is done, project-wide, for all twelve classes. MP consumption was also considered, but no scaling
+data for it exists on either data source above (confirmed by checking both, including each site's
+own backend data) — it's likely to stay out of scope unless that changes.
 
