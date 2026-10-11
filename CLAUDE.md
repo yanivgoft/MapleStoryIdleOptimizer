@@ -199,7 +199,21 @@ you're building a new class, check for all of these *before* your first build, n
     — not raw `Inputs!crit_rate` alone.** Testing the raw Inputs value lets the cap-check fire
     late, still recommending Crit Rate% potential lines past the point they're actually worth 0%
     DPS gain. Shipped incorrectly in more than one class; always re-derive this check's comparison
-    value the same way the real Calc-sheet crit-rate-total formula does.
+    value the same way the real Calc-sheet crit-rate-total formula does. Found missing entirely
+    (not just incomplete) in Buccaneer/Corsair/Dark Knight/Marksman — these 4 had no crit-rate-total
+    check at all, just raw `Inputs!crit_rate>=100` — even though Dark Knight (Lord of Darkness) and
+    Marksman (Sharp Eyes) both have a real, nonzero live crit-rate skill source the check was
+    silently ignoring. **Separately, the cap-check's own premise — that Crit Rate past 100% is
+    worth substituting with Critical Damage's value — is wrong whenever Ring of Cycles or Book of
+    Ancient is equipped**, since both have a dependent mechanic that keeps scaling with raw Crit
+    Rate past 100% (Ring of Cycles' Basic Attack Damage bonus scales continuously with Crit Rate
+    excess up to 200% total; Book of Ancient's Crit-Damage-from-Crit-Rate conversion has no upper
+    bound at all) — in that case the literal `Sensitivity!H` value for Crit Rate already correctly
+    reflects real, continuing marginal value (confirmed directly: in one test case it was *larger*
+    than the Crit Damage substitute, in another *smaller* — the substitute isn't even a safe
+    one-directional approximation once either artifact is in play), so the substitution must be
+    skipped (gated on `NOT(ring_of_cycles_equipped)` and `NOT(book_of_ancient_equipped)`) whenever
+    either is equipped, same treatment as any other stat.
 14. **A big artifacts-feature splice copied verbatim from a template class's file can leave that
     template class's own literal strings behind** — e.g. a new `ArtifactsInput` sheet's title
     still reading "Fire/Poison Arch Mage" after being spliced into a different class. Grep the
@@ -223,6 +237,31 @@ you're building a new class, check for all of these *before* your first build, n
     `Summary!TOTAL_DPS` before/after against the Sensitivity row's own reported numbers — the same
     technique as the Book of Ancient/Reindeer's Spear hand-spot-checks in the Verification
     checklist below, just run in BOTH toggle directions instead of one.
+16. **A "carry over the user's real values on rebuild" migration fix must be scoped to ONE
+    rebuild, never left as a standing rule, or it silently re-breaks the exact thing it was
+    migrating away from, forever.** `build_inputs_sheet`'s own `load_existing_workbook_state`
+    carries forward every per-content-type Inputs value by default — but a past one-time cleanup
+    for Chapter-Stage (an earlier migration had wrongly duplicated Breakthrough/Chapter Hunt's own
+    "28-9" text into the other 6 applicable content types, which need a bare number instead) was
+    implemented as an *unconditional* `CHAPTER_STAGE_TRUST_EXISTING_FOR = {"Breakthrough", "Chapter
+    Hunt"}` allowlist, rather than something that ran once and was then removed — so it kept
+    discarding the user's own correctly-entered values for those 6 content types on *every*
+    subsequent rebuild, not just the one rebuild that needed the cleanup. Found by a user noticing
+    their real Chapter-Stage values reset to generic defaults after a routine rebuild. If you ever
+    add a similar "clean up a known-bad carried-over shape" migration, either (a) make it
+    self-expiring (detect the specific bad shape — e.g. dash-formatted text in a bare-number column
+    — and only reset THAT case, trusting anything already correctly shaped), or (b) explicitly flag
+    it as one-time-only and remove it in a follow-up commit once you've confirmed it ran.
+17. **Potential and Bonus Potential are separate roll tracks with genuinely different pity caps —
+    don't let them share one `RARITY_UPGRADE_RATES` table.** Both share the same roll VALUE table
+    (what stats/values are available per rarity/line, and at what weight — keyed only by
+    `(slot, rarity, line)`, no potential-type dimension), but their pity (forced-upgrade) caps
+    differ at every tier except Legendary (confirmed by the user: Bonus Potential's real caps are
+    42/75/150/417/714 vs regular Potential's 30/60/120/333/714). `data/cube_potential_data.json`'s
+    `RARITY_UPGRADE_RATES` is now keyed by potential type first, then rarity;
+    `potential_cubes_ev.py`'s `optimal_stopping_trace`/`probability_any_better_roll` both take
+    `potential_type` as an explicit parameter and index into the matching sub-table — never
+    reintroduce a single shared pity table across both tracks.
 
 ## Cross-checking a new class against its siblings
 

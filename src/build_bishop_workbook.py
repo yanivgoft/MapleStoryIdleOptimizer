@@ -105,7 +105,12 @@ def load_cube_potential_data():
 
 
 RARITY_UPGRADE_RATES, EQUIPMENT_POTENTIAL_DATA, SLOT_SPECIFIC_POTENTIALS = load_cube_potential_data()
-assert set(RARITY_UPGRADE_RATES) == {"normal", "rare", "epic", "unique", "legendary", "mystic"}
+# Potential and Bonus Potential have genuinely different pity caps in-game (confirmed by the
+# user) — same rarity order/rates, but Bonus Potential's own pity max is higher at every tier
+# except Legendary (which is shared). Keyed by potential type first, then rarity.
+assert set(RARITY_UPGRADE_RATES) == {"Potential", "Bonus Potential"}
+for _pt_rates in RARITY_UPGRADE_RATES.values():
+    assert set(_pt_rates) == {"normal", "rare", "epic", "unique", "legendary", "mystic"}
 assert len(EQUIPMENT_POTENTIAL_DATA["normal"]["line1"]) == 16
 assert set(EQUIPMENT_POTENTIAL_DATA) == {"normal", "rare", "epic", "unique", "legendary", "mystic"}
 
@@ -1102,7 +1107,13 @@ def build_inputs_sheet(wb, existing=None):
         "Weapon Dungeon": "80", "Equipment Dungeon": "80", "Enhancement Dungeon": "80",
         "EXP Dungeon": "80", "Hero Dungeon": "80",
     }
-    CHAPTER_STAGE_TRUST_EXISTING_FOR = {"Breakthrough", "Chapter Hunt"}
+    # NOTE: a past migration briefly left Breakthrough/Chapter Hunt-style "28-9" text
+    # duplicated into the other 6 applicable columns (which need a bare number instead) —
+    # that one-time cleanup used to force those 6 columns back to a hardcoded default on
+    # every rebuild, silently discarding the user's own real, correctly-formatted values on
+    # every subsequent rebuild too. Fixed: carried-over values are now trusted for every
+    # content type, same as any other per-content-type Inputs row — only genuinely missing
+    # values fall back to the default.
 
     def _write_input_row(key, label, default):
         r = IN[key]
@@ -1120,7 +1131,7 @@ def build_inputs_sheet(wb, existing=None):
                 continue
             if key == "chapter_stage":
                 row_default = CHAPTER_STAGE_DEFAULT_BY_CONTENT_TYPE[ct]
-                cell.value = per_ct.get(ct, row_default) if ct in CHAPTER_STAGE_TRUST_EXISTING_FOR else row_default
+                cell.value = per_ct.get(ct, row_default)
             else:
                 cell.value = per_ct.get(ct, default)
             cell.fill = INPUT_FILL
@@ -2925,8 +2936,16 @@ def dps_per_unit_expr(stat_name):
     if stat_name == "Main Stat % per 4 Levels":
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["int_pct"]}*INT({IB("level")}/4)'
     if stat_name == "Critical Rate %":
+        # Once Crit Rate is at/above the 100% cap, substitute Critical Damage's own DPS-per-unit
+        # value (confirmed by the user) — UNLESS Ring of Cycles or Book of Ancient is equipped,
+        # since both have their own dependent mechanic that keeps scaling with raw Crit Rate even
+        # past 100% (see build_fp_mage_workbook.py's own copy of this branch for the full
+        # reasoning) — in that case just use the literal Sensitivity!H value directly, like any
+        # other stat.
         return (
-            f'=IF({IB("crit_rate")}+{art_ref("AGG_CRIT_RATE")}>=100,Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]},'
+            f'=IF(AND({IB("crit_rate")}+{art_ref("AGG_CRIT_RATE")}>=100,'
+            f'NOT({IB("ring_of_cycles_equipped")}),NOT({IB("book_of_ancient_equipped")})),'
+            f'Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]},'
             f'Sensitivity!H{SENSITIVITY_ROW_FOR["crit_rate"]})'
         )
     if stat_name == "Companion Summoning Time Increase %":
@@ -3887,14 +3906,18 @@ def build_cube_data_sheet(wb):
     ws.cell(row=1, column=13, value="Rarity")
     ws.cell(row=1, column=14, value="Rate")
     ws.cell(row=1, column=15, value="MaxPity")
-    for col in (13, 14, 15):
+    ws.cell(row=1, column=16, value="PotentialType")
+    for col in (13, 14, 15, 16):
         ws.cell(row=1, column=col).fill = HEADER_FILL
         ws.cell(row=1, column=col).font = HEADER_FONT
-    for i, rarity in enumerate(RARITY_ORDER):
-        r = i + 2
-        ws.cell(row=r, column=13, value=rarity)
-        ws.cell(row=r, column=14, value=RARITY_UPGRADE_RATES[rarity]["rate"])
-        ws.cell(row=r, column=15, value=RARITY_UPGRADE_RATES[rarity]["max"])
+    r = 2
+    for potential_type, rates in RARITY_UPGRADE_RATES.items():
+        for rarity in RARITY_ORDER:
+            ws.cell(row=r, column=13, value=rarity)
+            ws.cell(row=r, column=14, value=rates[rarity]["rate"])
+            ws.cell(row=r, column=15, value=rates[rarity]["max"])
+            ws.cell(row=r, column=16, value=potential_type)
+            r += 1
 
     ws.cell(row=1, column=17, value="SlotList")
     ws.cell(row=1, column=17).fill = HEADER_FILL
@@ -3903,7 +3926,7 @@ def build_cube_data_sheet(wb):
         ws.cell(row=i + 2, column=17, value=slot)
     assert 1 + len(CUBE_SLOTS) == CUBE_DATA_SLOT_LIST_LAST_ROW
 
-    widths = [10, 12, 6, 26, 9, 9, 8, 13, 2, 26, 13, 2, 12, 10, 9, 2, 14]
+    widths = [10, 12, 6, 26, 9, 9, 8, 13, 2, 26, 13, 2, 12, 10, 9, 15, 14]
     for i, w in enumerate(widths):
         ws.column_dimensions[get_column_letter(i + 1)].width = w
     ws.freeze_panes = "A2"

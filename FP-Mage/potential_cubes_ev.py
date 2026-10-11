@@ -127,8 +127,8 @@ CSV_PATH = XLSX_PATH.with_name(f"{XLSX_PATH.stem}_potential_cubes_ev.csv")
 
 # ---------------------------------------------------------------------------
 # Load the workbook twice: `openpyxl` for the literal (non-formula) tables — CubeData's
-# flattened roll table (A:H, except the live H column), its Rarity/Rate/MaxPity table (M:O),
-# and the PotentialCubes current-gear table — and `formulas` (a real Excel formula evaluator)
+# flattened roll table (A:H, except the live H column), its Rarity/Rate/MaxPity/PotentialType
+# table (M:P), and the PotentialCubes current-gear table — and `formulas` (a real Excel formula evaluator)
 # for the handful of cells that are genuinely live formulas: CubeData's own "Stat -> DPSPerUnit"
 # lookup table (J:K) and the Summary sheet's Total DPS cell, both of which chain back through
 # Sensitivity!H's marginal-DPS-per-stat formulas.
@@ -248,22 +248,27 @@ def combined_dps_gain(stat_value_pairs):
 
 
 # ---------------------------------------------------------------------------
-# Rarity order + upgrade rates/pity caps (CubeData!M:O) — literal values, no live formulas.
+# Rarity order + upgrade rates/pity caps (CubeData!M:P) — literal values, no live formulas.
+# Potential and Bonus Potential have different pity caps (confirmed by the user), so this table
+# is keyed by potential type first, then rarity: RARITY_UPGRADE_RATES[potential_type][rarity].
 # ---------------------------------------------------------------------------
 def load_rarity_table():
     ws_cube_data = _wb["CubeData"]
     header_row = find_row_by_label(ws_cube_data, "Rarity", column=13, max_row=5)
-    order, rates = [], {}
+    order = []
+    rates = {}
     row = header_row + 1
     while True:
         rarity = ws_cube_data.cell(row=row, column=13).value
         if rarity is None or rarity == "":
             break
-        rates[rarity] = dict(
+        potential_type = ws_cube_data.cell(row=row, column=16).value
+        rates.setdefault(potential_type, {})[rarity] = dict(
             rate=float(ws_cube_data.cell(row=row, column=14).value),
             max=float(ws_cube_data.cell(row=row, column=15).value),
         )
-        order.append(rarity)
+        if rarity not in order:
+            order.append(rarity)
         row += 1
     return order, rates
 
@@ -407,7 +412,8 @@ def _expected_max_with_threshold(values, tail_prob, tail_exp, c):
 # (mystic, or any tier with no further upgrade) has no pity dimension, so its state is a single
 # scalar rather than a per-pity-bucket array.
 # ---------------------------------------------------------------------------
-def optimal_stopping_trace(start_rarity, start_pity, slot, current_value, max_cubes=MAX_CUBES):
+def optimal_stopping_trace(start_rarity, start_pity, slot, current_value, potential_type, max_cubes=MAX_CUBES):
+    rates = RARITY_UPGRADE_RATES[potential_type]
     idx0 = RARITY_ORDER.index(start_rarity)
     tiers = RARITY_ORDER[idx0:]
     dist = {}
@@ -417,7 +423,7 @@ def optimal_stopping_trace(start_rarity, start_pity, slot, current_value, max_cu
         dist[t] = (values, *_tail_sums(values, probs))
 
     start_bucket = int(start_pity)
-    W_prev = {t: np.full(max(int(RARITY_UPGRADE_RATES[t]["max"]), 1), -np.inf) for t in tiers}
+    W_prev = {t: np.full(max(int(rates[t]["max"]), 1), -np.inf) for t in tiers}
 
     trace = np.empty(max_cubes + 1)
     trace[0] = current_value  # 0 cubes used: still holding the original value, by definition
@@ -425,12 +431,12 @@ def optimal_stopping_trace(start_rarity, start_pity, slot, current_value, max_cu
         W_cur = {}
         for ti, t in enumerate(tiers):
             values, tail_prob, tail_exp = dist[t]
-            is_terminal = (ti == len(tiers) - 1) or RARITY_UPGRADE_RATES[t]["max"] <= 0
+            is_terminal = (ti == len(tiers) - 1) or rates[t]["max"] <= 0
             if is_terminal:
                 W_cur[t] = _expected_max_with_threshold(values, tail_prob, tail_exp, W_prev[t])
                 continue
-            rate = RARITY_UPGRADE_RATES[t]["rate"]
-            max_pity = int(RARITY_UPGRADE_RATES[t]["max"])
+            rate = rates[t]["rate"]
+            max_pity = int(rates[t]["max"])
             nxt = tiers[ti + 1]
             n = len(W_prev[t])
             idxs = np.arange(n)
@@ -479,11 +485,12 @@ def roll_beat_probability(rarity, slot, current_value):
     return 1.0 - f
 
 
-def probability_any_better_roll(start_rarity, start_pity, slot, current_value, max_cubes=MAX_CUBES):
+def probability_any_better_roll(start_rarity, start_pity, slot, current_value, potential_type, max_cubes=MAX_CUBES):
+    rates = RARITY_UPGRADE_RATES[potential_type]
     idx0 = RARITY_ORDER.index(start_rarity)
     tiers = RARITY_ORDER[idx0:]
     p = {t: roll_beat_probability(t, slot, current_value) for t in tiers}
-    surv = {t: np.zeros(max(int(RARITY_UPGRADE_RATES[t]["max"]), 1)) for t in tiers}
+    surv = {t: np.zeros(max(int(rates[t]["max"]), 1)) for t in tiers}
     surv[start_rarity][int(start_pity)] = 1.0
 
     prob_any = np.zeros(max_cubes + 1)
@@ -491,12 +498,12 @@ def probability_any_better_roll(start_rarity, start_pity, slot, current_value, m
         new_surv = {t: np.zeros_like(surv[t]) for t in tiers}
         for ti, t in enumerate(tiers):
             arr = surv[t]
-            is_terminal = (ti == len(tiers) - 1) or RARITY_UPGRADE_RATES[t]["max"] <= 0
+            is_terminal = (ti == len(tiers) - 1) or rates[t]["max"] <= 0
             if is_terminal:
                 new_surv[t][0] += float(arr.sum()) * (1 - p[t])
                 continue
-            rate = RARITY_UPGRADE_RATES[t]["rate"]
-            max_pity = int(RARITY_UPGRADE_RATES[t]["max"])
+            rate = rates[t]["rate"]
+            max_pity = int(rates[t]["max"])
             nxt = tiers[ti + 1]
             n = len(arr)
             idxs = np.arange(n)
@@ -526,13 +533,13 @@ def main():
     results = []
     for state in rows:
         cur_val = current_dps_value(state["lines"])
-        trace = optimal_stopping_trace(state["rarity"], state["pity"], state["slot"], cur_val)
+        trace = optimal_stopping_trace(state["rarity"], state["pity"], state["slot"], cur_val, state["potential_type"])
         milestone_ev = {
             n: trace[n] - cur_val
             for n in CUBE_MILESTONES
         }
         smallest_n = smallest_n_positive(trace, cur_val)
-        prob_any = probability_any_better_roll(state["rarity"], state["pity"], state["slot"], cur_val)
+        prob_any = probability_any_better_roll(state["rarity"], state["pity"], state["slot"], cur_val, state["potential_type"])
         n_for_50pct = smallest_n_for_probability(prob_any, 0.5)
         n_for_75pct = smallest_n_for_probability(prob_any, 0.75)
         results.append(dict(

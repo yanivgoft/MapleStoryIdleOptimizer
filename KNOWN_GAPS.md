@@ -808,6 +808,90 @@ code); fixed in all 12. Zero-error `formulas` scan clean on every rebuilt workbo
 `DPS Gain` ($) column was never wrong and needed no change.
 
 
+## Crit Rate cap-check didn't account for Ring of Cycles / Book of Ancient — fixed in all 12 classes
+
+User-reported: does the Potential Cubes calculator's "once Crit Rate is capped, value a roll as if
+it were Critical Damage instead" substitution correctly stack with Ring of Cycles/Book of Ancient's
+own crit-rate-dependent bonuses? It does not — both artifacts have a *dependent* mechanic that
+keeps scaling with raw Crit Rate even past the 100% chance-to-crit cap, so the substitution's own
+premise ("past 100%, Crit Rate is worth nothing on its own") is false whenever either is equipped:
+
+- **Ring of Cycles**: once total Crit Rate >= 100%, it grants Basic Attack Damage scaling
+  continuously with Crit Rate *excess* above 100%, capped at 100 excess points (200% Crit Rate
+  total) — confirmed deliberately modeled this way (not a 10-point-stepped jump) specifically so a
+  Crit Rate roll keeps having a smooth, real marginal value in this range.
+- **Book of Ancient**: its own Crit-Damage-from-Crit-Rate conversion is a flat ratio of the *raw*
+  total Crit Rate value, with no upper bound at all — it keeps converting indefinitely past 100%.
+
+Fix: `dps_per_unit_expr("Critical Rate %")` now only substitutes Critical Damage's own DPS-per-unit
+value when Crit Rate is capped **and** neither Ring of Cycles nor Book of Ancient is equipped;
+otherwise it uses the literal `Sensitivity!H` value for Crit Rate directly, exactly like every
+other stat. Verified directly: with Ring of Cycles equipped and total Crit Rate pushed to 143%, the
+real literal value and the Crit Damage substitute differed by nearly 3x — and which one was larger
+flipped between two different test scenarios, confirming the substitute isn't even a one-directional
+safe approximation once either artifact is in play. The unequipped/genuinely-capped case was
+re-verified unchanged (still correctly substitutes).
+
+While fixing this, also found and closed a related, narrower pre-existing gap: **Buccaneer,
+Corsair, Dark Knight, and Marksman's own cap-check never included the live crit-rate total at
+all** — it tested bare `Inputs!crit_rate>=100`, missing both `Summary!R_CRIT_RATE_BONUS` (a real,
+nonzero source for Dark Knight's Lord of Darkness and Marksman's Sharp Eyes specifically — not just
+an unused placeholder) and any equipped artifacts' own `AGG_CRIT_RATE`. Every other class already
+had this fixed from an earlier pass (see each class's own "Artifacts (\<Class\>)" section above).
+Fixed identically in all 12 classes; zero-error `formulas` scan clean on every rebuilt workbook.
+
+
+## Chapter-Stage carried-over value silently discarded on every rebuild — fixed in all 12 classes
+
+User-reported: rebuilding a workbook (e.g. to pick up a source change) reset the per-content-type
+`Chapter-Stage` Inputs row back to a generic default for most content types, discarding whatever
+the user had actually entered. Root cause: a one-time migration fix from when this project moved
+Chapter-Stage from one shared value to one-per-content-type values — the migration had briefly
+left Breakthrough/Chapter Hunt's own "28-9"-style text wrongly duplicated into the other 6
+applicable content types (which need a bare number instead, e.g. "80") — got implemented as an
+unconditional rule (`CHAPTER_STAGE_TRUST_EXISTING_FOR = {"Breakthrough", "Chapter Hunt"}`) instead
+of a one-time cleanup, so it kept firing on *every* rebuild forever after, silently throwing away
+the user's own correctly-entered values for Chapter Boss/Weapon/Equipment/Enhancement/EXP/Hero
+Dungeon and replacing them with the hardcoded default every single time. Confirmed directly: FP-Mage's
+own real values (Chapter Boss 36, EXP Dungeon 112, Equipment Dungeon 110, Weapon Dungeon 112,
+Enhancement Dungeon 92, Hero Dungeon 111) were reset to defaults (28/80/80/80/80/80) on rebuild;
+restored by hand after the fix, confirmed to survive a subsequent rebuild correctly. Fixed in all
+12 classes: carried-over values are now trusted for every content type, same as any other
+per-content-type Inputs row. **If you rebuilt any class between this bug's introduction and this
+fix and had customized Chapter-Stage for Chapter Boss/Weapon/Equipment/Enhancement/EXP/Hero
+Dungeon, check that row after updating — only FP-Mage's loss was caught and restored directly;
+other classes' real values from before this session's earlier rebuilds could not be recovered the
+same way.**
+
+
+## Potential vs Bonus Potential shared one pity-cap table — fixed in all 12 classes
+
+User-reported real pity (forced-upgrade) caps for Bonus Potential: 42 (normal), 75 (rare), 150
+(epic), 417 (unique), 714 (legendary) — different from regular Potential's own 30/60/120/333/714
+at every tier except Legendary. This project already tracks Potential and Bonus Potential as
+separate roll tracks per equipment slot, but both shared the exact same `RARITY_UPGRADE_RATES`
+table (one set of pity caps applied to both), understating how much Bonus Potential cubing is
+worth (a lower pity cap than reality means the EV model wrongly assumes a guaranteed upgrade kicks
+in sooner than it really does).
+
+Fix: `data/cube_potential_data.json`'s `RARITY_UPGRADE_RATES` is now keyed by potential type first
+(`"Potential"`/`"Bonus Potential"`), then rarity — the roll-upgrade *rate* per tier is unchanged
+(the user's correction was specifically about the pity cap, not the rate) and the roll VALUE
+table itself (what stats/values are available to roll, and at what weight) is unaffected, since
+that's a separate, shared table keyed only by (slot, rarity, line) with no potential-type
+dimension at all. `CubeData`'s own Rarity/Rate/MaxPity reference table gained a 4th column
+(`PotentialType`) and now has 12 rows instead of 6 (one full rarity progression per potential
+type) — repurposing what was a pure visual spacer column (not a live-formula-consumed range, so
+safe to widen). `potential_cubes_ev.py`'s `optimal_stopping_trace`/`probability_any_better_roll`
+both now take `potential_type` as a parameter and index into the correct sub-table. Verified: the
+standalone script runs cleanly end-to-end on every class, producing visibly different EV numbers
+between the "Potential" and "Bonus Potential" sections (previously, since both just read the same
+shared table, any difference between the two sections came only from each row's own current gear
+state, never from the pity progression itself). Fixed in `src/potential_cubes_ev.py` and
+re-copied to all 12 class folders (per this project's own "plain copy, not a symlink" convention);
+zero-error `formulas` scan clean on every rebuilt workbook.
+
+
 
 ## Gaps closed since this file was first written
 

@@ -81,7 +81,12 @@ def load_cube_potential_data():
 
 
 RARITY_UPGRADE_RATES, EQUIPMENT_POTENTIAL_DATA, SLOT_SPECIFIC_POTENTIALS = load_cube_potential_data()
-assert set(RARITY_UPGRADE_RATES) == {"normal", "rare", "epic", "unique", "legendary", "mystic"}
+# Potential and Bonus Potential have genuinely different pity caps in-game (confirmed by the
+# user) — same rarity order/rates, but Bonus Potential's own pity max is higher at every tier
+# except Legendary (which is shared). Keyed by potential type first, then rarity.
+assert set(RARITY_UPGRADE_RATES) == {"Potential", "Bonus Potential"}
+for _pt_rates in RARITY_UPGRADE_RATES.values():
+    assert set(_pt_rates) == {"normal", "rare", "epic", "unique", "legendary", "mystic"}
 assert len(EQUIPMENT_POTENTIAL_DATA["normal"]["line1"]) == 16
 assert set(EQUIPMENT_POTENTIAL_DATA) == {"normal", "rare", "epic", "unique", "legendary", "mystic"}
 
@@ -1184,16 +1189,22 @@ def build_inputs_sheet(wb, existing=None):
     # Chapter-Stage's expected FORMAT differs by content type (chapter-substage vs. a bare
     # chapter number vs. a bare stage number — see chapter/stage's own IFERROR-guarded parsing,
     # which already tolerates all three shapes and just ignores whichever half isn't consumed for
-    # a given content type). Only Breakthrough/Chapter Hunt keep the chapter-substage shape they
-    # already had; the other 6 applicable columns previously (incorrectly) carried that SAME text
-    # via the initial "duplicate into all 10 columns" migration, so they're reset to a correctly-
-    # shaped default here instead of perpetuating the wrong format (confirmed by the user).
+    # a given content type). A past migration briefly left the other 6 applicable columns
+    # incorrectly holding Breakthrough/Chapter Hunt's own chapter-substage text (from an earlier
+    # "duplicate into all 10 columns" step) — since fixed, and carried-over values are now trusted
+    # for every content type (see the NOTE below).
     CHAPTER_STAGE_DEFAULT_BY_CONTENT_TYPE = {
         "Chapter Boss": "28", "Breakthrough": "28-9", "Chapter Hunt": "28-9",
         "Weapon Dungeon": "80", "Equipment Dungeon": "80", "Enhancement Dungeon": "80",
         "EXP Dungeon": "80", "Hero Dungeon": "80",
     }
-    CHAPTER_STAGE_TRUST_EXISTING_FOR = {"Breakthrough", "Chapter Hunt"}
+    # NOTE: a past migration briefly left Breakthrough/Chapter Hunt-style "28-9" text
+    # duplicated into the other 6 applicable columns (which need a bare number instead) —
+    # that one-time cleanup used to force those 6 columns back to a hardcoded default on
+    # every rebuild, silently discarding the user's own real, correctly-formatted values on
+    # every subsequent rebuild too. Fixed: carried-over values are now trusted for every
+    # content type, same as any other per-content-type Inputs row — only genuinely missing
+    # values fall back to the default.
 
     def _write_input_row(key, label, default):
         r = IN[key]
@@ -1211,7 +1222,7 @@ def build_inputs_sheet(wb, existing=None):
                 continue
             if key == "chapter_stage":
                 row_default = CHAPTER_STAGE_DEFAULT_BY_CONTENT_TYPE[ct]
-                cell.value = per_ct.get(ct, row_default) if ct in CHAPTER_STAGE_TRUST_EXISTING_FOR else row_default
+                cell.value = per_ct.get(ct, row_default)
             else:
                 cell.value = per_ct.get(ct, default)
             cell.fill = INPUT_FILL
@@ -2987,11 +2998,20 @@ def dps_per_unit_expr(stat_name):
         # that understates its real worth for cube-EV comparisons: removing it would mean
         # replacing it with something else, and the natural replacement (same gearing "budget")
         # is Critical Damage %. So once capped, value a Crit Rate roll as if it were an
-        # equal-sized Critical Damage % roll instead (confirmed by the user). This is scoped to
+        # equal-sized Critical Damage % roll instead (confirmed by the user) — UNLESS Ring of
+        # Cycles or Book of Ancient is equipped, since both have their own dependent mechanic that
+        # keeps scaling with raw Crit Rate even past 100% (Ring of Cycles' own Basic Attack Damage
+        # bonus scales continuously with Crit Rate excess up to 200% total; Book of Ancient's own
+        # Crit-Damage-from-Crit-Rate conversion has no upper bound at all), so the literal
+        # Sensitivity!H value already correctly reflects real, continuing marginal value in that
+        # case — just use it directly like any other stat, not the Crit Damage substitute
+        # (confirmed by the user). This is scoped to
         # the cube-EV conversion only — the Sensitivity sheet's own Crit Rate row is left as the
         # literal (correctly zero-at-cap) marginal, since that's used for other purposes too.
         return (
-            f'=IF({IB("crit_rate")}+{art_ref("AGG_CRIT_RATE")}>=100,Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]},'
+            f'=IF(AND({IB("crit_rate")}+{art_ref("AGG_CRIT_RATE")}>=100,'
+            f'NOT({IB("ring_of_cycles_equipped")}),NOT({IB("book_of_ancient_equipped")})),'
+            f'Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]},'
             f'Sensitivity!H{SENSITIVITY_ROW_FOR["crit_rate"]})'
         )
     if stat_name == "Companion Summoning Time Increase %":
@@ -4036,14 +4056,18 @@ def build_cube_data_sheet(wb):
     ws.cell(row=1, column=13, value="Rarity")
     ws.cell(row=1, column=14, value="Rate")
     ws.cell(row=1, column=15, value="MaxPity")
-    for col in (13, 14, 15):
+    ws.cell(row=1, column=16, value="PotentialType")
+    for col in (13, 14, 15, 16):
         ws.cell(row=1, column=col).fill = HEADER_FILL
         ws.cell(row=1, column=col).font = HEADER_FONT
-    for i, rarity in enumerate(RARITY_ORDER):
-        r = i + 2
-        ws.cell(row=r, column=13, value=rarity)
-        ws.cell(row=r, column=14, value=RARITY_UPGRADE_RATES[rarity]["rate"])
-        ws.cell(row=r, column=15, value=RARITY_UPGRADE_RATES[rarity]["max"])
+    r = 2
+    for potential_type, rates in RARITY_UPGRADE_RATES.items():
+        for rarity in RARITY_ORDER:
+            ws.cell(row=r, column=13, value=rarity)
+            ws.cell(row=r, column=14, value=rates[rarity]["rate"])
+            ws.cell(row=r, column=15, value=rates[rarity]["max"])
+            ws.cell(row=r, column=16, value=potential_type)
+            r += 1
 
     ws.cell(row=1, column=17, value="SlotList")
     ws.cell(row=1, column=17).fill = HEADER_FILL
@@ -4052,7 +4076,7 @@ def build_cube_data_sheet(wb):
         ws.cell(row=i + 2, column=17, value=slot)
     assert 1 + len(CUBE_SLOTS) == CUBE_DATA_SLOT_LIST_LAST_ROW
 
-    widths = [10, 12, 6, 26, 9, 9, 8, 13, 2, 26, 13, 2, 12, 10, 9, 2, 14]
+    widths = [10, 12, 6, 26, 9, 9, 8, 13, 2, 26, 13, 2, 12, 10, 9, 15, 14]
     for i, w in enumerate(widths):
         ws.column_dimensions[get_column_letter(i + 1)].width = w
     ws.freeze_panes = "A2"
