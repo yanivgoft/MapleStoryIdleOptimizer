@@ -261,7 +261,7 @@ def eff_cooldown(cooldown, costs_action):
 
 
 def eff_duration(duration):
-    return duration * (1 + (buff_duration_increase_pct + buff_mastery_pct) / 100)
+    return duration * (1 + buff_duration_increase_pct / 100)
 
 
 def exact_casts(cooldown, duration=None):

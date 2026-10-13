@@ -1403,7 +1403,7 @@ def level_gated_sum(level_ref, pairs):
 
 
 def bdi_with_buff_mastery_expr(bdi_ref, level_ref, buff_mastery_f_ref):
-    return f'({bdi_ref}+IF({level_ref}>=117,{buff_mastery_f_ref},0))'
+    return f'({bdi_ref})'
 
 
 # ---------------------------------------------------------------------------
@@ -1784,8 +1784,8 @@ SKILL_ROWS = [
      100, 22, True,
      0, 0, 0, 1, "", 0,
      "", "", "",
-     "Shared verbatim w/ FP-Mage/Ice-Lightning-Mage: feeds bdi_with_buff_mastery_expr (Buff "
-     "Duration Increase %) at unlock level 117 — not reflected in Inputs."),
+     "Shared w/ FP-Mage/Ice-Lightning-Mage: already included in Inputs!buff_duration_increase_pct "
+     "(confirmed by the user), so NOT added again — informational row only."),
     ("ARCANE_AIM", "Arcane Aim", 4, "", False, 1, 0, 0, 100, 1,
      30, 22, True,
      0, 0, 0, 1, "", 0,

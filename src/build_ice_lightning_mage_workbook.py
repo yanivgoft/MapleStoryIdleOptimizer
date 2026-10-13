@@ -1669,7 +1669,7 @@ def level_gated_sum(level_ref, pairs):
 
 
 def bdi_with_buff_mastery_expr(bdi_ref, level_ref, buff_mastery_f_ref):
-    return f'({bdi_ref}+IF({level_ref}>=117,{buff_mastery_f_ref},0))'
+    return f'({bdi_ref})'
 
 
 # ---------------------------------------------------------------------------
@@ -1990,9 +1990,8 @@ SKILL_ROWS = [
      0, 0, 0, 1, "", 0,
      "", "", "",
      "Permanent passive (unlocked level 117), +10%->16% Buff Duration (levels 1-200) — not "
-     "reflected anywhere in Inputs, so its current value (Calc!F) is added directly into every "
-     "uptime_fraction_expr call's Buff Duration Increase % term (see "
-     "bdi_with_buff_mastery_expr, already defined above). factorIndex 22, baseDamage 100 "
+     "added on top of Inputs: Inputs!buff_duration_increase_pct already includes it (confirmed by "
+     "the user). Informational row only. factorIndex 22, baseDamage 100 "
      "tenths%. Shared w/ FP-Mage."),
     ("ARCANE_AIM", "Arcane Aim", 4, "", False, 1, 0, 0, 100, 1,
      30, 22, True,

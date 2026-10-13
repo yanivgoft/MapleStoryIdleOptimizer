@@ -1067,3 +1067,12 @@ since "why did the DPS number change" is a fair question to be able to answer la
   Boss Monster Damage%/Mastery multiplier it was never supposed to see, until it was rebuilt as a
   dedicated target-count-only blend instead of reusing O/N division).
 
+
+
+## Buff Mastery / Arcane Aim double-counted on top of Inputs — fixed (FP-Mage, Ice-Lightning, Bishop)
+
+User-reported: raising Character Level from 116 to 117 (unlocking the Buff Duration passive) moved
+the Buff Duration Increase sensitivity from 3.19 to 3.84, although Inputs!buff_duration_increase_pct
+(the in-game stat) already includes that passive. `bdi_with_buff_mastery_expr` was adding the
+passive's Calc!F value on top at level >= 117. It now returns the Inputs value unchanged; the verify
+scripts match. The passive's skill row stays as an informational row.

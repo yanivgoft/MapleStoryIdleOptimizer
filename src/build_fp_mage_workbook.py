@@ -2138,9 +2138,9 @@ def level_gated_sum(level_ref, pairs):
 
 
 def bdi_with_buff_mastery_expr(bdi_ref, level_ref, buff_mastery_f_ref):
-    """Buff Duration Increase %, plus Buff Mastery's own contribution (Calc!F for that row) once
-    unlocked at level 117 — both feed uptime_fraction_expr's bdi_ref the same additive way."""
-    return f'({bdi_ref}+IF({level_ref}>=117,{buff_mastery_f_ref},0))'
+    """Buff Duration Increase %. Buff Mastery (level 117) is NOT added on top: the user confirmed
+    Inputs!buff_duration_increase_pct already includes it. Kept as a function so call sites stay put."""
+    return f'({bdi_ref})'
 
 
 def meteor_proc_rate_expr(h_ref, icd_ref, meteor_cast_rate_ref):
@@ -2322,9 +2322,8 @@ SKILL_ROWS = [
     ("BUFF_MASTERY", "Buff Mastery", 4, "", "", False, 1, 0, 0, 100, 1,
      100, 22, True, 0, 0, 0, 1, "", 0, False, False, 1, "", "", "",
      "Passive, always on (4th job, unlocked level 117) — no cooldown/duration, not a damage row. "
-     "Not reflected anywhere in Inputs, so its current value (Calc!F) is added directly into "
-     "every uptime_fraction_expr call's Buff Duration Increase % term, in both the main Calc "
-     "sheet and every Sensitivity block (see bdi_with_buff_mastery_expr) — +10% base."),
+     "Already included in Inputs!buff_duration_increase_pct (confirmed by the user), so it is "
+     "NOT added again anywhere — informational row only (see bdi_with_buff_mastery_expr)."),
     ("ARCANE_AIM", "Arcane Aim", 4, "", "", False, 1, 0, 0, 100, 1,
      30, 22, True, 0, 0, 0, 1, "", 0, False, False, 1, "", "", "",
      "Passive, always on (4th job, unlocked level 120) — no cooldown/duration, not a damage row. "
