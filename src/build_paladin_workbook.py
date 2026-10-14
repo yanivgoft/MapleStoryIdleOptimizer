@@ -642,17 +642,34 @@ def artifact_book_of_ancient_crit_damage_expr(eq_expr, star_expr, crit_rate_tota
     return f'IF({eq_expr},{star_lookup_expr(star_expr, "book_of_ancient_crit_damage_pct_of_crit_rate")}/100*({crit_rate_total_expr}),0)'
 
 
-def artifact_ring_of_cycles_exprs(eq_expr, star_expr, threshold_cr_expr):
+def roc_startup_uptime_expr(monster_type_expr, fight_duration_expr, startup_expr):
+    """Ring of Cycles only starts activating 5 seconds into the fight (confirmed by the user), but
+    the first `startup_expr` seconds are spent casting buffs with no damage dealt anyway (user's
+    relaxation), so it only has to cover the damage window [startup, D]: uptime over that window
+    is (D-max(5,startup))/(D-startup). Outside fixed-duration content startup is 0 (plain
+    (D-5)/D, incl. PvP); steady-state content (fight_duration = 0, e.g. Chapter Hunt) has no
+    meaningful startup window: full uptime."""
+    eff_d = f'IF({monster_type_expr}="pvp",{PVP_FIGHT_DURATION},{fight_duration_expr})'
+    steady = f'AND({monster_type_expr}<>"pvp",{fight_duration_expr}=0)'
+    return f'IF({steady},1,IF({eff_d}-({startup_expr})<=0,1,MAX(0,{eff_d}-MAX(5,{startup_expr}))/({eff_d}-({startup_expr}))))'
+
+
+def roc_main_startup_ref():
+    return f'Summary!$B${R_STARTUP_TIME}'
+
+
+def artifact_ring_of_cycles_exprs(eq_expr, star_expr, threshold_cr_expr, monster_type_expr, fight_duration_expr, startup_expr):
     """Returns (crit_rate_bonus, skill_dmg_bonus, basic_attack_dmg_bonus) expression strings.
     Basic Attack Damage scales continuously per 1% of Crit Rate excess above 100% (capped at
     100 excess points, i.e. 200% Crit Rate) rather than jumping every 10 points — modeled this
     way per the user's explicit choice, so Sensitivity's "+1%" test reflects a smooth marginal
     value everywhere instead of aliasing depending on how close the current value sits to a
     10-point boundary."""
-    crit_rate = f'IF(AND({eq_expr},({threshold_cr_expr})<100),{star_lookup_expr(star_expr, "ring_of_cycles_crit_rate")},0)'
-    skill_dmg = f'IF(AND({eq_expr},({threshold_cr_expr})>=100),{star_lookup_expr(star_expr, "ring_of_cycles_skill_damage")},0)'
+    up = roc_startup_uptime_expr(monster_type_expr, fight_duration_expr, startup_expr)
+    crit_rate = f'{up}*IF(AND({eq_expr},({threshold_cr_expr})<100),{star_lookup_expr(star_expr, "ring_of_cycles_crit_rate")},0)'
+    skill_dmg = f'{up}*IF(AND({eq_expr},({threshold_cr_expr})>=100),{star_lookup_expr(star_expr, "ring_of_cycles_skill_damage")},0)'
     excess_points = f'IF(AND({eq_expr},({threshold_cr_expr})>=100),MIN(100,({threshold_cr_expr})-100),0)'
-    basic_atk = f'(({excess_points})*{star_lookup_expr(star_expr, "ring_of_cycles_basic_attack_damage_per_point")})'
+    basic_atk = f'({up}*({excess_points})*{star_lookup_expr(star_expr, "ring_of_cycles_basic_attack_damage_per_point")})'
     return crit_rate, skill_dmg, basic_atk
 
 
@@ -1079,12 +1096,12 @@ def build_artifacts_sheet(wb):
     ws.cell(row=r["roc_threshold_cr"], column=2, value=f'={IB("crit_rate")}+B{r["rainbow_crit_rate"]}')
     ws.cell(row=r["roc_crit_rate"], column=1, value="Ring of Cycles — Crit Rate (if threshold < 100%)")
     ws.cell(row=r["roc_crit_rate"], column=2, value=(
-        f'=IF(AND({eq["ring_of_cycles"]},B{r["roc_threshold_cr"]}<100),'
+        f'={roc_startup_uptime_expr(IB("monster_type"), IB("fight_duration"), roc_main_startup_ref())}*IF(AND({eq["ring_of_cycles"]},B{r["roc_threshold_cr"]}<100),'
         f'{star_lookup_expr(star["ring_of_cycles"], "ring_of_cycles_crit_rate")},0)'
     ))
     ws.cell(row=r["roc_skill_damage"], column=1, value="Ring of Cycles — Skill Damage (if threshold >= 100%)")
     ws.cell(row=r["roc_skill_damage"], column=2, value=(
-        f'=IF(AND({eq["ring_of_cycles"]},B{r["roc_threshold_cr"]}>=100),'
+        f'={roc_startup_uptime_expr(IB("monster_type"), IB("fight_duration"), roc_main_startup_ref())}*IF(AND({eq["ring_of_cycles"]},B{r["roc_threshold_cr"]}>=100),'
         f'{star_lookup_expr(star["ring_of_cycles"], "ring_of_cycles_skill_damage")},0)'
     ))
     # Basic Attack Damage scales continuously per 1% of Crit Rate excess above 100% (capped at
@@ -1097,7 +1114,7 @@ def build_artifacts_sheet(wb):
     ))
     ws.cell(row=r["roc_basic_attack_damage"], column=1, value="Ring of Cycles — Basic Attack Damage (excess points x per-point)")
     ws.cell(row=r["roc_basic_attack_damage"], column=2, value=(
-        f'=B{r["roc_excess_points"]}*{star_lookup_expr(star["ring_of_cycles"], "ring_of_cycles_basic_attack_damage_per_point")}'
+        f'={roc_startup_uptime_expr(IB("monster_type"), IB("fight_duration"), roc_main_startup_ref())}*B{r["roc_excess_points"]}*{star_lookup_expr(star["ring_of_cycles"], "ring_of_cycles_basic_attack_damage_per_point")}'
     ))
 
     # Candle — "at start of battle" / "after 20 seconds" windows, fixed-duration/PvP content only;
@@ -2887,6 +2904,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     roc_threshold_cr_block = f'({ib("crit_rate")}+{delta["crit_rate"]}+{crit_rate_bonus_ref}+{boa_direct_delta}+{rainbow_crit_rate_block})'
     roc_crit_rate_block, roc_skill_dmg_block, roc_basic_atk_dmg_block = artifact_ring_of_cycles_exprs(
         ib("ring_of_cycles_equipped"), ib("ring_of_cycles_star"), roc_threshold_cr_block,
+        ib("monster_type"), ib("fight_duration"), startup_ref,
     )
     # Book of Ancient's dependent Crit-Damage-from-Crit-Rate bonus is also assumed already baked
     # into Inputs!crit_damage FOR WHATEVER CRIT RATE IS CURRENTLY EQUIPPED WITH — but Sensitivity
