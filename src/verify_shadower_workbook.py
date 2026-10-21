@@ -175,12 +175,12 @@ def level_gated_sum(pairs):
     return sum(inc for lvl, inc in pairs.items() if level >= lvl)
 
 
-cruel_stab_mastery = level_gated_sum({102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1})
+cruel_stab_mastery = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 cruel_stab_boss_mastery = level_gated_sum({111: 10, 124: 10})
 cruel_stab_hits = 6 if level >= 136 else 5
 
-dark_flare_cooldown = (45 * 0.7) if level >= 92 else 45
-dark_flare_hits = 3 if level >= 76 else 2
+dark_flare_cooldown = (45 * 0.7) if level >= 94 else 45
+dark_flare_hits = 3 if level >= 78 else 2
 dark_flare_icd = (2 * 0.75) if level >= 104 else 2
 bm_target_mult = 3 if level >= 138 else (2 if level >= 122 else 1)
 
@@ -193,10 +193,17 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15
 
 
-def eff_cooldown(cooldown, costs_action):
+def eff_cooldown(cooldown, costs_action=None, exempt=False):
+    """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
+    buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
+    compatibility and no longer gates CDR). `exempt=True` marks the trigger-rate / internal-interval
+    surrogate rows (mirror of the build script's CDR_EXEMPT_ROW_KEYS)."""
     if monster_type == "pvp":
         return PVP_FIGHT_DURATION
-    return max(0.1, cooldown - (skill_cooldown_decrease if costs_action else 0))
+    return max(0.1, cooldown - (0 if exempt else skill_cooldown_decrease))
+
+
+CDR_EXEMPT = {"VENOM"}  # mirrors the build script (rate-surrogate cooldown)
 
 
 def eff_duration(duration):
@@ -225,7 +232,7 @@ def exact_buff_uptime(cooldown, buff_duration):
     casts = exact_casts(cooldown)
     remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
     last_uptime = min(buff_duration, remaining_after_last)
-    return (casts - 1) * buff_duration + last_uptime
+    return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
 def coeff_pct(base, fidx, scales, job_step):
@@ -310,7 +317,7 @@ def buff_avg(pct, duration, cooldown, costs_action):
     elif monster_type == "pvp":
         uptime = min(eff_duration(duration), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        uptime = eff_duration(duration) / eff_cd
+        uptime = min(1.0, eff_duration(duration) / eff_cd)
     return pct * uptime
 
 
@@ -330,12 +337,12 @@ if fixed_duration_active:
 elif monster_type == "pvp":
     smokescreen_uptime = min(eff_duration(20), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
 else:
-    smokescreen_uptime = eff_duration(20) / smokescreen_eff_cd
+    smokescreen_uptime = min(1.0, eff_duration(20) / smokescreen_eff_cd)
 crit_damage_bonus = (30 * smokescreen_uptime) if level >= 113 else 0.0
 
 maple_hero_pct = coeff_pct(150, 23, True, 4) if unlocked("MAPLE_HERO_SHADOWER") else 0.0
 
-sp_pct = coeff_pct(840, 21, True, 3) + level_gated_sum({68: 100}) if unlocked("SHADOW_PARTNER") else 0.0
+sp_pct = coeff_pct(600, 21, True, 3) + level_gated_sum({68: 100}) if unlocked("SHADOW_PARTNER") else 0.0
 sp_maple_ratio = MAPLE_HERO_SHADOWER_RATIOS["SHADOW_PARTNER"]
 sp_pct_with_maple = sp_pct * (1 + sp_maple_ratio * maple_hero_pct / 100)
 shadow_partner_mult = 1 + (sp_pct_with_maple * 1.0 * 25 / 100) / 100 if unlocked("SHADOW_PARTNER") else 1.0
@@ -344,8 +351,10 @@ steal_pct = coeff_pct(50, 22, True, 2) if unlocked("STEAL") else 0.0
 steal_avg = steal_pct * 3 if unlocked("STEAL") else 0.0
 nimble_feet_pct = coeff_pct(150, 0, False, 1)
 nimble_avg = buff_avg(nimble_feet_pct, 15, 60, True) if unlocked("NIMBLE_FEET") else 0.0
-as_bonus = nimble_avg + steal_avg
+as_bonus = nimble_avg
 actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - as_bonus / 150))) / 100
+meso_mastery_avg = (25.0 * (1 - math.exp(-0.75 * actions_per_second * 5))) if unlocked("MESO_MASTERY") else 0.0
+avg_buff_mult = (1 + (dark_sight_atk_avg + steal_avg + meso_mastery_avg) / 100) * (1 + into_darkness_avg / 100) * (1 + smokescreen_avg / 100)
 
 
 def non_buff_casts(cooldown):
@@ -408,7 +417,7 @@ for key, s in DAMAGE_SKILLS.items():
     pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) + s.get("mastery", 0)
     maple_ratio = MAPLE_HERO_SHADOWER_RATIOS.get(key, 0.0)
     hd = hit_damage(pct, False, s.get("mastery_boss", 0), s.get("mastery_normal", 0), maple_ratio=maple_ratio)
-    eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
+    eff_cd = eff_cooldown(s["cooldown"], s["costs_action"], exempt=key in CDR_EXEMPT)
     if fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
@@ -445,12 +454,13 @@ ss_counter_pct = coeff_pct(25000, 21, True, 4) if unlocked("SHADOW_SHIFTER") els
 shadow_shifter_dps = incoming_hit_rate * 0.2 * hit_damage(ss_counter_pct, False, 0, 0) * boss_normal_multiplier(1, 0, 0) if unlocked("SHADOW_SHIFTER") else 0.0
 
 # ---- Meso Explosion / Blood Money (steady-state stack accumulation) ----
-meso_stack_avg = min(10, 0.5 * actions_per_second * 11)
-bm_stack_avg = min(5, 0.25 * actions_per_second * 11)
+meso_chance = 0.75 if level >= 75 else 0.5
+meso_stack_avg = min(10, meso_chance * actions_per_second * eff_cooldown(11, True))
+bm_stack_avg = min(5, 0.5 * meso_chance * actions_per_second * eff_cooldown(11, True))
 
 meso_pct = (coeff_pct(2700, 12, True, 3) + level_gated_sum({90: 100})) if unlocked("MESO_EXPLOSION") else 0.0
 meso_hd = hit_damage(meso_pct, False, 0, 0)
-meso_rate = (1 / eff_cooldown(11, True)) if not fixed_duration_active else (exact_casts(eff_cooldown(11, True)) / fight_duration)
+meso_rate = (1 / eff_cooldown(11, True)) if not fixed_duration_active else (non_buff_casts(eff_cooldown(11, True)) / fight_duration)
 meso_dps = 3 * meso_hd * meso_rate * boss_normal_multiplier(meso_stack_avg, 0, 0) if unlocked("MESO_EXPLOSION") else 0.0
 skill_dps["MESO_EXPLOSION"] = meso_dps
 if unlocked("TOXIC_VENOM") and unlocked("MESO_EXPLOSION"):
@@ -473,7 +483,7 @@ assassinate_rate_q = 1 / assassinate_eff_cd
 bm_rate_q = 1 / eff_cooldown(11, True)
 murderous_intent_mult = 1 + min(1, (bm_rate_q * 2) / assassinate_rate_q) if unlocked("ASSASSINATE") and unlocked("BLOOD_MONEY") else (1.0 if unlocked("ASSASSINATE") else 0.0)
 if unlocked("ASSASSINATE"):
-    asn_base_pct = coeff_pct(14000, 21, True, 4) + (50 if level >= 134 else 0)
+    asn_base_pct = coeff_pct(14000, 12, True, 4) + (50 if level >= 134 else 0)
     asn_finisher_pct = coeff_pct(30000, 12, True, 4)
     asn_pct = asn_base_pct + 0.5 * asn_finisher_pct * murderous_intent_mult
     asn_hd = hit_damage(asn_pct, False, 0, 0)

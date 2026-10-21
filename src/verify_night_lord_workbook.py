@@ -184,10 +184,17 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15
 
 
-def eff_cooldown(cooldown, costs_action):
+def eff_cooldown(cooldown, costs_action=None, exempt=False):
+    """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
+    buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
+    compatibility and no longer gates CDR). `exempt=True` marks the trigger-rate / internal-interval
+    surrogate rows (mirror of the build script's CDR_EXEMPT_ROW_KEYS)."""
     if monster_type == "pvp":
         return PVP_FIGHT_DURATION
-    return max(0.1, cooldown - (skill_cooldown_decrease if costs_action else 0))
+    return max(0.1, cooldown - (0 if exempt else skill_cooldown_decrease))
+
+
+CDR_EXEMPT = {"VENOM", "MARK_OF_ASSASSIN"}  # mirrors the build script (rate-surrogate cooldowns)
 
 
 def exact_casts(cooldown, duration=None):
@@ -212,7 +219,7 @@ def exact_buff_uptime(cooldown, buff_duration):
     casts = exact_casts(cooldown)
     remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
     last_uptime = min(buff_duration, remaining_after_last)
-    return (casts - 1) * buff_duration + last_uptime
+    return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
 def coeff_pct(base, fidx, scales, job_step):
@@ -228,23 +235,23 @@ def coeff_pct(base, fidx, scales, job_step):
 # Excel formula strings.
 # ---------------------------------------------------------------------------
 SHOWDOWN_TARGETS = 6 + basic_attack_target_increase
-showdown_hits = 6 if level >= 134 else 5
-showdown_mastery = level_gated_sum({98: 10, 104: 1, 113: 1, 118: 1, 126: 1, 130: 1})
-showdown_mastery_boss = level_gated_sum({108: 10, 122: 10})
+showdown_hits = 6 if level >= 136 else 5
+showdown_mastery = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
+showdown_mastery_boss = level_gated_sum({111: 10, 124: 10})
 
 gust_charm_mastery = level_gated_sum({39: 80})
-quad_star_mastery = level_gated_sum({132: 50})
-sudden_raid_mastery = level_gated_sum({124: 50})
-triple_throw_mastery = level_gated_sum({71: 100})
-toxic_venom_mastery = level_gated_sum({128: 100})
+quad_star_mastery = level_gated_sum({134: 50})
+sudden_raid_mastery = level_gated_sum({126: 50})
+triple_throw_mastery = level_gated_sum({73: 100})
+toxic_venom_mastery = level_gated_sum({130: 100})
 mark_of_assassin_cooldown = 2.0 if level >= 138 else 2.5
 mark_of_assassin_targets = 10 if level >= 107 else 7
-mark_of_assassin_mastery = level_gated_sum({42: 80})
-dark_flare_cooldown = 45 * 0.7 if level >= 92 else 45
+mark_of_assassin_mastery = level_gated_sum({44: 80})
+dark_flare_cooldown = 45 * 0.7 if level >= 94 else 45
 dark_flare_icd = 2 * 0.75 if level >= 104 else 2
-dark_flare_hits = 3 if level >= 76 else 2
-quad_star_cooldown = 10 * 0.7 if level >= 106 else 10
-adrenalin_buff_duration = 15 if level >= 88 else 10
+dark_flare_hits = 3 if level >= 78 else 2
+quad_star_cooldown = 10 * 0.7 if level >= 108 else 10
+adrenalin_buff_duration = 15 if level >= 90 else 10
 dark_sight_duration = 12 if level >= 24 else 8
 
 night_lords_mark_pct = coeff_pct(3000, 21, True, 4) if level >= 107 else 0.0
@@ -288,7 +295,7 @@ DAMAGE_SKILLS = {
 
 TOXIC_VENOM = dict(base=6000, fidx=21, job_step=4)
 SHADOW_SHIFTER = dict(base=25000, fidx=21, job_step=4)
-SHADOW_PARTNER = dict(base=840, fidx=21, job_step=3, maple_base=500)
+SHADOW_PARTNER = dict(base=600, fidx=21, job_step=3, maple_base=500)
 MAPLE_TARGETS = {
     "DARK_FLARE": 150, "VENOM": 500, "SHADOW_PARTNER": 500, "GUST_CHARM": 1300,
 }
@@ -338,13 +345,14 @@ def boss_normal_multiplier(targets, mastery_boss, mastery_normal):
 
 
 def buff_uptime(cooldown, duration, bdi_extra=0.0):
+    cooldown = eff_cooldown(cooldown, True)   # CDR applies to every cooldown
     bdi = buff_duration_increase_pct + bdi_extra
     scaled_duration = duration * (1 + bdi / 100)
     if fixed_duration_active:
         return exact_buff_uptime(cooldown, scaled_duration) / fight_duration
     if monster_type == "pvp":
         return min(scaled_duration, PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
-    return scaled_duration / cooldown
+    return min(1.0, scaled_duration / cooldown)
 
 
 # ---------------------------------------------------------------------------
@@ -398,7 +406,7 @@ adrenalin_accumulate_time = activations_needed / aps_pre_adrenalin
 adrenalin_uptime = adrenalin_duration_scaled / (adrenalin_duration_scaled + adrenalin_accumulate_time) if unlocked("ADRENALIN_FD") else 0.0
 
 adrenalin_as_pct = coeff_pct(ADRENALIN["ADRENALIN_AS"]["base"], ADRENALIN["ADRENALIN_AS"]["fidx"], True, 3) if unlocked("ADRENALIN_AS") else 0.0
-adrenalin_fd_pct = coeff_pct(ADRENALIN["ADRENALIN_FD"]["base"], ADRENALIN["ADRENALIN_FD"]["fidx"], True, 3) if unlocked("ADRENALIN_FD") else 0.0
+adrenalin_fd_pct = (coeff_pct(ADRENALIN["ADRENALIN_FD"]["base"], ADRENALIN["ADRENALIN_FD"]["fidx"], True, 3) + level_gated_sum({90: 6})) if unlocked("ADRENALIN_FD") else 0.0
 adrenalin_as_avg = adrenalin_as_pct * adrenalin_uptime
 adrenalin_fd_avg = adrenalin_fd_pct * adrenalin_uptime
 
@@ -452,7 +460,7 @@ showdown_per_second = max(0, actions_per_second - cast_rate)
 
 avg_buff_mult = (1 + dark_sight_atk_avg / 100) * (1 + frailty_self_avg / 100) * (1 + adrenalin_fd_avg / 100)
 
-shadow_partner_mastery = level_gated_sum({66: 100})
+shadow_partner_mastery = level_gated_sum({68: 100})
 shadow_partner_pct = (coeff_pct(SHADOW_PARTNER["base"], SHADOW_PARTNER["fidx"], True, SHADOW_PARTNER["job_step"]) + shadow_partner_mastery) if unlocked("SHADOW_PARTNER") else 0.0
 maple_lvl = input_level(4, level, skill1, skill2, skill3, skill4, skill_all)
 maple_factor = get_factor(maple_lvl, 23)
@@ -519,7 +527,7 @@ for key, s in DAMAGE_SKILLS.items():
         continue
     pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"])
     hd = hit_damage(pct, False, maple_mult(key), s["mastery"], s["mastery_boss"], s["mastery_normal"], s["mastery_final"])
-    eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
+    eff_cd = eff_cooldown(s["cooldown"], s["costs_action"], exempt=key in CDR_EXEMPT)
     if fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:

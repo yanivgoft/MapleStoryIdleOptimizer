@@ -156,6 +156,8 @@ crit_rate = _in("crit_rate")
 crit_damage = _in("crit_damage")
 attack_speed_base = _in("attack_speed")
 def_pen = _in("def_pen")
+_live_defpen = (8 if level >= 118 else (7 if level >= 110 else 5)) if level >= 130 else 0
+def_pen_eff = 100 - (100 - def_pen) * (1 - _live_defpen / 100)
 basic_attack_damage = _in("basic_attack_damage")
 skill_damage = _in("skill_damage")
 skill_cooldown_decrease = _in("skill_cooldown_decrease")
@@ -183,10 +185,14 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15
 
 
-def eff_cooldown(cooldown, costs_action):
+def eff_cooldown(cooldown, costs_action=None, exempt=False):
+    """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
+    buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
+    compatibility and no longer gates CDR). `exempt=True` marks the trigger-rate / internal-interval
+    surrogate rows (mirror of the build script's CDR_EXEMPT_ROW_KEYS)."""
     if monster_type == "pvp":
         return PVP_FIGHT_DURATION
-    return max(0.1, cooldown - (skill_cooldown_decrease if costs_action else 0))
+    return max(0.1, cooldown - (0 if exempt else skill_cooldown_decrease))
 
 
 def eff_duration(duration):
@@ -215,7 +221,7 @@ def exact_buff_uptime(cooldown, buff_duration):
     casts = exact_casts(cooldown)
     remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
     last_uptime = min(buff_duration, remaining_after_last)
-    return (casts - 1) * buff_duration + last_uptime
+    return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
 def coeff_pct(base, fidx, scales, job_step):
@@ -232,7 +238,7 @@ def buff_avg(pct, duration, cooldown, costs_action):
     elif monster_type == "pvp":
         uptime = min(eff_duration(duration), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        uptime = eff_duration(duration) / eff_cd
+        uptime = min(1.0, eff_duration(duration) / eff_cd)
     return pct * uptime
 
 
@@ -270,23 +276,23 @@ raging_blow_final_attack_addition = (
     final_attack_pct / 100 * (1 + advanced_final_attack_pct / 100) * 25
     if unlocked("FINAL_ATTACK_HELPER") else 0.0
 )
-raging_blow_mastery_damage = level_gated_sum({102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1})
+raging_blow_mastery_damage = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 raging_blow_mastery_boss_damage = level_gated_sum({111: 10, 124: 10})
 raging_blow_pct = skill_coefficient_base + raging_blow_final_attack_addition + raging_blow_mastery_damage
 raging_blow_targets = 6 + basic_attack_target_increase
 RAGING_BLOW_HITS = 6 if level >= 136 else 5
 
 # ---- Attack% bucket: Combo Attack (steady-state max stacks) + Spirit Blade (duty-cycle) ----
-combo_stacks = 7 if level >= 110 else 5
-combo_attack_pct = coeff_pct(40, 22, True, 2) if unlocked("COMBO_ATTACK") else 0.0
+combo_stacks = 8 if level >= 118 else (7 if level >= 110 else 5)
+combo_attack_pct = (coeff_pct(40, 22, True, 2) + level_gated_sum({49: 1.5})) if unlocked("COMBO_ATTACK") else 0.0
 combo_attack_avg = combo_attack_pct * combo_stacks if unlocked("COMBO_ATTACK") else 0.0
 spirit_blade_pct = coeff_pct(100, 21, True, 2) if unlocked("SPIRIT_BLADE") else 0.0
-spirit_blade_avg = buff_avg(spirit_blade_pct, 20, 45, True) if unlocked("SPIRIT_BLADE") else 0.0
+spirit_blade_avg = buff_avg(spirit_blade_pct, 20, (45 * 0.7) if level >= 44 else 45, True) if unlocked("SPIRIT_BLADE") else 0.0
 
 attack_bucket_mult = 1 + (combo_attack_avg + spirit_blade_avg) / 100
 
 # ---- Combo Synergy (steady-state max stacks, Final Damage per stack) ----
-combo_synergy_pct = coeff_pct(50, 22, True, 3) if unlocked("COMBO_SYNERGY") else 0.0
+combo_synergy_pct = (coeff_pct(50, 22, True, 3) + level_gated_sum({82: 1})) if unlocked("COMBO_SYNERGY") else 0.0
 combo_synergy_avg = combo_synergy_pct * combo_stacks if unlocked("COMBO_SYNERGY") else 0.0
 
 # ---- Enrage (fires on its own fixed interval, treated as this row's own Cooldown(s)) ----
@@ -297,19 +303,25 @@ enrage_critdmg_avg = buff_avg(enrage_critdmg_pct, 7, 12, False) if unlocked("ENR
 
 crit_rate_bonus = 0.0  # no live Crit-Rate-buff source exists in this kit
 crit_damage_bonus = enrage_critdmg_avg
-final_damage_extra = enrage_fd_avg + combo_synergy_avg
+final_damage_extra = enrage_fd_avg + combo_synergy_avg + (5 if level >= 98 else 0)
 
 # ---- Scaring Sword (proc-chance x duty-cycle, drives the Global Monster Damage-Taken Bonus%) ----
 scaring_sword_pct = (
     coeff_pct(200, 21, True, 3) + level_gated_sum({78: 8})
     if unlocked("SCARING_SWORD") else 0.0
 )
-scaring_sword_proc_chance = 35
+scaring_sword_proc_chance = 25
 scaring_sword_avg = (
     scaring_sword_pct * (scaring_sword_proc_chance / 100) * buff_avg(1.0, 10, 30, True)
     if unlocked("SCARING_SWORD") else 0.0
 )
-monster_dmg_bonus = scaring_sword_avg
+magic_crash_weaken_avg = (10 * min(1, 15 / eff_cooldown(28, True))) if (unlocked("MAGIC_CRASH") and level >= 126) else 0.0
+puncture_weaken_pct = coeff_pct(100, 21, True, 4) * (1.5 if level >= 134 else 1.0)
+puncture_weaken_avg = (
+    puncture_weaken_pct * min(1.0, 10 * (1 + buff_duration_increase_pct / 100) / eff_cooldown(17, True))
+    if unlocked("PUNCTURE") else 0.0
+)
+monster_dmg_bonus = scaring_sword_avg + magic_crash_weaken_avg + puncture_weaken_avg
 
 # ---- Nimble Feet (Attack Speed buff, duty-cycle averaged) ----
 nimble_feet_pct = coeff_pct(150, 0, False, 1)
@@ -350,10 +362,10 @@ COST_ACTION_ROWS = [
     ("PUNCTURE", 17, True, 1),
     ("ENHANCED_RAGING_BLOW", 17, True, 1),
     ("MAGIC_CRASH", 28, True, 1),
-    ("BEAM_BLADE", 16, True, 1),
-    ("RUSH", 22, True, 1),
+    ("BEAM_BLADE", (16 * 0.7) if level >= 104 else 16, True, 1),
+    ("RUSH", (22 * 0.7) if level >= 90 else 22, True, 1),
     ("FLASH_SLASH", 16, True, 1),
-    ("SPIRIT_BLADE", 45, True, 1),
+    ("SPIRIT_BLADE", (45 * 0.7) if level >= 44 else 45, True, 1),
     ("SCARING_SWORD", 30, True, 1),
     ("NIMBLE_FEET", 60, True, 1),
 ]
@@ -369,7 +381,7 @@ raging_blow_per_second = max(0, actions_per_second - cast_rate)
 
 def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_ratio=0.0, extra_fd_pct=0.0):
     base_damage = attack * (coeff_pct_val / 100)
-    dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
+    dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen_eff / 100))
     maple_mult = (1 + maple_ratio * maple_hero_pct / 100) if maple_ratio else 1.0
     final_mult = (1 + (final_damage + final_damage_extra) / 100) * maple_mult * (1 + extra_fd_pct / 100)
     source_pct = basic_attack_damage if is_basic else skill_damage
@@ -395,28 +407,29 @@ raging_blow_dps = RAGING_BLOW_HITS * raging_blow_hit * raging_blow_per_second * 
 
 # ---- Damage skills ----
 puncture_targets = 5 + (5 if level >= 100 else 0)
-puncture_mastery_boss = coeff_pct(100, 21, True, 4) + (20 if level >= 138 else 0)
+# Puncture's wound is a GLOBAL damage-taken debuff now (see monster_dmg_bonus below), not a per-row bonus.
+puncture_mastery_boss = 0.0
 enhanced_targets = 9 + (3 if level >= 100 else 0)
 magic_crash_targets = 5 + (4 if level >= 100 else 0)
 
 DAMAGE_SKILLS = {
     "PUNCTURE": dict(job_step=4, cooldown=17, hits=3, base=9000, fidx=12, scales=True,
-                      mastery=level_gated_sum({122: 50}), mastery_boss=puncture_mastery_boss,
-                      mastery_normal=0, costs_action=True, targets=puncture_targets),
+                      mastery=level_gated_sum({108: 50}), mastery_boss=puncture_mastery_boss,
+                      mastery_normal=puncture_mastery_boss, costs_action=True, targets=puncture_targets),
     "PUNCTURE_WOUND": dict(job_step=4, cooldown=17, hits=1, icd=1, window=10, base=1500, fidx=12,
                             scales=True, mastery=0, mastery_boss=0, mastery_normal=0,
                             costs_action=False, targets=puncture_targets),
-    "ENHANCED_RAGING_BLOW": dict(job_step=4, cooldown=17, hits=6, base=6105, fidx=12, scales=True,
-                                  mastery=level_gated_sum({108: 50}), mastery_boss=100, mastery_normal=0,
+    "ENHANCED_RAGING_BLOW": dict(job_step=4, cooldown=17, hits=6, base=6100, fidx=12, scales=True,
+                                  mastery=level_gated_sum({122: 50}), mastery_boss=100, mastery_normal=0,
                                   costs_action=True, targets=enhanced_targets),
     "MAGIC_CRASH": dict(job_step=4, cooldown=28, hits=1, base=48000, fidx=12, scales=True,
                          mastery=0, mastery_boss=0, mastery_normal=0, costs_action=True,
                          targets=magic_crash_targets),
-    "BEAM_BLADE": dict(job_step=3, cooldown=16, hits=4, base=2500, fidx=12, scales=True,
-                        mastery=0, mastery_boss=0, mastery_normal=0, costs_action=True,
+    "BEAM_BLADE": dict(job_step=3, cooldown=(16 * 0.7) if level >= 104 else 16, hits=4 + (1 if level >= 94 else 0), base=2500, fidx=12, scales=True,
+                        mastery=level_gated_sum({73: 50}), mastery_boss=0, mastery_normal=0, costs_action=True,
                         targets=8, maple_ratio=MAPLE_HERO_RATIOS.get("BEAM_BLADE", 0)),
-    "RUSH": dict(job_step=3, cooldown=22, hits=1, base=6000, fidx=12, scales=True,
-                 mastery=0, mastery_boss=0, mastery_normal=0, costs_action=True,
+    "RUSH": dict(job_step=3, cooldown=(22 * 0.7) if level >= 90 else 22, hits=1, base=6000, fidx=12, scales=True,
+                 mastery=level_gated_sum({68: 80}), mastery_boss=0, mastery_normal=0, costs_action=True,
                  targets=12, maple_ratio=MAPLE_HERO_RATIOS.get("RUSH", 0)),
     "FLASH_SLASH": dict(job_step=2, cooldown=16, hits=1, base=3500, fidx=12, scales=True,
                          mastery=level_gated_sum({39: 50}), mastery_boss=0, mastery_normal=0,
@@ -430,7 +443,7 @@ for key, s in DAMAGE_SKILLS.items():
         skill_dps[key] = 0.0
         continue
     pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) + s.get("mastery", 0)
-    combo_excess_fd = (50 * max(0, (7 if level >= 110 else 5) - 5)) if (key == "ENHANCED_RAGING_BLOW" and level >= 134) else 0.0
+    combo_excess_fd = (50 * max(0, combo_stacks - 5)) if (key == "ENHANCED_RAGING_BLOW" and level >= 138) else 0.0
     hd = hit_damage(
         pct, False, s.get("mastery_boss", 0), s.get("mastery_normal", 0),
         maple_ratio=s.get("maple_ratio", 0.0), extra_fd_pct=combo_excess_fd,

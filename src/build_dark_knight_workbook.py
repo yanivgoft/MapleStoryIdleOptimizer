@@ -1249,7 +1249,7 @@ def build_inputs_sheet(wb, existing=None):
 
     ws.cell(row=32, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
-        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
+        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
@@ -1398,7 +1398,7 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
     scaled_duration = f'({duration_ref}*(1+{bdi_ref}/100))'
     return (
         f'IF({monster_type_ref}="pvp",MIN({scaled_duration},{PVP_FIGHT_DURATION})/{PVP_FIGHT_DURATION},'
-        f'{scaled_duration}/{cooldown_ref})'
+        f'MIN(1,{scaled_duration}/{cooldown_ref}))'
     )
 
 
@@ -1473,7 +1473,9 @@ def exact_buff_uptime_expr(casts_ref, buff_duration_ref, cooldown_ref, fight_dur
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{fight_duration_ref}-{last_cast_start})'
     last_uptime = f'MIN({buff_duration_ref},{remaining_after_last})'
-    return f'(({casts_ref}-1)*{buff_duration_ref}+{last_uptime})'
+    # A recast that lands before the previous buff ends only extends coverage by one cooldown, so each full
+    # cycle contributes MIN(duration, cooldown) of uptime — never more (otherwise uptime could exceed 100%).
+    return f'(({casts_ref}-1)*MIN({buff_duration_ref},{cooldown_ref})+{last_uptime})'
 
 
 def uptime_fraction_or_exact_expr(fixed_duration_active_ref, casts_ref, monster_type_ref,
@@ -1617,7 +1619,7 @@ SKILL_ROWS = [
      f"=Calc!F{{FINAL_ATTACK_HELPER}}*IF(Calc!C{{FINAL_ATTACK_HELPER}}=TRUE,1,0)/100"
      f"*(1+Calc!F{{ADVANCED_FINAL_ATTACK_HELPER}}*IF(Calc!C{{ADVANCED_FINAL_ATTACK_HELPER}}=TRUE,1,0)/100)"
      f"*25"
-     f"+{level_gated_sum_raw(IB('level'), {102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1}).replace('{', '{{').replace('}', '}}')}",
+     f"+{level_gated_sum_raw(IB('level'), {102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15}).replace('{', '{{').replace('}', '}}')}",
      level_gated_sum(IB("level"), {111: 10, 124: 10}), 0,
      f'=6+{IB("basic_attack_target_increase")}', "", 0, "", "",
      "4th-job basic-attack effect (supersedes Slash Blast/Spear Sweep/La Mancha Spear, confirmed "
@@ -1632,7 +1634,9 @@ SKILL_ROWS = [
      "chain (111/124, +10% each, +20% total)."),
     ("FINAL_ATTACK_HELPER", "Final Attack (helper)", 2, "", False, 1, 1, 0, 0, 100, 1,
      350, 21, True,
-     0, 0, 0, 0, "", 0, "", "",
+     level_gated_sum(IB("level"), {54: 50}), 0, 0, 0, "", 0, "", "",
+     "AUDIT 2026-10-21: Dark Knight DOES have 'Final Attack - Damage' +50% at Lv54 (wiki Mastery rows + site) - the statement below that the tier is absent was wrong. "
+
      "Helper row only — feeds Dark Impale's own coefficient. 25% chance, 35%->49% additional "
      "damage (levels 1-100), factorIndex 21/baseDamage 350 tenths% — resolves to the IDENTICAL "
      "tuple Hero's/Bowmaster's own Final Attack helper uses, confirming this is genuinely the "
@@ -1648,10 +1652,10 @@ SKILL_ROWS = [
      "Hero's own)."),
     ("MAGIC_CRASH", "Magic Crash", 4, 28, True, 1, 1, 0, 0, 100, 1,
      48000, 12, True,
-     level_gated_sum(IB("level"), {126: 15}),
-     level_gated_sum(IB("level"), {126: 15}),
-     level_gated_sum(IB("level"), {126: 15}),
+     0, 0, 0,
      f'=5+IF({IB("level")}>=100,4,0)', "", 0, "", "",
+     "AUDIT 2026-10-21: Lv126 'Magic Crash - Weaken' is +10% damage taken (site + game table; the wiki said 15%) for 15s on struck targets - now a global duty-cycled Monster-Damage-Taken term (all hits benefit), no longer folded into this row's own buckets. "
+
      "Summons a rock at the target's location, removing 1 buff and dealing 4800%->9600% damage "
      "to 5 nearby target(s), 1 time. factorIndex 12, baseDamage 48000 tenths% — resolves to the "
      "IDENTICAL tuple Hero's own Magic Crash uses (shared verbatim, single wiki page, "
@@ -1663,7 +1667,9 @@ SKILL_ROWS = [
     ("GUNGNIRS_DESCENT", "Gungnir's Descent", 4, 13, True, 1,
      f'=IF({IB("level")}>=134,6,2)', 0, 0, 100, 1,
      f'=IF({IB("level")}>=134,9000,18000)', 12, True,
-     0, 0, 0, 1, "", 0, "", "",
+     level_gated_sum(IB("level"), {108: 50}), 0, 0, 1, "", 0, "", "",
+     "AUDIT 2026-10-21: Mastery Lv108 'Gungnir's Descent - Damage' +50% added (was missing). "
+
      "Throws a mythical spear at the target to deal 1800%->3600% damage, 2 times. factorIndex 12, "
      "baseDamage 18000 tenths%, 13s cooldown. Single-target (NormalMonsterTargets=1). Mastery "
      "Lv.134 'Gungnir's Descent - Strike' ('base damage -50%, +4 strike count') is modeled "
@@ -1698,7 +1704,7 @@ SKILL_ROWS = [
      "Final Damage term (target-count bump baked directly into EVIL_EYE_SHOCK's own "
      "NormalMonsterTargets formula instead). 'Target count changes to 9, Final Damage +100%->"
      "127%' (levels 1-100, own curve). factorIndex 22, baseDamage 1000 tenths%."),
-    ("EVIL_EYE_OF_DOMINANT", "Evil Eye of Dominant", 3, 30, False, 1, 1, 1, 20, 100, 1,
+    ("EVIL_EYE_OF_DOMINANT", "Evil Eye of Dominant", 3, f'=IF({IB("level")}>=104,30*0.7,30)', False, 1, 1, 1, 20, 100, 1,
      600, 21, True,
      level_gated_sum(IB("level"), {78: 50}), 0, 0,
      f'=6+IF({IB("level")}>=94,3,0)', "", 0, 400, 23,
@@ -1712,7 +1718,7 @@ SKILL_ROWS = [
     ("REVENGE_OF_THE_EVIL_EYE", "Revenge of the Evil Eye", 4, 5, False, 1, 2, 0, 0, 100, 1,
      8500, 12, True,
      f'={level_gated_sum_raw(IB("level"), {122: 50})}'
-     f'+IF({IB("level")}>=138,220*(Calc!E{ROW["REVENGE_OF_THE_EVIL_EYE"]}/1000),0)',
+     f'+IF({IB("level")}>=138,2200*(Calc!E{ROW["REVENGE_OF_THE_EVIL_EYE"]}/1000),0)',
      0, 0, 1, "", 0, "", "",
      "[Must Summon Evil Eye] Self-triggered proc-shaped row (Cooldown=5s, CostsActionSlot=False "
      "— same treatment as Marksman's own Bolt Surplus): 'engraves a vengeful brand dealing "
@@ -1736,16 +1742,18 @@ SKILL_ROWS = [
      "'80%-growth-reduction after Lv.120' kink already confirmed on Hero/Bowmaster's own Maple "
      "Hero curves). No independent DPS row of its own (Calc columns J-N blank/0, only D/E/F "
      "computed, read directly by each target row's own K-column formula)."),
-    ("RUSH", "Rush", 3, 22, True, 1, 1, 0, 0, 100, 1,
+    ("RUSH", "Rush", 3, f'=IF({IB("level")}>=90,22*0.7,22)', True, 1, 1, 0, 0, 100, 1,
      6000, 12, True,
-     0, 0, 0, 12, "", 0, 300, 23,
+     level_gated_sum(IB("level"), {68: 80}), 0, 0, 12, "", 0, 300, 23,
+     "AUDIT 2026-10-21: previously-missing masteries added: Damage +80% @68, Reuse -30% cooldown @90. "
+
      "Charges to the front to deal 600%->1200% damage to 12 target(s) (stun 2.5s not modeled). "
      "factorIndex 12, baseDamage 6000 tenths%, 22s cooldown — resolves to the IDENTICAL tuple "
      "Hero's own Rush uses (shared verbatim, confirmed identical wiki page). Not patched "
      "(Mastery Lv.68/90 own damage/cooldown tiers not separately modeled here, same treatment as "
      "Hero's own Rush row — kept consistent for this genuinely shared skill). Maple Hero target "
      "(0.75x share) — see MAPLE_HERO_RATIOS."),
-    ("HEX_OF_THE_EVIL_EYE", "Hex of the Evil Eye", 3, 30, False, 1, 1, 0, 0, 100, 1,
+    ("HEX_OF_THE_EVIL_EYE", "Hex of the Evil Eye", 3, f'=IF({IB("level")}>=104,30*0.7,30)', False, 1, 1, 0, 0, 100, 1,
      150, 22, True,
      level_gated_sum(IB("level"), {98: 50}), 0, 0, 0, "ATTACK", 20, "", "",
      "[Must Summon Evil Eye] Self-inclusive ally buff (matches Hero's own Spirit Blade / "
@@ -1788,7 +1796,7 @@ SKILL_ROWS = [
      "'Hyper Body - Persistence' +50% duration (real, applied as a SkillMasteryBonus%-style "
      "percentage addition since this schema has no separate duration-mastery mechanism — treated "
      "as a documented approximation)."),
-    ("EVIL_EYE", "Evil Eye", 2, 30, True, 1, 1, 0, 0, 100, 1,
+    ("EVIL_EYE", "Evil Eye", 2, f'=IF({IB("level")}>=104,30*0.7,30)', True, 1, 1, 0, 0, 100, 1,
      150, 21, True,
      level_gated_sum(IB("level"), {39: 10}), 0, 0, 0, "MONSTER_DMG", 20, "", "",
      "'Summons Evil Eye. Evil Eye follows you for 20 sec and increases the damage taken by 6 "
@@ -1877,6 +1885,17 @@ SKILL_ROWS = [tuple(_raging_blow_row) if row[0] == "DARK_IMPALE" else row for ro
 # Rows with a real Cooldown(s) value (literal or a live formula reference).
 ROW_HAS_COOLDOWN = {row[0]: row[3] not in ("", None) for row in SKILL_ROWS}
 CDR_COSTS_ACTION_ROW = {key: r for key, r in ROW.items()}
+
+
+# Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills, buffs and passives alike
+# (user decision 2026-10-21; it used to apply only to CostsActionSlot rows). The exempt rows are NOT real
+# cooldowns: their Cooldown(s) cell is a trigger-rate / internal-interval surrogate (e.g. 1 / attack speed),
+# which CDR must not shrink to the 0.1s floor.
+CDR_EXEMPT_ROW_KEYS = []
+
+
+def cdr_applies_expr(key):
+    return "FALSE" if key in CDR_EXEMPT_ROW_KEYS else "TRUE"
 
 
 def build_skills_sheet(wb):
@@ -2455,7 +2474,7 @@ def build_calc_sheet(wb):
         if has_cooldown:
             eff_cd_r = effective_cooldown_expr(
                 IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"),
-                S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]),
+                cdr_applies_expr(key),
             )
             if key in BUFF_ROW_KEYS:
                 available_duration_r = IB("fight_duration")
@@ -2669,7 +2688,7 @@ def build_summary_sheet(wb):
 
     def buff_uptime(row):
         return uptime_fraction_or_exact_expr(
-            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), S("Cooldown(s)", row),
+            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), f'(1/Calc!Q{row})',
             bdi_main, IB("fight_duration"),
         )
 
@@ -2707,7 +2726,13 @@ def build_summary_sheet(wb):
     ws.cell(row=R_CRIT_RATE_BONUS, column=2, value=f'={lord_of_darkness_critrate_avg}')
 
     ws.cell(row=R_MONSTER_DMG_BONUS, column=1, value="Global Monster Damage-Taken Bonus % (Evil Eye, all types + Dark Resonance, boss-only + Artifact Enemy Damage Taken Bonus)")
-    ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=f'={evil_eye_avg}+{dark_resonance_boss_avg}+{art_ref("AGG_ENEMY_DMG_TAKEN")}')
+    r_mcw = ROW["MAGIC_CRASH"]
+    magic_crash_weaken_avg = f'((Calc!C{r_mcw}=TRUE)*IF({IB("level")}>=126,10*MIN(1,15*Calc!Q{r_mcw}),0))'
+    hex_boss_avg = (
+        f'((Calc!C{r_hex}=TRUE)*IF({IB("level")}>=82,{monster_blend_expr(IB("monster_type"), IB("normal_weight_frac"), "20", "0", "20")},0)'
+        f'*{buff_uptime(r_hex)})'
+    )
+    ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=f'={evil_eye_avg}+{magic_crash_weaken_avg}+{dark_resonance_boss_avg}+{hex_boss_avg}+{art_ref("AGG_ENEMY_DMG_TAKEN")}')
 
     ws.cell(row=R_AS_BONUS, column=1, value="Attack Speed Buff Bonus % (Nimble Feet, duty-cycle averaged)")
     ws.cell(row=R_AS_BONUS, column=2, value=f'={nimble_feet_avg}')
@@ -2881,8 +2906,6 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Min Damage Multiplier %": "min_damage",
     "Max Damage Multiplier %": "max_damage",
     "Defense Penetration": "def_pen",
-    "Dex %": "dex",
-    "Dex": "dex",
     "Defense %": "defense_pct",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
@@ -2890,7 +2913,15 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Buff Duration Increase %": "buff_duration_increase_pct",
     "All Skill Level": "skill_lvl_all",
     "Basic Attack Target Increase": "basic_attack_target_increase",
+    "Str %": "str_pct",
+    "Str": "flat_str",
+    "Dex": "dex",
 }
+
+# Sub-stat PERCENT potential lines: the Sensitivity sweep for the sub-stat is a flat +1 point, so a
+# "+N% sub-stat" roll is worth N% of the current total sub-stat in points (approximation: Inputs holds the
+# final sub-stat value, no separate flat/% split). Main-stat lines map 1:1 above.
+POTENTIAL_SUB_STAT_PCT_LINES = {"Dex %": ("dex", "dex")}
 
 
 def dps_per_unit_expr(stat_name):
@@ -2916,6 +2947,9 @@ def dps_per_unit_expr(stat_name):
         )
     if stat_name == "Companion Summoning Time Increase %":
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]}'
+    if stat_name in POTENTIAL_SUB_STAT_PCT_LINES:
+        sweep_key, inputs_key = POTENTIAL_SUB_STAT_PCT_LINES[stat_name]
+        return f'=Sensitivity!H{SENSITIVITY_ROW_FOR[sweep_key]}*{IB(inputs_key)}/100'
     key = POTENTIAL_STAT_TO_SWEEP_KEY.get(stat_name)
     if key is None:
         return "0"
@@ -3002,7 +3036,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
             fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
-            S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
+            f'(1/Q{local_row})', bdi_block, ib("fight_duration"),
         )
 
     delta_by_slot = {}
@@ -3248,6 +3282,11 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     dark_resonance_boss_avg = (
         f'((C{row_of["DARK_RESONANCE"]}=TRUE)*{monster_blend_expr(ib("monster_type"), ib("normal_weight_frac"), "20", "0", "20")}'
         f'*{buff_uptime_block(row_of["DARK_RESONANCE"], r_dr)})'
+        f'+((C{row_of["HEX_OF_THE_EVIL_EYE"]}=TRUE)*IF({ib("level")}>=82,{monster_blend_expr(ib("monster_type"), ib("normal_weight_frac"), "20", "0", "20")},0)'
+        f'*{buff_uptime_block(row_of["HEX_OF_THE_EVIL_EYE"], r_hex)})'
+    )
+    evil_eye_avg = evil_eye_avg + (
+        f'+((C{row_of["MAGIC_CRASH"]}=TRUE)*IF({ib("level")}>=126,10*MIN(1,15*Q{row_of["MAGIC_CRASH"]}),0))'
     )
     lord_of_darkness_critrate_avg = (
         f'((C{row_of["LORD_OF_DARKNESS_CRITRATE"]}=TRUE)*F{row_of["LORD_OF_DARKNESS_CRITRATE"]}*'
@@ -3288,7 +3327,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         if has_cooldown:
             eff_cd_row = effective_cooldown_expr(
                 ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"),
-                S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]),
+                cdr_applies_expr(key),
             )
             if key in BUFF_ROW_KEYS:
                 available_duration_row = ib("fight_duration")

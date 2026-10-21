@@ -1073,7 +1073,7 @@ def build_inputs_sheet(wb, existing=None):
 
     ws.cell(row=31, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
-        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills the character actively casts)", 0),
+        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target Showdown base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
@@ -1741,7 +1741,7 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
     scaled_duration = f'({duration_ref}*(1+{bdi_ref}/100))'
     return (
         f'IF({monster_type_ref}="pvp",MIN({scaled_duration},{PVP_FIGHT_DURATION})/{PVP_FIGHT_DURATION},'
-        f'{scaled_duration}/{cooldown_ref})'
+        f'MIN(1,{scaled_duration}/{cooldown_ref}))'
     )
 
 
@@ -1808,7 +1808,9 @@ def exact_buff_uptime_expr(casts_ref, buff_duration_ref, cooldown_ref, fight_dur
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{fight_duration_ref}-{last_cast_start})'
     last_uptime = f'MIN({buff_duration_ref},{remaining_after_last})'
-    return f'(({casts_ref}-1)*{buff_duration_ref}+{last_uptime})'
+    # A recast that lands before the previous buff ends only extends coverage by one cooldown, so each full
+    # cycle contributes MIN(duration, cooldown) of uptime — never more (otherwise uptime could exceed 100%).
+    return f'(({casts_ref}-1)*MIN({buff_duration_ref},{cooldown_ref})+{last_uptime})'
 
 
 def uptime_fraction_or_exact_expr(fixed_duration_active_ref, casts_ref, monster_type_ref,
@@ -1872,12 +1874,12 @@ LAST_ROW = 1 + len(ROW_ORDER)
 UNLOCK_LEVEL = {
     "SHOWDOWN": 100,
     "GUST_CHARM": 35,
-    "MARK_OF_ASSASSIN": 40,
+    "MARK_OF_ASSASSIN": 43,
     "TRIPLE_THROW": 63,
     "ADRENALIN_FD": 66,
     "ADRENALIN_AS": 66,
     "DARK_FLARE": 69,
-    "VENOM": 72,
+    "VENOM": 74,
     "TOXIC_VENOM": 117,
     "SHADOW_PARTNER": 60,
     "QUAD_STAR": 103,
@@ -1942,10 +1944,12 @@ _MARK_OF_ASSASSIN_WEAKEN = f"=IF({IB('level')}>=122,8,0)"
 #  masteryTargetIncrease, normalMonsterTargets, buffTarget, buffDuration, triggersToxicVenom,
 #  mapleBase, mapleFactor, stacks, note)
 SKILL_ROWS = [
-    ("SHOWDOWN", "Showdown", 4, "", False, 1, f"=IF({IB('level')}>=134,6,5)", 0, 0, 100, 1,
+    ("SHOWDOWN", "Showdown", 4, "", False, 1, f"=IF({IB('level')}>=136,6,5)", 0, 0, 100, 1,
      "", "", True,
-     level_gated_sum(IB("level"), {98: 10, 104: 1, 113: 1, 118: 1, 126: 1, 130: 1}),
-     level_gated_sum(IB("level"), {108: 10, 122: 10}), 0, 0, 0, 0, 0, 0,
+     # AUDIT 2026-10-21: current table (102/106/116/120/128/132, boss 111/124, strike 136); option A
+     # (user-confirmed) = every tier is its own add-on, 10+11+12+13+14+15 = 75%.
+     level_gated_sum(IB("level"), {102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15}),
+     level_gated_sum(IB("level"), {111: 10, 124: 10}), 0, 0, 0, 0, 0, 0,
      f'=6+{IB("basic_attack_target_increase")}', "", 0, True, "", "", "",
      "4th-job basic-attack effect (superseded from Lucky Seven/Shuriken Burst/Shuriken "
      "Challenge, per the project's job-tier-is-gone scope). 5 hits per activation (Mastery "
@@ -1971,7 +1975,7 @@ SKILL_ROWS = [
     ("MARK_OF_ASSASSIN", "Assassin's Mark", 2,
      f"=IF({IB('level')}>=138,2,2.5)", False, 1, 1, 0, 0, 100, 1,
      1900, 21, True,
-     level_gated_sum(IB("level"), {42: 80}), _MARK_OF_ASSASSIN_WEAKEN, _MARK_OF_ASSASSIN_WEAKEN, _MARK_OF_ASSASSIN_FD, 0, 0, 0, _MARK_OF_ASSASSIN_TARGET_INCREASE,
+     level_gated_sum(IB("level"), {44: 80}), _MARK_OF_ASSASSIN_WEAKEN, _MARK_OF_ASSASSIN_WEAKEN, _MARK_OF_ASSASSIN_FD, 0, 0, 0, _MARK_OF_ASSASSIN_TARGET_INCREASE,
      f"=7+Skills!{SC['MasteryTargetIncrease']}{ROW['MARK_OF_ASSASSIN']}", "", 0, True, "", "", "",
      "Simplified to a periodic AoE tick per the approved plan — mark-application and "
      "mark-consumption collapsed into one instantaneous hit every effective cooldown, no "
@@ -1992,15 +1996,17 @@ SKILL_ROWS = [
      "duty-cycle-averaged window benefiting other skills' hits in between)."),
     ("TRIPLE_THROW", "Triple Throw", 3, 13, True, 1, 3, 0, 0, 100, 1,
      3600, 12, True,
-     level_gated_sum(IB("level"), {71: 100}), 0, 0, 0, 0, 0, 0, 0,
+     level_gated_sum(IB("level"), {73: 100}), 0, 0, 0, 0, 0, 0, 0,
      1, "", 0, True, "", "", "",
      "Single-target. factorIndex 12, baseDamage 3600 tenths% (360%->720%, levels 1-200). "
      "SkillMasteryBonus% is Mastery Lv.71 ('Triple Throw - Damage', +100%, unaffected by "
      "the patch)."),
     ("ADRENALIN_FD", "Alchemic Adrenaline (Final Damage)", 3, "", False, 1, 1, 0, 0, 100, 1,
      150, 22, True,
-     0, 0, 0, 0, 0, 0, 0, 0,
-     1, "FINAL_DAMAGE", f"=IF({IB('level')}>=88,15,10)", False, "", "", "",
+     level_gated_sum(IB("level"), {90: 6}), 0, 0, 0, 0, 0, 0, 0,
+     1, "FINAL_DAMAGE", f"=IF({IB('level')}>=90,15,10)", False, "", "", "",
+     "AUDIT 2026-10-21: Mastery 'Persistence' is at Lv90 (not 88) and per the site (base AND patched) also gives Final Damage +6%p on top of +5s duration (wiki lists only the duration). "
+
      "Patched: trigger 7 hits->5 hits, Final Damage base 10%->15% (curve shape/ratio preserved "
      "from the unpatched 10%->16% wiki curve; factorIndex 22, baseDamage 150 tenths%). Uptime "
      "is bespoke — see build_summary_sheet's AdrenalinUptime (action-rate-driven cycle, not the "
@@ -2009,16 +2015,16 @@ SKILL_ROWS = [
     ("ADRENALIN_AS", "Alchemic Adrenaline (Attack Speed)", 3, "", False, 1, 1, 0, 0, 100, 1,
      80, 22, True,
      0, 0, 0, 0, 0, 0, 0, 0,
-     1, "ATTACK_SPEED", f"=IF({IB('level')}>=88,15,10)", False, "", "", "",
+     1, "ATTACK_SPEED", f"=IF({IB('level')}>=90,15,10)", False, "", "", "",
      "Same trigger/uptime as Adrenalin (Final Damage) above (8%->12.8%, levels 1-200), split "
      "into its own row since BuffTargetStat only holds one target per row (mirrors Dark Sight's "
      "own Crit Rate / Attack split below)."),
     ("DARK_FLARE", "Dark Flare", 3,
-     f"=IF({IB('level')}>=92,45*0.7,45)", True, 1, f"=IF({IB('level')}>=76,3,2)",
+     f"=IF({IB('level')}>=94,45*0.7,45)", True, 1, f"=IF({IB('level')}>=78,3,2)",
      f"=IF({IB('level')}>=104,2*0.75,2)", 20, 100, 1,
      3300, 12, True,
      0, 0, 0, 0, 0, 0,
-     f"=IF({IB('level')}>=92,30,0)", 0,
+     f"=IF({IB('level')}>=94,30,0)", 0,
      8, "", 0, True, 150, 23, "",
      "Shared w/ Shadower, Maple Hero (NL) target (15%->117%, levels 1-200, factorIndex 23). "
      "Patched: hit interval 5s->2s, targets 5->8, "
@@ -2044,7 +2050,7 @@ SKILL_ROWS = [
      "global_monster_dmg_bonus_expr in build_calc_sheet, not this row's own Mastery columns."),
     ("TOXIC_VENOM", "Toxic Venom", 4, "", False, 1, 1, 0, 0, 20, 1,
      6000, 21, True,
-     level_gated_sum(IB("level"), {128: 100}), 0, 0, 0, 0, 0, 0, 0,
+     level_gated_sum(IB("level"), {130: 100}), 0, 0, 0, 0, 0, 0, 0,
      1, "", 0, False, "", "", "",
      "Shared w/ Shadower. No ICD — every attack against a (permanently poisoned, by the Venom "
      "assumption) target independently rolls the 20% chance. Trigger rate = the combined "
@@ -2056,8 +2062,8 @@ SKILL_ROWS = [
      "tenths% (600%->1080%, levels 1-200). SkillMasteryBonus% is Mastery Lv.128 ('Toxic Venom "
      "- Damage', +100%, unaffected by the patch)."),
     ("SHADOW_PARTNER", "Shadow Partner", 3, "", False, 1, 1, 0, 0, 25, 1,
-     840, 21, True,
-     level_gated_sum(IB("level"), {66: 100}), 0, 0, 0, 0, 0, 0, 0,
+     600, 21, True,
+     level_gated_sum(IB("level"), {68: 100}), 0, 0, 0, 0, 0, 0, 0,
      1, "", 0, False, 500, 23, "",
      "Shared w/ Shadower, Maple Hero (NL) target. Hybrid row: Calc columns D-I are computed "
      "exactly like a normal damage row (so Maple Hero (NL)'s MapleHeroMultiplier applies "
@@ -2068,17 +2074,17 @@ SKILL_ROWS = [
      "SkillMasteryBonus% is Mastery Lv.66 ('Shadow Partner - Damage', +100%, unaffected by "
      "the patch)."),
     ("QUAD_STAR", "Quad Star", 4,
-     f"=IF({IB('level')}>=106,10*0.7,10)", True, 1, 4, 0, 0, 100, 1,
+     f"=IF({IB('level')}>=108,10*0.7,10)", True, 1, 4, 0, 0, 100, 1,
      11500, 12, True,
-     level_gated_sum(IB("level"), {132: 50}), 0, 0, 0, 0, 0,
-     f"=IF({IB('level')}>=106,30,0)", 0,
+     level_gated_sum(IB("level"), {134: 50}), 0, 0, 0, 0, 0,
+     f"=IF({IB('level')}>=108,30,0)", 0,
      1, "", 0, True, "", "", "",
      "Single-target. factorIndex 12, baseDamage 11500 tenths% (1150%->2300%, levels 1-200). "
      "Mastery Lv.106 (-30% cooldown, baked into the Cooldown(s) formula above, MasteryCooldownPct "
      "reference-only) and Lv.132 (+50% damage, real SkillMasteryBonus%)."),
     ("SUDDEN_RAID_BURST", "Sudden Raid (burst)", 4, 19, True, 1, 3, 0, 0, 100, 1,
      14000, 12, True,
-     level_gated_sum(IB("level"), {124: 50}), 0, 0, 0, 0, 0, 0, 0,
+     level_gated_sum(IB("level"), {126: 50}), 0, 0, 0, 0, 0, 0, 0,
      8, "", 0, True, "", "", "",
      "Shared w/ Shadower. factorIndex 12, baseDamage 14000 tenths% (1400%->2800%, levels "
      "1-200). Mastery Lv.124 +50% damage (real SkillMasteryBonus%; does not apply to the DoT "
@@ -2118,10 +2124,12 @@ SKILL_ROWS = [
      "factorIndex 21, baseDamage 25000 tenths% (2500%->4500%, levels 1-200). The wiki's own "
      "'Cooldown 12 sec' field on this skill is not modeled (the plan's formula treats the 20% "
      "chance as having no ICD at all) — flagged as an assumption to confirm."),
-    ("SHADOW_SHIFTER_SELF_ATK", "Shadow Shifter (self Attack%)", 4, "", False, 1, 1, 0, 0, 100, 1,
+    ("SHADOW_SHIFTER_SELF_ATK", "Shadow Shifter (self Final Damage%)", 4, "", False, 1, 1, 0, 0, 100, 1,
      100, 22, True,
-     0, 0, 0, 0, 0, 0, 0, 0,
-     1, "ATTACK", 0, False, "", "", "",
+     level_gated_sum(IB("level"), {118: 10}), 0, 0, 0, 0, 0, 0, 0,
+     1, "FINAL_DAMAGE", 0, False, "", "", "",
+     "AUDIT 2026-10-21: per the site (user decision) Shadow Shifter's passive is +10% FINAL DAMAGE (the wiki said Attack); Mastery Lv118 adds +10%p. Still a baked-in-Inputs delta row (now feeding the Final Damage Sensitivity slot). "
+
      "Passive-mult delta-tracking row for Shadow Shifter's self Attack% (10%->16%, levels "
      "1-200) — assumed already baked into Inputs!ATTACK_PCT (Magic Critical pattern), so not "
      "added to baseline DPS. factorIndex 22, baseDamage 100 tenths%. Per the plan, this buff's "
@@ -2247,6 +2255,17 @@ ROW_HAS_COOLDOWN = {row[0]: row[3] not in ("", None) for row in SKILL_ROWS}
 CDR_COSTS_ACTION_ROW = {key: r for key, r in ROW.items()}
 
 
+# Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills, buffs and passives alike
+# (user decision 2026-10-21; it used to apply only to CostsActionSlot rows). The exempt rows are NOT real
+# cooldowns: their Cooldown(s) cell is a trigger-rate / internal-interval surrogate (e.g. 1 / attack speed),
+# which CDR must not shrink to the 0.1s floor.
+CDR_EXEMPT_ROW_KEYS = ['MARK_OF_ASSASSIN', 'VENOM']
+
+
+def cdr_applies_expr(key):
+    return "FALSE" if key in CDR_EXEMPT_ROW_KEYS else "TRUE"
+
+
 def build_skills_sheet(wb):
     ws = wb.create_sheet("Skills")
     for i, name in enumerate(SKILL_COLUMNS):
@@ -2353,7 +2372,8 @@ BREAKDOWN_SECTION_ROW = R_NORMAL_ONLY_TOTAL + 2
 def buff_uptime_expr(fda_ref, monster_type_ref, row, bdi_ref, fight_duration_ref, calc_r_col_ref):
     """Steady-state or exact-duration uptime fraction for a real buff row (BUFF_ROW_KEYS)."""
     return uptime_fraction_or_exact_expr(
-        fda_ref, calc_r_col_ref, monster_type_ref, S("BuffDuration(s)", row), S("Cooldown(s)", row),
+        fda_ref, calc_r_col_ref, monster_type_ref, S("BuffDuration(s)", row),
+        f'(1/{re.sub(r"R(?=[0-9]+$)", "Q", calc_r_col_ref)})',
         bdi_ref, fight_duration_ref,
     )
 
@@ -2397,7 +2417,7 @@ def build_calc_sheet(wb):
             # multiplicative wrapper here rather than inside effective_cooldown_expr itself, since
             # it's a simple postfix scale and keeps that well-tested function untouched.
             eff_cd_r = (
-                f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+                f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), cdr_applies_expr(key))}'
                 f'*(1-{artifact_soul_contract_pct_expr(IB("soul_contract_equipped"), IB("content_type"), IB("soul_contract_star"))}/100))'
             )
             if key in BUFF_ROW_KEYS:
@@ -2654,7 +2674,7 @@ def build_summary_sheet(wb):
 
     def buff_uptime(row):
         return uptime_fraction_or_exact_expr(
-            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), S("Cooldown(s)", row),
+            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), f'(1/Calc!Q{row})',
             bdi_main, IB("fight_duration"),
         )
 
@@ -2893,15 +2913,21 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Min Damage Multiplier %": "min_damage",
     "Max Damage Multiplier %": "max_damage",
     "Defense Penetration": "def_pen",
-    "Luk %": "luk_pct",
-    "Luk": "flat_luk",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
     "Skill Cooldown Decrease (seconds)": "skill_cooldown_decrease",
     "Buff Duration Increase %": "buff_duration_increase_pct",
     "All Skill Level": "skill_lvl_all",
     "Basic Attack Target Increase": "basic_attack_target_increase",
+    "Luk %": "luk_pct",
+    "Luk": "flat_luk",
+    "Dex": "dex",
 }
+
+# Sub-stat PERCENT potential lines: the Sensitivity sweep for the sub-stat is a flat +1 point, so a
+# "+N% sub-stat" roll is worth N% of the current total sub-stat in points (approximation: Inputs holds the
+# final sub-stat value, no separate flat/% split). Main-stat lines map 1:1 above.
+POTENTIAL_SUB_STAT_PCT_LINES = {"Dex %": ("dex", "dex")}
 
 
 def dps_per_unit_expr(stat_name):
@@ -2937,6 +2963,9 @@ def dps_per_unit_expr(stat_name):
         # roll instead (confirmed by the user). Unconditional, unlike Crit Rate's cap check,
         # since it's *never* modeled, not just past some threshold.
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]}'
+    if stat_name in POTENTIAL_SUB_STAT_PCT_LINES:
+        sweep_key, inputs_key = POTENTIAL_SUB_STAT_PCT_LINES[stat_name]
+        return f'=Sensitivity!H{SENSITIVITY_ROW_FOR[sweep_key]}*{IB(inputs_key)}/100'
     key = POTENTIAL_STAT_TO_SWEEP_KEY.get(stat_name)
     if key is None:
         return "0"
@@ -2958,7 +2987,7 @@ PASSIVE_DELTA_SLOT = {
     "EXPERT_THROWING_STAR_HANDLING": "attack_mult",
     "CLAW_EXPERT": "skill_damage",
     "DARK_HARMONY": "final_damage",
-    "SHADOW_SHIFTER_SELF_ATK": "attack_mult",
+    "SHADOW_SHIFTER_SELF_ATK": "final_damage",
 }
 
 
@@ -3034,7 +3063,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
             fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
-            S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
+            f'(1/Q{local_row})', bdi_block, ib("fight_duration"),
         )
 
     # Passive-mult delta terms (Magic Critical pattern) — 0 for every block except the one
@@ -3323,7 +3352,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         if has_cooldown:
             eff_cd_row = effective_cooldown_expr(
                 ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"),
-                S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]),
+                cdr_applies_expr(key),
             )
             if key in BUFF_ROW_KEYS:
                 available_duration_row = ib("fight_duration")

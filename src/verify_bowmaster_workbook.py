@@ -190,10 +190,17 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15
 
 
-def eff_cooldown(cooldown, costs_action):
+def eff_cooldown(cooldown, costs_action=None, exempt=False):
+    """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
+    buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
+    compatibility and no longer gates CDR). `exempt=True` marks the trigger-rate / internal-interval
+    surrogate rows (mirror of the build script's CDR_EXEMPT_ROW_KEYS)."""
     if monster_type == "pvp":
         return PVP_FIGHT_DURATION
-    return max(0.1, cooldown - (skill_cooldown_decrease if costs_action else 0))
+    return max(0.1, cooldown - (0 if exempt else skill_cooldown_decrease))
+
+
+CDR_EXEMPT = {"FINAL_ATTACK_BOW", "QUIVER_CARTRIDGE", "ENCHANTED_QUIVER_DRAIN", "FLASH_MIRAGE"}  # mirrors the build script
 
 
 def eff_duration(duration):
@@ -222,7 +229,7 @@ def exact_buff_uptime(cooldown, buff_duration):
     casts = exact_casts(cooldown)
     remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
     last_uptime = min(buff_duration, remaining_after_last)
-    return (casts - 1) * buff_duration + last_uptime
+    return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
 def coeff_pct(base, fidx, scales, job_step):
@@ -239,7 +246,7 @@ def buff_avg(pct, duration, cooldown, costs_action):
     elif monster_type == "pvp":
         uptime = min(eff_duration(duration), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        uptime = eff_duration(duration) / eff_cd
+        uptime = min(1.0, eff_duration(duration) / eff_cd)
     return pct * uptime
 
 
@@ -286,21 +293,23 @@ flash_mirage_ii_pct = coeff_pct(4000, 21, True, 4) if unlocked("FLASH_MIRAGE_II_
 marksmanship_base_pct = coeff_pct(100, 22, True, 3) if unlocked("MARKSMANSHIP_BASE") else 0.0
 marksmanship_cond_pct_raw = coeff_pct(100, 22, True, 3) if unlocked("MARKSMANSHIP_COND") else 0.0
 marksmanship_cond_avg = monster_blend(marksmanship_cond_pct_raw, 0.0) if unlocked("MARKSMANSHIP_COND") else 0.0
-illusion_step_pct = coeff_pct(140, 22, True, 4) if unlocked("ILLUSION_STEP") else 0.0
-illusion_step_avg = buff_avg(illusion_step_pct, 15, 24, False) if unlocked("ILLUSION_STEP") else 0.0
+illusion_step_pct = (
+    coeff_pct(140, 22, True, 4) + (0.375 * coeff_pct(140, 22, True, 4) if level >= 118 else 0.0)
+) if unlocked("ILLUSION_STEP") else 0.0
+illusion_step_avg = buff_avg(illusion_step_pct, 24 if level >= 118 else 15, 24, False) if unlocked("ILLUSION_STEP") else 0.0
 
 attack_bucket_mult = 1 + (marksmanship_base_pct + marksmanship_cond_avg + illusion_step_avg) / 100
 
 # ---- Sharp Eyes (self-inclusive ally buff: flat 20 Crit Rate + scaling Crit Damage) ----
 sharp_eyes_crit_damage_pct = coeff_pct(400, 21, True, 4) if unlocked("SHARP_EYES") else 0.0
 sharp_eyes_uptime = (
-    buff_avg(1.0, 18, 35, True) if unlocked("SHARP_EYES") else 0.0
+    buff_avg(1.0, 27 if level >= 126 else 18, 35, True) if unlocked("SHARP_EYES") else 0.0
 )  # buff_avg(1,...) returns the uptime fraction itself
-crit_rate_bonus = (20 * sharp_eyes_uptime) if unlocked("SHARP_EYES") else 0.0
+crit_rate_bonus = 0.0  # Sharp Eyes has no Crit Rate component (audit 2026-10-21)
 sharp_eyes_crit_damage_avg = sharp_eyes_crit_damage_pct * sharp_eyes_uptime if unlocked("SHARP_EYES") else 0.0
 
 # ---- Concentration (steady-state max stacks, 10 x 3% = 30% Crit Damage) ----
-concentration_crit_damage = 30.0 if unlocked("CONCENTRATION") else 0.0
+concentration_crit_damage = (7 * coeff_pct(30, 22, True, 3)) if unlocked("CONCENTRATION") else 0.0
 crit_damage_bonus = sharp_eyes_crit_damage_avg + concentration_crit_damage
 
 monster_dmg_bonus = 0.0  # no global monster-damage-taken source exists in this kit
@@ -344,14 +353,13 @@ def non_buff_total_hits(cooldown, hits_per_cast, icd, window):
 
 # Quiver Cartridge's own AS-scaled tick rate (English wiki wording: "up to 0.4 times based on
 # Attack Speed"), same 150%-AS cap as actions_per_second above.
-quiver_cartridge_tick_mult = 1 + 0.4 * (actions_per_second - 1) * 100 / 150
-quiver_cartridge_cooldown = 1 / quiver_cartridge_tick_mult
+quiver_cartridge_cooldown = 1 - 0.4 * min(1.0, (actions_per_second - 1) / 1.5)
 
 # ---- Cast rate (subtracted from Arrow Stream) ----
 BUFF_KEYS_STARTUP = {"SHARP_EYES", "NIMBLE_FEET"}
 COST_ACTION_ROWS = [
     ("COVERING_FIRE", 19, True, 1),
-    ("PHOENIX", (60 * 0.6) if level >= 102 else 60, True, 1),
+    ("PHOENIX", (60 * 0.6) if level >= 104 else 60, True, 1),
     ("ARROW_PLATTER", 40, True, 1),
     ("HURRICANE", 40, True, 1),
     ("SHARP_EYES", 35, True, 1),
@@ -390,12 +398,12 @@ def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0, extra_fd_pct=0.0):
 
 
 # ---- Arrow Stream (basic attack) ----
-arrow_stream_mastery_damage = level_gated_sum({98: 10, 104: 1, 113: 1, 118: 1, 126: 1, 130: 1})
-arrow_stream_mastery_boss_damage = level_gated_sum({108: 10, 122: 10})
+arrow_stream_mastery_damage = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
+arrow_stream_mastery_boss_damage = level_gated_sum({111: 10, 124: 10})
 arrow_stream_pct = skill_coefficient_base + arrow_stream_mastery_damage
 arrow_stream_targets = 6 + basic_attack_target_increase
 arrow_stream_hit = hit_damage(arrow_stream_pct, True)
-ARROW_STREAM_HITS = 6 if level >= 134 else 5
+ARROW_STREAM_HITS = 6 if level >= 136 else 5
 arrow_stream_dps = ARROW_STREAM_HITS * arrow_stream_hit * arrow_stream_per_second * boss_normal_multiplier(arrow_stream_targets, arrow_stream_mastery_boss_damage, 0) if unlocked("ARROW_STREAM") else 0.0
 
 # ---- Damage skills ----
@@ -403,32 +411,36 @@ DAMAGE_SKILLS = {
     "COVERING_FIRE": dict(job_step=1, cooldown=19, hits=3, base=2500, fidx=12, scales=True,
                            mastery=level_gated_sum({39: 50}), mastery_boss=0, mastery_normal=0,
                            costs_action=True, targets=1, maple_ratio=MAPLE_HERO_RATIOS.get("COVERING_FIRE", 0)),
-    "QUIVER_CARTRIDGE": dict(job_step=3, cooldown=quiver_cartridge_cooldown, hits=(3 + (3 if level >= 107 else 0)), base=500, fidx=21,
-                              scales=True, mastery=0, mastery_boss=0, mastery_normal=200,
+    "QUIVER_CARTRIDGE": dict(job_step=3, cooldown=quiver_cartridge_cooldown, hits=1, base=500, fidx=21,
+                              scales=True, mastery=level_gated_sum({44: 50}), mastery_boss=0, mastery_normal=0,
                               costs_action=False, targets=(3 + (3 if level >= 107 else 0)),
                               extra_fd=enchanted_quiver_pct if unlocked("ENCHANTED_QUIVER_HELPER") else 0.0),
-    "PHOENIX": dict(job_step=3, cooldown=(60 * 0.6) if level >= 102 else 60,
+    "ENCHANTED_QUIVER_DRAIN": dict(job_step=4, cooldown=quiver_cartridge_cooldown, hits=1, base=10500, fidx=21,
+                                    scales=True, mastery=0, mastery_boss=0, mastery_normal=0,
+                                    costs_action=False, targets=(3 + (3 if level >= 107 else 0)),
+                                    proc_chance=30),
+    "PHOENIX": dict(job_step=3, cooldown=(60 * 0.6) if level >= 104 else 60,
                      hits=1,
-                     icd=(3 * 0.7) if level >= 80 else 3, window=30 if level >= 102 else 20,
+                     icd=(3 * 0.7) if level >= 82 else 3, window=30,
                      base=6000, fidx=12, scales=True, mastery=0, mastery_boss=0,
-                     mastery_normal=100 if level >= 92 else 0, costs_action=True,
-                     targets=5 + (3 if level >= 76 else 0),
+                     mastery_normal=100 if level >= 94 else 0, costs_action=True,
+                     targets=5 + (3 if level >= 78 else 0),
                      maple_ratio=MAPLE_HERO_RATIOS.get("PHOENIX", 0)),
     "ARROW_PLATTER": dict(job_step=3, cooldown=40, hits=1, icd=0.3, window=60, base=500, fidx=12,
-                           scales=True, mastery=0, mastery_boss=0, mastery_normal=200,
+                           scales=True, mastery=level_gated_sum({73: 50}), mastery_boss=0, mastery_normal=200,
                            costs_action=True, targets=(3 + (1 if level >= 98 else 0)),
                            maple_ratio=MAPLE_HERO_RATIOS.get("ARROW_PLATTER", 0)),
     "FLASH_MIRAGE": dict(job_step=3,
-                          cooldown=(5 + 1 / (((20 + 30 * (actions_per_second - 1) * 100 / 150) / 100) * actions_per_second)),
+                          cooldown=((3 if level >= 122 else 5) + 1 / (((20 + 30 * (actions_per_second - 1) * 100 / 150) / 100) * actions_per_second)),
                           hits=1, base=5500, fidx=21, scales=True,
                           mastery=level_gated_sum({68: 50}), mastery_boss=0, mastery_normal=0,
                           costs_action=False,
-                          targets=(5 + (1 if level >= 136 else 0)),
+                          targets=(7 + (4 if level >= 110 else 0) + (1 if level >= 138 else 0)),
                           proc_chance=100,
                           extra_fd=flash_mirage_ii_pct if unlocked("FLASH_MIRAGE_II_HELPER") else 0.0),
     "HURRICANE": dict(job_step=4, cooldown=40, hits=(20 + (15 if level >= 134 else 0)), base=8000,
                        fidx=12, scales=True, mastery=level_gated_sum({108: 50}), mastery_boss=0,
-                       mastery_normal=0, costs_action=True, targets=7),
+                       mastery_normal=0, costs_action=True, targets=11),
     "FINAL_ATTACK_BOW": dict(job_step=2, cooldown=(1 / actions_per_second),
                               hits=1, base=350, fidx=21, scales=True,
                               mastery=level_gated_sum({54: 50}), mastery_boss=0, mastery_normal=0,
@@ -449,7 +461,7 @@ for key, s in DAMAGE_SKILLS.items():
         maple_ratio=s.get("maple_ratio", 0.0), extra_fd_pct=s.get("extra_fd", 0.0),
     )
     proc_prob = 1 - (1 - s.get("proc_chance", 100) / 100) ** 1
-    eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
+    eff_cd = eff_cooldown(s["cooldown"], s["costs_action"], exempt=key in CDR_EXEMPT)
     if fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:

@@ -1160,7 +1160,7 @@ def build_inputs_sheet(wb, existing=None):
 
     ws.cell(row=32, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
-        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
+        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
@@ -1309,7 +1309,7 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
     scaled_duration = f'({duration_ref}*(1+{bdi_ref}/100))'
     return (
         f'IF({monster_type_ref}="pvp",MIN({scaled_duration},{PVP_FIGHT_DURATION})/{PVP_FIGHT_DURATION},'
-        f'{scaled_duration}/{cooldown_ref})'
+        f'MIN(1,{scaled_duration}/{cooldown_ref}))'
     )
 
 
@@ -1385,7 +1385,9 @@ def exact_buff_uptime_expr(casts_ref, buff_duration_ref, cooldown_ref, fight_dur
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{fight_duration_ref}-{last_cast_start})'
     last_uptime = f'MIN({buff_duration_ref},{remaining_after_last})'
-    return f'(({casts_ref}-1)*{buff_duration_ref}+{last_uptime})'
+    # A recast that lands before the previous buff ends only extends coverage by one cooldown, so each full
+    # cycle contributes MIN(duration, cooldown) of uptime — never more (otherwise uptime could exceed 100%).
+    return f'(({casts_ref}-1)*MIN({buff_duration_ref},{cooldown_ref})+{last_uptime})'
 
 
 def uptime_fraction_or_exact_expr(fixed_duration_active_ref, casts_ref, monster_type_ref,
@@ -1502,7 +1504,7 @@ SKILL_ROWS = [
     ("BIG_BANG", "Big Bang", 4, "", False,
      f'=IF({IB("level")}>=136,6,5)', 0, 0, 100, 1,
      "", "", True,
-     level_gated_sum(IB("level"), {102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1}),
+     level_gated_sum(IB("level"), {102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15}),
      level_gated_sum(IB("level"), {111: 10, 124: 10}),
      0,
      f'=6+{IB("basic_attack_target_increase")}', "", 0, "", "", "",
@@ -1512,8 +1514,8 @@ SKILL_ROWS = [
      "Ice-Lightning-Mage's own Chain Lightning, so this reuses that exact factorIndex 21/baseDamage "
      "2900 tenths% pair, matching Inputs!skill_coefficient (=290*basic_factor/1000) exactly, same "
      "mechanism as every sibling class's own basic-attack row. SkillMasteryBonus% is the 6-tier "
-     "'Big Bang - Damage' mastery chain (102/106/116/120/128/132, cumulative totals 10%->15%, "
-     "DELTA increments 10 then +1 five times). MasteryBossDamage% is the 2-tier 'Big Bang - Boss "
+     "'Big Bang - Damage' mastery chain (102/106/116/120/128/132): every tier is its own add-on "
+     "(user-confirmed 2026-10-21: raw +10/+11/+12/+13/+14/+15 = 75% at max). MasteryBossDamage% is the 2-tier 'Big Bang - Boss "
      "Monster Damage' chain (111/124, +10% each, +20% total). HitsPerCast 5->6 once the level-136 "
      "'Strike' mastery unlocks."),
     ("MAGIC_GUARD", "Magic Guard", 1,
@@ -1694,7 +1696,7 @@ SKILL_ROWS = [
      "create angel feathers dealing 150% additional damage 2 time(s), 1s ICD per target (treated "
      "as a single global ICD in this per-second-DPS model, not per-target).' Modeled as: this "
      "row's own ProcChance%=35 is stage 2's chance; stage 1's own steady-state busy-fraction "
-     "(chance 15%/25%, duration 10s, driven by the character's own attack rate) is computed in "
+     "(chance 15%/25%, duration 10s, 18s cooldown per the game table — user-confirmed 2026-10-21, so the on-fraction is p1*R*10/(1+p1*R*18) — driven by the character's own attack rate) is computed in "
      "build_calc_sheet as a bespoke multiplier on this row's own Calc!O formula, mirroring the "
      "queueing-rate approximation FP-Mage's own Meteor Proc uses — NOT the generic H-column "
      "ProcProbability-only pattern every other row uses, since this needs BOTH stages combined. "
@@ -1832,6 +1834,17 @@ ROW_HAS_COOLDOWN = {row[0]: row[3] not in ("", None) for row in SKILL_ROWS}
 # comment on this exact pattern).
 CDR_COSTS_ACTION_ROW = {key: r for key, r in ROW.items()}
 CDR_COSTS_ACTION_ROW["ANGEL_RAY_BOSS_PROC"] = ROW["ANGEL_RAY"]
+
+
+# Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills, buffs and passives alike
+# (user decision 2026-10-21; it used to apply only to CostsActionSlot rows). The exempt rows are NOT real
+# cooldowns: their Cooldown(s) cell is a trigger-rate / internal-interval surrogate (e.g. 1 / attack speed),
+# which CDR must not shrink to the 0.1s floor.
+CDR_EXEMPT_ROW_KEYS = []
+
+
+def cdr_applies_expr(key):
+    return "FALSE" if key in CDR_EXEMPT_ROW_KEYS else "TRUE"
 
 
 def build_skills_sheet(wb):
@@ -2439,7 +2452,7 @@ def build_calc_sheet(wb):
         ws.cell(row=r, column=3, value=unlock_expr(key))
 
         eff_cd_r = (
-            f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+            f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), cdr_applies_expr(key))}'
             f'*(1-{artifact_soul_contract_pct_expr(IB("soul_contract_equipped"), IB("content_type"), IB("soul_contract_star"))}/100))'
         )
         # Duration actually available for this row's casts in fixed-duration mode: the raw fight
@@ -2612,7 +2625,11 @@ def build_calc_sheet(wb):
             r_total = f'Summary!$B${SUMMARY_ROW["APS"]}'
             p1 = f'IF({IB("level")}>=78,25,15)'
             d1 = 10
-            harness_fraction = f'(({p1}/100*{r_total}*{d1})/(1+{p1}/100*{r_total}*{d1}))'
+            # Game table: the angel-power trigger has an 18s COOLDOWN (user-confirmed 2026-10-21), so
+            # one cycle = 18s cooldown (which contains the 10s window) + the wait for the next trigger
+            # 1/(p1*R): on-fraction = d1 / (18 + 1/(p1*R)) = p1*R*d1 / (1 + p1*R*18).
+            tf_cd = effective_cooldown_expr(IB("monster_type"), "18", IB("skill_cooldown_decrease"), "TRUE")
+            harness_fraction = f'(({p1}/100*{r_total}*{d1})/(1+{p1}/100*{r_total}*{tf_cd}))'
             feather_rate = (
                 f'({S("ProcChance%", r)}/100*{r_total})/'
                 f'(1+{S("ICD(s)", r)}*{S("ProcChance%", r)}/100*{r_total})'
@@ -2719,7 +2736,7 @@ def build_summary_sheet(wb):
 
     def buff_uptime(row):
         return uptime_fraction_or_exact_expr(
-            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), S("Cooldown(s)", row),
+            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), f'(1/Calc!Q{row})',
             bdi_main, IB("fight_duration"),
         )
 
@@ -2743,7 +2760,7 @@ def build_summary_sheet(wb):
     # duty-cycle-averaged off Holy Fountain's own (patched 30s) cooldown, linger 15s. Steady-
     # state only (no fixed-duration exactness), same simplification tier as Ice-Lightning-Mage's
     # Freezing Breath - Weaken.
-    hf_cd = S("Cooldown(s)", ROW["HOLY_FOUNTAIN"])
+    hf_cd = f'(1/Calc!Q{ROW["HOLY_FOUNTAIN"]})'
     ws.cell(row=r_mdb, column=1, value="Monster Damage Taken Bonus % (Holy Fountain - Boss Monster Damage, averaged)")
     ws.cell(row=r_mdb, column=2, value=(
         f'=IF({IB("level")}>=68,20*{uptime_fraction_expr(IB("monster_type"), 15, hf_cd, bdi_main)},0)'
@@ -2935,8 +2952,6 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Min Damage Multiplier %": "min_damage",
     "Max Damage Multiplier %": "max_damage",
     "Defense Penetration": "def_pen",
-    "Int %": "int_pct",
-    "Int": "flat_int",
     "Defense %": "defense_pct",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
@@ -2944,7 +2959,14 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Buff Duration Increase %": "buff_duration_increase_pct",
     "All Skill Level": "skill_lvl_all",
     "Basic Attack Target Increase": "basic_attack_target_increase",
+    "Int %": "int_pct",
+    "Int": "flat_int",
 }
+
+# Sub-stat PERCENT potential lines: the Sensitivity sweep for the sub-stat is a flat +1 point, so a
+# "+N% sub-stat" roll is worth N% of the current total sub-stat in points (approximation: Inputs holds the
+# final sub-stat value, no separate flat/% split). Main-stat lines map 1:1 above.
+POTENTIAL_SUB_STAT_PCT_LINES = {}  # mages have no LUK (sub-stat) Sensitivity sweep, so Luk lines stay unpriced
 
 
 def dps_per_unit_expr(stat_name):
@@ -2967,6 +2989,9 @@ def dps_per_unit_expr(stat_name):
         )
     if stat_name == "Companion Summoning Time Increase %":
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]}'
+    if stat_name in POTENTIAL_SUB_STAT_PCT_LINES:
+        sweep_key, inputs_key = POTENTIAL_SUB_STAT_PCT_LINES[stat_name]
+        return f'=Sensitivity!H{SENSITIVITY_ROW_FOR[sweep_key]}*{IB(inputs_key)}/100'
     key = POTENTIAL_STAT_TO_SWEEP_KEY.get(stat_name)
     if key is None:
         return "0"
@@ -3292,7 +3317,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         ws.cell(row=row, column=3, value=unlock_expr(key))
 
         eff_cd_row = (
-            f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+            f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), cdr_applies_expr(key))}'
             f'*(1-{artifact_soul_contract_pct_expr(ib("soul_contract_equipped"), ib("content_type"), ib("soul_contract_star"))}/100))'
         )
         # Block-local mirror of available_duration_r (main sheet) — must use this block's own
@@ -3410,7 +3435,8 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             r_total = aps_ref
             p1 = f'IF({ib("level")}>=78,25,15)'
             d1 = 10
-            harness_fraction = f'(({p1}/100*{r_total}*{d1})/(1+{p1}/100*{r_total}*{d1}))'
+            tf_cd = effective_cooldown_expr(ib("monster_type"), "18", ib("skill_cooldown_decrease"), "TRUE")  # see main Calc copy
+            harness_fraction = f'(({p1}/100*{r_total}*{d1})/(1+{p1}/100*{r_total}*{tf_cd}))'
             feather_rate = (
                 f'({S("ProcChance%", r)}/100*{r_total})/'
                 f'(1+{S("ICD(s)", r)}*{S("ProcChance%", r)}/100*{r_total})'
@@ -3458,7 +3484,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
             fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
-            S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
+            f'(1/Q{local_row})', bdi_block, ib("fight_duration"),
         )
 
     ws.cell(row=s_avgbuff, column=1, value="Average Buff Multiplier")
@@ -3471,7 +3497,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         f'*IF(C{inf}=TRUE,(1+F{inf}*{buff_uptime_block(inf, ROW["INFINITY"])}/100),1)'
     ))
 
-    hf_cd_block = S("Cooldown(s)", ROW["HOLY_FOUNTAIN"])
+    hf_cd_block = f'(1/Q{row_of["HOLY_FOUNTAIN"]})'
     ws.cell(row=s_mdb, column=1, value="Monster Damage Taken Bonus % (Holy Fountain)")
     ws.cell(row=s_mdb, column=2, value=(
         f'=IF({ib("level")}>=68,20*{uptime_fraction_expr(ib("monster_type"), 15, hf_cd_block, bdi_block)},0)'

@@ -1089,7 +1089,7 @@ def build_inputs_sheet(wb, existing=None):
 
     ws.cell(row=31, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
-        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
+        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
@@ -1753,7 +1753,7 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
     scaled_duration = f'({duration_ref}*(1+{bdi_ref}/100))'
     return (
         f'IF({monster_type_ref}="pvp",MIN({scaled_duration},{PVP_FIGHT_DURATION})/{PVP_FIGHT_DURATION},'
-        f'{scaled_duration}/{cooldown_ref})'
+        f'MIN(1,{scaled_duration}/{cooldown_ref}))'
     )
 
 
@@ -1840,7 +1840,9 @@ def exact_buff_uptime_expr(casts_ref, buff_duration_ref, cooldown_ref, fight_dur
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{fight_duration_ref}-{last_cast_start})'
     last_uptime = f'MIN({buff_duration_ref},{remaining_after_last})'
-    return f'(({casts_ref}-1)*{buff_duration_ref}+{last_uptime})'
+    # A recast that lands before the previous buff ends only extends coverage by one cooldown, so each full
+    # cycle contributes MIN(duration, cooldown) of uptime — never more (otherwise uptime could exceed 100%).
+    return f'(({casts_ref}-1)*MIN({buff_duration_ref},{cooldown_ref})+{last_uptime})'
 
 
 def uptime_fraction_or_exact_expr(fixed_duration_active_ref, casts_ref, monster_type_ref,
@@ -1987,7 +1989,7 @@ MAPLE_HERO_RATIOS = {
 #  normalMonsterTargets, buffTarget, buffDuration, triggersBoltSurplus, mapleBase, mapleFactor, note)
 SKILL_ROWS = [
     ("EMPOWERED_PIERCING_ARROW", "Empowered Piercing Arrow", 4, "", False, 1,
-     f'=IF({IB("level")}>=134,6,5)', 0, 0, 100, 1,
+     f'=IF({IB("level")}>=136,6,5)', 0, 0, 100, 1,
      2900, 21, True,
      # Final Attack: Crossbow (25% chance, 35%->49% additional dmg, +50% mastery @Lv.52) +
      # Advanced Final Attack (+500%->900% FD, +50% mastery @Lv.111) folded together as a
@@ -1999,9 +2001,10 @@ SKILL_ROWS = [
      f"=Calc!F{{FINAL_ATTACK_CROSSBOW_HELPER}}*IF(Calc!C{{FINAL_ATTACK_CROSSBOW_HELPER}}=TRUE,1,0)/100"
      f"*(1+Calc!F{{ADVANCED_FINAL_ATTACK_HELPER}}*IF(Calc!C{{ADVANCED_FINAL_ATTACK_HELPER}}=TRUE,1,0)/100)"
      f"*25",
-     level_gated_sum(IB("level"), {108: 10, 122: 10}),
+     level_gated_sum(IB("level"), {111: 10, 124: 10}),
      0,
      f'=6+{IB("basic_attack_target_increase")}', "", 0, True, "", "",
+     "AUDIT 2026-10-21 (supersedes the mastery levels/convention in the older text below): damage chain 102/106/116/120/128/132 as RAW per-tier add-ons (10+11+12+13+14+15 = 75%, user-confirmed option A), Boss Damage 111/124 (+10 each), Strike +1 at Lv136; FA mastery @54, AFA mastery @113. "
      "4th-job basic-attack effect (supersedes Piercing Arrow/Piercing Arrow II/Arrow Blow, "
      "confirmed identical wiki wording — 290% damage to 6 target(s) in front 5 time(s) — to "
      "every other class's own 4th-job basic attack, including Bowmaster's own Arrow Stream). "
@@ -2013,9 +2016,9 @@ SKILL_ROWS = [
      "AdditionalDamage% x (1+AdvancedFD%/100) x 25, the x25 converting Final Attack's own "
      "attack-triggered percentage into an equivalent addition to Empowered Piercing Arrow's "
      "per-hit coefficient at its own 5-hit-per-cast rate) PLUS the real level-gated Damage "
-     "mastery chain (98/104/113/118/126/130, cumulative +10/11/12/13/14/15% per the wiki's own "
-     "tooltip display — level_gated_sum uses DELTA increments (10, then +1 five times) to "
-     "reproduce that cumulative curve, not the raw displayed percentages summed directly, same "
+     "mastery chain (102/106/116/120/128/132; was mislabeled 98/104/113/118/126/130, +10/11/12/13/14/15% per the wiki's own "
+     "tooltip display — every tier is its own add-on (raw +10/+11/+12/+13/+14/+15 = 75% at max, "
+     "user-confirmed 2026-10-21; the chain levels are now 102/106/116/120/128/132), same "
      "convention as Night Lord's own Showdown mastery and Bowmaster's own Arrow Stream mastery; "
      "an earlier version of this row summed the raw displayed values directly, giving a wrong "
      "75% total instead of the correct 15% — caught and fixed during this session's own "
@@ -2025,7 +2028,7 @@ SKILL_ROWS = [
      "Surplus's combined dual-trigger rate."),
     ("FINAL_ATTACK_CROSSBOW_HELPER", "Final Attack: Crossbow (helper)", 2, "", False, 1, 1, 0, 0, 100, 1,
      350, 21, True,
-     level_gated_sum(IB("level"), {52: 50}), 0, 0, 0, "", 0, False, "", "",
+     level_gated_sum(IB("level"), {54: 50}), 0, 0, 0, "", 0, False, "", "",
      "Helper row only (no independent O-column DPS) — feeds Empowered Piercing Arrow's own "
      "coefficient. 25% chance, 35%->49% additional damage (levels 1-100), shared-value-"
      "different-key w/ Bowmaster's own Final Attack: Bow (confirmed identical curve via its own "
@@ -2035,7 +2038,7 @@ SKILL_ROWS = [
      "session). Not otherwise patched (Aug 13 2026 patch notes make no mention of this skill)."),
     ("ADVANCED_FINAL_ATTACK_HELPER", "Advanced Final Attack (helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
      5000, 21, True,
-     level_gated_sum(IB("level"), {111: 50}), 0, 0, 0, "", 0, False, "", "",
+     level_gated_sum(IB("level"), {113: 50}), 0, 0, 0, "", 0, False, "", "",
      "Helper row only — feeds Empowered Piercing Arrow's own coefficient (Final Attack's own "
      "Final Damage bonus). +500%->900% FD (levels 1-200), shared verbatim w/ Bowmaster (confirmed "
      "identical curve via its own individual page). factorIndex 21, baseDamage 5000 tenths%. "
@@ -2053,7 +2056,7 @@ SKILL_ROWS = [
      "target — see MAPLE_HERO_RATIOS (biggest share, 4x Bolt Burst's own share)."),
     ("BOLT_BURST", "Bolt Burst", 3, 21, True, 1, 3, 0, 0, 100, 1,
      4500, 12, True,
-     level_gated_sum(IB("level"), {66: 50}), 0, 0, 10, "", 0, False, 250, 0,
+     level_gated_sum(IB("level"), {68: 50}), 0, 0, 10, "", 0, False, 250, 0,
      "Real page name is 'Bolt Flash' (confirmed via the Marksman/Skills overview page's own "
      "<a href> link — same 'display name differs from page slug' pattern as Bowmaster's own "
      "Arrow Platter/Quiver Flow, though this page itself is NOT bugged, its content matches its "
@@ -2063,13 +2066,13 @@ SKILL_ROWS = [
      "4500 tenths% already reflects the patched value), attack range +~15% (not modeled). "
      "Mastery Lv.66 'Bolt Burst - Damage' +50% (real SkillMasteryBonus%). Maple Hero target — "
      "see MAPLE_HERO_RATIOS."),
-    ("FROSTPREY", "Frostprey", 3, f'=IF({IB("level")}>=102,60*0.6,60)', True, 1,
+    ("FROSTPREY", "Frostprey", 3, f'=IF({IB("level")}>=104,60*0.6,60)', True, 1,
      1, 1.5,
      30, 100, 1,
      3000, 12, True,
-     level_gated_sum(IB("level"), {80: 50}), 0,
-     f'=IF({IB("level")}>=92,100,0)',
-     f'=3+IF({IB("level")}>=76,2,0)', "", 0, False, 250, 0,
+     level_gated_sum(IB("level"), {82: 50}), 0,
+     f'=IF({IB("level")}>=94,100,0)',
+     f'=3+IF({IB("level")}>=78,2,0)', "", 0, False, 250, 0,
      "Real page name is 'Freezer' (confirmed via the Marksman/Skills overview page's own href "
      "link — same page-name-differs-from-display-name pattern as Bowmaster's own Arrow Platter/"
      "Quiver Flow). Summons Frostprey, attacks nearby targets on a periodic tick (EffectiveHits "
@@ -2103,8 +2106,8 @@ SKILL_ROWS = [
      "Maple Hero)."),
     ("SNIPE", "Snipe", 4, 12, True, 1, 1, 0, 0, 100, 1,
      38000, 12, True,
-     f'={level_gated_sum_raw(IB("level"), {106: 50})}'
-     f'+IF({IB("level")}>=134,570*(Calc!E{ROW["SNIPE"]}/1000),0)',
+     f'={level_gated_sum_raw(IB("level"), {108: 50})}'
+     f'+IF({IB("level")}>=134,5700*(Calc!E{ROW["SNIPE"]}/1000),0)',
      0, 0, 1, "", 0, True, "", "",
      "Single-target big hit: 'Aims at the target's vital point to deal 3800% damage', 12s "
      "cooldown (own wiki infobox), not patched. factorIndex 12, baseDamage 38000 tenths% "
@@ -2122,10 +2125,10 @@ SKILL_ROWS = [
      "after unlock also deals this additive bonus. TriggersBoltSurplus=TRUE — this row's own "
      "HitRate(perSec) feeds Bolt Surplus's combined dual-trigger rate alongside Empowered "
      "Piercing Arrow."),
-    ("BOLT_SURPLUS", "Bolt Surplus", 4, "", False, 1, f'=2+IF({IB("level")}>=136,1,0)', 0, 0, 15, 1,
+    ("BOLT_SURPLUS", "Bolt Surplus", 4, "", False, 1, f'=2+IF({IB("level")}>=138,1,0)', 0, 0, 15, 1,
      6500, 21, True,
-     level_gated_sum(IB("level"), {120: 50}), 0, 0,
-     f'=3+IF({IB("level")}>=136,2,0)', "", 0, False, "", "",
+     level_gated_sum(IB("level"), {122: 50}), 0, 0,
+     f'=3+IF({IB("level")}>=138,2,0)', "", 0, False, "", "",
      "Dual-trigger proc: 'When attacking with Empowered Piercing Arrow and Snipe, an extra "
      "explosion occurs with a 15% [chance] to deal 650% damage to 3 nearby target(s) 2 "
      "time(s)', own wiki infobox lists 'Cooldown: 0.1 sec' (functionally non-restrictive vs. "
@@ -2141,7 +2144,7 @@ SKILL_ROWS = [
      "once Lv.136 hits)."),
     ("ARROW_ILLUSION", "Arrow Illusion", 4, 45, True, 1, 1, 1.5, 25, 100, 1,
      12000, 12, True,
-     level_gated_sum(IB("level"), {128: 50}), 0, 0, 10, "", 0, False, "", "",
+     level_gated_sum(IB("level"), {130: 50}), 0, 0, 10, "", 0, False, "", "",
      "Channeled turret: 'Summons an illusionary arrow...binds nearby targets for 3 sec (CC, "
      "not modeled), and attacks 10 nearby target(s) every 3 sec for 25 sec to deal 2400% "
      "damage', 45s cooldown (own wiki infobox), same EffectiveHits tick mechanism as Frostprey/"
@@ -2189,7 +2192,8 @@ SKILL_ROWS = [
      "curve/tuple as MARKSMANSHIP_BASE (factorIndex 22, baseDamage 100 tenths%)."),
     ("ILLUSION_STEP", "Illusion Step", 4, 24, False, 1, 1, 0, 0, 100, 1,
      140, 22, True,
-     0, 0, 0, 0, "ATTACK", 15, False, "", "",
+     f'=IF({IB("level")}>=118,5.25*Calc!E{ROW["ILLUSION_STEP"]}/1000,0)', 0, 0, 0, "ATTACK", f'=IF({IB("level")}>=118,24,15)', False, "", "",
+     "AUDIT 2026-10-21: Mastery Lv.118 'Illusion Step - Enhance': the Attack bonus no longer disappears and is doubled during the 9s window => from Lv118 always on (BuffDuration = 24s cycle), averaging 14% x (15+2x9)/24 = 1.375x base (SkillMasteryBonus% adds +0.375x). My reading of the mastery text - NOT yet confirmed in game. "
      "Cycling passive: Attack+14%->22.4% for 15s, then swaps to Evasion+15->24/damage taken "
      "-10%->16% for 9s (not modeled — those components have no mechanic anywhere in this "
      "calculator). Modeled as a duty-cycled buff (Cooldown(s)=24 = full 15+9s cycle length, "
@@ -2199,7 +2203,8 @@ SKILL_ROWS = [
      "session's own live fetch of Marksman's own Illusion Step page)."),
     ("SHARP_EYES", "Sharp Eyes", 4, 35, True, 1, 1, 0, 0, 100, 1,
      400, 21, True,
-     0, 0, 0, 0, "CRIT_DAMAGE", 18, False, "", "",
+     0, 0, 0, 0, "CRIT_DAMAGE", f'=IF({IB("level")}>=126,27,18)', False, "", "",
+     "AUDIT 2026-10-21 (supersedes the Crit Rate statement below): the site and game table give Sharp Eyes NO Crit Rate component, so the flat +20 Crit Rate is REMOVED (user decision); Mastery Lv.126 'Persistence' +50% duration (27s). "
      "Self-inclusive ally buff (matches Bishop's own 'allied players' precedent) — flat +20% "
      "Crit Rate (non-scaling, not represented in this row's own BaseDamage/FactorIndex; added "
      "directly as a hardcoded 20 in the Crit-Rate-bonus accumulator formula in build_summary_"
@@ -2322,12 +2327,23 @@ _epa_row = [list(row) for row in SKILL_ROWS if row[0] == "EMPOWERED_PIERCING_ARR
 _epa_row[14] = _epa_row[14].format(
     FINAL_ATTACK_CROSSBOW_HELPER=ROW["FINAL_ATTACK_CROSSBOW_HELPER"],
     ADVANCED_FINAL_ATTACK_HELPER=ROW["ADVANCED_FINAL_ATTACK_HELPER"],
-) + "+" + level_gated_sum_raw(IB("level"), {98: 10, 104: 1, 113: 1, 118: 1, 126: 1, 130: 1})
+) + "+" + level_gated_sum_raw(IB("level"), {102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 SKILL_ROWS = [tuple(_epa_row) if row[0] == "EMPOWERED_PIERCING_ARROW" else row for row in SKILL_ROWS]
 
 # Rows with a real Cooldown(s) value (literal or a live formula reference).
 ROW_HAS_COOLDOWN = {row[0]: row[3] not in ("", None) for row in SKILL_ROWS}
 CDR_COSTS_ACTION_ROW = {key: r for key, r in ROW.items()}
+
+
+# Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills, buffs and passives alike
+# (user decision 2026-10-21; it used to apply only to CostsActionSlot rows). The exempt rows are NOT real
+# cooldowns: their Cooldown(s) cell is a trigger-rate / internal-interval surrogate (e.g. 1 / attack speed),
+# which CDR must not shrink to the 0.1s floor.
+CDR_EXEMPT_ROW_KEYS = []
+
+
+def cdr_applies_expr(key):
+    return "FALSE" if key in CDR_EXEMPT_ROW_KEYS else "TRUE"
 
 
 def build_skills_sheet(wb):
@@ -2416,7 +2432,7 @@ def build_calc_sheet(wb):
         if has_cooldown:
             eff_cd_r = effective_cooldown_expr(
                 IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"),
-                S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]),
+                cdr_applies_expr(key),
             )
             if key in BUFF_ROW_KEYS:
                 available_duration_r = IB("fight_duration")
@@ -2658,7 +2674,7 @@ def build_summary_sheet(wb):
 
     def buff_uptime(row):
         return uptime_fraction_or_exact_expr(
-            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), S("Cooldown(s)", row),
+            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), f'(1/Calc!Q{row})',
             bdi_main, IB("fight_duration"),
         )
 
@@ -2680,7 +2696,7 @@ def build_summary_sheet(wb):
 
     sharp_eyes_uptime = buff_uptime(r_se)
     ws.cell(row=R_CRIT_RATE_BONUS, column=1, value="Global Crit Rate Bonus % (Sharp Eyes, flat 20, duty-cycle averaged)")
-    ws.cell(row=R_CRIT_RATE_BONUS, column=2, value=f'=(Calc!C{r_se}=TRUE)*20*{sharp_eyes_uptime}')
+    ws.cell(row=R_CRIT_RATE_BONUS, column=2, value=0)
 
     ws.cell(row=R_MONSTER_DMG_BONUS, column=1, value="Global Monster Damage-Taken Bonus % (Artifact Enemy Damage Taken Bonus)")
     ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=f'={art_ref("AGG_ENEMY_DMG_TAKEN")}')
@@ -2860,15 +2876,21 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Min Damage Multiplier %": "min_damage",
     "Max Damage Multiplier %": "max_damage",
     "Defense Penetration": "def_pen",
-    "Dex %": "dex_pct",
-    "Dex": "flat_dex",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
     "Skill Cooldown Decrease (seconds)": "skill_cooldown_decrease",
     "Buff Duration Increase %": "buff_duration_increase_pct",
     "All Skill Level": "skill_lvl_all",
     "Basic Attack Target Increase": "basic_attack_target_increase",
+    "Dex %": "dex_pct",
+    "Dex": "flat_dex",
+    "Str": "str",
 }
+
+# Sub-stat PERCENT potential lines: the Sensitivity sweep for the sub-stat is a flat +1 point, so a
+# "+N% sub-stat" roll is worth N% of the current total sub-stat in points (approximation: Inputs holds the
+# final sub-stat value, no separate flat/% split). Main-stat lines map 1:1 above.
+POTENTIAL_SUB_STAT_PCT_LINES = {"Str %": ("str", "str")}
 
 
 def dps_per_unit_expr(stat_name):
@@ -2894,6 +2916,9 @@ def dps_per_unit_expr(stat_name):
         )
     if stat_name == "Companion Summoning Time Increase %":
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]}'
+    if stat_name in POTENTIAL_SUB_STAT_PCT_LINES:
+        sweep_key, inputs_key = POTENTIAL_SUB_STAT_PCT_LINES[stat_name]
+        return f'=Sensitivity!H{SENSITIVITY_ROW_FOR[sweep_key]}*{IB(inputs_key)}/100'
     key = POTENTIAL_STAT_TO_SWEEP_KEY.get(stat_name)
     if key is None:
         return "0"
@@ -3003,7 +3028,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
             fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
-            S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
+            f'(1/Q{local_row})', bdi_block, ib("fight_duration"),
         )
 
     delta_by_slot = {}
@@ -3276,7 +3301,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         if has_cooldown:
             eff_cd_row = effective_cooldown_expr(
                 ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"),
-                S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]),
+                cdr_applies_expr(key),
             )
             if key in BUFF_ROW_KEYS:
                 available_duration_row = ib("fight_duration")
@@ -3449,7 +3474,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ws.cell(row=s_avgbuff, column=2, value=f'={attack_bucket_block}')
 
     ws.cell(row=s_crit_rate_bonus, column=1, value="Global Crit Rate Bonus %")
-    ws.cell(row=s_crit_rate_bonus, column=2, value=f'=(C{row_of["SHARP_EYES"]}=TRUE)*20*{buff_uptime_block(row_of["SHARP_EYES"], r_se)}')
+    ws.cell(row=s_crit_rate_bonus, column=2, value=0)
 
     ws.cell(row=s_as_bonus, column=1, value="Attack Speed Buff Bonus %")
     ws.cell(row=s_as_bonus, column=2, value=f'={nimble_feet_avg}')

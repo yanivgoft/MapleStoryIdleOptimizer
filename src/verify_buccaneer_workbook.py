@@ -189,10 +189,14 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15
 
 
-def eff_cooldown(cooldown, costs_action):
+def eff_cooldown(cooldown, costs_action=None, exempt=False):
+    """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
+    buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
+    compatibility and no longer gates CDR). `exempt=True` marks the trigger-rate / internal-interval
+    surrogate rows (mirror of the build script's CDR_EXEMPT_ROW_KEYS)."""
     if monster_type == "pvp":
         return PVP_FIGHT_DURATION
-    return max(0.1, cooldown - (skill_cooldown_decrease if costs_action else 0))
+    return max(0.1, cooldown - (0 if exempt else skill_cooldown_decrease))
 
 
 def eff_duration(duration):
@@ -248,7 +252,7 @@ def buff_avg(pct, duration, cooldown, costs_action):
     elif monster_type == "pvp":
         uptime = min(eff_duration(duration), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        uptime = eff_duration(duration) / eff_cd
+        uptime = min(1.0, eff_duration(duration) / eff_cd)
     return pct * uptime
 
 
@@ -281,7 +285,7 @@ maple_hero_pct = coeff_pct(600, 23, True, 4) if unlocked("MAPLE_HERO_HELPER") el
 # ---- Assault Mode duty-cycle economy (see build script's assault_uptime_expr for derivation) ----
 hook_bomber_targets = 6 + basic_attack_target_increase
 HOOK_BOMBER_HITS = 6 if level >= 136 else 5
-hook_bomber_mastery_damage = level_gated_sum({102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1})
+hook_bomber_mastery_damage = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 hook_bomber_mastery_boss_damage = level_gated_sum({111: 10, 124: 10})
 hook_bomber_pct = skill_coefficient_base + hook_bomber_mastery_damage
 
@@ -290,7 +294,7 @@ def exact_buff_uptime(cooldown, buff_duration):
     casts = exact_casts(cooldown)
     remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
     last_uptime = min(buff_duration, remaining_after_last)
-    return (casts - 1) * buff_duration + last_uptime
+    return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
 def uptime_fraction_steady(duration, cooldown):
@@ -300,7 +304,7 @@ def uptime_fraction_steady(duration, cooldown):
     scaled_duration = duration * (1 + buff_duration_increase_pct / 100)
     if monster_type == "pvp":
         return min(scaled_duration, PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
-    return scaled_duration / cooldown
+    return min(1.0, scaled_duration / cooldown)
 
 
 def duty_cycle_uptime(cooldown, duration):
@@ -312,7 +316,7 @@ def duty_cycle_uptime(cooldown, duration):
         return exact_buff_uptime(eff_cd, eff_duration(duration)) / fight_duration
     elif monster_type == "pvp":
         return min(eff_duration(duration), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
-    return eff_duration(duration) / eff_cd
+    return min(1.0, eff_duration(duration) / eff_cd)
 
 
 def _nimble_feet_as_avg():
@@ -324,11 +328,23 @@ def _nimble_feet_as_avg():
     return pct * duty_cycle_uptime(60, 15)
 
 
+speed_infusion_pct = coeff_pct(200, 21, True, 4) if unlocked("SPEED_INFUSION") else 0.0
+
+
+def _speed_infusion_as_avg():
+    """Speed Infusion's duty-cycle-averaged Attack Speed% (real action-costing buff, 35s cd / 15s)."""
+    return speed_infusion_pct * duty_cycle_uptime(35, 15) if unlocked("SPEED_INFUSION") else 0.0
+
+
+def _aps_with_extra_as(as_extra):
+    return 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - as_extra / 150))) / 100
+
+
 def _actions_per_second_placeholder():
-    # Actions Per Second combines raw Inputs!attack_speed with Nimble Feet's own duty-cycle-
-    # averaged AS bonus via the standard diminishing-returns stack (factor 150).
-    as_bonus = _nimble_feet_as_avg()
-    return 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - as_bonus / 150))) / 100
+    # Actions Per Second combines raw Inputs!attack_speed with the duty-cycle-averaged AS buffs
+    # (Nimble Feet + Speed Infusion) via the standard diminishing-returns stack (factor 150).
+    as_bonus = _nimble_feet_as_avg() + _speed_infusion_as_avg()
+    return _aps_with_extra_as(as_bonus)
 
 
 # Two-step resolution: Hook Bomber's cast rate (BAPS) feeds the Assault-Mode uptime fraction,
@@ -344,6 +360,7 @@ if fixed_duration_active:
         (1 if unlocked("NIMBLE_FEET") else 0)
         + (1 if unlocked("CROSSBONES_FD") else 0)
         + (1 if unlocked("TIME_LEAP_FD") else 0)
+        + (1 if unlocked("SPEED_INFUSION") else 0)
     ) / actions_per_second
 
 
@@ -351,20 +368,11 @@ def assault_duration():
     return 10 + (5 if level >= 94 else 0)
 
 
-def scale_gain_rate(baps):
-    return baps * (2 if level >= 104 else 1)
-
-
-def assault_uptime(baps):
-    dur = assault_duration()
-    rate = scale_gain_rate(baps)
-    return dur / (dur + 5 / rate)
-
-
 # ---- Cast rate (subtracted from Hook Bomber) — action-costing skills only ----
+OCTOPUNCH_COOLDOWN = (16 * 0.7) if level >= 134 else 16
 COST_ACTION_ROWS = [
     ("CORKSCREW_BLOW", 21, True, 1),
-    ("OCTOPUNCH", 16, True, 1),
+    ("OCTOPUNCH", OCTOPUNCH_COOLDOWN, True, 1),
     ("NAUTILUS_STRIKE", 33, True, 1),
 ]
 if fixed_duration_active:
@@ -372,39 +380,58 @@ if fixed_duration_active:
     cast_rate += (exact_casts(eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0) / fight_duration
     cast_rate += (exact_casts(eff_cooldown(28, True)) if unlocked("CROSSBONES_FD") else 0) / fight_duration
     cast_rate += (exact_casts(eff_cooldown(65, True)) if unlocked("TIME_LEAP_FD") else 0) / fight_duration
+    cast_rate += (exact_casts(eff_cooldown(35, True)) if unlocked("SPEED_INFUSION") else 0) / fight_duration
 else:
     cast_rate = sum((1 / eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k))
     cast_rate += (1 / eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0
     cast_rate += (1 / eff_cooldown(28, True)) if unlocked("CROSSBONES_FD") else 0
     cast_rate += (1 / eff_cooldown(65, True)) if unlocked("TIME_LEAP_FD") else 0
+    cast_rate += (1 / eff_cooldown(35, True)) if unlocked("SPEED_INFUSION") else 0
 hook_bomber_per_second = max(0, actions_per_second - cast_rate)
 
-uptime = assault_uptime(hook_bomber_per_second)
+# ---- Assault Mode economy: activations every T = SSB cooldown + half a basic-attack period ----
+ssb_cooldown = 7 - (2 if level >= 78 else 0) - (2 if level >= 118 else 0)
+serpent_T = eff_cooldown(ssb_cooldown, True) + (0.5 / hook_bomber_per_second if hook_bomber_per_second > 0 else 0.0)
+activations_to_assault = 3 if level >= 104 else 5
+uptime = (
+    assault_duration() / (assault_duration() + activations_to_assault * serpent_T)
+    if unlocked("SERPENT_SCALE_FD") else 0.0
+)
 
 # ---- Global Final Damage bucket: Serpent Scale (Assault-Mode-gated) + Crossbones + Time Leap +
 #      Speed Infusion (live AS-linked formula) ----
-serpent_scale_pct = coeff_pct(250, 22, True, 2) if unlocked("SERPENT_SCALE_FD") else 0.0
-serpent_scale_avg = serpent_scale_pct * uptime if unlocked("SERPENT_SCALE_FD") else 0.0
-crossbones_pct = coeff_pct(100, 22, True, 4) * duty_cycle_uptime(28, 12) if unlocked("CROSSBONES_FD") else 0.0
-time_leap_pct = coeff_pct(150, 22, True, 4) * duty_cycle_uptime(65, 40) if unlocked("TIME_LEAP_FD") else 0.0
+serpent_scale_pct = coeff_pct(250, 21, True, 3) if unlocked("SERPENT_SCALE_FD") else 0.0
+# +25% FD while in Assault Mode (uptime u) + average 2 held scales x 2% = 4% while rebuilding (1-u)
+serpent_scale_avg = (serpent_scale_pct * uptime + 4 * (1 - uptime)) if unlocked("SERPENT_SCALE_FD") else 0.0
+crossbones_pct = coeff_pct(100, 21, True, 4) * duty_cycle_uptime(28, 12) if unlocked("CROSSBONES_FD") else 0.0
+time_leap_pct = (
+    (coeff_pct(150, 21, True, 4) + level_gated_sum({138: 10})) * duty_cycle_uptime(65, 40)
+    if unlocked("TIME_LEAP_FD") else 0.0
+)
+# Speed Infusion FD = 20% of Attack Speed WHILE the buff is up (APS incl. its own +AS), over its uptime.
 speed_infusion_avg = (
-    20 * (actions_per_second - 1) * uptime_fraction_steady(15, 35) if level >= 110 else 0.0
+    20 * (_aps_with_extra_as(_nimble_feet_as_avg() + speed_infusion_pct) - 1) * duty_cycle_uptime(35, 15)
+    if unlocked("SPEED_INFUSION") else 0.0
 )
 final_damage_extra = serpent_scale_avg + crossbones_pct + time_leap_pct + speed_infusion_avg
 
 # ---- Attack% bucket: Roll of the Dice's dice component only (real 5s/7s duty cycle) ----
-roll_of_dice_pct = coeff_pct(25, 22, True, 2) * 5 / 7 if unlocked("ROLL_OF_THE_DICE_DICE") else 0.0
+roll_of_dice_pct = coeff_pct(25, 22, True, 3) * 5 / 7 if unlocked("ROLL_OF_THE_DICE_DICE") else 0.0
 attack_bucket_mult = 1 + roll_of_dice_pct / 100
 
 crit_rate_bonus = 0.0
 crit_damage_bonus = 0.0
-monster_dmg_bonus = 0.0
+# Sea Serpent's Rage Assault Mark: +15% x f21 damage taken for 5s (x (1+BDI)) per Octopunch cast.
+ssr_weaken_pct = coeff_pct(150, 21, True, 4) if unlocked("SSR_WEAKEN") else 0.0
+monster_dmg_bonus = ssr_weaken_pct * min(1.0, 5 * (1 + buff_duration_increase_pct / 100) / eff_cooldown(OCTOPUNCH_COOLDOWN, True))
 
 
-def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0):
+def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0, extra_fd_pct=0.0):
     base_damage = attack * (coeff_pct_val / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
     maple_mult = (1 + maple_ratio * maple_hero_pct / 100) if maple_ratio else 1.0
+    if extra_fd_pct:
+        maple_mult *= (1 + extra_fd_pct / 100)
     final_mult = (1 + (final_damage + final_damage_extra) / 100) * maple_mult
     source_pct = basic_attack_damage if is_basic else skill_damage
     # Boss/Normal Monster Damage% is deliberately NOT applied here — it's blended per-branch
@@ -427,19 +454,26 @@ def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0):
 hook_bomber_hit = hit_damage(hook_bomber_pct, True)
 hook_bomber_dps = HOOK_BOMBER_HITS * hook_bomber_hit * hook_bomber_per_second * boss_normal_multiplier(hook_bomber_targets, hook_bomber_mastery_boss_damage, 0) if unlocked("HOOK_BOMBER") else 0.0
 
-# ---- Sea Serpent Burst / Serpent Assault (ride on Hook Bomber's own cast rate, weighted by the
-#      Assault-Mode duty cycle instead of a real ProcChance% RNG) ----
-sea_serpent_burst_pct = coeff_pct(1300, 12, True, 2) if unlocked("SEA_SERPENT_BURST") else 0.0
-sea_serpent_burst_hit = hit_damage(sea_serpent_burst_pct, False)
+# ---- Sea Serpent Burst / Serpent Assault: one activation every T seconds, split (1-u)/u ----
+gss1 = level >= 72
+sea_serpent_burst_pct = (
+    coeff_pct(4300 if gss1 else 1300, 12, True, 3 if gss1 else 2) + level_gated_sum({39: 50})
+    if unlocked("SEA_SERPENT_BURST") else 0.0
+)
+gss2_fd_pct = coeff_pct(1000, 22, True, 4) if unlocked("GSS_II_FD") else 0.0
+sea_serpent_burst_hit = hit_damage(sea_serpent_burst_pct, False, extra_fd_pct=gss2_fd_pct)
+ssb_hits = 2 + (1 if level >= 118 else 0)
+ssb_targets = 5 + (2 if gss1 else 0) + (2 if level >= 110 else 0)
 sea_serpent_burst_dps = (
-    2 * sea_serpent_burst_hit * hook_bomber_per_second * (1 - uptime) * boss_normal_multiplier(5, 0, 0)
+    ssb_hits * sea_serpent_burst_hit * ((1 - uptime) if unlocked("SERPENT_ASSAULT") else 1.0) / serpent_T
+    * boss_normal_multiplier(ssb_targets, 0, 0)
     if unlocked("SEA_SERPENT_BURST") else 0.0
 )
 
-serpent_assault_pct = coeff_pct(4800, 12, True, 2) if unlocked("SERPENT_ASSAULT") else 0.0
+serpent_assault_pct = (coeff_pct(4800, 12, True, 3) + level_gated_sum({82: 50})) if unlocked("SERPENT_ASSAULT") else 0.0
 serpent_assault_hit = hit_damage(serpent_assault_pct, False, maple_ratio=MAPLE_HERO_RATIOS.get("SERPENT_ASSAULT", 0))
 serpent_assault_dps = (
-    3 * serpent_assault_hit * hook_bomber_per_second * uptime * boss_normal_multiplier(12, 0, 0)
+    3 * serpent_assault_hit * uptime / serpent_T * boss_normal_multiplier(12, 0, 0)
     if unlocked("SERPENT_ASSAULT") else 0.0
 )
 
@@ -448,23 +482,21 @@ DAMAGE_SKILLS = {
     "CORKSCREW_BLOW": dict(job_step=3, cooldown=21, hits=2, base=3400, fidx=12, scales=True,
                             mastery=level_gated_sum({73: 80}), mastery_boss=0, mastery_normal=0,
                             costs_action=True, targets=7),
-    "OCTOPUNCH": dict(job_step=4, cooldown=16,
+    "OCTOPUNCH": dict(job_step=4, cooldown=OCTOPUNCH_COOLDOWN,
                        hits=(5 if monster_type in ("boss", "pvp") else 3),
                        base=9000, fidx=12, scales=True,
                        mastery=level_gated_sum({108: 50}), mastery_boss=0, mastery_normal=0,
                        costs_action=True, targets=4),
-    "SEA_SERPENTS_RAGE": dict(job_step=4, cooldown=16, hits=2, base=17000, fidx=12, scales=True,
+    # Sea Serpent's Rage / Raging Serpent Assault share Octopunch's live cooldown and CDR eligibility.
+    "SEA_SERPENTS_RAGE": dict(job_step=4, cooldown=OCTOPUNCH_COOLDOWN, hits=2, base=17000, fidx=21, scales=True,
                                mastery=level_gated_sum({122: 100}), mastery_boss=0, mastery_normal=0,
-                               costs_action=False, targets=8),
-    "RAGING_SERPENT_ASSAULT": dict(job_step=4, cooldown=16, hits=1, icd=1, window=5, base=13000,
+                               costs_action=True, targets=8),
+    "RAGING_SERPENT_ASSAULT": dict(job_step=4, cooldown=OCTOPUNCH_COOLDOWN, hits=2, icd=1, window=5, base=13000,
                                     fidx=12, scales=True, mastery=level_gated_sum({130: 50}), mastery_boss=0, mastery_normal=0,
-                                    costs_action=False, targets=9, proc_chance=uptime),
+                                    costs_action=True, targets=9, proc_chance=uptime),
     "NAUTILUS_STRIKE": dict(job_step=4, cooldown=33, hits=5, base=19500, fidx=12, scales=True,
                              mastery=level_gated_sum({126: 50}), mastery_boss=0, mastery_normal=0,
                              costs_action=True, targets=15),
-    "NAUTILUS_FINAL_ATTACK": dict(job_step=4, cooldown=1, hits=1, base=8500, fidx=21, scales=True,
-                                   mastery=0, mastery_boss=0, mastery_normal=0,
-                                   costs_action=False, targets=1, proc_chance=0.30),
 }
 NORMAL_MONSTER_TARGETS = {k: v["targets"] for k, v in DAMAGE_SKILLS.items()}
 
@@ -483,6 +515,20 @@ for key, s in DAMAGE_SKILLS.items():
         hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
     skill_dps[key] = proc_prob * rate * hd * boss_normal_multiplier(s["targets"], s.get("mastery_boss", 0), s.get("mastery_normal", 0))
+
+# ---- Nautilus Strike - Final Attack: any attack, 30% chance, 1s ICD => (c*R)/(1+ICD*c*R) with R = the
+#      combined cast rate of Hook Bomber + the action-costing damage skills ----
+if unlocked("NAUTILUS_FINAL_ATTACK"):
+    _trig = hook_bomber_per_second
+    for _k in ("CORKSCREW_BLOW", "OCTOPUNCH", "NAUTILUS_STRIKE"):
+        if unlocked(_k):
+            _cd = eff_cooldown(DAMAGE_SKILLS[_k]["cooldown"], DAMAGE_SKILLS[_k]["costs_action"])
+            _trig += (non_buff_casts(_cd) / fight_duration) if fixed_duration_active else (1 / _cd)
+    _c = 0.30
+    _fa_rate = _c * _trig / (1 + 1 * _c * _trig)
+    skill_dps["NAUTILUS_FINAL_ATTACK"] = _fa_rate * hit_damage(coeff_pct(8500, 21, True, 4), False) * boss_normal_multiplier(1, 0, 0)
+else:
+    skill_dps["NAUTILUS_FINAL_ATTACK"] = 0.0
 
 total_dps = hook_bomber_dps + sea_serpent_burst_dps + serpent_assault_dps + sum(skill_dps.values())
 

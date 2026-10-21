@@ -19,8 +19,8 @@ Key mechanics/simplifications specific to this kit:
     2900, factorIndex 21). HitsPerCast=5, bumping to 6 once Mastery Lv.136 "Raging Blow - Strike"
     unlocks (Hero's own Strike-mastery level differs from Bowmaster/Marksman's Lv.134 — confirmed
     directly from Hero/Mastery, not assumed universal). Real Damage mastery chain (102/106/116/
-    120/128/132, cumulative +10/11/12/13/14/15% — summed as DELTAS: {102:10,106:1,116:1,120:1,
-    128:1,132:1}, NOT the raw displayed values, per the Marksman-session lesson) and Boss Monster
+    120/128/132, +10/11/12/13/14/15%, every tier its own add-on: raw {102:10,106:11,116:12,120:13,
+    128:14,132:15} = 75% at max — user-confirmed 2026-10-21) and Boss Monster
     Damage chain (111/124, +10% each) both included.
   - CONFIRMED WIKI BUG: Hero's own Mastery table has a skill-name swap — every row labeled
     "Puncture" (Lv.108/134) actually describes an Enhanced Raging Blow effect, and every row
@@ -1195,7 +1195,7 @@ def build_inputs_sheet(wb, existing=None):
 
     ws.cell(row=31, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
-        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
+        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
@@ -1846,7 +1846,7 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
     scaled_duration = f'({duration_ref}*(1+{bdi_ref}/100))'
     return (
         f'IF({monster_type_ref}="pvp",MIN({scaled_duration},{PVP_FIGHT_DURATION})/{PVP_FIGHT_DURATION},'
-        f'{scaled_duration}/{cooldown_ref})'
+        f'MIN(1,{scaled_duration}/{cooldown_ref}))'
     )
 
 
@@ -1920,7 +1920,9 @@ def exact_buff_uptime_expr(casts_ref, buff_duration_ref, cooldown_ref, fight_dur
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{fight_duration_ref}-{last_cast_start})'
     last_uptime = f'MIN({buff_duration_ref},{remaining_after_last})'
-    return f'(({casts_ref}-1)*{buff_duration_ref}+{last_uptime})'
+    # A recast that lands before the previous buff ends only extends coverage by one cooldown, so each full
+    # cycle contributes MIN(duration, cooldown) of uptime — never more (otherwise uptime could exceed 100%).
+    return f'(({casts_ref}-1)*MIN({buff_duration_ref},{cooldown_ref})+{last_uptime})'
 
 
 def uptime_fraction_or_exact_expr(fixed_duration_active_ref, casts_ref, monster_type_ref,
@@ -2035,6 +2037,17 @@ UNLOCK_LEVEL = {
 }
 
 
+def puncture_weaken_pct_expr(ib=IB):
+    """Puncture's wound debuff: 'Targets with the wound take 10% increased damage for the duration' — game
+    table Weakness 10% x factorIndex 21 (scales with the 4th-job skill level), x1.5 once 'Puncture - Weaken'
+    (Lv134, +50% of the effect) is unlocked."""
+    return (
+        f"((100/10)*(INDEX(FactorTable!$B$2:$Y$301,MATCH(ROUND(MIN(300,MAX(1,"
+        f"MAX(0,({ib('level')}-100)*3)+{ib('skill_lvl_4th')}+{ib('skill_lvl_all')})),0),"
+        f"FactorTable!$A$2:$A$301,0),22)/1000))*(1+IF({ib('level')}>=134,0.5,0))"
+    )
+
+
 def unlock_expr(key):
     level = UNLOCK_LEVEL.get(key)
     return "=TRUE" if level is None else f"={IB('level')}>={level}"
@@ -2049,6 +2062,13 @@ MAPLE_HERO_RATIOS = {
     "FLASH_SLASH": 80 / 20,
 }
 
+def live_def_pen(base_expr, level_expr):
+    """Advanced Combo Lv130 mastery: +1% Defense Penetration per combo stack (5 / 7 @Lv110 / 8 @Lv118),
+    combined with the Inputs/gear Defense Penetration like every other DefPen source (diminishing returns)."""
+    stacks = f'IF({level_expr}>=130,IF({level_expr}>=118,8,IF({level_expr}>=110,7,5)),0)'
+    return f'(100-(100-({base_expr}))*(1-{stacks}/100))'
+
+
 # (key, name, jobstep, cooldown, costsAction, actionsPerCast, hits, icd, window, chance, rolls,
 #  baseDamage, factorIndex, scales, skillMasteryBonusPct, masteryBossDmgPct, masteryNormalDmgPct,
 #  normalMonsterTargets, buffTarget, buffDuration, mapleBase, mapleFactor, note)
@@ -2059,7 +2079,7 @@ SKILL_ROWS = [
      f"=Calc!F{{FINAL_ATTACK_HELPER}}*IF(Calc!C{{FINAL_ATTACK_HELPER}}=TRUE,1,0)/100"
      f"*(1+Calc!F{{ADVANCED_FINAL_ATTACK_HELPER}}*IF(Calc!C{{ADVANCED_FINAL_ATTACK_HELPER}}=TRUE,1,0)/100)"
      f"*25"
-     f"+{level_gated_sum_raw(IB('level'), {102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1}).replace('{', '{{').replace('}', '}}')}",
+     f"+{level_gated_sum_raw(IB('level'), {102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15}).replace('{', '{{').replace('}', '}}')}",
      level_gated_sum(IB("level"), {111: 10, 124: 10}), 0,
      f'=6+{IB("basic_attack_target_increase")}', "", 0, "", "",
      "4th-job basic-attack effect (supersedes Slash Blast/Brandish/Intrepid Slash, confirmed "
@@ -2069,8 +2089,8 @@ SKILL_ROWS = [
      "differs from Bowmaster/Marksman's Lv.134 — confirmed directly from Hero/Mastery). "
      "SkillMasteryBonus% is Final Attack + Advanced Final Attack's own combined steady-state "
      "contribution (same folding mechanism as Bowmaster's Arrow Stream) PLUS the real Raging "
-     "Blow - Damage mastery chain (102/106/116/120/128/132, cumulative +10/11/12/13/14/15% — "
-     "summed as DELTAS, not the raw displayed values). MasteryBossDamage% is the real 2-tier "
+     "Blow - Damage mastery chain (102/106/116/120/128/132, +10/11/12/13/14/15%, every tier its "
+     "own add-on = 75% at max, user-confirmed 2026-10-21). MasteryBossDamage% is the real 2-tier "
      "Raging Blow - Boss Monster Damage chain (111/124, +10% each, +20% total)."),
     ("FINAL_ATTACK_HELPER", "Final Attack (helper)", 2, "", False, 1, 1, 0, 0, 100, 1,
      350, 21, True,
@@ -2088,11 +2108,14 @@ SKILL_ROWS = [
      "'Advanced Final Attack - Enhance' +50% (real SkillMasteryBonus%)."),
     ("PUNCTURE", "Puncture", 4, 17, True, 1, 3, 0, 0, 100, 1,
      9000, 12, True,
-     level_gated_sum(IB("level"), {122: 50}),
-     f"=(100/10)*(INDEX(FactorTable!$B$2:$Y$301,MATCH(ROUND(MIN(300,MAX(1,"
-     f"MAX(0,({IB('level')}-100)*3)+{IB('skill_lvl_4th')}+{IB('skill_lvl_all')})),0),"
-     f"FactorTable!$A$2:$A$301,0),22)/1000)+IF({IB('level')}>=138,20,0)", 0,
+     level_gated_sum(IB("level"), {108: 50}),
+     0, 0,
      f'=5+IF({IB("level")}>=100,5,0)', "", 0, "", "",
+     "AUDIT 2026-10-21: the wound's damage-taken debuff discussed below is NO LONGER in this row's "
+     "MasteryBossDamage%/MasteryNormalDamage% (both now 0) — per the game table it is a global Weakness "
+     "(10% x factorIndex 21, x1.5 at Lv134), so it is folded into Summary's Global Monster Damage-Taken Bonus "
+     "(x the wound's uptime, 10s*(1+BDI)/effective cooldown) and benefits every skill; the paragraph below "
+     "describes the earlier per-row treatment. "
      "Drives a sword into the target's location: 900%->1800% damage to 5 nearby target(s), 3 "
      "times, leaving a 10-sec wound (see PUNCTURE_WOUND for the DoT half). factorIndex 12, "
      "baseDamage 9000 tenths%. PATCHED: targets 5->10 (modeled as base 5 +5 once Raging Blow's "
@@ -2121,8 +2144,8 @@ SKILL_ROWS = [
      "sit on PUNCTURE's own row (the wound's damage-taken-increase mastery affects the *boss "
      "taking* more damage during the wound, not the wound's own base damage)."),
     ("ENHANCED_RAGING_BLOW", "Enhanced Raging Blow", 4, 17, True, 1, 6, 0, 0, 100, 1,
-     6105, 12, True,
-     level_gated_sum(IB("level"), {108: 50}),
+     6100, 12, True,
+     level_gated_sum(IB("level"), {122: 50}),
      100, 0,
      f'=9+IF({IB("level")}>=100,3,0)', "", 0, "", "",
      "Quickly slashes target(s) in front multiple times: 550%->1100% damage (pre-patch curve), "
@@ -2149,15 +2172,19 @@ SKILL_ROWS = [
      "with Dark Knight and Paladin (single wiki page, /w/Magic_Crash) — cross-check their own "
      "builds resolve to the identical tuple. PATCHED: targets 5->9 (effect range +50% not "
      "modeled, no such mechanic exists in this project)."),
-    ("BEAM_BLADE", "Beam Blade", 3, 16, True, 1, 4, 0, 0, 100, 1,
+    ("BEAM_BLADE", "Beam Blade", 3, f'=IF({IB("level")}>=104,16*0.7,16)', True, 1, f'=4+IF({IB("level")}>=94,1,0)', 0, 0, 100, 1,
      2500, 12, True,
-     0, 0, 0, 8, "", 0, 200, 23,
+     level_gated_sum(IB("level"), {73: 50}), 0, 0, 8, "", 0, 200, 23,
+     "AUDIT 2026-10-21: previously-missing masteries added: Damage +50% @73, Strike +1 @94, Reuse -30% cooldown @104. "
+
      "Releases sword energy: 250%->500% damage to 8 target(s) in front, 4 times. factorIndex 12, "
      "baseDamage 2500 tenths%, 16s cooldown. Not patched. Maple Hero target (own 1x share) — see "
      "MAPLE_HERO_RATIOS."),
-    ("RUSH", "Rush", 3, 22, True, 1, 1, 0, 0, 100, 1,
+    ("RUSH", "Rush", 3, f'=IF({IB("level")}>=90,22*0.7,22)', True, 1, 1, 0, 0, 100, 1,
      6000, 12, True,
-     0, 0, 0, 12, "", 0, 300, 23,
+     level_gated_sum(IB("level"), {68: 80}), 0, 0, 12, "", 0, 300, 23,
+     "AUDIT 2026-10-21: previously-missing masteries added: Damage +80% @68, Reuse -30% cooldown @90. "
+
      "Charges to the front to deal 600%->1200% damage to 12 target(s) (stun 2.5s not modeled). "
      "factorIndex 12, baseDamage 6000 tenths%, 22s cooldown. Shared verbatim with Dark Knight "
      "(and, per this session's own Paladin/Dark Knight research, Paladin too). Not patched "
@@ -2192,7 +2219,9 @@ SKILL_ROWS = [
      "target row's own K-column formula)."),
     ("COMBO_ATTACK", "Combo Attack (Attack%)", 2, "", False, 1, 1, 0, 0, 100, 1,
      40, 22, True,
-     0, 0, 0, 0, "ATTACK", 0, "", "",
+     level_gated_sum(IB("level"), {49: 1.5}), 0, 0, 0, "ATTACK", 0, "", "",
+     "AUDIT 2026-10-21: Mastery Lv49 'Combo Attack - Attack' +1.5%p per stack added; Advanced Combo Lv118 adds +1 max stack (8). "
+
      "On attack, 40% chance to gain a combo stack (+4%->5.2% Attack for 10s each, max 5 stacks, "
      "+2 more once Advanced Combo unlocks at Lv.110). Modeled at steady-state MAX stacks (5, or "
      "7 once Lv.110) once unlocked, not an exact stack-gain/decay state machine — same "
@@ -2201,19 +2230,21 @@ SKILL_ROWS = [
      "SkillMasteryBonus% field below using a level-gated multiplier trick."),
     ("COMBO_SYNERGY", "Combo Synergy (Final Damage per stack)", 3, "", False, 1, 1, 0, 0, 100, 1,
      50, 22, True,
-     0, 0, 0, 0, "FINAL_DAMAGE", 0, "", "",
+     level_gated_sum(IB("level"), {82: 1}), 0, 0, 0, "FINAL_DAMAGE", 0, "", "",
+     "AUDIT 2026-10-21: Mastery Lv82 'Combo Synergy - Final Damage' +1%p per stack added. "
+
      "+5%->8% Final Damage per combo stack, +10%p combo-stack-chance (not modeled, folded into "
      "the steady-state max-stacks assumption already used for Combo Attack). Modeled at "
      "steady-state MAX stacks (5, or 7 once Lv.110's Advanced Combo unlocks) — factorIndex 22, "
      "baseDamage 50 tenths% (per-stack value)."),
-    ("SPIRIT_BLADE", "Spirit Blade", 2, 45, True, 1, 1, 0, 0, 100, 1,
+    ("SPIRIT_BLADE", "Spirit Blade", 2, f'=IF({IB("level")}>=44,45*0.7,45)', True, 1, 1, 0, 0, 100, 1,
      100, 21, True,
      0, 0, 0, 0, "ATTACK", 20, "", "",
      "Self-inclusive ally buff (matches Bishop's own 'allied players' precedent) — +10%->14% "
      "Attack for 20s, 45s cooldown. Own damage-taken-reduction component (8%->11.2%) not "
      "modeled (no such mechanic for the character's own damage-taken exists). factorIndex 21, "
      "baseDamage 100 tenths%. Not patched."),
-    ("SCARING_SWORD", "Scaring Sword", 3, 30, True, 1, 1, 0, 0, 35, 1,
+    ("SCARING_SWORD", "Scaring Sword", 3, 30, True, 1, 1, 0, 0, 25, 1,
      200, 21, True,
      level_gated_sum(IB("level"), {78: 8}), 0, 0, 0, "MONSTER_DMG", 10, "", "",
      "On-attack proc (35% chance) that increases the target's damage taken by 20%->36% for 10s "
@@ -2304,6 +2335,17 @@ ROW_HAS_COOLDOWN = {row[0]: row[3] not in ("", None) for row in SKILL_ROWS}
 CDR_COSTS_ACTION_ROW = {key: r for key, r in ROW.items()}
 
 
+# Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills, buffs and passives alike
+# (user decision 2026-10-21; it used to apply only to CostsActionSlot rows). The exempt rows are NOT real
+# cooldowns: their Cooldown(s) cell is a trigger-rate / internal-interval surrogate (e.g. 1 / attack speed),
+# which CDR must not shrink to the 0.1s floor.
+CDR_EXEMPT_ROW_KEYS = []
+
+
+def cdr_applies_expr(key):
+    return "FALSE" if key in CDR_EXEMPT_ROW_KEYS else "TRUE"
+
+
 def build_skills_sheet(wb):
     ws = wb.create_sheet("Skills")
     for i, name in enumerate(SKILL_COLUMNS):
@@ -2375,7 +2417,7 @@ def build_calc_sheet(wb):
         has_cooldown = ROW_HAS_COOLDOWN[key]
         if has_cooldown:
             eff_cd_r = (
-                f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+                f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), cdr_applies_expr(key))}'
                 f'*(1-{artifact_soul_contract_pct_expr(IB("soul_contract_equipped"), IB("content_type"), IB("soul_contract_star"))}/100))'
             )
             # Duration actually available for this row's casts in fixed-duration mode: the raw
@@ -2449,12 +2491,12 @@ def build_calc_sheet(wb):
             maple_term = f'*(1+{maple_ratio}*{maple_hero_gated}/100)' if maple_ratio else ''
             combo_excess_fd_term = (
                 f'*(1+IF({S("Key", r)}="ENHANCED_RAGING_BLOW",'
-                f'IF({IB("level")}>=134,MAX(0,IF({IB("level")}>=110,7,5)-5)*50,0),0)/100)'
+                f'IF({IB("level")}>=138,MAX(0,IF({IB("level")}>=118,8,IF({IB("level")}>=110,7,5))-5)*50,0),0)/100)'
             )
             ws.cell(row=r, column=11, value=(
                 f'=J{r}*(1+{IB("stat_damage")}/100)*(1+{IB("damage")}/100)'
                 f'*(1+{IB("damage_amp")}/100)'
-                f'*(5000/(6000+{IB("monster_defense")}*(1-{IB("def_pen")}/100)))'
+                f'*(5000/(6000+{IB("monster_defense")}*(1-{live_def_pen(IB("def_pen"), IB("level"))}/100)))'
                 f'*(1+({IB("final_damage")}+{final_damage_extra_ref})/100)*(1+{art_ref("AGG_FINAL_DAMAGE")}/100)'
                 f'{maple_term}'
                 f'{combo_excess_fd_term}'
@@ -2480,7 +2522,7 @@ def build_calc_sheet(wb):
         # computed with vs. without that extra amount (see artifact_reindeer_spear_extra_mult_expr).
         # Defense Penetration combines like Attack Speed — diminishing-returns
         # (new = 1-(1-old)*(1-inc)), never additive.
-        _def_pen_baseline_r = IB("def_pen")
+        _def_pen_baseline_r = live_def_pen(IB("def_pen"), IB("level"))
         _reindeer_s_r = art_ref("reindeer_spear_base_def_pen_reference")
         _def_pen_boss_r = (
             f'(100*(1-(1-{_def_pen_baseline_r}/100)*(1-{_reindeer_s_r}/100)^'
@@ -2603,7 +2645,7 @@ def build_summary_sheet(wb):
 
     def buff_uptime(row):
         return uptime_fraction_or_exact_expr(
-            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), S("Cooldown(s)", row),
+            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), f'(1/Calc!Q{row})',
             bdi_main, IB("fight_duration"),
         )
 
@@ -2616,7 +2658,7 @@ def build_summary_sheet(wb):
     # Combo Attack/Combo Synergy: steady-state MAX stacks (5, or 7 once Advanced Combo unlocks
     # at Lv.110) — the stack-count multiplier is applied here, not baked into the Skills-sheet
     # row itself (Calc!F holds the PER-STACK value).
-    combo_stacks_expr = f'IF({IB("level")}>=110,7,5)'
+    combo_stacks_expr = f'IF({IB("level")}>=118,8,IF({IB("level")}>=110,7,5))'
     combo_attack_avg = f'((Calc!C{r_ca}=TRUE)*Calc!F{r_ca}*{combo_stacks_expr})'
     spirit_blade_avg = f'((Calc!C{r_sb}=TRUE)*Calc!F{r_sb}*{buff_uptime(r_sb)})'
     combo_synergy_avg = f'((Calc!C{r_cs}=TRUE)*Calc!F{r_cs}*{combo_stacks_expr})'
@@ -2632,7 +2674,15 @@ def build_summary_sheet(wb):
     ws.cell(row=R_CRIT_RATE_BONUS, column=2, value=0)
 
     ws.cell(row=R_MONSTER_DMG_BONUS, column=1, value="Global Monster Damage-Taken Bonus % (Scaring Sword, proc-chance x duty-cycle)")
-    ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=f'={scaring_sword_avg}')
+    r_mcw = ROW["MAGIC_CRASH"]
+    magic_crash_weaken_avg = f'((Calc!C{r_mcw}=TRUE)*IF({IB("level")}>=126,10*MIN(1,15*Calc!Q{r_mcw}),0))'
+    r_pn = ROW["PUNCTURE"]
+    # Puncture's wound is a GLOBAL damage-taken debuff (it was previously applied to Puncture's own hits only):
+    # the weaken % x the fraction of the time a wound is up (10s per Puncture cast).
+    puncture_weaken_avg = (
+        f'((Calc!C{r_pn}=TRUE)*{puncture_weaken_pct_expr()}*MIN(1,10*(1+{bdi_main}/100)*Calc!Q{r_pn}))'
+    )
+    ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=f'={scaring_sword_avg}+{magic_crash_weaken_avg}+{puncture_weaken_avg}')
 
     ws.cell(row=R_AS_BONUS, column=1, value="Attack Speed Buff Bonus % (Nimble Feet, duty-cycle averaged)")
     ws.cell(row=R_AS_BONUS, column=2, value=f'={nimble_feet_avg}')
@@ -2658,7 +2708,7 @@ def build_summary_sheet(wb):
     ws.cell(row=R_CRIT_DAMAGE_BONUS, column=2, value=f'={enrage_critdmg_avg}')
 
     ws.cell(row=R_FD_BONUS, column=1, value="Global Final Damage Bonus % (Enrage + Combo Synergy)")
-    ws.cell(row=R_FD_BONUS, column=2, value=f'={enrage_fd_avg}+{combo_synergy_avg}')
+    ws.cell(row=R_FD_BONUS, column=2, value=f'={enrage_fd_avg}+{combo_synergy_avg}+IF({IB("level")}>=98,5,0)')
 
     ws.cell(row=R_TOTAL, column=1, value="TOTAL DPS").font = Font(bold=True, size=13)
     ws.cell(row=R_TOTAL, column=2, value=f"=SUM(Calc!O2:O{LAST_ROW})").font = Font(bold=True, size=13)
@@ -2789,15 +2839,21 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Min Damage Multiplier %": "min_damage",
     "Max Damage Multiplier %": "max_damage",
     "Defense Penetration": "def_pen",
-    "Dex %": "dex",
-    "Dex": "dex",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
     "Skill Cooldown Decrease (seconds)": "skill_cooldown_decrease",
     "Buff Duration Increase %": "buff_duration_increase_pct",
     "All Skill Level": "skill_lvl_all",
     "Basic Attack Target Increase": "basic_attack_target_increase",
+    "Str %": "str_pct",
+    "Str": "flat_str",
+    "Dex": "dex",
 }
+
+# Sub-stat PERCENT potential lines: the Sensitivity sweep for the sub-stat is a flat +1 point, so a
+# "+N% sub-stat" roll is worth N% of the current total sub-stat in points (approximation: Inputs holds the
+# final sub-stat value, no separate flat/% split). Main-stat lines map 1:1 above.
+POTENTIAL_SUB_STAT_PCT_LINES = {"Dex %": ("dex", "dex")}
 
 
 def dps_per_unit_expr(stat_name):
@@ -2822,6 +2878,9 @@ def dps_per_unit_expr(stat_name):
         )
     if stat_name == "Companion Summoning Time Increase %":
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]}'
+    if stat_name in POTENTIAL_SUB_STAT_PCT_LINES:
+        sweep_key, inputs_key = POTENTIAL_SUB_STAT_PCT_LINES[stat_name]
+        return f'=Sensitivity!H{SENSITIVITY_ROW_FOR[sweep_key]}*{IB(inputs_key)}/100'
     key = POTENTIAL_STAT_TO_SWEEP_KEY.get(stat_name)
     if key is None:
         return "0"
@@ -3035,7 +3094,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     _reindeer_star_magnitude = star_lookup_expr(ib("reindeer_spear_star"), "reindeer_spear_def_pen")
     _reindeer_extra_dose_block = f'({ib("reindeer_spear_equipped")}-{IB("reindeer_spear_equipped")})'
     def_pen_total_block = (
-        f'(100*(1-(1-({ib("def_pen")}+{delta["def_pen"]})/100)*(1-{_reindeer_star_magnitude}/100)^{_reindeer_extra_dose_block}))'
+        f'(100*(1-(1-{live_def_pen("(" + ib("def_pen") + "+" + delta["def_pen"] + ")", ib("level"))}/100)*(1-{_reindeer_star_magnitude}/100)^{_reindeer_extra_dose_block}))'
     )
     cursed_doll_delta_block = (
         f'({ib("cursed_doll_equipped")}-{IB("cursed_doll_equipped")})'
@@ -3137,7 +3196,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
             fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
-            S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
+            f'(1/Q{local_row})', bdi_block, ib("fight_duration"),
         )
 
     # Flat ATTACK is assumed to already include the character's current STR/DEX-derived attack
@@ -3154,7 +3213,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     r_cs, r_ss = ROW["COMBO_SYNERGY"], ROW["SCARING_SWORD"]
     r_ef, r_ecd, r_nf = ROW["ENRAGE_FD"], ROW["ENRAGE_CRITDMG"], ROW["NIMBLE_FEET"]
 
-    combo_stacks_block = f'IF({ib("level")}>=110,7,5)'
+    combo_stacks_block = f'IF({ib("level")}>=118,8,IF({ib("level")}>=110,7,5))'
     combo_attack_avg = f'((C{row_of["COMBO_ATTACK"]}=TRUE)*F{row_of["COMBO_ATTACK"]}*{combo_stacks_block})'
     spirit_blade_avg = f'((C{row_of["SPIRIT_BLADE"]}=TRUE)*F{row_of["SPIRIT_BLADE"]}*{buff_uptime_block(row_of["SPIRIT_BLADE"], r_sb)})'
     combo_synergy_avg = f'((C{row_of["COMBO_SYNERGY"]}=TRUE)*F{row_of["COMBO_SYNERGY"]}*{combo_stacks_block})'
@@ -3163,6 +3222,16 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         f'((C{row_of["SCARING_SWORD"]}=TRUE)*F{row_of["SCARING_SWORD"]}*'
         f'(Skills!{SC["ProcChance%"]}{r_ss}/100)*{buff_uptime_block(row_of["SCARING_SWORD"], r_ss)})'
     )
+    # Block-local mirror of Summary's Global Monster Damage-Taken Bonus (this block used to read the MAIN
+    # sheet's cell, so sweeping Buff Duration / Cooldown Decrease never moved Scaring Sword / the weakens).
+    magic_crash_weaken_block = (
+        f'((C{row_of["MAGIC_CRASH"]}=TRUE)*IF({ib("level")}>=126,10*MIN(1,15*Q{row_of["MAGIC_CRASH"]}),0))'
+    )
+    puncture_weaken_block = (
+        f'((C{row_of["PUNCTURE"]}=TRUE)*{puncture_weaken_pct_expr(ib)}'
+        f'*MIN(1,10*(1+{bdi_block}/100)*Q{row_of["PUNCTURE"]}))'
+    )
+    mdb_block = f'({scaring_sword_avg}+{magic_crash_weaken_block}+{puncture_weaken_block})'
     enrage_fd_avg = f'((C{row_of["ENRAGE_FD"]}=TRUE)*F{row_of["ENRAGE_FD"]}*{buff_uptime_block(row_of["ENRAGE_FD"], r_ef)})'
     enrage_critdmg_avg = f'((C{row_of["ENRAGE_CRITDMG"]}=TRUE)*F{row_of["ENRAGE_CRITDMG"]}*{buff_uptime_block(row_of["ENRAGE_CRITDMG"], r_ecd)})'
     # Attack% bucket: every live skill/buff Attack% source sums additively into ONE combined
@@ -3194,7 +3263,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         has_cooldown = ROW_HAS_COOLDOWN[key]
         if has_cooldown:
             eff_cd_row = (
-                f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+                f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), cdr_applies_expr(key))}'
                 f'*(1-{artifact_soul_contract_pct_expr(ib("soul_contract_equipped"), ib("content_type"), ib("soul_contract_star"))}/100))'
             )
             # Block-local mirror of available_duration_r (main sheet) — must use this block's own
@@ -3272,7 +3341,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             maple_term = f'*(1+{maple_ratio}*{maple_hero_gated_block}/100)' if maple_ratio else ''
             combo_excess_fd_term = (
                 f'*(1+IF({S("Key", r)}="ENHANCED_RAGING_BLOW",'
-                f'IF({ib("level")}>=134,MAX(0,IF({ib("level")}>=110,7,5)-5)*50,0),0)/100)'
+                f'IF({ib("level")}>=138,MAX(0,IF({ib("level")}>=118,8,IF({ib("level")}>=110,7,5))-5)*50,0),0)/100)'
             )
             ws.cell(row=row, column=11, value=(
                 f'=J{row}*(1+{ib("stat_damage")}/100)*(1+{ib("damage")}/100)'
@@ -3302,9 +3371,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
         boss_dmg_pct_row = (
             f'{ib("boss_damage")}+{delta["boss_damage"]}+{S("MasteryBossDamage%", r)}'
-            f'+{MONSTER_DMG_BONUS_REF}+{agg_boss_damage_block}'
+            f'+{mdb_block}+{agg_boss_damage_block}'
         )
-        normal_dmg_pct_row = f'{ib("normal_damage")}+{S("MasteryNormalDamage%", r)}+{MONSTER_DMG_BONUS_REF}+{agg_normal_damage_block}'
+        normal_dmg_pct_row = f'{ib("normal_damage")}+{S("MasteryNormalDamage%", r)}+{mdb_block}+{agg_normal_damage_block}'
 
         # The Contract of Darkness's boss-branch-only Crit Rate, via a crit-blend ratio correction
         # using THIS row's own L/M cells (only meaningful for damage-dealing rows, where
@@ -3385,7 +3454,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ws.cell(row=s_crit_damage_bonus, column=2, value=f'={enrage_critdmg_avg}')
 
     ws.cell(row=s_fd_bonus, column=1, value="Global Final Damage Bonus % (Enrage + Combo Synergy)")
-    ws.cell(row=s_fd_bonus, column=2, value=f'={enrage_fd_avg}+{combo_synergy_avg}')
+    ws.cell(row=s_fd_bonus, column=2, value=f'={enrage_fd_avg}+{combo_synergy_avg}+IF({ib("level")}>=98,5,0)')
 
     ws.cell(row=s_startup, column=1, value="Buff-Casting Startup Delay (s, fixed-duration only)")
     ws.cell(row=s_startup, column=2, value="=" + buff_cast_startup_time_expr(

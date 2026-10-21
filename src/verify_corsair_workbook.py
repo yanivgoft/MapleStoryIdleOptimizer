@@ -177,10 +177,14 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15
 
 
-def eff_cooldown(cooldown, costs_action):
+def eff_cooldown(cooldown, costs_action=None, exempt=False):
+    """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
+    buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
+    compatibility and no longer gates CDR). `exempt=True` marks the trigger-rate / internal-interval
+    surrogate rows (mirror of the build script's CDR_EXEMPT_ROW_KEYS)."""
     if monster_type == "pvp":
         return PVP_FIGHT_DURATION
-    return max(0.1, cooldown - (skill_cooldown_decrease if costs_action else 0))
+    return max(0.1, cooldown - (0 if exempt else skill_cooldown_decrease))
 
 
 def eff_duration(duration):
@@ -215,7 +219,7 @@ def buff_avg(pct, duration, cooldown, costs_action):
     elif monster_type == "pvp":
         uptime = min(eff_duration(duration), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        uptime = eff_duration(duration) / eff_cd
+        uptime = min(1.0, eff_duration(duration) / eff_cd)
     return pct * uptime
 
 
@@ -247,7 +251,7 @@ def coeff_pct(base, fidx, scales, job_step):
 #      Fire 80% — only the growth curve shape is a FLAGGED ASSUMPTION) + Ahoy Mateys (a SEPARATE
 #      helper, +250%/+100% FD to Scurvy Summons/All Aboard) ----
 maple_hero_pct = coeff_pct(200, 23, True, 4) if unlocked("MAPLE_HERO_HELPER") else 0.0
-ahoy_mateys_pct = coeff_pct(2500, 22, True, 4) if unlocked("AHOY_MATEYS_HELPER") else 0.0
+ahoy_mateys_pct = coeff_pct(2500, 21, True, 4) if unlocked("AHOY_MATEYS_HELPER") else 0.0
 
 # ---- Actions Per Second — combines raw Inputs!attack_speed with Nimble Feet's own duty-cycle-
 #      averaged AS bonus via the standard diminishing-returns stack (factor 150) ----
@@ -255,7 +259,7 @@ def exact_buff_uptime(cooldown, buff_duration):
     casts = exact_casts(cooldown)
     remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
     last_uptime = min(buff_duration, remaining_after_last)
-    return (casts - 1) * buff_duration + last_uptime
+    return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
 def duty_cycle_uptime(cooldown, duration):
@@ -266,7 +270,7 @@ def duty_cycle_uptime(cooldown, duration):
         return exact_buff_uptime(eff_cd, eff_duration(duration)) / fight_duration
     elif monster_type == "pvp":
         return min(eff_duration(duration), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
-    return eff_duration(duration) / eff_cd
+    return min(1.0, eff_duration(duration) / eff_cd)
 
 
 def uptime_fraction_steady(duration, cooldown):
@@ -277,7 +281,7 @@ def uptime_fraction_steady(duration, cooldown):
     scaled_duration = duration * (1 + buff_duration_increase_pct / 100)
     if monster_type == "pvp":
         return min(scaled_duration, PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
-    return scaled_duration / cooldown
+    return min(1.0, scaled_duration / cooldown)
 
 
 def _nimble_feet_as_avg():
@@ -320,11 +324,13 @@ def non_buff_total_hits(cooldown, hits_per_cast, icd, window):
 # ---- Basic attack (Eight-Legs Easton) ----
 eight_legs_easton_targets = 6 + basic_attack_target_increase
 EIGHT_LEGS_EASTON_HITS = 6 if level >= 136 else 5
-eight_legs_easton_mastery_damage = level_gated_sum({102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1})
+eight_legs_easton_mastery_damage = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 eight_legs_easton_mastery_boss_damage = level_gated_sum({111: 10, 124: 10})
 eight_legs_easton_pct = skill_coefficient_base + eight_legs_easton_mastery_damage
 
 # ---- Cast rate (subtracted from Eight-Legs Easton) — action-costing skills only ----
+# (key, base cooldown, costs_action, actions per cast).  Brain Scrambler / Rapid Fire's EFFECTIVE cooldown is
+# divided by the Quickdraw factor f (below); all the rest use eff_cooldown directly.
 COST_ACTION_ROWS = [
     ("SWIFT_FIRE", 17, True, 1),
     ("SCURVY_SUMMONS", 35, True, 1),
@@ -335,20 +341,45 @@ COST_ACTION_ROWS = [
     ("RAPID_FIRE", 17, True, 1),
     ("BROADSIDE_BURST", 20, True, 1),
 ]
+QD_COOLDOWN_KEYS = ("BRAIN_SCRAMBLER", "RAPID_FIRE")
+QD_K = 0.25   # 1.5s per 3 Easton casts, split between the two skills: 1.5/3/2
+
+# Quickdraw (Lv125) closed-form fixed point: B* = (APS - c0 - x0)/(1 + K*x0); f = 1 + K*B*.
+if unlocked("QUICKDRAW_BAD") and monster_type != "pvp":
+    _c0 = sum((1 / eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS
+              if ca and unlocked(k) and k not in QD_COOLDOWN_KEYS)
+    _c0 += (1 / eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0
+    _c0 += (1 / eff_cooldown(42, True)) if unlocked("JOLLY_ROGER_FD") else 0
+    _x0 = sum(1 / eff_cooldown(cd, ca) for k, cd, ca, aps in COST_ACTION_ROWS if k in QD_COOLDOWN_KEYS and unlocked(k))
+    qd_factor = 1 + QD_K * max(0.0, (actions_per_second - _c0 - _x0) / (1 + QD_K * _x0))
+else:
+    qd_factor = 1.0
+
+
+def eff_cd_of(key, cd, ca):
+    return eff_cooldown(cd, ca) / (qd_factor if key in QD_COOLDOWN_KEYS else 1.0)
+
+
 if fixed_duration_active:
-    cast_rate = sum(non_buff_casts(eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)) / fight_duration
+    cast_rate = sum(non_buff_casts(eff_cd_of(k, cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)) / fight_duration
     cast_rate += (exact_casts(eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0) / fight_duration
     cast_rate += (exact_casts(eff_cooldown(42, True)) if unlocked("JOLLY_ROGER_FD") else 0) / fight_duration
 else:
-    cast_rate = sum((1 / eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k))
+    cast_rate = sum((1 / eff_cd_of(k, cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k))
     cast_rate += (1 / eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0
     cast_rate += (1 / eff_cooldown(42, True)) if unlocked("JOLLY_ROGER_FD") else 0
 eight_legs_easton_per_second = max(0, actions_per_second - cast_rate)
 
+# ---- Swift Fire - Weaken (Lv54): 3 strikes x 3% (max 3 stacks = 9%) for 8s per cast ----
+monster_dmg_bonus = (
+    9 * min(1.0, 8 * (1 + buff_duration_increase_pct / 100) / eff_cooldown(17, True))
+    if (level >= 54 and unlocked("SWIFT_FIRE")) else 0.0
+)
+
 # ---- Global Final Damage bucket: Jolly Roger (real 42s/18s duty cycle) + Ahoy Mateys - Final
 #      Damage proc (Mastery Lv.122, +20% FD for 20s on Scurvy Summons cast) ----
-jolly_roger_pct = coeff_pct(150, 22, True, 4) * duty_cycle_uptime(42, 18) if unlocked("JOLLY_ROGER_FD") else 0.0
-ahoy_mateys_proc_fd = 20 * uptime_fraction_steady(20, 35) if level >= 122 else 0.0
+jolly_roger_pct = coeff_pct(150, 21, True, 4) * duty_cycle_uptime(42, 18) if unlocked("JOLLY_ROGER_FD") else 0.0
+ahoy_mateys_proc_fd = 20 * uptime_fraction_steady(20, eff_cooldown(35, True)) if level >= 122 else 0.0
 final_damage_extra = jolly_roger_pct + ahoy_mateys_proc_fd
 
 # ---- Attack% bucket: Roll of the Dice's dice component only (shared verbatim w/ Buccaneer) ----
@@ -357,7 +388,6 @@ attack_bucket_mult = 1 + roll_of_dice_pct / 100
 
 crit_rate_bonus = 0.0
 crit_damage_bonus = 0.0
-monster_dmg_bonus = 0.0
 
 
 def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_ratio=0.0, ahoy_ratio=0.0):
@@ -386,29 +416,38 @@ def hit_damage(coeff_pct_val, is_basic, mastery_boss, mastery_normal, maple_rati
     return non_crit_avg * (1 - cr) + crit_avg * cr
 
 
-# ---- Eight-Legs Easton (basic attack) ----
+# ---- Eight-Legs Easton (basic attack); Quickdraw doubles every 3rd cast => x(1 + 1/3) ----
 eight_legs_easton_hit = hit_damage(eight_legs_easton_pct, True, eight_legs_easton_mastery_boss_damage, 0)
+qd_damage_mult = (1 + 1 / 3) if unlocked("QUICKDRAW_BAD") else 1.0
 eight_legs_easton_dps = (
-    EIGHT_LEGS_EASTON_HITS * eight_legs_easton_hit * eight_legs_easton_per_second * boss_normal_multiplier(eight_legs_easton_targets, eight_legs_easton_mastery_boss_damage, 0)
+    EIGHT_LEGS_EASTON_HITS * eight_legs_easton_hit * eight_legs_easton_per_second * qd_damage_mult
+    * boss_normal_multiplier(eight_legs_easton_targets, eight_legs_easton_mastery_boss_damage, 0)
     if unlocked("EIGHT_LEGS_EASTON") else 0.0
 )
 
 # ---- Other damage skills ----
+# Crew window/ICD: 20s (x(1+BDI) from All Aboard - Persistence @104, capped at the 35s cooldown); strike
+# intervals -30% @94 (All Aboard - Strike Interval).
+crew_window = min(35, 20 * (1 + buff_duration_increase_pct / 100)) if level >= 104 else 20
+scurvy_icd = 1.5 * 0.7 if level >= 94 else 1.5
+all_aboard_icd = 2 * 0.7 if level >= 94 else 2
+siege_window = 30 if level >= 68 else 22
+bombard = level >= 118
 DAMAGE_SKILLS = {
     "SWIFT_FIRE": dict(job_step=2, cooldown=17, hits=3, base=1800, fidx=12, scales=True,
                         mastery=level_gated_sum({39: 50}), mastery_boss=0, mastery_normal=0,
                         costs_action=True, targets=8, maple_ratio=MAPLE_HERO_RATIOS.get("SWIFT_FIRE", 0)),
-    "SCURVY_SUMMONS": dict(job_step=2, cooldown=35, hits=2, icd=1.5, window=20, base=950, fidx=12,
-                            scales=True, mastery=0, mastery_boss=0, mastery_normal=0,
+    "SCURVY_SUMMONS": dict(job_step=2, cooldown=35, hits=2, icd=scurvy_icd, window=crew_window, base=950, fidx=12,
+                            scales=True, mastery=level_gated_sum({49: 50}), mastery_boss=0, mastery_normal=0,
                             costs_action=True, targets=3, ahoy_ratio=AHOY_MATEYS_RATIOS.get("SCURVY_SUMMONS", 0)),
-    "ALL_ABOARD": dict(job_step=2, cooldown=35, hits=3, icd=2, window=20, base=1100, fidx=12,
-                        scales=True, mastery=0, mastery_boss=0, mastery_normal=0,
-                        costs_action=False, targets=8, ahoy_ratio=AHOY_MATEYS_RATIOS.get("ALL_ABOARD", 0)),
+    "ALL_ABOARD": dict(job_step=3, cooldown=35, hits=3, icd=all_aboard_icd, window=crew_window, base=1100, fidx=12,
+                        scales=True, mastery=level_gated_sum({78: 50}), mastery_boss=0, mastery_normal=0,
+                        costs_action=True, targets=8, ahoy_ratio=AHOY_MATEYS_RATIOS.get("ALL_ABOARD", 0)),
     "BLACKBOOT_BILL": dict(job_step=3, cooldown=23, hits=4, base=1700, fidx=12, scales=True,
-                            mastery=level_gated_sum({73: 80}), mastery_boss=0, mastery_normal=0,
+                            mastery=level_gated_sum({73: 50}), mastery_boss=0, mastery_normal=0,
                             costs_action=True, targets=9, maple_ratio=MAPLE_HERO_RATIOS.get("BLACKBOOT_BILL", 0)),
-    "SIEGE_BOMBER": dict(job_step=3, cooldown=22, hits=1, icd=1.5, window=22, base=1900, fidx=12,
-                          scales=True, mastery=0, mastery_boss=0, mastery_normal=0,
+    "SIEGE_BOMBER": dict(job_step=3, cooldown=22, hits=1, icd=1.5, window=siege_window, base=1900, fidx=12,
+                          scales=True, mastery=level_gated_sum({82: 50}), mastery_boss=0, mastery_normal=0,
                           costs_action=True, targets=6, maple_ratio=MAPLE_HERO_RATIOS.get("SIEGE_BOMBER", 0)),
     "BRAIN_SCRAMBLER": dict(job_step=4, cooldown=18, hits=2, base=29000, fidx=12, scales=True,
                              mastery=level_gated_sum({108: 100}), mastery_boss=0, mastery_normal=0,
@@ -416,20 +455,29 @@ DAMAGE_SKILLS = {
     "NAUTILUS_STRIKE": dict(job_step=4, cooldown=33, hits=5, base=19500, fidx=12, scales=True,
                              mastery=level_gated_sum({126: 50}), mastery_boss=0, mastery_normal=0,
                              costs_action=True, targets=15),
-    "NAUTILUS_FINAL_ATTACK": dict(job_step=4, cooldown=1, hits=1, base=8500, fidx=21, scales=True,
-                                   mastery=0, mastery_boss=0, mastery_normal=0,
-                                   costs_action=False, targets=1, proc_chance=0.30),
     "RAPID_FIRE": dict(job_step=4, cooldown=17, hits=7, base=18000, fidx=12, scales=True,
-                        mastery=0, mastery_boss=0, mastery_normal=0,
+                        mastery=level_gated_sum({130: 70}), mastery_boss=0, mastery_normal=0,
                         costs_action=True, targets=9),
     "BROADSIDE_BURST": dict(job_step=4, cooldown=20, hits=2, base=50000, fidx=12, scales=True,
                              mastery=0, mastery_boss=0, mastery_normal=0,
                              costs_action=True, targets=10),
-    "BROADSIDE_SUSTAINED": dict(job_step=4, cooldown=20, hits=1, icd=2, window=20, base=3300,
+    # Bombardment @118 replaces the turret ticks (19000 tenths% x3 hits x8 targets); Setup @138 => 30s window.
+    "BROADSIDE_SUSTAINED": dict(job_step=4, cooldown=20, hits=(3 if bombard else 1), icd=2,
+                                 window=(30 if level >= 138 else 20),
+                                 base=(19000 if bombard else 3300),
                                  fidx=12, scales=True, mastery=0, mastery_boss=0, mastery_normal=0,
-                                 costs_action=False, targets=5),
+                                 costs_action=True, targets=(8 if bombard else 5)),
 }
 NORMAL_MONSTER_TARGETS = {k: v["targets"] for k, v in DAMAGE_SKILLS.items()}
+
+
+def skill_rate(key, s):
+    eff_cd = eff_cd_of(key, s["cooldown"], s["costs_action"])
+    if fixed_duration_active:
+        return non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
+    hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
+    return hits / eff_cd
+
 
 skill_dps = {}
 for key, s in DAMAGE_SKILLS.items():
@@ -441,34 +489,38 @@ for key, s in DAMAGE_SKILLS.items():
         pct, False, s.get("mastery_boss", 0), s.get("mastery_normal", 0),
         maple_ratio=s.get("maple_ratio", 0.0), ahoy_ratio=s.get("ahoy_ratio", 0.0),
     )
-    proc_prob = s.get("proc_chance", 1.0)
-    eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
-    if fixed_duration_active:
-        rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
-    else:
-        hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
-        rate = hits / eff_cd
-    skill_dps[key] = proc_prob * rate * hd * boss_normal_multiplier(s["targets"], s.get("mastery_boss", 0), s.get("mastery_normal", 0))
+    skill_dps[key] = skill_rate(key, s) * hd * boss_normal_multiplier(s["targets"], s.get("mastery_boss", 0), s.get("mastery_normal", 0))
+
+# ---- Nautilus Strike - Final Attack: any attack, 30% chance, 1s ICD => (c*R)/(1+ICD*c*R) with R = the
+#      combined cast rate of Easton + the direct-attack action-costing skills ----
+if unlocked("NAUTILUS_FINAL_ATTACK"):
+    _trig = eight_legs_easton_per_second
+    for _k in ("SWIFT_FIRE", "BLACKBOOT_BILL", "BRAIN_SCRAMBLER", "NAUTILUS_STRIKE", "RAPID_FIRE"):
+        if unlocked(_k):
+            _cd = eff_cd_of(_k, DAMAGE_SKILLS[_k]["cooldown"], DAMAGE_SKILLS[_k]["costs_action"])
+            _trig += (non_buff_casts(_cd) / fight_duration) if fixed_duration_active else (1 / _cd)
+    _c = 0.30
+    skill_dps["NAUTILUS_FINAL_ATTACK"] = (
+        (_c * _trig / (1 + 1 * _c * _trig)) * hit_damage(coeff_pct(8500, 21, True, 4), False, 0, 0)
+        * boss_normal_multiplier(1, 0, 0)
+    )
+else:
+    skill_dps["NAUTILUS_FINAL_ATTACK"] = 0.0
 
 # ---- Majestic Presence (procs off 3 independent sources: Basic Attack + Brain Scrambler + Rapid
-#      Fire — no Cooldown(s) of its own, combined trigger rate is the sum of the 3 sources' own
-#      hit rates) ----
+#      Fire; 25% per attack with a 0.5s internal cooldown => (c*R)/(1+ICD*c*R)) ----
 if unlocked("MAJESTIC_PRESENCE"):
-    mp_pct = coeff_pct(18000, 12, True, 4) + level_gated_sum({134: 50})
+    mp_pct = coeff_pct(18000, 21, True, 4) + level_gated_sum({134: 50})
     mp_hit = hit_damage(mp_pct, False, 0, 0)
 
     def _source_rate(key):
-        s = DAMAGE_SKILLS[key]
         if not unlocked(key):
             return 0.0
-        eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
-        if fixed_duration_active:
-            return non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
-        hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
-        return hits / eff_cd
+        return skill_rate(key, DAMAGE_SKILLS[key])
 
     mp_combined_rate = eight_legs_easton_per_second + _source_rate("BRAIN_SCRAMBLER") + _source_rate("RAPID_FIRE")
-    majestic_presence_dps = 0.25 * mp_combined_rate * mp_hit * boss_normal_multiplier(6, 0, 0)
+    _mc = 0.25
+    majestic_presence_dps = (_mc * mp_combined_rate / (1 + 0.5 * _mc * mp_combined_rate)) * mp_hit * boss_normal_multiplier(6, 0, 0)
 else:
     majestic_presence_dps = 0.0
 skill_dps["MAJESTIC_PRESENCE"] = majestic_presence_dps

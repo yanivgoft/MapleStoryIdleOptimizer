@@ -161,8 +161,7 @@ max_enemies_hit = _in("max_enemies_hit")
 fixed_duration_active = monster_type != "pvp" and fight_duration > 0
 
 basic_lvl = input_level(4, level, skill1, skill2, skill3, skill4, skill_all)
-skill_coefficient_base = 290 * get_factor(basic_lvl, 21) / 1000
-print(f"SKILL_COEFFICIENT (base) = {skill_coefficient_base:.4f}")
+skill_coefficient_base = None  # set once Combat Orders' uptime is known (below)
 
 
 def level_gated_sum(pairs):
@@ -177,10 +176,17 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15
 
 
-def eff_cooldown(cooldown, costs_action):
+def eff_cooldown(cooldown, costs_action=None, exempt=False):
+    """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
+    buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
+    compatibility and no longer gates CDR). `exempt=True` marks the trigger-rate / internal-interval
+    surrogate rows (mirror of the build script's CDR_EXEMPT_ROW_KEYS)."""
     if monster_type == "pvp":
         return PVP_FIGHT_DURATION
-    return max(0.1, cooldown - (skill_cooldown_decrease if costs_action else 0))
+    return max(0.1, cooldown - (0 if exempt else skill_cooldown_decrease))
+
+
+CDR_EXEMPT = {"DIVINE_JUDGMENT"}  # mirrors the build script (rate-surrogate cooldown)
 
 
 def eff_duration(duration):
@@ -209,14 +215,26 @@ def exact_buff_uptime(cooldown, buff_duration):
     casts = exact_casts(cooldown)
     remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
     last_uptime = min(buff_duration, remaining_after_last)
-    return (casts - 1) * buff_duration + last_uptime
+    return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
-def coeff_pct(base, fidx, scales, job_step):
+co_u = 0.0   # Combat Orders uptime (set below)
+co_f = 0.0   # Combat Orders' own scaling value = its 3rd-job skill-level bonus
+
+
+def factor_eff(lvl, fidx, job_step, is_co=False):
+    """FactorTable value time-averaged with Combat Orders' temporary skill-level bonus."""
+    if is_co:
+        return get_factor(lvl, fidx)
+    bonus = co_f if job_step == 3 else (18 if (job_step == 4 and level >= 104) else 0)
+    return (1 - co_u) * get_factor(lvl, fidx) + co_u * get_factor(lvl + bonus, fidx)
+
+
+def coeff_pct(base, fidx, scales, job_step, is_co=False):
     lvl = input_level(job_step, level, skill1, skill2, skill3, skill4, skill_all)
     if not scales:
         return base / 10
-    return (base / 10) * (get_factor(lvl, fidx) / 1000)
+    return (base / 10) * (factor_eff(lvl, fidx, job_step, is_co) / 1000)
 
 
 def buff_avg(pct, duration, cooldown, costs_action):
@@ -226,8 +244,17 @@ def buff_avg(pct, duration, cooldown, costs_action):
     elif monster_type == "pvp":
         uptime = min(eff_duration(duration), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        uptime = eff_duration(duration) / eff_cd
+        uptime = min(1.0, eff_duration(duration) / eff_cd)
     return pct * uptime
+
+
+# ---- Combat Orders (user: applies to the player too): +skill levels time-averaged via factor_eff ----
+if unlocked("COMBAT_ORDERS"):
+    co_f = coeff_pct(180, 21, True, 3, is_co=True)
+    co_u = buff_avg(1.0, 25, 35, True)
+skill_coefficient_base = 290 * factor_eff(basic_lvl, 21, 4) / 1000
+print(f"SKILL_COEFFICIENT (base) = {skill_coefficient_base:.4f}")
+combat_orders_attack_avg = (25 * co_u) if level >= 82 else 0.0
 
 
 def boss_normal_multiplier(mastery_boss, mastery_normal, targets):
@@ -262,7 +289,7 @@ blast_final_attack_addition = (
     final_attack_pct / 100 * 25 * (1 + 7.5 * maple_hero_pct / 100)
     if unlocked("FINAL_ATTACK_HELPER") else 0.0
 )
-blast_mastery_damage = level_gated_sum({102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1})
+blast_mastery_damage = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 blast_mastery_boss_damage = level_gated_sum({111: 10, 124: 10})
 blast_pct = skill_coefficient_base + blast_final_attack_addition + blast_mastery_damage
 blast_targets = 6 + basic_attack_target_increase
@@ -281,10 +308,10 @@ actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 
 # unchanged (they're what causes the delay, not affected further by it). VESSEL_OF_LIGHT/
 # DIVINE_SHIELD are buff-category too but costs_action=False (not actively cast), so they don't
 # contribute to the delay and are irrelevant here (they're not in COST_ACTION_ROWS/DAMAGE_SKILLS).
-BUFF_ROW_KEYS = {"GUARDIAN", "DIVINE_BLESSING", "HP_RECOVERY_ATK", "NIMBLE_FEET"}
+BUFF_ROW_KEYS = {"GUARDIAN", "DIVINE_BLESSING", "HP_RECOVERY_ATK", "COMBAT_ORDERS", "NIMBLE_FEET"}
 if fixed_duration_active:
     buff_cast_startup_time = sum(
-        1 for k in ("GUARDIAN", "DIVINE_BLESSING", "HP_RECOVERY_ATK", "NIMBLE_FEET") if unlocked(k)
+        1 for k in ("GUARDIAN", "DIVINE_BLESSING", "HP_RECOVERY_ATK", "COMBAT_ORDERS", "NIMBLE_FEET") if unlocked(k)
     ) / actions_per_second
 else:
     buff_cast_startup_time = 0.0
@@ -307,14 +334,15 @@ def non_buff_total_hits(cooldown, hits_per_cast, icd, window):
 # ---- Cast rate (subtracted from Blast) ----
 COST_ACTION_ROWS = [
     ("CLOSE_COMBAT", 18, True, 1),
-    ("NOBLE_DEMAND", 30, True, 1),
+    ("NOBLE_DEMAND", (30 * 0.7) if level >= 94 else 30, True, 1),
     ("HEAVENS_HAMMER", 18, True, 1),
     ("DIVINE_MARK_MAIN", 16, True, 1),
     ("MAGIC_CRASH", 28, True, 1),
-    ("RUSH", 22, True, 1),
+    ("RUSH", (22 * 0.7) if level >= 90 else 22, True, 1),
     ("GUARDIAN", 24, True, 1),
     ("DIVINE_BLESSING", 30, True, 1),
     ("HP_RECOVERY_ATK", 25, True, 1),
+    ("COMBAT_ORDERS", 35, True, 1),
     ("NIMBLE_FEET", 60, True, 1),
 ]
 if fixed_duration_active:
@@ -329,24 +357,24 @@ blast_per_second = max(0, actions_per_second - cast_rate)
 # ---- Vessel of Light (proc off basic attacks, no stated internal cooldown — uptime
 #      approximated as MIN(1, Duration x ProcChance%/100 x Basic Attack Rate)). Greater Vessel of
 #      Light has no own duty cycle and reuses this same uptime fraction directly. ----
-vessel_of_light_pct = coeff_pct(150, 22, True, 2) if unlocked("VESSEL_OF_LIGHT") else 0.0
+vessel_of_light_pct = (coeff_pct(150, 22, True, 2) + level_gated_sum({49: 5})) if unlocked("VESSEL_OF_LIGHT") else 0.0
 vessel_of_light_uptime = min(1.0, 10 * (15 / 100) * blast_per_second) if unlocked("VESSEL_OF_LIGHT") else 0.0
 vessel_of_light_avg = vessel_of_light_pct * vessel_of_light_uptime if unlocked("VESSEL_OF_LIGHT") else 0.0
-greater_vessel_pct = coeff_pct(180, 22, True, 4) if unlocked("GREATER_VESSEL_OF_LIGHT") else 0.0
+greater_vessel_pct = (coeff_pct(180, 22, True, 4) + level_gated_sum({118: 10})) if unlocked("GREATER_VESSEL_OF_LIGHT") else 0.0
 greater_vessel_avg = greater_vessel_pct * vessel_of_light_uptime if unlocked("GREATER_VESSEL_OF_LIGHT") else 0.0
 
-hp_recovery_pct = coeff_pct(120, 22, True, 3) if unlocked("HP_RECOVERY_ATK") else 0.0
+hp_recovery_pct = (coeff_pct(120, 21, True, 3) + level_gated_sum({78: 10})) if unlocked("HP_RECOVERY_ATK") else 0.0
 hp_recovery_avg = buff_avg(hp_recovery_pct, 20, 25, True) if unlocked("HP_RECOVERY_ATK") else 0.0
 
-attack_bucket_mult = 1 + (vessel_of_light_avg + hp_recovery_avg) / 100
+attack_bucket_mult = 1 + (vessel_of_light_avg + hp_recovery_avg + combat_orders_attack_avg) / 100
 
 # ---- Divine Shield (fixed-interval buff, treated as its own Cooldown(s)), Guardian, Divine
 #      Blessing (all live duty-cycled Final Damage buffs) ----
 divine_shield_pct = coeff_pct(150, 22, True, 3) if unlocked("DIVINE_SHIELD") else 0.0
 divine_shield_avg = buff_avg(divine_shield_pct, 10, 15, False) if unlocked("DIVINE_SHIELD") else 0.0
-guardian_pct = coeff_pct(100, 22, True, 4) if unlocked("GUARDIAN") else 0.0
+guardian_pct = coeff_pct(100, 21, True, 4) if unlocked("GUARDIAN") else 0.0
 guardian_avg = buff_avg(guardian_pct, 20, 24, True) if unlocked("GUARDIAN") else 0.0
-divine_blessing_pct = coeff_pct(120, 22, True, 4) if unlocked("DIVINE_BLESSING") else 0.0
+divine_blessing_pct = (coeff_pct(120, 21, True, 4) + level_gated_sum({126: 12})) if unlocked("DIVINE_BLESSING") else 0.0
 divine_blessing_avg = buff_avg(divine_blessing_pct, 22, 30, True) if unlocked("DIVINE_BLESSING") else 0.0
 
 crit_rate_bonus = 0.0  # no live Crit-Rate-buff source exists in this kit
@@ -361,12 +389,12 @@ def weaken_avg(pct, duration, cooldown):
         scaled_duration = min(duration * (1 + buff_duration_increase_pct / 100), PVP_FIGHT_DURATION)
         return pct * scaled_duration / PVP_FIGHT_DURATION
     scaled_duration = duration * (1 + buff_duration_increase_pct / 100)
-    return pct * scaled_duration / cooldown
+    return pct * min(1.0, scaled_duration / cooldown)
 
 
-close_combat_weaken = weaken_avg(10, 10, 18) if level >= 44 else 0.0
-noble_demand_weaken = weaken_avg(12, 10, 30)
-divine_mark_weaken = weaken_avg(20, 10, 16) if level >= 138 else 0.0
+close_combat_weaken = weaken_avg(10, 10, eff_cooldown(18, True)) if level >= 44 else 0.0
+noble_demand_weaken = weaken_avg(12, 10, eff_cooldown((30 * 0.7) if level >= 94 else 30, True))
+divine_mark_weaken = weaken_avg(20, 10, eff_cooldown(16, True)) if level >= 138 else 0.0
 monster_dmg_bonus = close_combat_weaken + noble_demand_weaken + divine_mark_weaken
 
 
@@ -404,7 +432,7 @@ DAMAGE_SKILLS = {
     "CLOSE_COMBAT": dict(job_step=2, cooldown=18, hits=1, base=4600, fidx=12, scales=True,
                           mastery=level_gated_sum({39: 50}), mastery_boss=0, mastery_normal=0,
                           costs_action=True, targets=7, maple_ratio=MAPLE_HERO_RATIOS.get("CLOSE_COMBAT", 0)),
-    "NOBLE_DEMAND": dict(job_step=3, cooldown=30, hits=1, base=16000, fidx=12, scales=True,
+    "NOBLE_DEMAND": dict(job_step=3, cooldown=(30 * 0.7) if level >= 94 else 30, hits=1, base=16000, fidx=12, scales=True,
                           mastery=level_gated_sum({73: 50}), mastery_boss=0, mastery_normal=0,
                           costs_action=True, targets=8, maple_ratio=MAPLE_HERO_RATIOS.get("NOBLE_DEMAND", 0)),
     "HEAVENS_HAMMER": dict(job_step=4, cooldown=18, hits=5, base=7800, fidx=12, scales=True,
@@ -414,16 +442,16 @@ DAMAGE_SKILLS = {
                               mastery=level_gated_sum({122: 50}), mastery_boss=0, mastery_normal=0,
                               costs_action=True, targets=8),
     "DIVINE_MARK_DETONATION": dict(job_step=4, cooldown=16, hits=4, base=4000, fidx=12, scales=True,
-                                    mastery=0, mastery_boss=0, mastery_normal=0,
+                                    mastery=level_gated_sum({122: 50}), mastery_boss=0, mastery_normal=0,
                                     costs_action=False, targets=8),
     "DIVINE_JUDGMENT": dict(job_step=4, cooldown=divine_judgment_cooldown, hits=4, base=8500, fidx=12,
-                             scales=True, mastery=0, mastery_boss=0, mastery_normal=0,
+                             scales=True, mastery=level_gated_sum({130: 50}), mastery_boss=0, mastery_normal=0,
                              costs_action=False, targets=4),
     "MAGIC_CRASH": dict(job_step=4, cooldown=28, hits=1, base=48000, fidx=12, scales=True,
                          mastery=0, mastery_boss=0, mastery_normal=0, costs_action=True,
                          targets=5 + (4 if level >= 100 else 0)),
-    "RUSH": dict(job_step=3, cooldown=22, hits=1, base=6000, fidx=12, scales=True,
-                 mastery=0, mastery_boss=0, mastery_normal=0, costs_action=True,
+    "RUSH": dict(job_step=3, cooldown=(22 * 0.7) if level >= 90 else 22, hits=1, base=6000, fidx=12, scales=True,
+                 mastery=level_gated_sum({68: 80}), mastery_boss=0, mastery_normal=0, costs_action=True,
                  targets=12, maple_ratio=MAPLE_HERO_RATIOS.get("RUSH", 0)),
 }
 NORMAL_MONSTER_TARGETS = {k: v["targets"] for k, v in DAMAGE_SKILLS.items()}
@@ -439,7 +467,7 @@ for key, s in DAMAGE_SKILLS.items():
         maple_ratio=s.get("maple_ratio", 0.0),
     )
     proc_prob = 1.0
-    eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
+    eff_cd = eff_cooldown(s["cooldown"], s["costs_action"], exempt=key in CDR_EXEMPT)
     if fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:

@@ -29,7 +29,7 @@ Key mechanics/simplifications specific to this kit:
   - Blast (basic attack) reuses the universal 4th-job-basic-attack constant (baseDamage 2900,
     factorIndex 21). HitsPerCast=5, bumping to 6 once Mastery Lv.136 "Blast - Strike" unlocks
     (identical level to Hero's own Raging Blow - Strike). Real Damage mastery chain (102/106/116/
-    120/128/132, summed as DELTAS not raw cumulative values) and Boss Monster Damage chain
+    120/128/132, raw tier values +10/11/12/13/14/15 = 75% at max) and Boss Monster Damage chain
     (111/124, +10% each) both included, same universal 4th-job-basic-attack mastery pattern
     confirmed across every class in this project.
   - Final Attack (Lv.50, 25% chance/35%->49% dmg) folds into Blast's own coefficient exactly like
@@ -392,7 +392,8 @@ def build_readme_sheet(wb):
         "estimate. See README.md's 'Content Type' section for the exact formulas.",
         "Not modeled (out of scope): all forms of crowd control, Accuracy, Evasion, Defense, "
         "HP/MP recovery, movement speed, Companion Summoning Time, and pure support/defensive "
-        "skills with no DPS-relevant mechanic (Combat Orders, Achilles, Parashock Guard).",
+        "skills with no DPS-relevant mechanic (Achilles). Combat Orders (+skill levels for you too, +25%p "
+        "Attack at Lv82) and Parashock Guard (+10%p on the skill used) ARE modeled.",
     ]:
         line(r, text); r += 1
 
@@ -1597,7 +1598,7 @@ def build_inputs_sheet(wb, existing=None):
 
     ws.cell(row=31, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
-        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
+        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
@@ -1762,7 +1763,7 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
     scaled_duration = f'({duration_ref}*(1+{bdi_ref}/100))'
     return (
         f'IF({monster_type_ref}="pvp",MIN({scaled_duration},{PVP_FIGHT_DURATION})/{PVP_FIGHT_DURATION},'
-        f'{scaled_duration}/{cooldown_ref})'
+        f'MIN(1,{scaled_duration}/{cooldown_ref}))'
     )
 
 
@@ -1836,7 +1837,9 @@ def exact_buff_uptime_expr(casts_ref, buff_duration_ref, cooldown_ref, fight_dur
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{fight_duration_ref}-{last_cast_start})'
     last_uptime = f'MIN({buff_duration_ref},{remaining_after_last})'
-    return f'(({casts_ref}-1)*{buff_duration_ref}+{last_uptime})'
+    # A recast that lands before the previous buff ends only extends coverage by one cooldown, so each full
+    # cycle contributes MIN(duration, cooldown) of uptime — never more (otherwise uptime could exceed 100%).
+    return f'(({casts_ref}-1)*MIN({buff_duration_ref},{cooldown_ref})+{last_uptime})'
 
 
 def uptime_fraction_or_exact_expr(fixed_duration_active_ref, casts_ref, monster_type_ref,
@@ -1884,7 +1887,7 @@ ROW_ORDER = [
     "DIVINE_MARK_MAIN", "DIVINE_MARK_DETONATION", "DIVINE_JUDGMENT",
     "MAGIC_CRASH", "RUSH", "MAPLE_HERO_HELPER",
     "VESSEL_OF_LIGHT", "GREATER_VESSEL_OF_LIGHT",
-    "DIVINE_SHIELD", "GUARDIAN", "DIVINE_BLESSING", "HP_RECOVERY_ATK",
+    "DIVINE_SHIELD", "GUARDIAN", "DIVINE_BLESSING", "HP_RECOVERY_ATK", "COMBAT_ORDERS", "PARASHOCK_GUARD",
     "NIMBLE_FEET",
     "WEAPON_ACCELERATION", "PHYSICAL_TRAINING", "WEAPON_MASTERY",
     "PALADIN_EXPERT_SKILL", "PALADIN_EXPERT_MAXDMG",
@@ -1915,7 +1918,24 @@ R_NORMAL_ONLY_TOTAL = 25             # Total DPS if every hit were against norma
 # it, so they can grow downward forever without ever colliding with a hardcoded row number below
 # them (this fixed block used to sit AFTER those tables, hardcoded, which silently collided once
 # they grew far enough).
-SUMMARY_BREAKDOWN_HEADER_ROW = R_NORMAL_ONLY_TOTAL + 3
+R_CO_UPTIME = 26                    # Combat Orders buff uptime (feeds the +skill-level factor averaging)
+CO_UPTIME_REF = f"Summary!$B${R_CO_UPTIME}"
+SUMMARY_BREAKDOWN_HEADER_ROW = R_CO_UPTIME + 3
+
+
+def co_factor_expr(d_ref, fidx_plus1_expr, jobstep_expr, level_expr, u_ref, b3_ref, is_co_row=False):
+    """FactorTable lookup at level D, time-averaged with Combat Orders' temporary skill-level bonus:
+    (1-u)*F(D) + u*F(D+bonus), exact for a damage skill (damage is linear in the factor and cast
+    timing is level-independent). Bonus = Combat Orders' own scaling value (Calc!F, ~18 at level 1)
+    for 3rd-job skills, +18 flat for 4th-job skills once the Lv104 mastery unlocks. Combat Orders'
+    own row is excluded (would be self-referential)."""
+    def lookup(d):
+        return (f'INDEX(FactorTable!$B$2:$Y$301, MATCH(ROUND(MIN(300,MAX(1,{d})),0), '
+                f'FactorTable!$A$2:$A$301,0), {fidx_plus1_expr})')
+    if is_co_row:
+        return "=" + lookup(d_ref)
+    bonus = f'IF({jobstep_expr}=3,{b3_ref},IF(AND({jobstep_expr}=4,{level_expr}>=104),18,0))'
+    return f'=(1-{u_ref})*{lookup(d_ref)}+{u_ref}*{lookup("(" + d_ref + "+" + bonus + ")")}'
 
 
 # Rows (BuffDuration(s) > 0) exempt from the buff-casting startup delay's reduction of their own
@@ -1926,7 +1946,7 @@ SUMMARY_BREAKDOWN_HEADER_ROW = R_NORMAL_ONLY_TOTAL + 3
 # Light's), so ROW_HAS_COOLDOWN is False for it and this list membership is a no-op either way.
 BUFF_ROW_KEYS = [
     "VESSEL_OF_LIGHT", "GREATER_VESSEL_OF_LIGHT",
-    "DIVINE_SHIELD", "GUARDIAN", "DIVINE_BLESSING", "HP_RECOVERY_ATK", "NIMBLE_FEET",
+    "DIVINE_SHIELD", "GUARDIAN", "DIVINE_BLESSING", "HP_RECOVERY_ATK", "COMBAT_ORDERS", "NIMBLE_FEET",
 ]
 
 UNLOCK_LEVEL = {
@@ -1947,6 +1967,8 @@ UNLOCK_LEVEL = {
     "GUARDIAN": 105,
     "DIVINE_BLESSING": 115,
     "HP_RECOVERY_ATK": 74,
+    "COMBAT_ORDERS": 69,
+    "PARASHOCK_GUARD": 72,
     "WEAPON_ACCELERATION": 33,
     "PHYSICAL_TRAINING": 38,
     "WEAPON_MASTERY": 43,
@@ -1988,7 +2010,7 @@ SKILL_ROWS = [
      2900, 21, True,
      f"=Calc!F{{FINAL_ATTACK_HELPER}}*IF(Calc!C{{FINAL_ATTACK_HELPER}}=TRUE,1,0)/100*25"
      f"*(1+7.5*IF(Calc!C{{MAPLE_HERO_HELPER}}=TRUE,Calc!F{{MAPLE_HERO_HELPER}},0)/100)"
-     f"+{level_gated_sum_raw(IB('level'), {102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1}).replace('{', '{{').replace('}', '}}')}",
+     f"+{level_gated_sum_raw(IB('level'), {102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15}).replace('{', '{{').replace('}', '}}')}",
      level_gated_sum(IB("level"), {111: 10, 124: 10}), 0,
      f'=6+{IB("basic_attack_target_increase")}', "", 0, "", "",
      "4th-job basic-attack effect (supersedes Divine Swing/Divine Charge, confirmed identical "
@@ -2023,7 +2045,7 @@ SKILL_ROWS = [
      "Damage-Taken Bonus % (Summary!R_MONSTER_DMG_BONUS), not this row's own Mastery columns — "
      "same pattern as Ice-Lightning-Mage's own Freezing Breath - Weaken. Maple Hero target (4x "
      "share, the biggest) — see MAPLE_HERO_RATIOS."),
-    ("NOBLE_DEMAND", "Noble Demand", 3, 30, True, 1, 1, 0, 0, 100, 1,
+    ("NOBLE_DEMAND", "Noble Demand", 3, f'=IF({IB("level")}>=94,30*0.7,30)', True, 1, 1, 0, 0, 100, 1,
      16000, 12, True,
      level_gated_sum(IB("level"), {73: 50}), 0, 0, 8, "", 0, "", "",
      "FLAGGED ASSUMPTION (no individual wiki page exists): factorIndex 12, baseDamage 16000 "
@@ -2063,7 +2085,9 @@ SKILL_ROWS = [
      "same pattern as Close Combat's own Weaken above."),
     ("DIVINE_MARK_DETONATION", "Divine Mark (detonation)", 4, 16, False, 1, 4, 0, 0, 100, 1,
      4000, 12, True,
-     0, 0, 0, 8, "", 0, "", "",
+     level_gated_sum(IB("level"), {122: 50}), 0, 0, 8, "", 0, "", "",
+     "AUDIT 2026-10-21: 'Divine Mark - Damage' +50% (Lv122) is worded for the whole skill, so it now applies to the detonation too. "
+
      "Detonation half of the same Divine Mark cast — 'dealing 400% damage to 8 nearby target(s) 4 "
      "time(s)'. Shares Divine Mark's own cooldown/cast (CostsActionSlot=False here since "
      "DIVINE_MARK_MAIN already costs the action slot for this cast). factorIndex 12, baseDamage "
@@ -2073,7 +2097,9 @@ SKILL_ROWS = [
      "double-counting an ambiguous mastery scope)."),
     ("DIVINE_JUDGMENT", "Divine Judgment (detonation)", 4, f'=10/Summary!$B${R_APS}', False, 1, 4, 0, 0, 100, 1,
      8500, 12, True,
-     0, 0, 0, 4, "", 0, "", "",
+     level_gated_sum(IB("level"), {130: 50}), 0, 0, 4, "", 0, "", "",
+     "AUDIT 2026-10-21: Mastery Lv130 'Divine Judgment - Damage' +50% added. "
+
      "FLAGGED ASSUMPTION (no individual wiki page exists), AND a bespoke trigger-rate "
      "approximation: 'Every 10 basic attacks, increases Basic Attack Damage by 30% for 5 sec and "
      "creates a Divine Brand that explodes after 1 sec dealing 850% damage to 4 nearby target(s) "
@@ -2097,9 +2123,11 @@ SKILL_ROWS = [
      "with Hero and Dark Knight (single wiki page, /w/Magic_Crash) — reuses Hero's own already-"
      "resolved tuple directly, not re-derived. PATCHED: targets 5->9 (effect range +50% not "
      "modeled, no such mechanic exists in this project)."),
-    ("RUSH", "Rush", 3, 22, True, 1, 1, 0, 0, 100, 1,
+    ("RUSH", "Rush", 3, f'=IF({IB("level")}>=90,22*0.7,22)', True, 1, 1, 0, 0, 100, 1,
      6000, 12, True,
-     0, 0, 0, 12, "", 0, "", "",
+     level_gated_sum(IB("level"), {68: 80}), 0, 0, 12, "", 0, "", "",
+     "AUDIT 2026-10-21: Rush masteries added: Damage +80% @68, Reuse -30% cooldown @90. Noble Demand Reuse @94 likewise. "
+
      "Charges to the front to deal 600%->1200% damage to 12 target(s) (stun 2.5s not modeled). "
      "factorIndex 12, baseDamage 6000 tenths%, 22s cooldown. Shared verbatim with Hero and Dark "
      "Knight — reuses Hero's own already-resolved tuple directly. Not patched (Mastery Lv.68/90 "
@@ -2119,7 +2147,9 @@ SKILL_ROWS = [
      "D/E/F computed, read directly by each target row's own K-column formula)."),
     ("VESSEL_OF_LIGHT", "Vessel of Light", 2, "", False, 1, 1, 0, 0, 15, 1,
      150, 22, True,
-     0, 0, 0, 0, "ATTACK", 10, "", "",
+     level_gated_sum(IB("level"), {49: 5}), 0, 0, 0, "ATTACK", 10, "", "",
+     "AUDIT 2026-10-21: Mastery Lv49 'Vessel of Light - Attack' +5%p added. "
+
      "'When attacking with Basic Attack, increases Attack by 15%->22% for 10 sec with a 15% "
      "chance.' FLAGGED simplification: this is a proc with no stated internal cooldown, so its "
      "uptime can't use the standard cooldown-driven duty-cycle helper used everywhere else in "
@@ -2128,7 +2158,9 @@ SKILL_ROWS = [
      "1-200). Not patched."),
     ("GREATER_VESSEL_OF_LIGHT", "Greater Vessel of Light", 4, "", False, 1, 1, 0, 0, 100, 1,
      180, 22, True,
-     0, 0, 0, 0, "FINAL_DAMAGE", 0, "", "",
+     level_gated_sum(IB("level"), {118: 10}), 0, 0, 0, "FINAL_DAMAGE", 0, "", "",
+     "AUDIT 2026-10-21: Mastery Lv118 +10%p Final Damage added. "
+
      "FLAGGED ASSUMPTION (no individual wiki page, single known value): 'Increases Final Damage "
      "by 18% for the duration of Vessel of Light.' No own Cooldown/BuffDuration — reuses Vessel "
      "of Light's own computed uptime fraction directly in the Summary-sheet formula rather than "
@@ -2144,23 +2176,44 @@ SKILL_ROWS = [
      "ASSUMPTION). PATCHED: new 'activates at combat start' behavior not modeled (no such "
      "mechanic exists anywhere in this project)."),
     ("GUARDIAN", "Guardian", 4, 24, True, 1, 1, 0, 0, 100, 1,
-     100, 22, True,
+     100, 21, True,
      0, 0, 0, 0, "FINAL_DAMAGE", 20, "", "",
+     "AUDIT 2026-10-21: factorIndex is 21 (game table), not 22. "
+
      "FLAGGED ASSUMPTION (no individual wiki page exists): factorIndex 22, baseDamage 100 "
      "tenths% (10% level-1). 'Increases your Final Damage by 10% for 20 sec and grants "
      "Continuous Recovery to 1 nearby ally for 20 sec, recovering 0.8% HP/sec' — the ally-HP-"
      "recovery component not modeled (no HP tracking anywhere in this project). 24s cooldown. "
      "Not patched."),
     ("DIVINE_BLESSING", "Divine Blessing", 4, 30, True, 1, 1, 0, 0, 100, 1,
-     120, 22, True,
-     0, 0, 0, 0, "FINAL_DAMAGE", 22, "", "",
+     120, 21, True,
+     level_gated_sum(IB("level"), {126: 12}), 0, 0, 0, "FINAL_DAMAGE", 22, "", "",
+     "AUDIT 2026-10-21: factorIndex 21 (game table) + Mastery Lv126 +12%p Final Damage. "
+
      "FLAGGED ASSUMPTION (no individual wiki page exists): factorIndex 22, baseDamage 120 "
      "tenths% (12% level-1). Self-inclusive ally buff (matches Bishop's own 'allied players' "
      "precedent) — 'Increases your and 1 nearby ally's Final Damage by 12% for 22 sec', 30s "
      "cooldown. Not patched."),
+    ("COMBAT_ORDERS", "Combat Orders", 3, 35, True, 1, 1, 0, 0, 100, 1,
+     180, 21, True,
+     0, 0, 0, 0, "SKILL_LEVEL", 25, "", "",
+     "NEW (audit 2026-10-21, user: 'it is applied for the player as well'): +18 (scales with this skill's "
+     "own level via factor 21, game table) 3rd-job skill levels for 25s on a 35s cooldown; Mastery Lv82 "
+     "'Damage Boost' +25%p damage (modeled as a live Attack% term x uptime); Mastery Lv104 '4th Job Skill "
+     "Lv.' +18 4th-job skill levels. The skill-level bonus is applied by time-averaging every affected "
+     "skill's FactorTable lookup: factor = (1-u)*F(L) + u*F(L+bonus), u = Summary!B26 (this row's uptime). "
+     "MP -20% not modeled. Combat Orders' own row is excluded from the averaging (self-reference)."),
+    ("PARASHOCK_GUARD", "Parashock Guard (self Attack%)", 3, "", False, 1, 1, 0, 0, 100, 1,
+     180, 22, True,
+     level_gated_sum(IB("level"), {98: 10}), 0, 0, 0, "ATTACK", 0, "", "",
+     "NEW (audit 2026-10-21): permanent passive, +18% Attack (factor 22), Mastery Lv98 +10%p. Its value is "
+     "already inside Inputs!ATTACK% (baked-in convention, user-confirmed) so it adds nothing to the baseline; "
+     "this delta-tracking row exists so Sensitivity's skill-level / Attack% tests stack on it correctly."),
     ("HP_RECOVERY_ATK", "HP Recovery (Attack buff)", 3, 25, True, 1, 1, 0, 0, 100, 1,
-     120, 22, True,
-     0, 0, 0, 0, "ATTACK", 20, "", "",
+     120, 21, True,
+     level_gated_sum(IB("level"), {78: 10}), 0, 0, 0, "ATTACK", 20, "", "",
+     "AUDIT 2026-10-21: factorIndex 21 (game table, was 22) + Mastery Lv78 'HP Recovery - Attack' +10%p. "
+
      "FLAGGED ASSUMPTION (no individual wiki page exists): factorIndex 22, baseDamage 120 "
      "tenths% (12% level-1). 'Immediately recovers HP by 9% and increases Attack by 12% for 20 "
      "sec' — the instant HP-restore component not modeled (no HP tracking anywhere in this "
@@ -2220,6 +2273,27 @@ ROW_HAS_COOLDOWN = {row[0]: row[3] not in ("", None) for row in SKILL_ROWS}
 CDR_COSTS_ACTION_ROW = {key: r for key, r in ROW.items()}
 
 
+def q_inv_ref(key):
+    """Effective cooldown (1/InvCooldown) of a row, read from the main Calc sheet."""
+    return f'(1/Calc!Q{ROW[key]})'
+
+
+def q_inv_ref_block(row_of, key):
+    """Same, read from a Sensitivity block's own local Q column (never the main sheet's)."""
+    return f'(1/Q{row_of[key]})'
+
+
+# Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills, buffs and passives alike
+# (user decision 2026-10-21; it used to apply only to CostsActionSlot rows). The exempt rows are NOT real
+# cooldowns: their Cooldown(s) cell is a trigger-rate / internal-interval surrogate (e.g. 1 / attack speed),
+# which CDR must not shrink to the 0.1s floor.
+CDR_EXEMPT_ROW_KEYS = ['DIVINE_JUDGMENT']
+
+
+def cdr_applies_expr(key):
+    return "FALSE" if key in CDR_EXEMPT_ROW_KEYS else "TRUE"
+
+
 def build_skills_sheet(wb):
     ws = wb.create_sheet("Skills")
     for i, name in enumerate(SKILL_COLUMNS):
@@ -2250,7 +2324,7 @@ DAMAGE_ROW_KEYS = [
 ]
 ATTACK_BUFF_ROW_KEYS = ["VESSEL_OF_LIGHT", "HP_RECOVERY_ATK"]
 PASSIVE_MULT_ROW_KEYS = [
-    "WEAPON_ACCELERATION", "PHYSICAL_TRAINING", "WEAPON_MASTERY",
+    "WEAPON_ACCELERATION", "PHYSICAL_TRAINING", "WEAPON_MASTERY", "PARASHOCK_GUARD",
     "PALADIN_EXPERT_SKILL", "PALADIN_EXPERT_MAXDMG",
 ]
 HELPER_ROW_KEYS = ["FINAL_ATTACK_HELPER", "MAPLE_HERO_HELPER"]
@@ -2292,7 +2366,7 @@ def build_calc_sheet(wb):
         has_cooldown = ROW_HAS_COOLDOWN[key]
         if has_cooldown:
             eff_cd_r = (
-                f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+                f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), cdr_applies_expr(key))}'
                 f'*(1-{artifact_soul_contract_pct_expr(IB("soul_contract_equipped"), IB("content_type"), IB("soul_contract_star"))}/100))'
             )
             if key in BUFF_ROW_KEYS:
@@ -2314,9 +2388,9 @@ def build_calc_sheet(wb):
                 f'IF({S("JobStep", r)}=3,120+{IB("skill_lvl_3rd")}+{IB("skill_lvl_all")},'
                 f'MAX(0,({IB("level")}-100)*3)+{IB("skill_lvl_4th")}+{IB("skill_lvl_all")})))'
             ))
-            ws.cell(row=r, column=5, value=(
-                f'=INDEX(FactorTable!$B$2:$Y$301, MATCH(ROUND(MIN(300,MAX(1,D{r})),0), '
-                f'FactorTable!$A$2:$A$301,0), {S("FactorIndex", r)}+1)'
+            ws.cell(row=r, column=5, value=co_factor_expr(
+                f'D{r}', f'{S("FactorIndex", r)}+1', S("JobStep", r), IB("level"),
+                CO_UPTIME_REF, f'F{ROW["COMBAT_ORDERS"]}', key == "COMBAT_ORDERS",
             ))
             ws.cell(row=r, column=6, value=(
                 f'=IF({S("ScalesWithLevel", r)}=TRUE,({S("BaseDamage(tenths%)", r)}/10)*(E{r}/1000),'
@@ -2337,9 +2411,9 @@ def build_calc_sheet(wb):
                 f'IF({S("JobStep", r)}=3,120+{IB("skill_lvl_3rd")}+{IB("skill_lvl_all")},'
                 f'MAX(0,({IB("level")}-100)*3)+{IB("skill_lvl_4th")}+{IB("skill_lvl_all")})))'
             ))
-            ws.cell(row=r, column=5, value=(
-                f'=INDEX(FactorTable!$B$2:$Y$301, MATCH(ROUND(MIN(300,MAX(1,D{r})),0), '
-                f'FactorTable!$A$2:$A$301,0), {S("FactorIndex", r)}+1)'
+            ws.cell(row=r, column=5, value=co_factor_expr(
+                f'D{r}', f'{S("FactorIndex", r)}+1', S("JobStep", r), IB("level"),
+                CO_UPTIME_REF, f'F{ROW["COMBAT_ORDERS"]}', key == "COMBAT_ORDERS",
             ))
             ws.cell(row=r, column=6, value=(
                 f'=IF({S("ScalesWithLevel", r)}=TRUE,({S("BaseDamage(tenths%)", r)}/10)*(E{r}/1000),'
@@ -2482,10 +2556,12 @@ def build_summary_sheet(wb):
         value=f'=MAX(0,({IB("level")}-100)*3)+{IB("skill_lvl_4th")}+{IB("skill_lvl_all")}'
     )
     ws.cell(row=D_BASIC_FACTOR, column=1, value="Basic Attack Factor (factorIndex 21, universal 4th-job basic attack)")
+    _lk = lambda d: (f'INDEX(FactorTable!$B$2:$Y$301, MATCH(ROUND(MIN(300,MAX(1,{d})),0), '
+                     f'FactorTable!$A$2:$A$301,0), 22)')
     ws.cell(
         row=D_BASIC_FACTOR, column=2,
-        value=f'=INDEX(FactorTable!$B$2:$Y$301, MATCH(ROUND(MIN(300,MAX(1,{IB("basic_input_level")})),0), '
-              f'FactorTable!$A$2:$A$301,0), 22)'
+        value=(f'=(1-{CO_UPTIME_REF})*{_lk(IB("basic_input_level"))}'
+               f'+{CO_UPTIME_REF}*{_lk("(" + IB("basic_input_level") + "+IF(" + IB("level") + ">=104,18,0))")}')
     )
     ws.cell(row=D_SKILL_COEFFICIENT, column=1, value="SKILL_COEFFICIENT — Blast base coefficient % (before bonuses)")
     ws.cell(row=D_SKILL_COEFFICIENT, column=2, value=f'=290*{IB("basic_factor")}/1000')
@@ -2507,7 +2583,7 @@ def build_summary_sheet(wb):
 
     def buff_uptime(row):
         return uptime_fraction_or_exact_expr(
-            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), S("Cooldown(s)", row),
+            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), f'(1/Calc!Q{row})',
             bdi_main, IB("fight_duration"),
         )
 
@@ -2530,8 +2606,12 @@ def build_summary_sheet(wb):
     divine_blessing_avg = f'((Calc!C{r_db}=TRUE)*Calc!F{r_db}*{buff_uptime(r_db)})'
     nimble_feet_avg = f'((Calc!C{r_nf}=TRUE)*Calc!F{r_nf}*{buff_uptime(r_nf)})'
 
-    ws.cell(row=R_AVGBUFF, column=1, value="Attack%% Bucket Multiplier (Vessel of Light + HP Recovery + Artifact Attack% Bonus, summed additively)")
-    ws.cell(row=R_AVGBUFF, column=2, value=f'=1+({vessel_of_light_avg}+{hp_recovery_avg}+{art_ref("AGG_ATTACK_PCT")})/100')
+    r_co = ROW["COMBAT_ORDERS"]
+    ws.cell(row=R_CO_UPTIME, column=1, value="Combat Orders uptime (fraction of the fight its +skill-levels buff is active)")
+    ws.cell(row=R_CO_UPTIME, column=2, value=f'=IF(Calc!C{r_co}=TRUE,{buff_uptime(r_co)},0)')
+    combat_orders_attack_avg = f'(IF({IB("level")}>=82,25,0)*{CO_UPTIME_REF})'
+    ws.cell(row=R_AVGBUFF, column=1, value="Attack%% Bucket Multiplier (Vessel of Light + HP Recovery + Combat Orders Lv82 + Artifact Attack% Bonus, summed additively)")
+    ws.cell(row=R_AVGBUFF, column=2, value=f'=1+({vessel_of_light_avg}+{hp_recovery_avg}+{combat_orders_attack_avg}+{art_ref("AGG_ATTACK_PCT")})/100')
 
     ws.cell(row=R_CRIT_RATE_BONUS, column=1, value="Global Crit Rate Bonus % (unused — no live Crit-Rate-buff source exists)")
     ws.cell(row=R_CRIT_RATE_BONUS, column=2, value=0)
@@ -2543,11 +2623,11 @@ def build_summary_sheet(wb):
     # duty-cycle averaged (not fixed-duration-exact), same documented-simplification tier as
     # Ice-Lightning-Mage's own Freezing Breath - Weaken / Night Lord's own Frailty Curse.
     close_combat_weaken = (
-        f'IF({IB("level")}>=44,10*{uptime_fraction_expr(IB("monster_type"), 10, S("Cooldown(s)", ROW["CLOSE_COMBAT"]), bdi_main)},0)'
+        f'IF({IB("level")}>=44,10*{uptime_fraction_expr(IB("monster_type"), 10, q_inv_ref("CLOSE_COMBAT"), bdi_main)},0)'
     )
-    noble_demand_weaken = f'12*{uptime_fraction_expr(IB("monster_type"), 10, S("Cooldown(s)", ROW["NOBLE_DEMAND"]), bdi_main)}'
+    noble_demand_weaken = f'12*{uptime_fraction_expr(IB("monster_type"), 10, q_inv_ref("NOBLE_DEMAND"), bdi_main)}'
     divine_mark_weaken = (
-        f'IF({IB("level")}>=138,20*{uptime_fraction_expr(IB("monster_type"), 10, S("Cooldown(s)", ROW["DIVINE_MARK_MAIN"]), bdi_main)},0)'
+        f'IF({IB("level")}>=138,20*{uptime_fraction_expr(IB("monster_type"), 10, q_inv_ref("DIVINE_MARK_MAIN"), bdi_main)},0)'
     )
     ws.cell(row=R_MONSTER_DMG_BONUS, column=1, value=(
         "Global Monster Damage-Taken Bonus % (Close Combat/Noble Demand/Divine Mark Weaken + "
@@ -2727,15 +2807,21 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Min Damage Multiplier %": "min_damage",
     "Max Damage Multiplier %": "max_damage",
     "Defense Penetration": "def_pen",
-    "Dex %": "dex",
-    "Dex": "dex",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
     "Skill Cooldown Decrease (seconds)": "skill_cooldown_decrease",
     "Buff Duration Increase %": "buff_duration_increase_pct",
     "All Skill Level": "skill_lvl_all",
     "Basic Attack Target Increase": "basic_attack_target_increase",
+    "Str %": "str_pct",
+    "Str": "flat_str",
+    "Dex": "dex",
 }
+
+# Sub-stat PERCENT potential lines: the Sensitivity sweep for the sub-stat is a flat +1 point, so a
+# "+N% sub-stat" roll is worth N% of the current total sub-stat in points (approximation: Inputs holds the
+# final sub-stat value, no separate flat/% split). Main-stat lines map 1:1 above.
+POTENTIAL_SUB_STAT_PCT_LINES = {"Dex %": ("dex", "dex")}
 
 
 def dps_per_unit_expr(stat_name):
@@ -2758,6 +2844,9 @@ def dps_per_unit_expr(stat_name):
         )
     if stat_name == "Companion Summoning Time Increase %":
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]}'
+    if stat_name in POTENTIAL_SUB_STAT_PCT_LINES:
+        sweep_key, inputs_key = POTENTIAL_SUB_STAT_PCT_LINES[stat_name]
+        return f'=Sensitivity!H{SENSITIVITY_ROW_FOR[sweep_key]}*{IB(inputs_key)}/100'
     key = POTENTIAL_STAT_TO_SWEEP_KEY.get(stat_name)
     if key is None:
         return "0"
@@ -2771,6 +2860,7 @@ PASSIVE_DELTA_SLOT = {
     "WEAPON_ACCELERATION": "attack_speed",
     "PHYSICAL_TRAINING": "basic_attack_damage",
     "WEAPON_MASTERY": "min_damage",
+    "PARASHOCK_GUARD": "attack_mult",
     "PALADIN_EXPERT_SKILL": "skill_damage",
     "PALADIN_EXPERT_MAXDMG": "max_damage",
 }
@@ -2858,7 +2948,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
             fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
-            S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
+            f'(1/Q{local_row})', bdi_block, ib("fight_duration"),
         )
 
     delta_by_slot = {}
@@ -3061,11 +3151,11 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     agg_boss_damage_block = f'({candle_boss_dmg_block}+{sayrams_boss_block}+{star_rock_delta_block})'
     agg_normal_damage_block = f'({sayrams_normal_block})'
     close_combat_weaken_block = (
-        f'IF({ib("level")}>=44,10*{uptime_fraction_expr(ib("monster_type"), 10, S("Cooldown(s)", ROW["CLOSE_COMBAT"]), bdi_block)},0)'
+        f'IF({ib("level")}>=44,10*{uptime_fraction_expr(ib("monster_type"), 10, q_inv_ref_block(row_of, "CLOSE_COMBAT"), bdi_block)},0)'
     )
-    noble_demand_weaken_block = f'12*{uptime_fraction_expr(ib("monster_type"), 10, S("Cooldown(s)", ROW["NOBLE_DEMAND"]), bdi_block)}'
+    noble_demand_weaken_block = f'12*{uptime_fraction_expr(ib("monster_type"), 10, q_inv_ref_block(row_of, "NOBLE_DEMAND"), bdi_block)}'
     divine_mark_weaken_block = (
-        f'IF({ib("level")}>=138,20*{uptime_fraction_expr(ib("monster_type"), 10, S("Cooldown(s)", ROW["DIVINE_MARK_MAIN"]), bdi_block)},0)'
+        f'IF({ib("level")}>=138,20*{uptime_fraction_expr(ib("monster_type"), 10, q_inv_ref_block(row_of, "DIVINE_MARK_MAIN"), bdi_block)},0)'
     )
     agg_enemy_dmg_taken_block = (
         f'({peach_tree_block}+{silver_pendant_block}+{close_combat_weaken_block}'
@@ -3112,7 +3202,8 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     nimble_feet_avg = f'((C{row_of["NIMBLE_FEET"]}=TRUE)*F{row_of["NIMBLE_FEET"]}*{buff_uptime_block(row_of["NIMBLE_FEET"], r_nf)})'
     # Attack% bucket: every live skill/buff Attack% source sums additively into ONE combined
     # percentage before a single multiplication — matches Verification item 6.
-    attack_bucket_block = f'(1+({vessel_of_light_avg}+{hp_recovery_avg}+{delta["attack_mult"]}+{agg_attack_pct_block})/100)'
+    combat_orders_attack_block = f'(IF({ib("level")}>=82,25,0)*{CO_UPTIME_REF})'
+    attack_bucket_block = f'(1+({vessel_of_light_avg}+{hp_recovery_avg}+{combat_orders_attack_block}+{delta["attack_mult"]}+{agg_attack_pct_block})/100)'
 
     ws.cell(row=row_label, column=1, value=f"Stat: {stat_label}").font = LABEL_FONT
     for i, name in enumerate(CALC_HEADERS):
@@ -3124,9 +3215,11 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     )
     ws.cell(row=row_header, column=21, value="helpers")
     ws[basic_lvl_cell] = f'=MAX(0,({ib("level")}-100)*3)+{ib("skill_lvl_4th")}+{ib("skill_lvl_all")}'
+    _lkb = lambda d: (f'INDEX(FactorTable!$B$2:$Y$301, MATCH(ROUND(MIN(300,MAX(1,{d})),0), '
+                      f'FactorTable!$A$2:$A$301,0), 22)')
     ws[basic_factor_cell] = (
-        f'=INDEX(FactorTable!$B$2:$Y$301, MATCH(ROUND(MIN(300,MAX(1,{basic_lvl_cell})),0), '
-        f'FactorTable!$A$2:$A$301,0), 22)'
+        f'=(1-{CO_UPTIME_REF})*{_lkb(basic_lvl_cell)}'
+        f'+{CO_UPTIME_REF}*{_lkb("(" + basic_lvl_cell + "+IF(" + ib("level") + ">=104,18,0))")}'
     )
     ws[basic_coeff_cell] = f'=290*{basic_factor_cell}/1000'
 
@@ -3139,7 +3232,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         has_cooldown = ROW_HAS_COOLDOWN[key]
         if has_cooldown:
             eff_cd_row = (
-                f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+                f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), cdr_applies_expr(key))}'
                 f'*(1-{artifact_soul_contract_pct_expr(ib("soul_contract_equipped"), ib("content_type"), ib("soul_contract_star"))}/100))'
             )
             if key in BUFF_ROW_KEYS:
@@ -3161,9 +3254,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
                 f'IF({S("JobStep", r)}=3,120+{ib("skill_lvl_3rd")}+{ib("skill_lvl_all")},'
                 f'MAX(0,({ib("level")}-100)*3)+{ib("skill_lvl_4th")}+{ib("skill_lvl_all")})))'
             ))
-            ws.cell(row=row, column=5, value=(
-                f'=INDEX(FactorTable!$B$2:$Y$301, MATCH(ROUND(MIN(300,MAX(1,D{row})),0), '
-                f'FactorTable!$A$2:$A$301,0), {S("FactorIndex", r)}+1)'
+            ws.cell(row=row, column=5, value=co_factor_expr(
+                f'D{row}', f'{S("FactorIndex", r)}+1', S("JobStep", r), ib("level"),
+                CO_UPTIME_REF, f'F{row_of["COMBAT_ORDERS"]}', key == "COMBAT_ORDERS",
             ))
             ws.cell(row=row, column=6, value=(
                 f'=IF({S("ScalesWithLevel", r)}=TRUE,({S("BaseDamage(tenths%)", r)}/10)*(E{row}/1000),'
@@ -3184,9 +3277,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
                 f'IF({S("JobStep", r)}=3,120+{ib("skill_lvl_3rd")}+{ib("skill_lvl_all")},'
                 f'MAX(0,({ib("level")}-100)*3)+{ib("skill_lvl_4th")}+{ib("skill_lvl_all")})))'
             ))
-            ws.cell(row=row, column=5, value=(
-                f'=INDEX(FactorTable!$B$2:$Y$301, MATCH(ROUND(MIN(300,MAX(1,D{row})),0), '
-                f'FactorTable!$A$2:$A$301,0), {S("FactorIndex", r)}+1)'
+            ws.cell(row=row, column=5, value=co_factor_expr(
+                f'D{row}', f'{S("FactorIndex", r)}+1', S("JobStep", r), ib("level"),
+                CO_UPTIME_REF, f'F{row_of["COMBAT_ORDERS"]}', key == "COMBAT_ORDERS",
             ))
             ws.cell(row=row, column=6, value=(
                 f'=IF({S("ScalesWithLevel", r)}=TRUE,({S("BaseDamage(tenths%)", r)}/10)*(E{row}/1000),'

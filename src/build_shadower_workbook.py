@@ -1173,7 +1173,7 @@ def build_inputs_sheet(wb, existing=None):
 
     ws.cell(row=31, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
-        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
+        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
@@ -1842,7 +1842,7 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
     scaled_duration = f'({duration_ref}*(1+{bdi_ref}/100))'
     return (
         f'IF({monster_type_ref}="pvp",MIN({scaled_duration},{PVP_FIGHT_DURATION})/{PVP_FIGHT_DURATION},'
-        f'{scaled_duration}/{cooldown_ref})'
+        f'MIN(1,{scaled_duration}/{cooldown_ref}))'
     )
 
 
@@ -1907,7 +1907,9 @@ def exact_buff_uptime_expr(casts_ref, buff_duration_ref, cooldown_ref, fight_dur
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{fight_duration_ref}-{last_cast_start})'
     last_uptime = f'MIN({buff_duration_ref},{remaining_after_last})'
-    return f'(({casts_ref}-1)*{buff_duration_ref}+{last_uptime})'
+    # A recast that lands before the previous buff ends only extends coverage by one cooldown, so each full
+    # cycle contributes MIN(duration, cooldown) of uptime — never more (otherwise uptime could exceed 100%).
+    return f'(({casts_ref}-1)*MIN({buff_duration_ref},{cooldown_ref})+{last_uptime})'
 
 
 def uptime_fraction_or_exact_expr(fixed_duration_active_ref, casts_ref, monster_type_ref,
@@ -1961,7 +1963,7 @@ SC = {name: get_column_letter(i + 1) for i, name in enumerate(SKILL_COLUMNS)}
 
 # Row order (2..LAST_ROW) — derived from this list, never hand-numbered.
 ROW_ORDER = [
-    "CRUEL_STAB", "STEAL", "MESO_EXPLOSION", "PHASE_DASH", "DARK_FLARE", "SHADOW_PARTNER",
+    "CRUEL_STAB", "STEAL", "MESO_EXPLOSION", "MESO_MASTERY", "PHASE_DASH", "DARK_FLARE", "SHADOW_PARTNER",
     "VENOM", "TOXIC_VENOM", "INTO_DARKNESS", "ASSASSINATE", "SUDDEN_RAID_BURST",
     "SUDDEN_RAID_DOT", "BLOOD_MONEY", "SMOKESCREEN", "SHADOW_SHIFTER", "SHADOW_SHIFTER_SELF_ATK",
     "MAPLE_HERO_SHADOWER", "NIMBLE_FEET", "DARK_SIGHT_CRIT", "DARK_SIGHT_ATK",
@@ -1978,6 +1980,7 @@ LAST_ROW = 1 + len(ROW_ORDER)
 UNLOCK_LEVEL = {
     "CRUEL_STAB": 100,
     "STEAL": 35,
+    "MESO_MASTERY": 75,
     "MESO_EXPLOSION": 66,
     "PHASE_DASH": 63,
     "DARK_FLARE": 69,
@@ -2047,7 +2050,7 @@ SKILL_ROWS = [
     ("CRUEL_STAB", "Cruel Stab", 4, "", False, 1,
      f"=IF({IB('level')}>=136,6,5)", 0, 0, 100, 1,
      "", "", True,
-     level_gated_sum(IB("level"), {102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1}),
+     level_gated_sum(IB("level"), {102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15}),  # option A (user-confirmed): raw tiers, 75% total
      level_gated_sum(IB("level"), {111: 10, 124: 10}),
      0, 0, 0, 0, 0, 0,
      f'=6+{IB("basic_attack_target_increase")}', "", 0, True, "", "", "",
@@ -2085,6 +2088,14 @@ SKILL_ROWS = [
      "SkillMasteryBonus% is Mastery Lv.90 'Meso Explosion damage +100%' (content-based — the "
      "wiki mislabels this row 'Meso Explosion - Strike', ignore the label, the description is "
      "unambiguous). Triggers Toxic Venom."),
+    ("MESO_MASTERY", "Meso Mastery (Attack buff)", 3, "", False, 1, 1, 0, 0, 100, 1,
+     250, 0, False,
+     0, 0, 0, 0, 0, 0, 0, 0,
+     1, "ATTACK", 0, False, "", "", "",
+     "NEW (audit 2026-10-21): Lv75 passive 'Meso Mastery': Meso generation chance +25%p (50% -> 75%, applied "
+     "in the Meso Explosion / Blood Money stack formulas) AND 'whenever Meso is generated, Attack +25% for "
+     "5 sec'. The 25% is modeled as a flat Attack% term in the Attack% bucket, time-averaged as a 5s buff "
+     "refreshed by Meso-generation events (rate = 0.75 x attack lines/s): uptime = 1-exp(-0.75*APS*5)."),
     ("PHASE_DASH", "Phase Dash", 3, 23, True, 1, 2, 0, 0, 100, 1,
      4500, 12, True,
      level_gated_sum(IB("level"), {73: 80}), 0, 0, 0, 0, 0, 0, 0,
@@ -2095,11 +2106,11 @@ SKILL_ROWS = [
      "factorIndex 12, baseDamage 4500 tenths%. Mastery Lv.73 'Phase Dash - Damage' +80% (real "
      "SkillMasteryBonus%). Triggers Toxic Venom."),
     ("DARK_FLARE", "Dark Flare", 3,
-     f"=IF({IB('level')}>=92,45*0.7,45)", True, 1, f"=IF({IB('level')}>=76,3,2)",
+     f"=IF({IB('level')}>=94,45*0.7,45)", True, 1, f"=IF({IB('level')}>=78,3,2)",
      f"=IF({IB('level')}>=104,2*0.75,2)", 20, 100, 1,
      3300, 12, True,
      0, 0, 0, 0, 0, 0,
-     f"=IF({IB('level')}>=92,30,0)", 0,
+     f"=IF({IB('level')}>=94,30,0)", 0,
      8, "", 0, True, "", "", "",
      "Shared verbatim w/ Night Lord (identical wiki wording AND identical patch corrections: "
      "hit interval 5s->2s, targets 5->8, damage 400%->330%). factorIndex 12, baseDamage 3300 "
@@ -2111,7 +2122,7 @@ SKILL_ROWS = [
      "two classes' Maple Hero effects are structurally different even though the base skill is "
      "identical). Triggers Toxic Venom."),
     ("SHADOW_PARTNER", "Shadow Partner", 3, "", False, 1, 1, 0, 0, 25, 1,
-     840, 21, True,
+     600, 21, True,
      level_gated_sum(IB("level"), {68: 100}), 0, 0, 0, 0, 0, 0, 0,
      1, "", 0, False, "", "", "",
      "Shared verbatim w/ Night Lord. Hybrid row: Calc columns D-I computed like a normal damage "
@@ -2155,7 +2166,7 @@ SKILL_ROWS = [
      "sanity-check against): +20%->28% Final Damage for 13s, cooldown 40s. Basic-attack-damage "
      "immunity component (defensive) not modeled. factorIndex 21, baseDamage 200 tenths%."),
     ("ASSASSINATE", "Assassinate", 4, 13, True, 1, 2, 0, 0, 100, 1,
-     14000, 21, True,
+     14000, 12, True,
      0, 0, 0, 0, 0, 0, 0, 0,
      1, "", 0, True, "", "", "",
      "2-part damage structure: base 1400%->1680%(lvl50, curve continues) x2 hits (factorIndex "
@@ -2229,10 +2240,12 @@ SKILL_ROWS = [
      "Shared verbatim w/ Night Lord. Counterattack DPS = Inputs!incoming_hit_rate * 20% * "
      "ExpectedDamage(counterHit) — bespoke O-column branch, no Cooldown(s)/rate machinery of "
      "its own. factorIndex 21, baseDamage 25000 tenths% (2500%->4500%, levels 1-200)."),
-    ("SHADOW_SHIFTER_SELF_ATK", "Shadow Shifter (self Attack%)", 4, "", False, 1, 1, 0, 0, 100, 1,
+    ("SHADOW_SHIFTER_SELF_ATK", "Shadow Shifter (self Final Damage%)", 4, "", False, 1, 1, 0, 0, 100, 1,
      100, 22, True,
-     0, 0, 0, 0, 0, 0, 0, 0,
-     1, "ATTACK", 0, False, "", "", "",
+     level_gated_sum(IB("level"), {118: 10}), 0, 0, 0, 0, 0, 0, 0,
+     1, "FINAL_DAMAGE", 0, False, "", "", "",
+     "AUDIT 2026-10-21: per the site (user decision) Shadow Shifter's passive is +10% FINAL DAMAGE (wiki said Attack); Mastery Lv118 adds +10%p. Baked-in-Inputs delta row, now feeding the Final Damage Sensitivity slot. "
+
      "Shared verbatim w/ Night Lord. Passive-mult delta-tracking row (10%->16% self Attack) — "
      "assumed already baked into Inputs!ATTACK_PCT (Magic Critical pattern). factorIndex 22, "
      "baseDamage 100 tenths%."),
@@ -2339,6 +2352,17 @@ ROW_HAS_COOLDOWN = {row[0]: row[3] not in ("", None) for row in SKILL_ROWS}
 CDR_COSTS_ACTION_ROW = {key: r for key, r in ROW.items()}
 
 
+# Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills, buffs and passives alike
+# (user decision 2026-10-21; it used to apply only to CostsActionSlot rows). The exempt rows are NOT real
+# cooldowns: their Cooldown(s) cell is a trigger-rate / internal-interval surrogate (e.g. 1 / attack speed),
+# which CDR must not shrink to the 0.1s floor.
+CDR_EXEMPT_ROW_KEYS = ['VENOM']
+
+
+def cdr_applies_expr(key):
+    return "FALSE" if key in CDR_EXEMPT_ROW_KEYS else "TRUE"
+
+
 def build_skills_sheet(wb):
     ws = wb.create_sheet("Skills")
     for i, name in enumerate(SKILL_COLUMNS):
@@ -2440,7 +2464,8 @@ R_NORMAL_ONLY_TOTAL = 28        # Total DPS if every hit were against normal mon
 
 def buff_uptime_expr(fda_ref, monster_type_ref, row, bdi_ref, fight_duration_ref, calc_r_col_ref):
     return uptime_fraction_or_exact_expr(
-        fda_ref, calc_r_col_ref, monster_type_ref, S("BuffDuration(s)", row), S("Cooldown(s)", row),
+        fda_ref, calc_r_col_ref, monster_type_ref, S("BuffDuration(s)", row),
+        f'(1/{re.sub(r"R(?=[0-9]+$)", "Q", calc_r_col_ref)})',
         bdi_ref, fight_duration_ref,
     )
 
@@ -2481,7 +2506,7 @@ def build_calc_sheet(wb):
         if has_cooldown:
             eff_cd_r = effective_cooldown_expr(
                 IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"),
-                S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]),
+                cdr_applies_expr(key),
             )
             if key in STARTUP_BUFF_ROW_KEYS:
                 available_duration_r = IB("fight_duration")
@@ -2633,7 +2658,7 @@ def build_calc_sheet(wb):
             ws.cell(row=r, column=20, value=f'=IF(C{r},{boss_expr},0)')
             ws.cell(row=r, column=22, value=f'=IF(C{r},{normal_expr},0)')
         elif key in MESO_EXPLOSION_ROW_KEYS:
-            stack_expr = f'MIN(10,0.5*Summary!$B${R_APS}*{S("Cooldown(s)", r)})'
+            stack_expr = f'MIN(10,IF({IB("level")}>=75,0.75,0.5)*Summary!$B${R_APS}*(1/Calc!Q{r}))'
             prefix = f'H{r}*N{r}*{rate_r}'
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
                 prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
@@ -2644,7 +2669,7 @@ def build_calc_sheet(wb):
             ws.cell(row=r, column=22, value=f'=IF(C{r},{normal_expr},0)')
         elif key in BLOOD_MONEY_ROW_KEYS:
             stack_expr = (
-                f'MIN(5,0.25*Summary!$B${R_APS}*{S("Cooldown(s)", ROW["MESO_EXPLOSION"])})'
+                f'MIN(5,0.5*IF({IB("level")}>=75,0.75,0.5)*Summary!$B${R_APS}*(1/Calc!Q{ROW["MESO_EXPLOSION"]}))'
                 f'*{S("MasteryTargetIncrease", r)}'
             )
             prefix = f'H{r}*N{r}*{rate_r}'
@@ -2743,7 +2768,7 @@ def build_summary_sheet(wb):
 
     def buff_uptime(row):
         return uptime_fraction_or_exact_expr(
-            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), S("Cooldown(s)", row),
+            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), f'(1/Calc!Q{row})',
             bdi_main, IB("fight_duration"),
         )
 
@@ -2764,9 +2789,10 @@ def build_summary_sheet(wb):
     # BuffDuration(s)/Cooldown(s) sense).
     steal_avg = f'((Calc!C{r_steal}=TRUE)*Calc!F{r_steal}*3)'
 
-    ws.cell(row=R_AVGBUFF, column=1, value="Average Buff Multiplier (Dark Sight Attack + Artifact Attack% + Into Darkness + Smokescreen FD)")
+    meso_mastery_avg = f'((Calc!C{ROW["MESO_MASTERY"]}=TRUE)*Calc!F{ROW["MESO_MASTERY"]}*(1-EXP(-0.75*Summary!$B${R_APS}*5)))'
+    ws.cell(row=R_AVGBUFF, column=1, value="Average Buff Multiplier (Dark Sight Attack + Steal + Meso Mastery + Artifact Attack% summed additively, x Into Darkness FD x Smokescreen FD)")
     ws.cell(row=R_AVGBUFF, column=2, value=(
-        f'=(1+({dark_sight_atk_avg}+{art_ref("AGG_ATTACK_PCT")})/100)*(1+{into_darkness_avg}/100)*(1+{smokescreen_avg}/100)'
+        f'=(1+({dark_sight_atk_avg}+{steal_avg}+{meso_mastery_avg}+{art_ref("AGG_ATTACK_PCT")})/100)*(1+{into_darkness_avg}/100)*(1+{smokescreen_avg}/100)'
     ))
 
     ws.cell(row=R_CRIT_RATE_BONUS, column=1, value="Global Crit Rate Bonus % (Dark Sight Crit Rate, duty-cycle averaged)")
@@ -2783,8 +2809,8 @@ def build_summary_sheet(wb):
         f'=1+((Calc!C{r_sp}=TRUE)*Calc!F{r_sp}{sp_maple_term}*Calc!I{r_sp}*{S("ProcChance%", r_sp)}/100)/100'
     ))
 
-    ws.cell(row=R_AS_BONUS, column=1, value="Attack Speed Buff Bonus % (Nimble Feet, averaged + Steal, always-on)")
-    ws.cell(row=R_AS_BONUS, column=2, value=f'={nimble_feet_avg}+{steal_avg}')
+    ws.cell(row=R_AS_BONUS, column=1, value="Attack Speed Buff Bonus % (Nimble Feet, averaged)")
+    ws.cell(row=R_AS_BONUS, column=2, value=f'={nimble_feet_avg}')
 
     ws.cell(row=R_APS, column=1, value="Actions Per Second")
     ws.cell(row=R_APS, column=2, value=(
@@ -2807,10 +2833,10 @@ def build_summary_sheet(wb):
     ws.cell(row=R_CRIT_DAMAGE_BONUS, column=2, value=f'=IF({IB("level")}>=113,30,0)*{buff_uptime(r_ss)}')
 
     ws.cell(row=R_MESO_STACK_AVG, column=1, value="Meso Explosion — average stack count at cast time (steady-state)")
-    ws.cell(row=R_MESO_STACK_AVG, column=2, value=f'=MIN(10,0.5*B{R_APS}*{S("Cooldown(s)", r_me)})')
+    ws.cell(row=R_MESO_STACK_AVG, column=2, value=f'=MIN(10,IF({IB("level")}>=75,0.75,0.5)*B{R_APS}*(1/Calc!Q{r_me}))')
 
     ws.cell(row=R_BLOOD_MONEY_STACK_AVG, column=1, value="Blood Money — average stack count at cast time (steady-state)")
-    ws.cell(row=R_BLOOD_MONEY_STACK_AVG, column=2, value=f'=MIN(5,0.25*B{R_APS}*{S("Cooldown(s)", r_me)})')
+    ws.cell(row=R_BLOOD_MONEY_STACK_AVG, column=2, value=f'=MIN(5,0.5*IF({IB("level")}>=75,0.75,0.5)*B{R_APS}*(1/Calc!Q{r_me}))')
 
     ws.cell(row=R_MURDEROUS_INTENT_MULT, column=1, value="Assassinate Murderous Intent Multiplier (Mastery Lv.108, steady-state average)")
     ws.cell(row=R_MURDEROUS_INTENT_MULT, column=2, value=(
@@ -2961,15 +2987,21 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Min Damage Multiplier %": "min_damage",
     "Max Damage Multiplier %": "max_damage",
     "Defense Penetration": "def_pen",
-    "Luk %": "luk_pct",
-    "Luk": "flat_luk",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
     "Skill Cooldown Decrease (seconds)": "skill_cooldown_decrease",
     "Buff Duration Increase %": "buff_duration_increase_pct",
     "All Skill Level": "skill_lvl_all",
     "Basic Attack Target Increase": "basic_attack_target_increase",
+    "Luk %": "luk_pct",
+    "Luk": "flat_luk",
+    "Dex": "dex",
 }
+
+# Sub-stat PERCENT potential lines: the Sensitivity sweep for the sub-stat is a flat +1 point, so a
+# "+N% sub-stat" roll is worth N% of the current total sub-stat in points (approximation: Inputs holds the
+# final sub-stat value, no separate flat/% split). Main-stat lines map 1:1 above.
+POTENTIAL_SUB_STAT_PCT_LINES = {"Dex %": ("dex", "dex")}
 
 
 def dps_per_unit_expr(stat_name):
@@ -2993,6 +3025,9 @@ def dps_per_unit_expr(stat_name):
         )
     if stat_name == "Companion Summoning Time Increase %":
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]}'
+    if stat_name in POTENTIAL_SUB_STAT_PCT_LINES:
+        sweep_key, inputs_key = POTENTIAL_SUB_STAT_PCT_LINES[stat_name]
+        return f'=Sensitivity!H{SENSITIVITY_ROW_FOR[sweep_key]}*{IB(inputs_key)}/100'
     key = POTENTIAL_STAT_TO_SWEEP_KEY.get(stat_name)
     if key is None:
         return "0"
@@ -3012,7 +3047,7 @@ PASSIVE_DELTA_SLOT = {
     "DAGGER_EXPERT_SKILL": "skill_damage",
     "DAGGER_EXPERT_MAXDMG": "max_damage",
     "SHADOWER_INSTINCT": "final_damage",
-    "SHADOW_SHIFTER_SELF_ATK": "attack_mult",
+    "SHADOW_SHIFTER_SELF_ATK": "final_damage",
 }
 
 
@@ -3086,7 +3121,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
             fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
-            S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
+            f'(1/Q{local_row})', bdi_block, ib("fight_duration"),
         )
 
     delta_by_slot = {}
@@ -3326,7 +3361,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     # elsewhere. Final Damage% (Into Darkness + Smokescreen) is a deliberate exception to this rule
     # — every Final Damage source stays its own multiplicative factor, so it is NOT folded into
     # this sum; it is combined as its own separate bucket below.
-    attack_bucket_block = f'(1+({dark_sight_atk_avg}+{delta["attack_mult"]}+{agg_attack_pct_block})/100)'
+    steal_atk_block = f'((C{row_of["STEAL"]}=TRUE)*F{row_of["STEAL"]}*3)'
+    meso_mastery_block = f'((C{row_of["MESO_MASTERY"]}=TRUE)*F{row_of["MESO_MASTERY"]}*(1-EXP(-0.75*{aps_ref}*5)))'
+    attack_bucket_block = f'(1+({dark_sight_atk_avg}+{steal_atk_block}+{meso_mastery_block}+{delta["attack_mult"]}+{agg_attack_pct_block})/100)'
     final_damage_bucket_block = f'(1+{into_darkness_avg}/100)*(1+{smokescreen_avg}/100)'
 
     ws.cell(row=row_label, column=1, value=f"Stat: {stat_label}").font = LABEL_FONT
@@ -3364,7 +3401,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         if has_cooldown:
             eff_cd_row = effective_cooldown_expr(
                 ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"),
-                S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]),
+                cdr_applies_expr(key),
             )
             if key in STARTUP_BUFF_ROW_KEYS:
                 available_duration_row = ib("fight_duration")
@@ -3499,7 +3536,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
             ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
         elif key in MESO_EXPLOSION_ROW_KEYS:
-            stack_expr = f'MIN(10,0.5*{aps_ref}*{S("Cooldown(s)", r)})'
+            stack_expr = f'MIN(10,IF({ib("level")}>=75,0.75,0.5)*{aps_ref}*(1/Q{row}))'
             prefix = f'H{row}*N{row}*{rate_row}'
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
                 prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
@@ -3510,7 +3547,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
         elif key in BLOOD_MONEY_ROW_KEYS:
             stack_expr = (
-                f'MIN(5,0.25*{aps_ref}*{S("Cooldown(s)", ROW["MESO_EXPLOSION"])})'
+                f'MIN(5,0.5*IF({ib("level")}>=75,0.75,0.5)*{aps_ref}*(1/Q{row_of["MESO_EXPLOSION"]}))'
                 f'*{S("MasteryTargetIncrease", r)}'
             )
             prefix = f'H{row}*N{row}*{rate_row}'
@@ -3576,7 +3613,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ))
 
     ws.cell(row=s_as_bonus, column=1, value="Attack Speed Buff Bonus %")
-    ws.cell(row=s_as_bonus, column=2, value=f'={nimble_feet_avg}+{steal_avg}')
+    ws.cell(row=s_as_bonus, column=2, value=f'={nimble_feet_avg}')
 
     ws.cell(row=s_aps, column=1, value="Actions Per Second")
     ws.cell(row=s_aps, column=2, value=(
@@ -3602,10 +3639,10 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     r_me, r_bm, r_asn = ROW["MESO_EXPLOSION"], ROW["BLOOD_MONEY"], ROW["ASSASSINATE"]
     ws.cell(row=s_meso_stack, column=1, value="Meso Explosion average stack count")
-    ws.cell(row=s_meso_stack, column=2, value=f'=MIN(10,0.5*{aps_ref}*{S("Cooldown(s)", r_me)})')
+    ws.cell(row=s_meso_stack, column=2, value=f'=MIN(10,IF({ib("level")}>=75,0.75,0.5)*{aps_ref}*(1/Q{row_of["MESO_EXPLOSION"]}))')
 
     ws.cell(row=s_bm_stack, column=1, value="Blood Money average stack count")
-    ws.cell(row=s_bm_stack, column=2, value=f'=MIN(5,0.25*{aps_ref}*{S("Cooldown(s)", r_me)})')
+    ws.cell(row=s_bm_stack, column=2, value=f'=MIN(5,0.5*IF({ib("level")}>=75,0.75,0.5)*{aps_ref}*(1/Q{row_of["MESO_EXPLOSION"]}))')
 
     ws.cell(row=s_murderous, column=1, value="Assassinate Murderous Intent Multiplier")
     ws.cell(row=s_murderous, column=2, value=(

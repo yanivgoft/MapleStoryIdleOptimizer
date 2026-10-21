@@ -38,7 +38,7 @@ Key mechanics/simplifications specific to this kit:
   - Eight-Legs Easton (basic attack) reuses the universal 4th-job-basic-attack constant (baseDamage
     2900, factorIndex 21). HitsPerCast=5, bumping to 6 once the assumed Mastery Lv.136 tier
     unlocks (mapped from Buccaneer's own Hook Bomber - Strike slot). Real Damage mastery chain
-    (102/106/116/120/128/132, DELTAS) and Boss Monster Damage chain (111/124, +10% each) —
+    (102/106/116/120/128/132, raw tiers +10/11/12/13/14/15 = 75% at max) and Boss Monster Damage chain (111/124, +10% each) —
     mapped directly from Buccaneer's own Hook Bomber chain, which is itself the same universal
     pattern confirmed across every class in this project.
   - Nautilus Strike (1950% dmg/15 targets/5 hits) is CONFIRMED SHARED VERBATIM with Buccaneer
@@ -926,39 +926,35 @@ def build_readme_sheet(wb):
 
     section(r, "Design decisions & assumptions"); r += 1
     for text in [
-        "CRITICAL: Corsair has ZERO individual wiki pages AND no Mastery page at all — worse than "
-        "any other class built in this project. Every scaling skill's (baseDamage, factorIndex) "
-        "is a FLAGGED ASSUMPTION from its own level-1 value; every mastery bonus below is a "
-        "FLAGGED ASSUMPTION mapped from Buccaneer's own real mastery table by skill-slot role, "
-        "per direct user decision. This entire workbook's accuracy ceiling is lower than every "
-        "sibling class — treat every number as a documented estimate, not verified data.",
+        "Data source (2026-10-21 audit): Corsair's numbers come from maplestoryidle.info's GAME CAPTURE (skill "
+        "text + the game's own tables: ratios, factorIndices, hit/target counts, cooldowns, trigger rules), "
+        "which beats the wiki (no Req.Level/Cooldown/Mastery data there). The real mastery table is used "
+        "(Blackboot Bill +50, Scurvy +50, All Aboard +50 and -30% intervals, Siege Bomber +50/Setup, Rapid "
+        "Fire +70, Brain Scrambler +100, Broadside Bombardment/Setup, Swift Fire Weaken, ...); the earlier "
+        "'role-mapped from Buccaneer' masteries are gone. The Broadside bombardment line (1900% x3 on 8 "
+        "targets) uses factorIndex 12 as a FLAGGED ASSUMPTION (no table ratio).",
         "Shadow Heart, Quick Motion (AS component only), Agile Guns, Gun Mastery, Physical "
         "Training, Infinity Blast, Fullmetal Jacket, Cross Cut Blast, and Quickdraw's own flat "
         "+25% Basic Attack Damage component are always-on passives assumed to already be "
         "reflected in your own Inputs stat entries — only their Sensitivity marginal delta is "
         "modeled live, matching this project's established convention.",
-        "Eight-Legs Easton (basic attack) reuses the universal 4th-job-basic-attack constant "
-        "(baseDamage 2900, factorIndex 21) confirmed identical across every class in this "
-        "project. Its own Mastery chain is mapped from Buccaneer's own Hook Bomber chain (same "
-        "universal pattern).",
-        "Nautilus Strike and Roll of the Dice are both CONFIRMED SHARED verbatim with Buccaneer "
-        "(byte-identical wiki descriptions) — reuse Buccaneer's exact resolved tuples directly, "
-        "not re-derived.",
-        "Scurvy Summons / All Aboard (crew summons) and Broadside's burst+sustained split use "
-        "the standard generic ActiveWindow/ICD tick machinery already used for every summon/"
-        "turret skill in this project (Bowmaster's Phoenix, FP-Mage's Ifrit) — no bespoke "
-        "mechanics needed.",
-        "Majestic Presence procs off three independent sources (Basic Attack, Brain Scrambler, "
-        "Rapid Fire) — modeled as its own combined-trigger-rate row summing the three sources' "
-        "own hit rates directly, extending Marksman's own Bolt Surplus dual-trigger pattern to "
-        "three sources.",
-        "Ahoy Mateys (+250%/+100% FD to Scurvy Summons/All Aboard) is its own helper row, same "
-        "mechanism as Maple Hero — both feed the same two skills' K-column terms independently.",
-        "Recoil Shot is explicitly 'not used automatically' per its own wiki text — excluded "
-        "entirely, no row. Outlaw's Code (Defense/Debuff Tolerance) is purely defensive, not "
-        "modeled.",
-        "Jolly Roger (PATCHED FD 18%->15%, a nerf) has no stated cooldown — modeled always-active "
-        "steady-state once unlocked, same tier as Buccaneer's own Crossbones/Time Leap.",
+        "Eight-Legs Easton (basic attack) reuses the universal 4th-job-basic-attack constant (baseDamage "
+        "2900, factorIndex 21). Quickdraw (Lv125) is modeled: every 3rd cast deals double damage "
+        "(x(1+1/3) on average) and each 3 casts cut 1.5s from Brain Scrambler or Rapid Fire (assumed split "
+        "evenly -> both cooldowns are divided by 1 + 0.25*B*, with B* the Easton cast rate solved in closed "
+        "form). Nautilus Strike and Roll of the Dice are shared verbatim with Buccaneer.",
+        "Scurvy Summons / All Aboard crews and Siege Bomber / Broadside turrets use the standard "
+        "ActiveWindow/ICD tick machinery; crew windows lengthen with Buff Duration Increase from Lv104, "
+        "strike intervals drop 30% at Lv94, and the Siege Bomber / Broadside Setup masteries (+1 setup) "
+        "let two instances coexist so their windows are no longer capped at the cooldown. Broadside's "
+        "Lv118 Bombardment replaces the Battleship's 330% ticks with 1900% x3 hits on 8 targets.",
+        "Majestic Presence procs off three sources (Easton, Brain Scrambler, Rapid Fire) at 25% with a 0.5s "
+        "internal cooldown: (c*R)/(1+ICD*c*R). Nautilus Strike - Final Attack is the same kind of any-attack "
+        "proc (30%, 1s ICD). Ahoy Mateys (+250%/+100% FD to the Dual Pistol / Sharpshooter crews) is its own "
+        "helper row. Swift Fire's Lv54 Weaken (+3% per strike, 3 stacks) feeds the damage-taken bucket.",
+        "Recoil Shot is explicitly 'not used automatically' — excluded. Outlaw's Code is defensive, not "
+        "modeled. Jolly Roger (42s cooldown, 18s duration, PATCHED 18% -> 15%) is a duty-cycled buff. "
+        "Skill Cooldown Decrease applies to every cooldown (skills, buffs and passives alike).",
         "Content Type (Inputs) picks what you're fighting — Chapter Boss/Breakthrough/PvP/EXP "
         "Dungeon/Equipment Dungeon/Weapon Dungeon/Enhancement Dungeon/Hero Dungeon/World Boss/"
         "Chapter Hunt — and Monster Defense and Fixed Fight Duration are both auto-computed from "
@@ -1091,7 +1087,7 @@ def build_inputs_sheet(wb, existing=None):
 
     ws.cell(row=31, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
-        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
+        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
@@ -1757,7 +1753,7 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
     scaled_duration = f'({duration_ref}*(1+{bdi_ref}/100))'
     return (
         f'IF({monster_type_ref}="pvp",MIN({scaled_duration},{PVP_FIGHT_DURATION})/{PVP_FIGHT_DURATION},'
-        f'{scaled_duration}/{cooldown_ref})'
+        f'MIN(1,{scaled_duration}/{cooldown_ref}))'
     )
 
 
@@ -1828,7 +1824,9 @@ def exact_buff_uptime_expr(casts_ref, buff_duration_ref, cooldown_ref, fight_dur
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{fight_duration_ref}-{last_cast_start})'
     last_uptime = f'MIN({buff_duration_ref},{remaining_after_last})'
-    return f'(({casts_ref}-1)*{buff_duration_ref}+{last_uptime})'
+    # A recast that lands before the previous buff ends only extends coverage by one cooldown, so each full
+    # cycle contributes MIN(duration, cooldown) of uptime — never more (otherwise uptime could exceed 100%).
+    return f'(({casts_ref}-1)*MIN({buff_duration_ref},{cooldown_ref})+{last_uptime})'
 
 
 def uptime_fraction_or_exact_expr(fixed_duration_active_ref, casts_ref, monster_type_ref,
@@ -1909,9 +1907,11 @@ R_EIGHT_LEGS_EASTON_DPS = 22
 R_STARTUP_TIME = 23                 # Buff-Casting Startup Delay (s, fixed-duration only)
 R_BOSS_ONLY_TOTAL = 24               # Total DPS if every hit were against a boss (Breakthrough Sensitivity baseline)
 R_NORMAL_ONLY_TOTAL = 25             # Total DPS if every hit were against normal monsters (Breakthrough Sensitivity baseline)
+R_QD_FACTOR = 26                    # Quickdraw (Lv125): Brain Scrambler/Rapid Fire cooldown divisor f = 1 + 0.25*B* (1 when locked/PvP)
+R_NAUTILUS_TRIGGER_RATE = 27        # Nautilus Strike - Final Attack: combined cast rate of the triggering attacks (1/s)
 # The two variable-length summary tables (Per-Skill Breakdown, sized off DAMAGE_DEALING_KEYS, and
 # Marginal DPS & Stat Value, sized off STAT_SWEEP) start after this fixed block, with a 2-row gap.
-SUMMARY_BREAKDOWN_HEADER_ROW = R_NORMAL_ONLY_TOTAL + 3
+SUMMARY_BREAKDOWN_HEADER_ROW = R_NAUTILUS_TRIGGER_RATE + 3
 
 
 # Corsair has no BuffDuration(s)>0 skill rows at all (confirmed: no recast-able timed buffs exist
@@ -1925,40 +1925,90 @@ SUMMARY_BREAKDOWN_HEADER_ROW = R_NORMAL_ONLY_TOTAL + 3
 # was previously assumed passive with no cooldown — confirmed real via maplestoryidle.info.
 BUFF_ROW_KEYS = ["NIMBLE_FEET", "JOLLY_ROGER_FD"]
 
-# NOTE: Corsair's wiki overview page is EVEN WORSE than Buccaneer's — no Req.Level column, AND no
-# Mastery page at all (confirmed 404/redlink). Every unlock level below is a FLAGGED ASSUMPTION
-# inferred purely from the skill's own position in the overview list (which follows job-tier
-# order) and cross-checked against Buccaneer's own analogous-role unlock levels where a role
-# mapping exists. A human should revisit these if real data ever surfaces.
+# Unlock levels: maplestoryidle.info `reqLevel` (a direct game capture for Corsair — trusted over the wiki,
+# which has no Req.Level column and no Mastery page at all). Re-verified 2026-10-21 against the site's skill
+# list; the earlier values here were FLAGGED ASSUMPTIONS inferred from list order.
 UNLOCK_LEVEL = {
     "EIGHT_LEGS_EASTON": 100,
-    "SWIFT_FIRE": 35,
-    "SCURVY_SUMMONS": 40,
-    "ALL_ABOARD": 45,
-    "BLACKBOOT_BILL": 63,
-    "SIEGE_BOMBER": 66,
-    "BRAIN_SCRAMBLER": 100,
-    "NAUTILUS_STRIKE": 103,
+    "SWIFT_FIRE": 33,
+    "SCURVY_SUMMONS": 35,
+    "ALL_ABOARD": 69,
+    "BLACKBOOT_BILL": 66,
+    "SIEGE_BOMBER": 63,
+    "BRAIN_SCRAMBLER": 103,
+    "NAUTILUS_STRIKE": 105,
     "NAUTILUS_FINAL_ATTACK": 113,
-    "RAPID_FIRE": 107,
+    "RAPID_FIRE": 117,
     "BROADSIDE_BURST": 110,
     "BROADSIDE_SUSTAINED": 110,
-    "MAJESTIC_PRESENCE": 125,
+    "MAJESTIC_PRESENCE": 120,
     "MAPLE_HERO_HELPER": 100,
-    "AHOY_MATEYS_HELPER": 120,
-    "ROLL_OF_THE_DICE_DICE": 66,
+    "AHOY_MATEYS_HELPER": 107,
+    "ROLL_OF_THE_DICE_DICE": 74,
     "JOLLY_ROGER_FD": 115,
-    "SHADOW_HEART": 15,
-    "QUICK_MOTION": 10,
-    "AGILE_GUNS": 33,
+    "SHADOW_HEART": 10,
+    "QUICK_MOTION": 15,
+    "AGILE_GUNS": 40,
     "GUN_MASTERY": 43,
     "PHYSICAL_TRAINING": 38,
-    "INFINITY_BLAST_ATK": 40,
+    "INFINITY_BLAST_ATK": 45,
     "FULLMETAL_JACKET_CD": 72,
     "CROSS_CUT_BLAST_FD": 75,
-    "QUICKDRAW_BAD": 117,
+    "QUICKDRAW_BAD": 125,
     # NIMBLE_FEET: no threshold (shared Explorer skill, level 0) — stays unconditionally unlocked.
 }
+
+
+# Quickdraw (Lv125): "Every time Eight-Legs Easton is used 3 times, doubles the damage and decreases the
+# cooldown of Brain Scrambler or Rapid Fire by 1.5 sec." (game table: Easton has a second 5800% line.)
+#  - Damage: every 3rd Easton cast deals double => average Easton damage x(1 + 1/3).
+#  - Cooldown: one trigger per 3 basic casts, each cutting 1.5s from ONE of the two skills (ASSUMPTION: split
+#    evenly between them) => each skill's cooldown shrinks at 1.5/3/2 = 0.25*B seconds per second, B = the
+#    basic-attack rate, i.e. effective cooldown = cd / (1 + 0.25*B). B itself depends on those casts, so the
+#    fixed point is solved in closed form: B* = (APS - c0 - x0)/(1 + 0.25*x0), c0 = cast rate of every OTHER
+#    action-costing skill, x0 = sum of 1/cd over Brain Scrambler + Rapid Fire (no Excel circular reference).
+QD_COOLDOWN_KEYS = ["BRAIN_SCRAMBLER", "RAPID_FIRE"]
+QD_REDUCTION_PER_TRIGGER = 1.5
+QD_BASICS_PER_TRIGGER = 3
+QD_K = QD_REDUCTION_PER_TRIGGER / QD_BASICS_PER_TRIGGER / len(QD_COOLDOWN_KEYS)   # 0.25
+
+
+def qd_factor_expr(qd_unlocked_ref, monster_type_ref, aps_ref, c0_expr, x0_expr):
+    """Cooldown divisor f = 1 + K*B*, B* = MAX(0,(APS-c0-x0)/(1+K*x0)); 1 when Quickdraw is locked or in PvP."""
+    return (
+        f'IF(AND({qd_unlocked_ref}=TRUE,{monster_type_ref}<>"pvp"),'
+        f'1+{QD_K}*MAX(0,({aps_ref}-({c0_expr})-({x0_expr}))/(1+{QD_K}*({x0_expr}))),1)'
+    )
+
+
+def nautilus_proc_rate_expr(h_ref, icd_ref, trigger_rate_ref):
+    """Steady-state Nautilus-FA trigger rate: (Chance*R)/(1+ICD*Chance*R), R = combined cast rate of the
+    triggering attacks (same formula as FP-Mage's Meteor Proc / Ice-Lightning's Blizzard FA)."""
+    return f'({h_ref}*{trigger_rate_ref})/(1+{icd_ref}*{h_ref}*{trigger_rate_ref})'
+
+
+def nautilus_trigger_rate_expr(fda_ref, fight_duration_ref, baps_ref, terms):
+    """terms = (unlocked_ref, casts_in_fight_ref, inv_cooldown_ref) per triggering attack (the action-costing
+    direct-attack skills); Eight-Legs Easton's own cast rate is added on top."""
+    exact = "+".join(f'(({c}=TRUE)*{r})' for c, r, q in terms)
+    steady = "+".join(f'(({c}=TRUE)*{q})' for c, r, q in terms)
+    return f'IF({fda_ref},({exact})/{fight_duration_ref},{steady})+{baps_ref}'
+
+
+NAUTILUS_TRIGGER_KEYS = ["SWIFT_FIRE", "BLACKBOOT_BILL", "BRAIN_SCRAMBLER", "NAUTILUS_STRIKE", "RAPID_FIRE"]
+
+
+def qd_c0_expr(unlocked_ref_fn, q_ref_fn, skills_row_fn):
+    """Cast rate of every action-costing skill EXCEPT Brain Scrambler / Rapid Fire, as an EXPLICIT per-row sum
+    (not a SUMPRODUCT over the whole Q column: Excel would treat Q of the two excluded rows as a precedent
+    even though the mask zeroes it, making the Quickdraw factor circular with those rows' own cooldowns)."""
+    terms = []
+    for row in SKILL_ROWS:
+        key, costs_action, actions_per_cast = row[0], row[4], row[5]
+        if costs_action is not True or key in QD_COOLDOWN_KEYS:
+            continue
+        terms.append(f'(({unlocked_ref_fn(key)}=TRUE)*{q_ref_fn(key)}*{actions_per_cast})')
+    return "+".join(terms)
 
 
 def unlock_expr(key):
@@ -1997,6 +2047,21 @@ HELPER_SPECS = [
 ]
 
 
+# Dual Pistol Crew / Sharpshooter Crew active window: 20s, extended by the Buff Duration Increase stat once
+# All Aboard - Persistence (Lv104) is unlocked (capped at Scurvy Summons' 35s cooldown). Depends on the Buff
+# Duration Increase INPUT, so the Calc/Sensitivity formulas read this expression with their own `ib` instead of
+# the Skills-sheet cell (a Sensitivity block sweeping Buff Duration Increase must see the longer window).
+CREW_WINDOW_ROWS = ["SCURVY_SUMMONS", "ALL_ABOARD"]
+
+
+def crew_window_expr(ib=IB):
+    return f'IF({ib("level")}>=104,MIN(35,20*(1+{ib("buff_duration_increase_pct")}/100)),20)'
+
+
+def active_window_ref(key, r, ib=IB):
+    return crew_window_expr(ib) if key in CREW_WINDOW_ROWS else S("ActiveWindow(s)", r)
+
+
 # (key, name, jobstep, cooldown, costsAction, actionsPerCast, hits, icd, window, chance, rolls,
 #  baseDamage, factorIndex, scales, skillMasteryBonusPct, masteryBossDmgPct, masteryNormalDmgPct,
 #  normalMonsterTargets, buffTarget, buffDuration, mapleBase, mapleFactor, note)
@@ -2004,314 +2069,224 @@ SKILL_ROWS = [
     ("EIGHT_LEGS_EASTON", "Eight-Legs Easton", 4, "", False, 1,
      f'=IF({IB("level")}>=136,6,5)', 0, 0, 100, 1,
      2900, 21, True,
-     f"={level_gated_sum_raw(IB('level'), {102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1})}",
+     f"={level_gated_sum_raw(IB('level'), {102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})}",
      level_gated_sum(IB("level"), {111: 10, 124: 10}), 0,
      f'=6+{IB("basic_attack_target_increase")}', "", 0, "", "",
-     "4th-job basic-attack effect (supersedes Double Shot/Rapid Blast/Blunderbuster, confirmed "
-     "identical wiki wording — 290% damage to 6 target(s) in front 5 time(s) — to every other "
-     "class's own 4th-job basic attack). factorIndex 21, baseDamage 2900 tenths%. HitsPerCast=5, "
-     "bumping to 6 once the ASSUMED Mastery Lv.136 tier unlocks (mapped from Buccaneer's own "
-     "Hook Bomber - Strike slot — Corsair has no Mastery page at all to confirm this "
-     "independently). Real Damage mastery chain (102/106/116/120/128/132, DELTAS) and Boss "
-     "Monster Damage chain (111/124, +10% each) mapped directly from Buccaneer's own Hook "
-     "Bomber chain — this is the same universal 4th-job-basic-attack mastery pattern confirmed "
-     "across every class in this project, so this specific mapping is high-confidence despite "
-     "the overall lack of Corsair mastery data."),
+     "4th-job basic-attack effect (supersedes Double Shot/Rapid Blast/Blunderbuster): 290% damage to 6 "
+     "target(s) in front 5 time(s). factorIndex 21, baseDamage 2900 tenths% (game table). HitsPerCast=5, "
+     "6 once Mastery Lv.136 'Eight-Legs Easton - Strike' unlocks. Damage chain 102/106/116/120/128/132 and "
+     "Boss Monster Damage chain 111/124 now confirmed from the game capture's real mastery table (an "
+     "earlier version mapped them from Buccaneer): every tier is its own add-on (user-confirmed "
+     "2026-10-21: raw +10/+11/+12/+13/+14/+15 = 75% at max). Quickdraw (Lv125): every 3rd cast deals "
+     "double damage (game table lists a second 5800% line) => the DPS formula multiplies by (1 + 1/3) "
+     "once Quickdraw is unlocked; its cooldown effect on Brain Scrambler / Rapid Fire is in Summary!QD_FACTOR."),
     ("SWIFT_FIRE", "Swift Fire", 2, 17, True, 1, 3, 0, 0, 100, 1,
      1800, 12, True,
      level_gated_sum(IB("level"), {39: 50}), 0, 0, 8, "", 0, 200, 23,
-     "Confirmed via maplestoryidle.info cross-reference (a direct game capture, not a wiki page): "
-     "'Fires three bullets consecutively ahead to attack up to 8 target(s), dealing 180% damage "
-     "each', real 17s cooldown (corrected from a previously-assumed 18s). factorIndex 12, "
-     "baseDamage 1800 tenths%. Mastery mapped from Buccaneer's own Sea Serpent Burst - Damage "
-     "@39 (+50%) slot — no exact 1:1 analog exists since Corsair has no mastery data at all, but "
-     "both are the class's own 2nd-job attack-proc-shaped skill, so this role-mapping is a "
-     "reasonable assumption. Mastery Lv.54 'Swift Fire - Weaken' (+3% target damage taken per "
-     "strike, max 3 stacks/9%, confirmed via maplestoryidle.info) not modeled — same complexity "
-     "tier as Paladin's own Weaken debuffs, judged out of scope for this pass. Maple Hero "
-     "target — see MAPLE_HERO_RATIOS (biggest share, 4x Siege Bomber's own)."),
-    ("SCURVY_SUMMONS", "Scurvy Summons", 2, 35, True, 1, 2, 1.5, 20, 100, 1,
+     "Game capture: 'Fires three bullets consecutively ahead to attack up to 8 target(s), dealing 180% "
+     "damage each', 17s cooldown, Lv.33 unlock (was 35). factorIndex 12, baseDamage 1800 tenths%, 3 hits. "
+     "Mastery Lv.39 'Swift Fire - Damage' +50% (confirmed from the real mastery table; was role-mapped). "
+     "Mastery Lv.54 'Swift Fire - Weaken': +3% damage taken per strike, max 3 stacks (9%) for 8s, "
+     "scaled by the 8s/cooldown uptime — now modeled in Summary's monster-damage-taken bucket. Maple Hero "
+     "target (80% share, ratio 80/20) — see MAPLE_HERO_RATIOS."),
+    ("SCURVY_SUMMONS", "Scurvy Summons", 2, 35, True, 1, 2,
+     f'=IF({IB("level")}>=94,1.5*0.7,1.5)', f'={crew_window_expr()}', 100, 1,
      950, 12, True,
-     0, 0, 0, 3, "", 0, "", "",
-     "Confirmed via maplestoryidle.info cross-reference (a direct game capture, not a wiki page): "
-     "real 35s cooldown (corrected from a previously-wrong assumption that cooldown = the crew's "
-     "own 20s active duration with immediate recast-on-expiry — the real mechanic has a genuine "
-     "~15s gap with no crew active between casts). 'Summons the Dual Pistol Crew of the Nautilus "
-     "for 20 sec. The Dual Pistol Crew attacks up to 3 nearby target(s) for 95% damage 2 time(s) "
-     "every 1.5 sec' (Aug 13 patch wording, ICD 3s->1.5s already reflected). factorIndex 12, "
-     "baseDamage 950 tenths%. Standard "
-     "ActiveWindow/ICD tick machinery (EffectiveHits = 2*(20/1.5) per cast) — no bespoke "
-     "mechanics needed, unlike Buccaneer's own resource-economy skills. No clean Buccaneer "
-     "mastery-slot analog exists for this specific crew-summon mechanic — left unmodeled "
-     "(SkillMasteryBonus%=0) rather than forcing a poor mapping. Ahoy Mateys target — see "
-     "AHOY_MATEYS_RATIOS (biggest share, ratio 1.0). Mastery Lv.122 'Ahoy Mateys - Final Damage' "
-     "(+20% FD for 20s upon using Scurvy Summons, confirmed via maplestoryidle.info) is modeled "
-     "separately as a duty-cycle FD term — see AHOY_MATEYS_PROC_FD in build_summary_sheet."),
-    ("ALL_ABOARD", "All Aboard", 2, 35, False, 1, 3, 2, 20, 100, 1,
+     level_gated_sum(IB("level"), {49: 50}), 0, 0, 3, "", 0, "", "",
+     "Game capture: 'Summons the Dual Pistol Crew of the Nautilus for 20 sec. The Dual Pistol Crew "
+     "attacks up to 3 nearby target(s) for 95% damage 2 time(s) every 1.5 sec.' 35s cooldown, Lv.35 "
+     "unlock (was 40). factorIndex 12, baseDamage 950 tenths%. Masteries (real table, were missing): "
+     "Lv.49 'Scurvy Summons - Damage' +50% (Dual Pistol Crew damage); Lv.94 'All Aboard - Strike "
+     "Interval' -30% on BOTH crews (1.5s -> 1.05s); Lv.104 'All Aboard - Persistence': the Buff Duration "
+     "Increase stat lengthens the crews' 20s duration (ActiveWindow = MIN(35, 20*(1+BDI)), read live by "
+     "Calc/Sensitivity). Ahoy Mateys: +250% Final Damage (ratio 1.0, see AHOY_MATEYS_RATIOS) and the "
+     "Lv.122 +20% FD-for-20s proc (Summary)."),
+    ("ALL_ABOARD", "All Aboard", 3, f"=Skills!{SC['Cooldown(s)']}{ROW['SCURVY_SUMMONS']}", False, 1, 3,
+     f'=IF({IB("level")}>=94,2*0.7,2)', f'={crew_window_expr()}', 100, 1,
      1100, 12, True,
-     0, 0, 0, 8, "", 0, "", "",
-     "Confirmed via maplestoryidle.info cross-reference: 'Summons the Sharpshooter Crew upon "
-     "using Scurvy Summons. The Sharpshooter Crew fires bullets every 2 sec to deal 110% damage "
-     "to 8 target(s) near the main target 3 time(s)' (Aug 13 patch wording, all fields already "
-     "matching). Triggered BY Scurvy Summons — shares its "
-     "own Cooldown(s) value (now corrected to 35s, matching Scurvy Summons' own real cooldown "
-     "fix — this row has no live formula reference to that cell, so both must be kept in manual "
-     "lockstep) and duration/ActiveWindow (20s, CostsActionSlot=False so it doesn't double-count "
-     "the action economy), same 'rides the parent skill's cast timing' pattern as Buccaneer's "
-     "own Sea Serpent's Rage riding Octopunch. factorIndex 12, baseDamage 1100 tenths%. No clean "
-     "Buccaneer mastery-slot analog — left unmodeled. Ahoy Mateys target — see "
-     "AHOY_MATEYS_RATIOS (0.4x Scurvy Summons' own share)."),
+     level_gated_sum(IB("level"), {78: 50}), 0, 0, 8, "", 0, "", "",
+     "Game capture: 'Summons the Sharpshooter Crew upon using Scurvy Summons. The Sharpshooter Crew fires "
+     "bullets every 2 sec to deal 110% damage to 8 target(s) near the main target 3 time(s).' A 3rd-job "
+     "skill (JobStep 3; was 2), Lv.69 unlock (was 45). Cooldown is a LIVE reference to Scurvy Summons' "
+     "(and inherits its CDR eligibility); window/ICD follow Scurvy Summons' crew rules. Masteries: Lv.78 "
+     "'All Aboard - Damage' +50% (Sharpshooter Crew), Lv.94 strike interval -30% (2s -> 1.4s), Lv.104 "
+     "BDI lengthens the crew window. factorIndex 12, baseDamage 1100 tenths%. Ahoy Mateys: +100% Final "
+     "Damage (ratio 100/250 of the 250 base)."),
     ("BLACKBOOT_BILL", "Blackboot Bill", 3, 23, True, 1, 4, 0, 0, 100, 1,
      1700, 12, True,
-     level_gated_sum(IB("level"), {73: 80}), 0, 0, 9, "", 0, 400, 23,
-     "Confirmed via maplestoryidle.info cross-reference: real 23s cooldown (corrected from a "
-     "previously-assumed 20s). 'Fires a giant "
-     "bullet to deal 170% damage to 9 target(s) in front 4 time(s) and stun them for 2 sec' "
-     "(stun not modeled, targets already matching the Aug 13 patch's 6->9). factorIndex 12, "
-     "baseDamage 1700 tenths%. "
-     "Mastery mapped from Buccaneer's own Corkscrew Blow - Damage @73 (+80%) slot — both are "
-     "the class's own 3rd-job unique burst skill. Maple Hero target — see MAPLE_HERO_RATIOS "
-     "(2x Siege Bomber's own share)."),
-    ("SIEGE_BOMBER", "Siege Bomber", 3, 22, True, 1, 1, 1.5, 22, 100, 1,
+     level_gated_sum(IB("level"), {73: 50}), 0, 0, 9, "", 0, 400, 23,
+     "Game capture: 'Fires a giant bullet to deal 170% damage to 9 target(s) in front 4 time(s) and stun "
+     "them for 2 sec' (stun not modeled), 23s cooldown, Lv.66 unlock (was 63). factorIndex 12, "
+     "baseDamage 1700 tenths%. Mastery Lv.73 'Blackboot Bill - Damage' is +50% (real table; the earlier "
+     "+80% was role-mapped from Buccaneer's Corkscrew Blow). Maple Hero target (40% share, ratio 40/20)."),
+    ("SIEGE_BOMBER", "Siege Bomber", 3, 22, True, 1, 1, 1.5,
+     f'=IF({IB("level")}>=68,30,22)', 100, 1,
      1900, 12, True,
-     0, 0, 0, 6, "", 0, 100, 23,
-     "Confirmed via maplestoryidle.info cross-reference: real 22s cooldown (corrected from a "
-     "previously-wrong assumption that cooldown = the cannon's own 30s active duration). Real "
-     "mechanic confirmed EVEN MORE specifically by the Aug 13 patch text: 'it can immediately "
-     "replace itself in auto mode' — since the real cooldown (22s) is SHORTER than the cannon's "
-     "own natural 30s duration, recasting replaces the still-active cannon before it would "
-     "naturally expire, so ActiveWindow(s) is capped to the cooldown (22, not 30) — otherwise "
-     "the standard ActiveWindow/ICD tick formula would overcount ticks from a cannon instance "
-     "that no longer exists past the recast point. 'Installs a fixed cannon for 30 sec to deal "
-     "190% damage to up to 6 target(s) near the main target every 1.5 sec' (Aug 13 patch "
-     "wording, all fields already matching except cooldown/window). factorIndex 12, baseDamage "
-     "1900 tenths%. Mastery Lv.68 'Siege Bomber - Setup' (+1 max setup count, first setup after "
-     "combat start gets -15s cooldown) not modeled — a multi-instance/stacking economy this "
-     "project has no mechanism for. No "
-     "clean Buccaneer mastery-slot analog for a base damage% mastery — left unmodeled. Maple Hero "
-     "target — see MAPLE_HERO_RATIOS (smallest share, ratio 1.0)."),
+     level_gated_sum(IB("level"), {82: 50}), 0, 0, 6, "", 0, 100, 23,
+     "Game capture: 'Installs a fixed cannon for 30 sec to deal 190% damage to up to 6 target(s) near the "
+     "main target every 1.5 sec. Its range is increased by 50% and it can immediately replace itself in "
+     "auto mode.' 22s cooldown, Lv.63 unlock (was 66). Because the cooldown (22s) is shorter than the 30s "
+     "duration, with a single setup a recast replaces the still-active cannon, capping the useful window "
+     "at 22s; Mastery Lv.68 'Siege Bomber - Setup' (+1 max setup count) lets two cannons coexist, so the "
+     "window becomes the full 30s (ActiveWindow `IF(L>=68,30,22)`). Its other effect (first setup after "
+     "combat starts gets -15s cooldown) only shifts the first cast and is not modeled. Mastery Lv.82 "
+     "'Siege Bomber - Damage' +50% (real table). factorIndex 12, baseDamage 1900 tenths%. Maple Hero "
+     "target (20% share, ratio 1.0)."),
     ("BRAIN_SCRAMBLER", "Brain Scrambler", 4, 18, True, 1, 2, 0, 0, 100, 1,
      29000, 12, True,
      level_gated_sum(IB("level"), {108: 100}), 0, 0, 1, "", 0, "", "",
-     "Confirmed via maplestoryidle.info cross-reference: real 18s cooldown (corrected from a "
-     "previously-assumed 15s), and Mastery Lv.108 'Brain Scrambler - Damage' is a real +100% "
-     "(corrected from a previously role-mapped +50%, taken from Buccaneer's own Octopunch — "
-     "Corsair's own real mastery is double that). "
-     "'Hits the target's head to deal 2900% damage 2 time(s).' factorIndex 12, baseDamage 29000 "
-     "tenths%, single target. Also feeds "
-     "Majestic Presence's own combined trigger rate — see MAJESTIC_PRESENCE's own Note."),
+     "Game capture: 'Hits the target's head to deal 2900% damage 2 time(s).' 18s cooldown, Lv.103 unlock "
+     "(was 100). factorIndex 12, baseDamage 29000 tenths%, single target. Mastery Lv.108 'Brain "
+     "Scrambler - Damage' +100%. Quickdraw (Lv125) shortens its effective cooldown (Summary!QD_FACTOR). "
+     "Also a trigger source for Majestic Presence and Nautilus Strike - Final Attack."),
     ("NAUTILUS_STRIKE", "Nautilus Strike", 4, 33, True, 1, 5, 0, 0, 100, 1,
      19500, 12, True,
      level_gated_sum(IB("level"), {126: 50}), 0, 0, 15, "", 0, "", "",
-     "CONFIRMED SHARED VERBATIM WITH BUCCANEER (byte-identical description on both classes' "
-     "overview pages, on both the wiki and maplestoryidle.info: 'Orders the Nautilus to attack "
-     "to deal 1950% damage to 15 nearby target(s) 5 time(s).') — reuses Buccaneer's exact "
-     "(19500, 12) tuple directly. Real 33s cooldown (corrected from a previously-assumed 45s, "
-     "same fix as Buccaneer's own copy — confirmed via maplestoryidle.info, a ~36% faster cast "
-     "rate). "
-     "Mastery mapped from Buccaneer's own Nautilus Strike - Damage @126 (+50%) slot — since "
-     "this is the SAME shared skill, this mapping is higher-confidence than most other "
-     "role-mapped masteries in this workbook, and independently confirmed correct via "
-     "maplestoryidle.info showing the identical mastery text on both classes."),
-    ("NAUTILUS_FINAL_ATTACK", "Nautilus Strike - Final Attack", 4, 1, False, 1, 1, 0, 0, 30, 1,
+     "Shared verbatim with Buccaneer: 'Orders the Nautilus to attack to deal 1950% damage to 15 nearby "
+     "target(s) 5 time(s).' 33s cooldown, Lv.105 unlock (was 103). factorIndex 12, baseDamage 19500 "
+     "tenths%. Mastery Lv.126 'Nautilus Strike - Damage' +50%."),
+    ("NAUTILUS_FINAL_ATTACK", "Nautilus Strike - Final Attack", 4, "", False, 1, 1, 1, 0, 30, 1,
      8500, 21, True,
      0, 0, 0, 1, "", 0, "", "",
-     "CONFIRMED SHARED VERBATIM WITH BUCCANEER — same Mastery Lv.113 proc mechanic, same patch "
-     "note applies identically to both classes: '[Nautilus Strike in Slot] When attacking, "
-     "deals 850% additional damage' — PATCHED: trigger chance 15%->30%, 'cooldown set to 1s' "
-     "(both baked in directly: ProcChance%=30, Cooldown(s)=1). Reuses Buccaneer's exact row "
-     "shape/tuple directly. Triggers off basic attacks generically (CostsActionSlot=False), "
-     "factorIndex 21, baseDamage 8500 tenths%."),
+     "Shared verbatim with Buccaneer: Mastery Lv.113 '[Nautilus Strike in Slot] When attacking, deals 850% "
+     "additional damage with a 30% chance and a 1-sec cooldown.' ANY attack can trigger it, so it is a "
+     "steady-state proc: rate = (Chance*R)/(1+ICD*Chance*R), R = combined cast rate of Eight-Legs Easton + "
+     "Swift Fire + Blackboot Bill + Brain Scrambler + Nautilus Strike + Rapid Fire (Summary!"
+     "NAUTILUS_TRIGGER_RATE); summons/turrets/crews are not counted (ASSUMPTION mirroring FP-Mage's "
+     "user-confirmed trigger set). No cooldown of its own (ICD(s)=1 is the internal cooldown, "
+     "RollsPerCast=1). factorIndex 21, baseDamage 8500 tenths% (literal percent)."),
     ("RAPID_FIRE", "Rapid Fire", 4, 17, True, 1, 7, 0, 0, 100, 1,
      18000, 12, True,
-     0, 0, 0, 9, "", 0, "", "",
-     "CONFIRMED via maplestoryidle.info's own Aug 13 patch overlay (not just the base skill "
-     "text, which shows the PRE-patch 21s/1350%/single-target values): 'Fires bullets at a very "
-     "high speed 7 time(s) to deal 1800% damage each to up to 9 targets in front', cooldown "
-     "'17 sec' — every field here (17s cooldown, 18000 tenths%=1800%, 9 targets) already exactly "
-     "matches this project's own prior PATCHED assumption, now independently confirmed correct "
-     "rather than inferred from patch notes alone. factorIndex 12, baseDamage 18000 tenths%. No "
-     "clean Buccaneer mastery-slot analog — left unmodeled. Also feeds Majestic Presence's own "
-     "combined trigger rate."),
+     level_gated_sum(IB("level"), {130: 70}), 0, 0, 9, "", 0, "", "",
+     "Game capture (post-Aug-13): 'Fires bullets at a very high speed 7 time(s) to deal 1800% damage each "
+     "to up to 9 targets in front', 17s cooldown, Lv.117 unlock (was 107). factorIndex 12, baseDamage "
+     "18000 tenths%. Mastery Lv.130 'Rapid Fire - Damage' +70% (real table; was missing). Quickdraw "
+     "(Lv125) shortens its effective cooldown (Summary!QD_FACTOR). Trigger source for Majestic Presence "
+     "and Nautilus Strike - Final Attack."),
     ("BROADSIDE_BURST", "Broadside (initial burst)", 4, 20, True, 1, 2, 0, 0, 100, 1,
      50000, 12, True,
      0, 0, 0, 10, "", 0, "", "",
-     "Confirmed via maplestoryidle.info's own Aug 13 patch overlay: 'Summons the Nautilus's "
-     "Battleship. The Battleship arrives behind 3 sec later and deals 5000% damage to 10 nearby "
-     "target(s) 2 time(s)...During auto-combat, the Battleship immediately replaces itself even "
-     "when already deployed' (the 3s arrival delay is not modeled — folded into a same-cast "
-     "instant hit, same simplification tier as every other 'delayed burst' skill in this "
-     "project). Real 20s cooldown (corrected from a previously-wrong assumption that cooldown = "
-     "the sustained phase's own 30s duration). "
-     "factorIndex 12, baseDamage 50000 tenths% (matches the patch's 5000%, already correct). "
-     "The previously-assumed Mastery Lv.122 '+100% damage' (role-mapped from Buccaneer's own Sea "
-     "Serpent's Rage) is REMOVED: Corsair's own real Broadside masteries (confirmed via "
-     "maplestoryidle.info) are only Lv.118 'Bombardment' and Lv.138 'Setup' — neither is a flat "
-     "damage% bonus, so the role-mapped Lv.122 entry was a phantom, not a real mastery. This row "
-     "pays the real Cooldown(s)/action-slot cost; see "
-     "BROADSIDE_SUSTAINED for the follow-up turret phase, which rides this row's own cast "
-     "timing. Mastery Lv.118 'Broadside - Bombardment' (every attack becomes a bombardment "
-     "dealing 1900% damage to 8 targets 3 times, replacing the normal sustained-turret tick) and "
-     "Lv.138 'Broadside - Setup' (+1 max setup, first setup gets -15s cooldown) are both real but "
-     "unmodeled — a mastery-gated attack-pattern swap and a multi-instance stacking economy, "
-     "respectively, judged out of scope for this pass."),
-    ("BROADSIDE_SUSTAINED", "Broadside (sustained turret)", 4, 20, False, 1, 1, 2, 20, 100, 1,
-     3300, 12, True,
-     0, 0, 0, 5, "", 0, "", "",
-     "FIXED A REAL 10x MAGNITUDE BUG: the wiki's own text read '3300% damage...every 2 sec' "
-     "(now confirmed a wiki content error, corrected baseDamage from 33000 to 3300 tenths%) — "
-     "maplestoryidle.info (both its base skill text AND its Aug 13 patch overlay, matching "
-     "consistently) confirms the real value is '330% damage to target(s) in front of the "
-     "Battleship every 2 sec', a full order of magnitude smaller. Also corrected the shared "
-     "Cooldown(s)/ActiveWindow(s) from 30 to 20 to match BROADSIDE_BURST's own real cooldown fix "
-     "(this row has no live formula reference to that cell, so both must be kept in manual "
-     "lockstep). Target count (5) matches the Aug 13 patch's own confirmed value (unchanged from "
-     "the pre-patch baseline, unlike the burst phase's own 5->10 change) — the earlier "
-     "'genuinely unstated whether patched' flag is resolved. factorIndex 12, baseDamage 3300 "
-     "tenths%. Shares BROADSIDE_BURST's own Cooldown(s) value (same cast timing, "
-     "CostsActionSlot=False so it doesn't double-count the action economy) — same 'rides the "
-     "parent's cast timing' pattern as ALL_ABOARD riding SCURVY_SUMMONS. Mastery Lv.118 "
-     "'Bombardment' (see BROADSIDE_BURST's own Note) would replace this row's own tick pattern "
-     "entirely once unlocked — not modeled, same as that row's own documented gap."),
-    ("MAJESTIC_PRESENCE", "Majestic Presence", 4, "", False, 1, 1, 0, 0, 25, 1,
-     18000, 12, True,
+     "Game capture (post-Aug-13): 'Summons the Nautilus's Battleship. The Battleship arrives behind 3 sec "
+     "later and deals 5000% damage to 10 nearby target(s) 2 time(s). Afterward, it stays for 30 sec and "
+     "deals 330% damage to target(s) in front of the Battleship every 2 sec. During auto-combat, the "
+     "Battleship immediately replaces itself even when already deployed.' 20s cooldown, Lv.110 unlock. "
+     "factorIndex 12, baseDamage 50000 tenths%. The 3s arrival delay is folded into a same-cast hit. "
+     "No flat damage mastery exists for Broadside (the earlier +100% was a role-mapped phantom); its real "
+     "masteries are Lv.118 'Bombardment' and Lv.138 'Setup' — both modeled on BROADSIDE_SUSTAINED."),
+    ("BROADSIDE_SUSTAINED", "Broadside (sustained turret)", 4, f"=Skills!{SC['Cooldown(s)']}{ROW['BROADSIDE_BURST']}", False, 1,
+     f'=IF({IB("level")}>=118,3,1)', 2, f'=IF({IB("level")}>=138,30,20)', 100, 1,
+     f'=IF({IB("level")}>=118,19000,3300)', 12, True,
+     0, 0, 0, f'=IF({IB("level")}>=118,8,5)', "", 0, "", "",
+     "Battleship ticks: 330% damage to 5 target(s) in front of the Battleship every 2s while it stays "
+     "(a 10x magnitude bug on the wiki, 3300%, was fixed earlier). Mastery Lv.118 'Broadside - "
+     "Bombardment' (Aug-13 note: 'After: all attacks changed to bombardment'): the Battleship's attacks "
+     "all become bombardments dealing 1900% to 8 target(s) near the main target 3 time(s) — modeled as "
+     "BaseDamage 19000 / 3 hits / 8 targets once Lv118 (the 2s tick interval is unchanged); an earlier "
+     "version ignored this swap, a very large undercount for 118+. Mastery Lv.138 'Broadside - Setup' "
+     "(+1 max setup count): two Battleships can coexist, so the window is the full 30s instead of being "
+     "capped at the 20s cooldown by the replacement rule (its first-setup -15s cooldown only shifts "
+     "the first cast, not modeled). Shares Broadside (burst)'s live cooldown/CDR eligibility. "
+     "factorIndex 12 (bombardment line has no ratio in the tables — FLAGGED ASSUMPTION)."),
+    ("MAJESTIC_PRESENCE", "Majestic Presence", 4, "", False, 1, 1, 0.5, 0, 25, 1,
+     18000, 21, True,
      level_gated_sum(IB("level"), {134: 50}), 0, 0, 6, "", 0, "", "",
-     "Confirmed via maplestoryidle.info's own Aug 13 patch overlay: 'deals 1800% additional "
-     "damage to up to 6 nearby targets with a 25% chance' — every field here (18000 tenths%, 6 "
-     "targets, 25% chance) already matched. Mastery Lv.134 'Majestic Presence - Damage' +50% "
-     "(real SkillMasteryBonus%, confirmed via maplestoryidle.info — previously missing entirely). "
-     "Procs off THREE independent sources (Basic Attack + Brain Scrambler + Rapid Fire) — has no "
-     "Cooldown(s) of its own at all (CostsActionSlot=False); its own "
-     "combined trigger rate is built directly in build_calc_sheet/build_stat_block as "
-     "Summary!$B$R_BAPS (basic attack rate) + Brain Scrambler's own HitRate(perSec) + Rapid "
-     "Fire's own HitRate(perSec), extending Marksman's own Bolt Surplus dual-trigger pattern to "
-     "three sources instead of two. No clean Buccaneer mastery-slot analog — left unmodeled."),
+     "Game capture: 'When attacking with Basic Attacks, Brain Scrambler, or Rapid Fire, deals 1800% "
+     "additional damage to up to 6 nearby targets with a 25% chance', 0.5s internal cooldown (game "
+     "table cooldownMs 500; an earlier version had no cooldown), Lv.120 unlock (was 125). factorIndex 21 "
+     "(game table; was 12), baseDamage 18000 tenths%. Procs off three independent sources (Easton's "
+     "cast rate + Brain Scrambler + Rapid Fire hit rates); steady-state proc rate = (c*R)/(1+ICD*c*R) with "
+     "c=25%, ICD=0.5s. Mastery Lv.134 'Majestic Presence - Damage' +50%. No cooldown of its own in the "
+     "Skills sense (CostsActionSlot=False); ICD(s) is the proc's internal cooldown and ActiveWindow=0, "
+     "so EffectiveHits is unused."),
     ("MAPLE_HERO_HELPER", "Maple Hero (helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
      200, 23, True,
      0, 0, 0, 0, "", 0, "", "",
-     "Shared ratio-feeder row (see MAPLE_HERO_RATIOS) for Siege Bomber/Blackboot Bill/Swift "
-     "Fire's own Final Damage chains — mirrors every other class's own Maple Hero mechanism. "
-     "UNLIKE Buccaneer's own truncated entry, Corsair's level-1 anchor values ARE real/"
-     "confirmed: 'Siege Bomber 20%, Blackboot Bill 40%, Swift Fire 80%.' FLAGGED ASSUMPTION: "
-     "factorIndex 23 (the universal Maple Hero growth-curve convention confirmed on every "
-     "other class), baseDamage 200 tenths% anchored to the confirmed level-1 value (20%). No "
-     "individual Maple_Hero_(Corsair) page exists to verify the real growth curve. No "
-     "independent DPS row of its own (Calc columns J-N blank/0, only D/E/F computed, read "
-     "directly by each target row's own K-column formula)."),
+     "Shared ratio-feeder row (see MAPLE_HERO_RATIOS) for Siege Bomber/Blackboot Bill/Swift Fire's Final "
+     "Damage chains: 'Increases Final Damage of the following skills: Siege Bomber 20%, Blackboot Bill "
+     "40%, Swift Fire 80%' (game table: ModSkillStat FinalDamage x factorIndex 23). baseDamage 200 "
+     "tenths% = the 20% Siege Bomber share (ratio 1.0). No independent DPS row (Calc J-N blank; D/E/F "
+     "read by each target row's K formula)."),
     ("AHOY_MATEYS_HELPER", "Ahoy Mateys (helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
-     2500, 22, True,
+     2500, 21, True,
      0, 0, 0, 0, "", 0, "", "",
-     "Shared ratio-feeder row (see AHOY_MATEYS_RATIOS) for Scurvy Summons/All Aboard's own "
-     "Final Damage chains — a SEPARATE, independent helper from Maple Hero (Ahoy Mateys is its "
-     "own skill, not literally 'Maple Hero'), same 'no independent DPS row' mechanism. "
-     "FLAGGED ASSUMPTION: factorIndex 22 (generic buff-growth convention, not tied to Maple "
-     "Hero's own special factorIndex 23 since this is a genuinely different skill), baseDamage "
-     "2500 tenths% anchored to the confirmed level-1 value (250%, Scurvy Summons' own share). "
-     "No individual wiki page exists for this skill at all — even its unlock level is a bare "
-     "position-in-list assumption."),
+     "Shared ratio-feeder row (see AHOY_MATEYS_RATIOS) for Scurvy Summons / All Aboard: 'Increases Final "
+     "Damage of Dual Pistol Crew by 250% and Sharpshooter Crew by 100%' — Lv.107 unlock (was 120), "
+     "factorIndex 21 (game table ModSkillStat, valueLevelFactors [3, 21]; was 22), baseDamage 2500 "
+     "tenths% = the 250% Dual Pistol Crew share (ratio 1.0; Sharpshooter 100/250). No independent DPS row."),
     ("ROLL_OF_THE_DICE_DICE", "Roll of the Dice (dice component)", 3, "", False, 1, 1, 0, 0, 100, 1,
      25, 22, True,
      0, 0, 0, 0, "ATTACK", 0, "", "",
-     "CONFIRMED SHARED VERBATIM WITH BUCCANEER (byte-identical wording on both wiki and "
-     "maplestoryidle.info): 'Increases Attack by 20%. Rolls a six-sided die every 7 sec to "
-     "increase Attack by 0-5% in proportion to the number on the die for 5 sec. A number that has "
-     "appeared once does not appear again for 30 sec.' Reuses Buccaneer's exact treatment: this "
-     "row models ONLY the random dice component. The 'no repeat within 30s' rule guarantees a "
-     "uniform long-run frequency over the 6 faces regardless of draw order, so the time-averaged "
-     "roll magnitude is exactly the simple mean of 0/1/2/3/4/5% = 2.5% (not an approximation) — "
-     "baseDamage 25 tenths% is this mean. The 7s-roll/5s-duration timing IS now modeled as a real "
-     "duty cycle: the buff is only up 5 of every 7 sec, applied as a 5/7 multiplier at this row's "
-     "own use site (the Attack%% bucket multiplier), not always-active. The flat, unconditional "
-     "+20% Attack base effect is Magic-Critical-pattern (assumed already reflected in your own "
-     "Inputs!ATTACK_PCT, see PASSIVE_DELTA_SLOT). factorIndex 22 (matches every other "
-     "Magic-Critical-pattern flat buff row, e.g. Crossbones/Jolly Roger) — same correction as "
-     "Buccaneer's own copy, see that build script's Note for the full reasoning."),
+     "Shared verbatim with Buccaneer: 'Increases Attack by 20%. Rolls a six-sided die every 7 sec to "
+     "increase Attack by 0-5% ... for 5 sec.' Lv.74 unlock (was 66). Only the random dice component is "
+     "modeled: mean roll exactly 2.5% (baseDamage 25 tenths%), active 5 of every 7 seconds (x5/7 at the "
+     "use site), factorIndex 22. The flat +20% Attack (and the Lv.90 +5%p mastery) are inside your "
+     "Inputs!ATTACK_PCT."),
     ("JOLLY_ROGER_FD", "Jolly Roger", 4, 42, True, 1, 1, 0, 0, 100, 1,
-     150, 22, True,
+     150, 21, True,
      0, 0, 0, 0, "FINAL_DAMAGE", 18, "", "",
-     "Confirmed via maplestoryidle.info cross-reference: a real Type=Active cast (mpCost 110, "
-     "42s cooldown), not a passive — CostsActionSlot corrected from False to True and given its "
-     "real 42s cooldown/18s duration (previously modeled as an always-active, no-cooldown-known "
-     "passive, which both overstated its uptime to 100% AND wrongly gave it a free action-economy "
-     "ride, same fix as Buccaneer's own Crossbones/Time Leap). Duty-cycle averaged now via the "
-     "standard buff_uptime() helper. 'Increases Final Damage by 18% for 18 sec but decreases "
-     "Evasion by 5' (Evasion not "
-     "modeled). PATCHED: Final Damage 18%->15% (a nerf — baseDamage already reflects this). "
-     "factorIndex 22, baseDamage 150 tenths%. Corsair's ONLY live (non-Magic-Critical) Final "
-     "Damage source — feeds R_FD_BONUS directly."),
+     "Active cast (42s cooldown, 18s duration): 'Increases Final Damage by 15% for 18 sec, but decreases "
+     "Evasion by 5' (Evasion not modeled). PATCHED 18% -> 15%. Lv.115 unlock. factorIndex 21 (game table; "
+     "was 22), baseDamage 150 tenths%. Duty-cycle averaged by buff_uptime(); feeds R_FD_BONUS."),
     ("SHADOW_HEART", "Shadow Heart", 1, "", False, 1, 1, 0, 0, 100, 1,
-     54, 22, True,
+     50, 22, True,
      0, 0, 0, 0, "CRIT_RATE", 0, "", "",
-     "Magic Critical pattern — already baked into Inputs!CRIT_RATE%; feeds the 1st-Job Skill "
-     "Level Bonus delta. Confirmed via maplestoryidle.info cross-reference (a real, class-"
-     "specific value, NOT identical to Buccaneer's own 5% as previously assumed): 'Increases "
-     "Critical Rate by 5.4%.' "
-     "factorIndex 22, baseDamage 54 tenths% (corrected from a previously-assumed 50)."),
+     "Magic Critical pattern — already baked into Inputs!CRIT_RATE%; feeds the 1st-Job Skill Level Bonus "
+     "delta. Level-1 value 5% (game table: 50 x f22; the site text's 5.4% was captured at a higher skill "
+     "level — earlier version stored 54). Lv.10 unlock (was 15)."),
     ("QUICK_MOTION", "Quick Motion", 1, "", False, 1, 1, 0, 0, 100, 1,
-     65, 22, True,
+     60, 22, True,
      level_gated_sum(IB("level"), {24: 5}), 0, 0, 0, "ATTACK_SPEED", 0, "", "",
-     "Magic Critical pattern — already baked into Inputs!ATTACK_SPEED%; feeds the 1st-Job "
-     "Skill Level Bonus delta. Confirmed via maplestoryidle.info cross-reference (a real, class-"
-     "specific value, NOT identical to Buccaneer's own 6.1% as previously assumed): 'Increases "
-     "Attack Speed by 6.5% and Speed by 8.7%' (Speed not modeled). Like Buccaneer, Corsair has "
-     "NO Nimble-Feet-style "
-     "live AS buff — Quick Motion is a flat passive. factorIndex 22, baseDamage 65 tenths% "
-     "(corrected from a previously-assumed 60). Mastery Lv.24 'Quick Motion - Speed' +5%p Attack "
-     "Speed (real SkillMasteryBonus%, confirmed via maplestoryidle.info — previously missing "
-     "entirely)."),
+     "Magic Critical pattern — already baked into Inputs!ATTACK_SPEED%; feeds the 1st-Job Skill Level "
+     "Bonus delta. Level-1 value 6% (game table: 60 x f22; the site text's 6.5% was captured at a "
+     "higher skill level — earlier version stored 65). Lv.15 unlock (was 10). Mastery Lv.24 'Quick "
+     "Motion - Speed' +5%p."),
     ("AGILE_GUNS", "Agile Guns", 2, "", False, 1, 1, 0, 0, 100, 1,
      50, 22, True,
      level_gated_sum(IB("level"), {44: 7}), 0, 0, 0, "ATTACK_SPEED", 0, "", "",
-     "Magic Critical pattern — already baked into Inputs!ATTACK_SPEED%; feeds the 2nd-Job "
-     "Skill Level Bonus delta. FLAGGED ASSUMPTION (no individual wiki page exists): "
-     "'Increases Attack Speed by 5%.' factorIndex 22, baseDamage 50 tenths%. Mastery mapped "
-     "from Buccaneer's own Agile Knuckles - Speed @44 (+7) slot — both are the class's own AS "
-     "passive in the same kit-slot role."),
+     "Magic Critical pattern — already baked into Inputs!ATTACK_SPEED%; feeds the 2nd-Job Skill Level "
+     "Bonus delta. 'Increases Attack Speed by 5%.' Lv.40 unlock (was 33). Mastery Lv.44 'Agile Guns - "
+     "Speed' +7%p (confirmed real table). factorIndex 22, baseDamage 50 tenths%."),
     ("GUN_MASTERY", "Gun Mastery", 2, "", False, 1, 1, 0, 0, 100, 1,
      150, 22, True,
      0, 0, 0, 0, "MIN_DAMAGE", 0, "", "",
-     "Magic Critical pattern — already baked into Inputs!MIN_DAMAGE%; feeds the 2nd-Job Skill "
-     "Level Bonus delta. FLAGGED ASSUMPTION (no individual wiki page exists): 'Increases Min "
-     "Damage Multiplier by 15%.' factorIndex 22, baseDamage 150 tenths% — matches Buccaneer's "
-     "own Knuckle Mastery exactly (same kit-slot role, no mastery bonus in either class)."),
+     "Magic Critical pattern — already baked into Inputs!MIN_DAMAGE%; feeds the 2nd-Job Skill Level Bonus "
+     "delta. 'Increases Min Damage Multiplier by 15%.' Lv.43. factorIndex 22, baseDamage 150 tenths%."),
     ("PHYSICAL_TRAINING", "Physical Training", 2, "", False, 1, 1, 0, 0, 100, 1,
      100, 22, True,
      0, 0, 0, 0, "BASIC_ATTACK_DAMAGE", 0, "", "",
-     "Magic Critical pattern — already baked into Inputs!BASIC_ATTACK_DAMAGE%; feeds the "
-     "2nd-Job Skill Level Bonus delta. FLAGGED ASSUMPTION (no individual wiki page exists, "
-     "though byte-identical wording to every other class's own Physical Training): 'Increases "
-     "Basic Attack Damage by 10%.' factorIndex 22, baseDamage 100 tenths%."),
+     "Magic Critical pattern — already baked into Inputs!BASIC_ATTACK_DAMAGE%; feeds the 2nd-Job Skill "
+     "Level Bonus delta. 'Increases Basic Attack Damage by 10%.' Lv.38. factorIndex 22, baseDamage 100 "
+     "tenths%."),
     ("INFINITY_BLAST_ATK", "Infinity Blast", 2, "", False, 1, 1, 0, 0, 100, 1,
      120, 22, True,
      0, 0, 0, 0, "ATTACK", 0, "", "",
-     "Magic Critical pattern — already baked into Inputs!ATTACK_PCT (folds into the "
-     "attack_mult delta bucket, same slot as Buccaneer's own Dark Clarity). FLAGGED ASSUMPTION "
-     "(no individual wiki page exists): 'Increases Attack by 10%.' PATCHED: 10%->12% "
-     "(baseDamage already reflects this). factorIndex 22, baseDamage 120 tenths%."),
+     "Magic Critical pattern — already baked into Inputs!ATTACK_PCT (folds into the attack_mult delta "
+     "bucket). 'Increases Attack by 12%.' (PATCHED 10% -> 12%). Lv.45 unlock (was 40). factorIndex 22, "
+     "baseDamage 120 tenths% (game table: f22)."),
     ("FULLMETAL_JACKET_CD", "Fullmetal Jacket", 3, "", False, 1, 1, 0, 0, 100, 1,
      100, 22, True,
      0, 0, 0, 0, "CRIT_DAMAGE", 0, "", "",
-     "Magic Critical pattern — already baked into Inputs!CRIT_DAMAGE%; feeds the 3rd-Job "
-     "Skill Level Bonus delta. FLAGGED ASSUMPTION (no individual wiki page exists): "
-     "'Increases Critical Damage by 10%.' factorIndex 22, baseDamage 100 tenths%."),
+     "Magic Critical pattern — already baked into Inputs!CRIT_DAMAGE%; feeds the 3rd-Job Skill Level "
+     "Bonus delta. 'Increases Critical Damage by 10%.' Lv.72. factorIndex 22, baseDamage 100 tenths%. "
+     "Mastery Lv.98 'Fullmetal Jacket - Defense Penetration' (Def Pen = half of this Crit Damage boost) "
+     "is a character-sheet stat, assumed inside your Inputs!DEF_PEN."),
     ("CROSS_CUT_BLAST_FD", "Cross Cut Blast", 3, "", False, 1, 1, 0, 0, 100, 1,
      120, 22, True,
      0, 0, 0, 0, "FINAL_DAMAGE", 0, "", "",
-     "Magic Critical pattern — already baked into Inputs!FINAL_DAMAGE%; feeds the 3rd-Job "
-     "Skill Level Bonus delta. FLAGGED ASSUMPTION (no individual wiki page exists): "
-     "'Increases Final Damage by 10%.' PATCHED: 10%->12% (baseDamage already reflects this). "
-     "factorIndex 22, baseDamage 120 tenths%."),
+     "Magic Critical pattern — already baked into Inputs!FINAL_DAMAGE%; feeds the 3rd-Job Skill Level "
+     "Bonus delta. 'Increases Final Damage by 12%.' (PATCHED 10% -> 12%). Lv.75. factorIndex 22, "
+     "baseDamage 120 tenths%."),
     ("QUICKDRAW_BAD", "Quickdraw", 4, "", False, 1, 1, 0, 0, 100, 1,
      250, 22, True,
      0, 0, 0, 0, "BASIC_ATTACK_DAMAGE", 0, "", "",
-     "Magic Critical pattern — already baked into Inputs!BASIC_ATTACK_DAMAGE%; feeds the "
-     "4th-Job Skill Level Bonus delta. FLAGGED ASSUMPTION (no individual wiki page exists): "
-     "only the flat, unconditional 'Increases Basic Attack Damage by 25%' component is "
-     "modeled here. factorIndex 22, baseDamage 250 tenths%. NOT modeled (out of scope): its "
-     "own 'every 3rd Eight-Legs Easton cast doubles the damage and reduces Brain Scrambler/"
-     "Rapid Fire cooldown by 1.5s' proc — no mechanic exists in this project for one skill's "
-     "cast count to modify another's cooldown, and stacking that on top of an already-assumed "
-     "kit was judged out of scope for this session."),
+     "'Increases Basic Attack Damage by 25%. Every time Eight-Legs Easton is used 3 times, doubles the "
+     "damage and decreases the cooldown of Brain Scrambler or Rapid Fire by 1.5 sec.' Lv.125 unlock "
+     "(was 117). The flat +25% Basic Attack Damage is Magic-Critical-pattern (baked into "
+     "Inputs!BASIC_ATTACK_DAMAGE%; feeds the 4th-Job Skill Level Bonus delta). The second effect is now "
+     "MODELED (user decision 2026-10-21): Easton damage x(1+1/3) on average, and Brain Scrambler / Rapid "
+     "Fire cooldowns divided by Summary!QD_FACTOR = 1 + 0.25*B* (see the build script's Quickdraw comment: "
+     "1.5s cut per 3 Easton casts, split evenly between the two skills — the split is an ASSUMPTION). "
+     "factorIndex 22, baseDamage 250 tenths%."),
     ("NIMBLE_FEET", "Nimble Feet", 1, 60, True, 1, 1, 0, 0, 100, 1,
      150, 0, False,
      0, 0, 0, 1, "ATTACK_SPEED", 15, "", "",
@@ -2328,6 +2303,30 @@ SKILL_ROWS = [
 # Rows with a real Cooldown(s) value (literal or a live formula reference).
 ROW_HAS_COOLDOWN = {row[0]: row[3] not in ("", None) for row in SKILL_ROWS}
 CDR_COSTS_ACTION_ROW = {key: r for key, r in ROW.items()}
+# All Aboard follows Scurvy Summons' cast; the sustained Battleship follows Broadside's initial cast.
+CDR_COSTS_ACTION_ROW["ALL_ABOARD"] = ROW["SCURVY_SUMMONS"]
+CDR_COSTS_ACTION_ROW["BROADSIDE_SUSTAINED"] = ROW["BROADSIDE_BURST"]
+
+
+def q_inv_ref(key):
+    """Effective cooldown (1/InvCooldown) of a row, read from the main Calc sheet."""
+    return f'(1/Calc!Q{ROW[key]})'
+
+
+def q_inv_ref_block(row_of, key):
+    """Same, read from a Sensitivity block's own local Q column (never the main sheet's)."""
+    return f'(1/Q{row_of[key]})'
+
+
+# Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills, buffs and passives alike
+# (user decision 2026-10-21; it used to apply only to CostsActionSlot rows). The exempt rows are NOT real
+# cooldowns: their Cooldown(s) cell is a trigger-rate / internal-interval surrogate (e.g. 1 / attack speed),
+# which CDR must not shrink to the 0.1s floor.
+CDR_EXEMPT_ROW_KEYS = []
+
+
+def cdr_applies_expr(key):
+    return "FALSE" if key in CDR_EXEMPT_ROW_KEYS else "TRUE"
 
 
 def build_skills_sheet(wb):
@@ -2391,6 +2390,14 @@ def S(col_name, r):
     return f"Skills!{SC[col_name]}{r}"
 
 
+def base_eff_cd_expr(r, ibfn, key):
+    """Effective cooldown (CDR + Soul Contract) BEFORE the Quickdraw divisor."""
+    return (
+        f'({effective_cooldown_expr(ibfn("monster_type"), S("Cooldown(s)", r), ibfn("skill_cooldown_decrease"), cdr_applies_expr(key))}'
+        f'*(1-{artifact_soul_contract_pct_expr(ibfn("soul_contract_equipped"), ibfn("content_type"), ibfn("soul_contract_star"))}/100))'
+    )
+
+
 def build_calc_sheet(wb):
     ws = wb.create_sheet("Calc")
     for i, name in enumerate(CALC_HEADERS):
@@ -2404,6 +2411,12 @@ def build_calc_sheet(wb):
     crit_damage_total_ref = f'({IB("crit_damage")}+Summary!$B${R_CRIT_DAMAGE_BONUS}+{art_ref("AGG_CRIT_DAMAGE")})'
     avg_buff_mult_ref = f"Summary!$B${R_AVGBUFF}"
     final_damage_extra_ref = f"Summary!$B${R_FD_BONUS}"
+    qd_row = ROW["QUICKDRAW_BAD"]
+    qd_dmg_mult = f'(1+IF(C{qd_row}=TRUE,1/3,0))'      # every 3rd Easton cast deals double damage
+    nautilus_proc_rate_main = nautilus_proc_rate_expr(
+        f'H{ROW["NAUTILUS_FINAL_ATTACK"]}', S("ICD(s)", ROW["NAUTILUS_FINAL_ATTACK"]),
+        f"Summary!$B${R_NAUTILUS_TRIGGER_RATE}",
+    )
 
     for key, r in ROW.items():
         ws.cell(row=r, column=1, value=f"={S('Key', r)}")
@@ -2412,10 +2425,9 @@ def build_calc_sheet(wb):
 
         has_cooldown = ROW_HAS_COOLDOWN[key]
         if has_cooldown:
-            eff_cd_r = (
-                f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
-                f'*(1-{artifact_soul_contract_pct_expr(IB("soul_contract_equipped"), IB("content_type"), IB("soul_contract_star"))}/100))'
-            )
+            eff_cd_r = base_eff_cd_expr(r, IB, key)
+            if key in QD_COOLDOWN_KEYS:
+                eff_cd_r = f'({eff_cd_r}/Summary!$B${R_QD_FACTOR})'
             # Duration actually available for this row's casts in fixed-duration mode — raw fight
             # duration for buffs, or reduced by Summary!R_STARTUP_TIME for non-buff rows. Corsair
             # has no buff rows today (BUFF_ROW_KEYS is empty), so this is currently always equal
@@ -2426,7 +2438,7 @@ def build_calc_sheet(wb):
                 available_duration_r = f'MAX(0,{IB("fight_duration")}-Summary!$B${R_STARTUP_TIME})'
             rate_r = rate_or_exact_hits_expr(
                 fixed_duration_active_main, f"R{r}", S("HitsPerCast", r), S("ICD(s)", r),
-                S("ActiveWindow(s)", r), eff_cd_r, available_duration_r, IB("fight_duration"), f"G{r}*Q{r}",
+                active_window_ref(key, r, IB), eff_cd_r, available_duration_r, IB("fight_duration"), f"G{r}*Q{r}",
             )
         else:
             eff_cd_r = None
@@ -2473,7 +2485,7 @@ def build_calc_sheet(wb):
             ))
 
         ws.cell(row=r, column=7, value=(
-            f'={S("HitsPerCast", r)}*IF({S("ICD(s)", r)}>0,{S("ActiveWindow(s)", r)}/{S("ICD(s)", r)},1)'
+            f'={S("HitsPerCast", r)}*IF({S("ICD(s)", r)}>0,{active_window_ref(key, r, IB)}/{S("ICD(s)", r)},1)'
         ))
         ws.cell(row=r, column=8, value=f'=1-(1-{S("ProcChance%", r)}/100)^{S("RollsPerCast", r)}')
         ws.cell(row=r, column=9, value="1")
@@ -2545,7 +2557,7 @@ def build_calc_sheet(wb):
         extra_normal_mult_r = f'(1+{art_ref("AGG_FINAL_DAMAGE_NORMAL_ONLY")}/100)'
 
         if key == "EIGHT_LEGS_EASTON":
-            prefix = f"{S('HitsPerCast', r)}*N{r}*Summary!$B${R_BAPS}"
+            prefix = f"{S('HitsPerCast', r)}*N{r}*Summary!$B${R_BAPS}*{qd_dmg_mult}"
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
                 prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
                 S("NormalMonsterTargets", r), IB("max_enemies_hit"),
@@ -2562,14 +2574,22 @@ def build_calc_sheet(wb):
             )
             ws.cell(row=r, column=20, value=f'=IF(C{r},{boss_expr},0)')
             ws.cell(row=r, column=22, value=f'=IF(C{r},{normal_expr},0)')
+        elif key == "NAUTILUS_FINAL_ATTACK":
+            prefix = f'{nautilus_proc_rate_main}*N{r}'
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                S("NormalMonsterTargets", r), IB("max_enemies_hit"),
+                extra_boss_mult_r, extra_normal_mult_r,
+            )
+            ws.cell(row=r, column=20, value=f'=IF(C{r},{boss_expr},0)')
+            ws.cell(row=r, column=22, value=f'=IF(C{r},{normal_expr},0)')
         elif key in MULTI_TRIGGER_KEYS:
             source_rate_terms = []
             for src_key in MULTI_TRIGGER_SOURCES[key]:
                 src_row = ROW[src_key]
-                src_eff_cd = (
-                    f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", src_row), IB("skill_cooldown_decrease"), S("CostsActionSlot", src_row))}'
-                    f'*(1-{artifact_soul_contract_pct_expr(IB("soul_contract_equipped"), IB("content_type"), IB("soul_contract_star"))}/100))'
-                )
+                src_eff_cd = base_eff_cd_expr(src_row, IB, src_key)
+                if src_key in QD_COOLDOWN_KEYS:
+                    src_eff_cd = f'({src_eff_cd}/Summary!$B${R_QD_FACTOR})'
                 if src_key in BUFF_ROW_KEYS:
                     src_available_duration = IB("fight_duration")
                 else:
@@ -2584,7 +2604,9 @@ def build_calc_sheet(wb):
                     src_available_duration, IB("fight_duration"), f"G{src_row}*Q{src_row}",
                 ))
             combined_rate = f"(Summary!$B${R_BAPS}+{'+'.join(source_rate_terms)})"
-            prefix = f"H{r}*N{r}*{combined_rate}"
+            # 25% chance per triggering attack with a 0.5s internal cooldown: (c*R)/(1+ICD*c*R).
+            majestic_proc_rate = f'(H{r}*{combined_rate})/(1+{S("ICD(s)", r)}*H{r}*{combined_rate})'
+            prefix = f"{majestic_proc_rate}*N{r}"
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
                 prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
                 S("NormalMonsterTargets", r), IB("max_enemies_hit"),
@@ -2677,7 +2699,7 @@ def build_summary_sheet(wb):
 
     def buff_uptime(row):
         return uptime_fraction_or_exact_expr(
-            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), S("Cooldown(s)", row),
+            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), f'(1/Calc!Q{row})',
             bdi_main, IB("fight_duration"),
         )
 
@@ -2695,7 +2717,7 @@ def build_summary_sheet(wb):
     # Damage for 20s upon casting Scurvy Summons — duty-cycle averaged against Scurvy Summons' own
     # (now-corrected) 35s cooldown, steady-state (no dedicated Skills-sheet row for this proc).
     ahoy_mateys_proc_fd = (
-        f'IF({IB("level")}>=122,20*{uptime_fraction_expr(IB("monster_type"), 20, S("Cooldown(s)", ROW["SCURVY_SUMMONS"]), bdi_main)},0)'
+        f'IF({IB("level")}>=122,20*{uptime_fraction_expr(IB("monster_type"), 20, q_inv_ref("SCURVY_SUMMONS"), bdi_main)},0)'
     )
 
     ws.cell(row=R_AVGBUFF, column=1, value="Attack%% Bucket Multiplier (Roll of the Dice's dice component only)")
@@ -2704,8 +2726,36 @@ def build_summary_sheet(wb):
     ws.cell(row=R_CRIT_RATE_BONUS, column=1, value="Global Crit Rate Bonus % (unused — no live Crit-Rate-buff source exists)")
     ws.cell(row=R_CRIT_RATE_BONUS, column=2, value=0)
 
-    ws.cell(row=R_MONSTER_DMG_BONUS, column=1, value="Global Monster Damage-Taken Bonus % (Peach/Silver artifact bonuses only — no other live source in this kit)")
-    ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=f'={art_ref("AGG_ENEMY_DMG_TAKEN")}')
+    r_sf = ROW["SWIFT_FIRE"]
+    # Swift Fire - Weaken (Lv54): +3% damage taken per strike, 3 strikes/cast, max 3 stacks = 9%, lasting
+    # 8s => 9% x min(1, 8*(1+BDI)/effective cooldown).
+    swift_weaken_avg = (
+        f'IF({IB("level")}>=54,9*(Calc!C{r_sf}=TRUE)*MIN(1,8*(1+{bdi_main}/100)*Calc!Q{r_sf}),0)'
+    )
+    ws.cell(row=R_MONSTER_DMG_BONUS, column=1, value=(
+        "Global Monster Damage-Taken Bonus % (Swift Fire - Weaken + Peach/Silver artifact bonuses)"
+    ))
+    ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=f'={swift_weaken_avg}+{art_ref("AGG_ENEMY_DMG_TAKEN")}')
+
+    # Quickdraw cooldown divisor (closed-form fixed point, see QD_K comment): c0 = cast rate of every
+    # OTHER action-costing skill (steady-state 1/cd), x0 = sum of 1/cd over Brain Scrambler + Rapid Fire.
+    qd_c0 = qd_c0_expr(lambda k: f"Calc!C{ROW[k]}", lambda k: f"Calc!Q{ROW[k]}", None)
+    qd_x0 = "+".join(
+        f'(Calc!C{ROW[k]}=TRUE)/{base_eff_cd_expr(ROW[k], IB, k)}' for k in QD_COOLDOWN_KEYS
+    )
+    ws.cell(row=R_QD_FACTOR, column=1, value=(
+        "Quickdraw cooldown divisor f = 1 + 0.25*B* applied to Brain Scrambler / Rapid Fire (1 when locked or PvP)"
+    ))
+    ws.cell(row=R_QD_FACTOR, column=2, value="=" + qd_factor_expr(
+        f"Calc!C{ROW['QUICKDRAW_BAD']}", IB("monster_type"), f"B{R_APS}", qd_c0, qd_x0,
+    ))
+    ws.cell(row=R_NAUTILUS_TRIGGER_RATE, column=1, value=(
+        "Nautilus Strike - Final Attack: triggering attacks' combined cast rate, incl. Eight-Legs Easton (1/s)"
+    ))
+    ws.cell(row=R_NAUTILUS_TRIGGER_RATE, column=2, value="=" + nautilus_trigger_rate_expr(
+        fda_main, IB("fight_duration"), f"B{R_BAPS}",
+        [(f"Calc!C{ROW[k]}", f"Calc!R{ROW[k]}", f"Calc!Q{ROW[k]}") for k in NAUTILUS_TRIGGER_KEYS],
+    ))
 
     r_nf = ROW["NIMBLE_FEET"]
     nimble_feet_as_avg = f'((Calc!C{r_nf}=TRUE)*Calc!F{r_nf}*{buff_uptime(r_nf)})'
@@ -2879,15 +2929,21 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Min Damage Multiplier %": "min_damage",
     "Max Damage Multiplier %": "max_damage",
     "Defense Penetration": "def_pen",
-    "Dex %": "dex_pct",
-    "Dex": "flat_dex",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
     "Skill Cooldown Decrease (seconds)": "skill_cooldown_decrease",
     "Buff Duration Increase %": "buff_duration_increase_pct",
     "All Skill Level": "skill_lvl_all",
     "Basic Attack Target Increase": "basic_attack_target_increase",
+    "Dex %": "dex_pct",
+    "Dex": "flat_dex",
+    "Str": "str",
 }
+
+# Sub-stat PERCENT potential lines: the Sensitivity sweep for the sub-stat is a flat +1 point, so a
+# "+N% sub-stat" roll is worth N% of the current total sub-stat in points (approximation: Inputs holds the
+# final sub-stat value, no separate flat/% split). Main-stat lines map 1:1 above.
+POTENTIAL_SUB_STAT_PCT_LINES = {"Str %": ("str", "str")}
 
 
 def dps_per_unit_expr(stat_name):
@@ -2913,6 +2969,9 @@ def dps_per_unit_expr(stat_name):
         )
     if stat_name == "Companion Summoning Time Increase %":
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]}'
+    if stat_name in POTENTIAL_SUB_STAT_PCT_LINES:
+        sweep_key, inputs_key = POTENTIAL_SUB_STAT_PCT_LINES[stat_name]
+        return f'=Sensitivity!H{SENSITIVITY_ROW_FOR[sweep_key]}*{IB(inputs_key)}/100'
     key = POTENTIAL_STAT_TO_SWEEP_KEY.get(stat_name)
     if key is None:
         return "0"
@@ -2978,7 +3037,7 @@ def make_ib(override_key, override_expr):
     return ib
 
 
-BLOCK_HEIGHT = LAST_ROW + 16
+BLOCK_HEIGHT = LAST_ROW + 18
 BLOCK_START = SENSITIVITY_HEADER_ROW + len(STAT_SWEEP) + SENSITIVITY_ARTIFACT_TABLE_HEADER_ROWS + 3
 
 
@@ -3001,6 +3060,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     s_boss_total = calc_end + 11
     s_normal_total = calc_end + 12
     s_total = calc_end + 13
+    s_qd = calc_end + 14
+    s_naut_trig = calc_end + 15
+    qd_block_ref, naut_trig_block_ref = f"B{s_qd}", f"B{s_naut_trig}"
     crit_rate_bonus_ref = f"B{s_crit_rate_bonus}"
     as_bonus_ref, aps_ref, castrate_ref, baps_ref = f"B{s_as_bonus}", f"B{s_aps}", f"B{s_castrate}", f"B{s_baps}"
     crit_damage_bonus_ref = f"B{s_crit_damage_bonus}"
@@ -3015,7 +3077,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
             fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
-            S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
+            f'(1/Q{local_row})', bdi_block, ib("fight_duration"),
         )
 
     delta_by_slot = {}
@@ -3043,7 +3105,13 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     roll_of_dice_avg = f'((C{row_of["ROLL_OF_THE_DICE_DICE"]}=TRUE)*F{row_of["ROLL_OF_THE_DICE_DICE"]}*5/7)'
     jolly_roger_avg = f'((C{row_of["JOLLY_ROGER_FD"]}=TRUE)*F{row_of["JOLLY_ROGER_FD"]}*{buff_uptime_block(row_of["JOLLY_ROGER_FD"], ROW["JOLLY_ROGER_FD"])})'
     ahoy_mateys_proc_fd = (
-        f'IF({ib("level")}>=122,20*{uptime_fraction_expr(ib("monster_type"), 20, S("Cooldown(s)", ROW["SCURVY_SUMMONS"]), bdi_block)},0)'
+        f'IF({ib("level")}>=122,20*{uptime_fraction_expr(ib("monster_type"), 20, q_inv_ref_block(row_of, "SCURVY_SUMMONS"), bdi_block)},0)'
+    )
+    swift_weaken_block = (
+        f'IF({ib("level")}>=54,9*(C{row_of["SWIFT_FIRE"]}=TRUE)*MIN(1,8*(1+{bdi_block}/100)*Q{row_of["SWIFT_FIRE"]}),0)'
+    )
+    nautilus_proc_rate_block = nautilus_proc_rate_expr(
+        f'H{row_of["NAUTILUS_FINAL_ATTACK"]}', S("ICD(s)", ROW["NAUTILUS_FINAL_ATTACK"]), naut_trig_block_ref,
     )
 
     # --- Artifacts: block-local mirror of build_artifacts_sheet, so a swept stat correctly
@@ -3278,16 +3346,15 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
         has_cooldown = ROW_HAS_COOLDOWN[key]
         if has_cooldown:
-            eff_cd_row = (
-                f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
-                f'*(1-{artifact_soul_contract_pct_expr(ib("soul_contract_equipped"), ib("content_type"), ib("soul_contract_star"))}/100))'
-            )
+            eff_cd_row = base_eff_cd_expr(r, ib, key)
+            if key in QD_COOLDOWN_KEYS:
+                eff_cd_row = f'({eff_cd_row}/{qd_block_ref})'
             if key in BUFF_ROW_KEYS:
                 available_duration_row = ib("fight_duration")
             else:
                 available_duration_row = f'MAX(0,{ib("fight_duration")}-{startup_ref})'
             rate_row = rate_or_exact_hits_expr(
-                fda_block, f"R{row}", S("HitsPerCast", r), S("ICD(s)", r), S("ActiveWindow(s)", r),
+                fda_block, f"R{row}", S("HitsPerCast", r), S("ICD(s)", r), active_window_ref(key, r, ib),
                 eff_cd_row, available_duration_row, ib("fight_duration"), f"G{row}*Q{row}",
             )
         else:
@@ -3335,7 +3402,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             ))
 
         ws.cell(row=row, column=7, value=(
-            f'={S("HitsPerCast", r)}*IF({S("ICD(s)", r)}>0,{S("ActiveWindow(s)", r)}/{S("ICD(s)", r)},1)'
+            f'={S("HitsPerCast", r)}*IF({S("ICD(s)", r)}>0,{active_window_ref(key, r, ib)}/{S("ICD(s)", r)},1)'
         ))
         ws.cell(row=row, column=8, value=f'=1-(1-{S("ProcChance%", r)}/100)^{S("RollsPerCast", r)}')
         ws.cell(row=row, column=9, value="1")
@@ -3376,8 +3443,8 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             for col in (10, 11, 12, 13, 14):
                 ws.cell(row=row, column=col, value="")
 
-        boss_dmg_pct_row = f'{ib("boss_damage")}+{delta["boss_damage"]}+{S("MasteryBossDamage%", r)}+{agg_boss_damage_block}+{agg_enemy_dmg_taken_block}'
-        normal_dmg_pct_row = f'{ib("normal_damage")}+{S("MasteryNormalDamage%", r)}+{agg_normal_damage_block}+{agg_enemy_dmg_taken_block}'
+        boss_dmg_pct_row = f'{ib("boss_damage")}+{delta["boss_damage"]}+{S("MasteryBossDamage%", r)}+{agg_boss_damage_block}+{agg_enemy_dmg_taken_block}+{swift_weaken_block}'
+        normal_dmg_pct_row = f'{ib("normal_damage")}+{S("MasteryNormalDamage%", r)}+{agg_normal_damage_block}+{agg_enemy_dmg_taken_block}+{swift_weaken_block}'
 
         # The Contract of Darkness's boss-branch-only Crit Rate, via a crit-blend ratio correction
         # using THIS row's own L/M cells (only valid for damage-dealing rows, where
@@ -3397,7 +3464,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
         if key == "EIGHT_LEGS_EASTON":
             raging_blow_targets_expr = f'(6+{ib("basic_attack_target_increase")})'
-            prefix = f"{S('HitsPerCast', r)}*N{row}*{baps_ref}"
+            prefix = f"{S('HitsPerCast', r)}*N{row}*{baps_ref}*(1+IF(C{row_of['QUICKDRAW_BAD']}=TRUE,1/3,0))"
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
                 prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
                 raging_blow_targets_expr, ib("max_enemies_hit"),
@@ -3414,15 +3481,23 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             )
             ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
             ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
+        elif key == "NAUTILUS_FINAL_ATTACK":
+            prefix = f'{nautilus_proc_rate_block}*N{row}'
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                S("NormalMonsterTargets", r), ib("max_enemies_hit"),
+                extra_boss_mult_block, extra_normal_mult_block,
+            )
+            ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
+            ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
         elif key in MULTI_TRIGGER_KEYS:
             source_rate_terms_block = []
             for src_key in MULTI_TRIGGER_SOURCES[key]:
                 src_global_row = ROW[src_key]
                 src_local_row = row_of[src_key]
-                src_eff_cd_block = (
-                    f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", src_global_row), ib("skill_cooldown_decrease"), S("CostsActionSlot", src_global_row))}'
-                    f'*(1-{artifact_soul_contract_pct_expr(ib("soul_contract_equipped"), ib("content_type"), ib("soul_contract_star"))}/100))'
-                )
+                src_eff_cd_block = base_eff_cd_expr(src_global_row, ib, src_key)
+                if src_key in QD_COOLDOWN_KEYS:
+                    src_eff_cd_block = f'({src_eff_cd_block}/{qd_block_ref})'
                 if src_key in BUFF_ROW_KEYS:
                     src_available_duration_block = ib("fight_duration")
                 else:
@@ -3434,7 +3509,10 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
                     src_available_duration_block, ib("fight_duration"), f"G{src_local_row}*Q{src_local_row}",
                 ))
             combined_rate_block = f"({baps_ref}+{'+'.join(source_rate_terms_block)})"
-            prefix = f"H{row}*N{row}*{combined_rate_block}"
+            majestic_proc_rate_block = (
+                f'(H{row}*{combined_rate_block})/(1+{S("ICD(s)", r)}*H{row}*{combined_rate_block})'
+            )
+            prefix = f"{majestic_proc_rate_block}*N{row}"
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
                 prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
                 S("NormalMonsterTargets", r), ib("max_enemies_hit"),
@@ -3515,6 +3593,20 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     ws.cell(row=s_total, column=1, value="TOTAL DPS").font = LABEL_FONT
     ws.cell(row=s_total, column=2, value=f"=SUM(O{calc_start}:O{calc_end})").font = LABEL_FONT
+
+    qd_c0_b = qd_c0_expr(lambda k: f"C{row_of[k]}", lambda k: f"Q{row_of[k]}", None)
+    qd_x0_b = "+".join(
+        f'(C{row_of[k]}=TRUE)/{base_eff_cd_expr(ROW[k], ib, k)}' for k in QD_COOLDOWN_KEYS
+    )
+    ws.cell(row=s_qd, column=1, value="Quickdraw cooldown divisor (this block's own APS / Q)")
+    ws.cell(row=s_qd, column=2, value="=" + qd_factor_expr(
+        f"C{row_of['QUICKDRAW_BAD']}", ib("monster_type"), aps_ref, qd_c0_b, qd_x0_b,
+    ))
+    ws.cell(row=s_naut_trig, column=1, value="Nautilus Strike - Final Attack trigger rate (this block's own Q/R)")
+    ws.cell(row=s_naut_trig, column=2, value="=" + nautilus_trigger_rate_expr(
+        fda_block, ib("fight_duration"), baps_ref,
+        [(f"C{row_of[k]}", f"R{row_of[k]}", f"Q{row_of[k]}") for k in NAUTILUS_TRIGGER_KEYS],
+    ))
 
     return total_ref, boss_total_ref, normal_total_ref
 

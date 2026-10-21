@@ -184,7 +184,7 @@ def level_gated_sum(pairs):
 
 
 # Chain Lightning's own full mastery chain (folded into its own row, not separate rows).
-chain_lightning_mastery = level_gated_sum({102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1})
+chain_lightning_mastery = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 chain_lightning_boss_mastery = level_gated_sum({111: 10, 124: 10})
 chain_lightning_hits = 6 if level >= 136 else 5
 
@@ -196,8 +196,8 @@ glacier_wall_cooldown = (22 * 0.7) if level >= 90 else 22
 magic_guard_cooldown = (30 * 0.7) if level >= 21 else 30
 meditation_duration = (15 * 1.3) if level >= 44 else 15
 
-frozen_orb_icd = (0.5 * 0.5) if level >= 134 else 0.5
-elquines_icd = (4 * 0.8) if level >= 126 else 4
+frozen_orb_icd = (0.5 - 0.2) if level >= 126 else 0.5
+elquines_icd = (4 * 0.8) if level >= 130 else 4
 elquines_targets = 6 if level >= 138 else 3
 
 SKILLS = {
@@ -214,9 +214,10 @@ SKILLS = {
     "FREEZING_BREATH": dict(job_step=4, cooldown=40, hits=1, icd=0.5, window=5, base=8000, fidx=12, scales=True,
                              mastery=level_gated_sum({108: 50}), mastery_boss=0, mastery_normal=0, costs_action=True),
     "BLIZZARD": dict(job_step=4, cooldown=33, hits=3, base=6000, fidx=12, scales=True,
-                      mastery=level_gated_sum({130: 40}), mastery_boss=0, mastery_normal=0, costs_action=True),
-    "BLIZZARD_FINAL_ATTACK": dict(job_step=4, cooldown=33, hits=1, base=9500, fidx=21, scales=True, chance=30, rolls=3,
-                                   mastery=0, mastery_boss=0, mastery_normal=0, costs_action=False),
+                      mastery=level_gated_sum({134: 50}), mastery_boss=0, mastery_normal=0, costs_action=True),
+    "BLIZZARD_FINAL_ATTACK": dict(job_step=4, cooldown=None, hits=1, base=9500, fidx=21, scales=True, chance=30, rolls=1,
+                                   icd=1, mastery=level_gated_sum({134: 50}), mastery_boss=0, mastery_normal=0,
+                                   costs_action=False),
     "FROZEN_ORB": dict(job_step=4, cooldown=23, hits=1, icd=frozen_orb_icd, window=6, base=9000, fidx=12, scales=True,
                         mastery=level_gated_sum({122: 50}), mastery_boss=0, mastery_normal=0, costs_action=True),
     "ELQUINES": dict(job_step=4, cooldown=80, hits=1, icd=elquines_icd, window=30, base=35000, fidx=12, scales=True,
@@ -237,6 +238,7 @@ PASSIVES = {
     "ELEMENTAL_RESET": dict(job_step=3, base=120, fidx=22, scales=True),
     "MP_EATER_MP_BOOST": dict(job_step=2, base=70, fidx=0, scales=False),
 }
+BLIZZARD_PROC_TRIGGERS = {"THUNDER_BOLT": 1, "GLACIER_WALL": 1, "FREEZING_BREATH": 1, "BLIZZARD": 3, "FROZEN_ORB": 1}
 MAPLE_TARGETS = {"THUNDER_BOLT": 1000, "GLACIER_WALL": 300, "THUNDER_SPHERE": 200}
 NORMAL_MONSTER_TARGETS = {
     "THUNDER_BOLT": 8, "GLACIER_WALL": 8, "THUNDER_SPHERE": 6, "FREEZING_BREATH": 10,
@@ -269,10 +271,14 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15
 
 
-def eff_cooldown(cooldown, costs_action):
+def eff_cooldown(cooldown, costs_action=None, exempt=False):
+    """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
+    buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
+    compatibility and no longer gates CDR). `exempt=True` marks the trigger-rate / internal-interval
+    surrogate rows (mirror of the build script's CDR_EXEMPT_ROW_KEYS)."""
     if monster_type == "pvp":
         return PVP_FIGHT_DURATION
-    return max(0.1, cooldown - (skill_cooldown_decrease if costs_action else 0))
+    return max(0.1, cooldown - (0 if exempt else skill_cooldown_decrease))
 
 
 def eff_duration(duration):
@@ -301,7 +307,7 @@ def exact_buff_uptime(cooldown, buff_duration):
     casts = exact_casts(cooldown)
     remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
     last_uptime = min(buff_duration, remaining_after_last)
-    return (casts - 1) * buff_duration + last_uptime
+    return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
 def coeff_pct(base, fidx, scales, job_step):
@@ -332,7 +338,7 @@ if level >= 118:
     if monster_type == "pvp":
         weaken_uptime = min(eff_duration(30), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        weaken_uptime = eff_duration(30) / fb_eff_cd
+        weaken_uptime = min(1.0, eff_duration(30) / fb_eff_cd)
     monster_dmg_bonus = 15 * weaken_uptime
 else:
     monster_dmg_bonus = 0.0
@@ -360,7 +366,7 @@ for key, b in BUFFS.items():
     elif monster_type == "pvp":
         uptime_fraction = min(eff_duration(b["duration"]), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        uptime_fraction = eff_duration(b["duration"]) / eff_cd
+        uptime_fraction = min(1.0, eff_duration(b["duration"]) / eff_cd)
     avg_pct = pct * uptime_fraction
     if b["target"] == "ATTACK":
         attack_bucket_sum += avg_pct
@@ -379,7 +385,7 @@ if fixed_duration_active:
 elif monster_type == "pvp":
     nimble_feet_uptime = min(eff_duration(15), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
 else:
-    nimble_feet_uptime = eff_duration(15) / nimble_feet_eff_cd
+    nimble_feet_uptime = min(1.0, eff_duration(15) / nimble_feet_eff_cd)
 nimble_feet_avg = nimble_feet_pct * nimble_feet_uptime if unlocked("NIMBLE_FEET") else 0.0
 
 as_bonus = (mp_eater_as_pct if unlocked("MP_EATER_MP_BOOST") else 0.0) + nimble_feet_avg
@@ -389,7 +395,7 @@ actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 
 # Cooldown lookup used by the cast-rate sum below — Blizzard - Final Attack shares Blizzard's
 # own (CDR-eligible) cooldown, not its own CostsActionSlot flag (see build script's own
 # CDR_COSTS_ACTION_ROW override and comment for why).
-_CDR_COSTS_ACTION_OVERRIDE = {"BLIZZARD_FINAL_ATTACK": "BLIZZARD"}
+_CDR_COSTS_ACTION_OVERRIDE = {}
 
 
 def _cdr_costs_action(key, s):
@@ -498,6 +504,21 @@ for key, s in SKILLS.items():
     pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"])
     proc = 1 - (1 - s.get("chance", 100) / 100) ** s.get("rolls", 1)
     hd = hit_damage(pct, False, maple_mult(key), s)
+    if key == "BLIZZARD_FINAL_ATTACK":
+        # Multi-trigger proc (any attack, 30%, 1s ICD): steady-state rate (c*R)/(1+ICD*c*R) with R the
+        # combined cast rate of the triggering attacks + Chain Lightning's own cast rate.
+        trig = chain_lightning_per_second
+        for tk, tn in BLIZZARD_PROC_TRIGGERS.items():
+            if not unlocked(tk):
+                continue
+            tcd = eff_cooldown(SKILLS[tk]["cooldown"], _cdr_costs_action(tk, SKILLS[tk]))
+            if fixed_duration_active:
+                trig += tn * non_buff_casts(tcd) / fight_duration
+            else:
+                trig += tn / tcd
+        proc_rate = proc * trig / (1 + s["icd"] * proc * trig)
+        skill_dps[key] = proc_rate * hd * boss_normal_multiplier(key, s)
+        continue
     eff_cd = eff_cooldown(s["cooldown"], _cdr_costs_action(key, s))
     if fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration

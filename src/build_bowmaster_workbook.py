@@ -1089,7 +1089,7 @@ def build_inputs_sheet(wb, existing=None):
 
     ws.cell(row=31, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
-        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
+        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
@@ -1753,7 +1753,7 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
     scaled_duration = f'({duration_ref}*(1+{bdi_ref}/100))'
     return (
         f'IF({monster_type_ref}="pvp",MIN({scaled_duration},{PVP_FIGHT_DURATION})/{PVP_FIGHT_DURATION},'
-        f'{scaled_duration}/{cooldown_ref})'
+        f'MIN(1,{scaled_duration}/{cooldown_ref}))'
     )
 
 
@@ -1828,7 +1828,9 @@ def exact_buff_uptime_expr(casts_ref, buff_duration_ref, cooldown_ref, fight_dur
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{fight_duration_ref}-{last_cast_start})'
     last_uptime = f'MIN({buff_duration_ref},{remaining_after_last})'
-    return f'(({casts_ref}-1)*{buff_duration_ref}+{last_uptime})'
+    # A recast that lands before the previous buff ends only extends coverage by one cooldown, so each full
+    # cycle contributes MIN(duration, cooldown) of uptime — never more (otherwise uptime could exceed 100%).
+    return f'(({casts_ref}-1)*MIN({buff_duration_ref},{cooldown_ref})+{last_uptime})'
 
 
 def uptime_fraction_or_exact_expr(fixed_duration_active_ref, casts_ref, monster_type_ref,
@@ -1878,7 +1880,7 @@ SC = {name: get_column_letter(i + 1) for i, name in enumerate(SKILL_COLUMNS)}
 # Row order (2..LAST_ROW) — derived from this list, never hand-numbered.
 ROW_ORDER = [
     "ARROW_STREAM", "FINAL_ATTACK_BOW", "ADVANCED_FINAL_ATTACK_HELPER",
-    "COVERING_FIRE", "QUIVER_CARTRIDGE", "ENCHANTED_QUIVER_HELPER",
+    "COVERING_FIRE", "QUIVER_CARTRIDGE", "ENCHANTED_QUIVER_HELPER", "ENCHANTED_QUIVER_DRAIN",
     "PHOENIX", "ARROW_PLATTER", "HURRICANE", "MAPLE_HERO_HELPER",
     "FLASH_MIRAGE", "FLASH_MIRAGE_II_HELPER",
     "MARKSMANSHIP_BASE", "MARKSMANSHIP_COND", "ILLUSION_STEP",
@@ -1927,6 +1929,7 @@ UNLOCK_LEVEL = {
     "COVERING_FIRE": 35,
     "QUIVER_CARTRIDGE": 40,
     "ENCHANTED_QUIVER_HELPER": 107,
+    "ENCHANTED_QUIVER_DRAIN": 130,
     "PHOENIX": 69,
     "ARROW_PLATTER": 63,
     "HURRICANE": 103,
@@ -1975,7 +1978,7 @@ MAPLE_HERO_RATIOS = {
 #  normalMonsterTargets, buffTarget, buffDuration, mapleBase, mapleFactor, note)
 SKILL_ROWS = [
     ("ARROW_STREAM", "Arrow Stream", 4, "", False, 1,
-     f'=IF({IB("level")}>=134,6,5)', 0, 0, 100, 1,
+     f'=IF({IB("level")}>=136,6,5)', 0, 0, 100, 1,
      2900, 21, True,
      # Real Arrow Stream - Damage mastery chain only (98/104/113/118/126/130, cumulative
      # +10/11/12/13/14/15%, confirmed live via idle.maplestorywiki.net/w/Bowmaster/Mastery —
@@ -1984,8 +1987,10 @@ SKILL_ROWS = [
      # here as a steady-state average addition, but Final Attack is affected by Skill Damage%,
      # not Basic Attack Damage% (which is what this row's own K-column term applies) — per user
      # direction, split out into its own independent FINAL_ATTACK_BOW row below instead.
-     level_gated_sum(IB("level"), {98: 10, 104: 1, 113: 1, 118: 1, 126: 1, 130: 1}),
-     level_gated_sum(IB("level"), {108: 10, 122: 10}), 0,
+     # AUDIT 2026-10-21: levels per maplestoryidle.info + wiki + patch notes; option A (user-confirmed):
+     # every tier is its own add-on (10+11+12+13+14+15 = 75%), not cumulative deltas.
+     level_gated_sum(IB("level"), {102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15}),
+     level_gated_sum(IB("level"), {111: 10, 124: 10}), 0,
      f'=6+{IB("basic_attack_target_increase")}', "", 0, "", "",
      "4th-job basic-attack effect (supersedes Wind Arrow/Wind Arrow II/Arrow Blow, confirmed "
      "identical wiki wording — 290% damage to 6 target(s) in front 5 time(s) — to every other "
@@ -2049,11 +2054,16 @@ SKILL_ROWS = [
      "Fire - Damage' +50% (real SkillMasteryBonus%). Patched: skill use range +~20% (not "
      "modeled). Maple Hero target — see MAPLE_HERO_RATIOS (biggest share, 4x Arrow Platter's "
      "own share)."),
-    ("QUIVER_CARTRIDGE", "Quiver Cartridge", 3, f'=1/(1+(Summary!$B${R_APS}-1)*4/15)', False, 1,
-     f'=3+IF({IB("level")}>=107,3,0)', 0, 0, 100, 1,
+    ("QUIVER_CARTRIDGE", "Quiver Cartridge", 3, f'=1-0.4*MIN(1,(Summary!$B${R_APS}-1)/1.5)', False, 1,
+     1, 0, 0, 100, 1,
      500, 21, True,
-     0, 0, 200,
+     level_gated_sum(IB("level"), {44: 50}), 0, 0,
      f'=3+IF({IB("level")}>=107,3,0)', "", 0, "", "",
+     "AUDIT 2026-10-21 (supersedes the tick/hit statements below): ONE hit per tick on up to 3 "
+     "targets (6 after Enchanted Quiver) per the game table (hitCount 1) — HitsPerCast was wrongly "
+     "3/6. Tick interval: 'improves by up to 0.4 SEC based on Attack Speed' (site wording, user-"
+     "confirmed) => 1s at 0% AS down to 0.6s at the 150% AS cap. Mastery Lv.44 +50% added; the "
+     "unsupported +200% Normal Monster Damage removed. "
      "Background periodic DoT, same shape as FP-Mage's Ignite (CostsActionSlot=False, 'always "
      "maintained'), but with a real AS-scaled tick rate per user direction to use the English "
      "wiki wording ('activation speed increases up to 0.4 times based on Attack Speed') over the "
@@ -2073,13 +2083,24 @@ SKILL_ROWS = [
      "QUIVER_CARTRIDGE's own targets formula for the +3 targets side). PATCHED: FD 500%->300% "
      "(curve rescaled 300/500=0.6x before reverse-engineering — factorIndex 21, baseDamage 3000 "
      "tenths% already reflects the patched value)."),
-    ("PHOENIX", "Phoenix", 3, f'=IF({IB("level")}>=102,60*0.6,60)', True, 1,
-     1, f'=IF({IB("level")}>=80,3*0.7,3)',
-     f'=IF({IB("level")}>=102,30,20)', 100, 1,
+    ("ENCHANTED_QUIVER_DRAIN", "Enchanted Quiver - Drain (Mastery Lv.130)", 4,
+     f'=1-0.4*MIN(1,(Summary!$B${R_APS}-1)/1.5)', False, 1,
+     1, 0, 0, 30, 1,
+     10500, 21, True,
+     0, 0, 0,
+     f'=3+IF({IB("level")}>=107,3,0)', "", 0, "", "",
+     "NEW (audit 2026-10-21): Mastery Lv.130 'Enchanted Quiver - Drain': when hitting with Quiver "
+     "Cartridge, 30% chance to deal an additional 1050*(1+0.004*skillLevel)% damage to the target "
+     "(wiki expression; user decision: LITERAL percent, i.e. baseDamage 10500 tenths%, factorIndex 21 "
+     "= the 0.004/level slope; HP recovery not modeled). Rides Quiver Cartridge's tick timing (same "
+     "Cooldown(s) formula, CostsActionSlot=False) and its target count (each target hit rolls the 30%)."),
+    ("PHOENIX", "Phoenix", 3, f'=IF({IB("level")}>=104,60*0.6,60)', True, 1,
+     1, f'=IF({IB("level")}>=82,3*0.7,3)',
+     30, 100, 1,
      6000, 12, True,
      0, 0,
-     f'=IF({IB("level")}>=92,100,0)',
-     f'=5+IF({IB("level")}>=76,3,0)', "", 0, 250, 0,
+     f'=IF({IB("level")}>=94,100,0)',
+     f'=5+IF({IB("level")}>=78,3,0)', "", 0, 250, 0,
      "Summons Phoenix, attacks nearby targets on a periodic tick (EffectiveHits = HitsPerCast x "
      "(ActiveWindow/ICD), same mechanism as FP-Mage/ILM's own summon rows). PATCHED: duration "
      "20s->30s (target detection range +~25% not modeled), cooldown 60s (Mastery Lv.102 'Phoenix "
@@ -2090,7 +2111,7 @@ SKILL_ROWS = [
      "this row only — not the global bucket). Maple Hero target — see MAPLE_HERO_RATIOS."),
     ("ARROW_PLATTER", "Arrow Platter", 3, 40, True, 1, 1, 0.3, 60, 100, 1,
      500, 12, True,
-     0, 0, 200,
+     level_gated_sum(IB("level"), {73: 50}), 0, 200,
      f'=3+IF({IB("level")}>=98,1,0)', "", 0, 250, 0,
      "RESOLVED this session — idle.maplestorywiki.net/w/Arrow_Platter is a confirmed wiki content "
      "bug (renders Wind Arrow II's data under Arrow Platter's own infobox), but the skill's real "
@@ -2108,7 +2129,7 @@ SKILL_ROWS = [
     ("HURRICANE", "Hurricane", 4, 40, True, 1,
      f'=20+IF({IB("level")}>=134,15,0)', 0, 0, 100, 1,
      8000, 12, True,
-     level_gated_sum(IB("level"), {108: 50}), 0, 0, 7, "", 0, "", "",
+     level_gated_sum(IB("level"), {108: 50}), 0, 0, 11, "", 0, "", "",
      "Previously entirely missing from this workbook — found and added after a Discord bug "
      "report flagged it absent from the DPS breakdown. Real Lv.103 4th-job active skill. "
      "idle.maplestorywiki.net/w/Hurricane's own numbers turned out wrong (confirmed by a "
@@ -2157,11 +2178,14 @@ SKILL_ROWS = [
      # no-floor chance does (the +5 is additive, not multiplicative, with the chance term) — so
      # the whole average-cycle expression is folded into Cooldown(s) with ProcChance%=100, same
      # as Quiver Cartridge's own formula-based Cooldown(s).
-     f'=5+1/(((20+30*(Summary!$B${R_APS}-1)*100/150)/100)*Summary!$B${R_APS})',
+     f'=IF({IB("level")}>=122,3,5)+1/(((20+30*(Summary!$B${R_APS}-1)*100/150)/100)*Summary!$B${R_APS})',
      False, 1, 1, 0, 0, 100, 1,
      5500, 21, True,
      level_gated_sum(IB("level"), {68: 50}), 0, 0,
-     f'=5+IF({IB("level")}>=136,1,0)', "", 0, "", "",
+     f'=7+IF({IB("level")}>=110,4,0)+IF({IB("level")}>=138,1,0)', "", 0, "", "",
+     "AUDIT 2026-10-21: targets 7 (patch 5->7) +4 once Flash Mirage II unlocks (Lv110, game table "
+     "MaxHitCount +4) +1 at Lv138 (patched mastery +3->+1); Flash Mirage II - Reuse (Lv122) cuts the "
+     "5s floor by 40% => 3s. "
      "Passive proc, real mechanic per maplestoryidle.info/jobs.html (used to fix two real data "
      "errors found via Discord bug reports — the wiki's own numbers here were badly wrong): "
      "'When attacking, an illusion is created with a 20% chance to attack up to 5 nearby "
@@ -2216,7 +2240,11 @@ SKILL_ROWS = [
      "curve/tuple as MARKSMANSHIP_BASE (factorIndex 22, baseDamage 100 tenths%)."),
     ("ILLUSION_STEP", "Illusion Step", 4, 24, False, 1, 1, 0, 0, 100, 1,
      140, 22, True,
-     0, 0, 0, 0, "ATTACK", 15, "", "",
+     f'=IF({IB("level")}>=118,5.25*Calc!E{ROW["ILLUSION_STEP"]}/1000,0)', 0, 0, 0, "ATTACK", f'=IF({IB("level")}>=118,24,15)', "", "",
+     "AUDIT 2026-10-21: Mastery Lv.118 'Illusion Step - Enhance': the Attack bonus no longer disappears "
+     "and is doubled during the 9s Illusion Step window => from Lv118 it is always on (BuffDuration = "
+     "cycle 24s), averaging 14% x (15 + 2x9)/24 = 1.375x the base value (SkillMasteryBonus% adds the "
+     "+0.375x). My interpretation of the mastery text — NOT yet confirmed in game. "
      "Cycling passive: Attack+14%->22.4% for 15s, then swaps to Evasion+15->24/damage taken "
      "-10%->16% for 9s (not modeled — those components have no mechanic anywhere in this "
      "calculator). Modeled as a duty-cycled buff (Cooldown(s)=24 = full 15+9s cycle length, "
@@ -2225,7 +2253,10 @@ SKILL_ROWS = [
      "baseDamage 140 tenths%. Not patched. Shared verbatim w/ Marksman."),
     ("SHARP_EYES", "Sharp Eyes", 4, 35, True, 1, 1, 0, 0, 100, 1,
      400, 21, True,
-     0, 0, 0, 0, "CRIT_DAMAGE", 18, "", "",
+     0, 0, 0, 0, "CRIT_DAMAGE", f'=IF({IB("level")}>=126,27,18)', "", "",
+     "AUDIT 2026-10-21 (supersedes the Crit Rate statement below): the site AND the game table give "
+     "Sharp Eyes NO Crit Rate component (allies +20% of your Crit Damage; self +40%->72% Crit Damage), so "
+     "the flat +20 Crit Rate is REMOVED (user decision). Mastery Lv.126 'Persistence' +50% duration (27s). "
      "Self-inclusive ally buff (matches Bishop's own 'allied players' precedent) — flat +20% "
      "Crit Rate (non-scaling, not represented in this row's own BaseDamage/FactorIndex; added "
      "directly as a hardcoded 20 in the Crit-Rate-bonus accumulator formula in build_summary_"
@@ -2233,8 +2264,11 @@ SKILL_ROWS = [
      "21, baseDamage 400 tenths%) for 18s, cooldown 35s. Not patched. Shared verbatim w/ "
      "Marksman."),
     ("CONCENTRATION", "Concentration", 3, "", False, 1, 1, 0, 0, 100, 1,
-     0, 0, False,
+     30, 22, True,
      0, 0, 0, 0, "CRIT_DAMAGE", 0, "", "",
+     "AUDIT 2026-10-21 (supersedes the flat-30 statements below): 7 stacks (site; wiki said 10) of "
+     "3% Crit Damage each, and the per-stack value SCALES with skill level (game table: CriticalPower "
+     "= stacks*30 tenths%, factorIndex 22) => steady-state bonus = 7 x Calc!F. "
      "Wiki name 'Concentration' = Aug 13 patch notes' 'Focused Fury' (same skill — both wiki's "
      "own Concentration page and the Bowmaster/Skills overview show '+1 Accuracy/+3% Crit "
      "Damage for 4 sec, stacking up to 10 times' at level 1, matching the patch's own pre-patch "
@@ -2339,6 +2373,32 @@ ROW_HAS_COOLDOWN = {row[0]: row[3] not in ("", None) for row in SKILL_ROWS}
 CDR_COSTS_ACTION_ROW = {key: r for key, r in ROW.items()}
 
 
+# Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills, buffs and passives alike
+# (user decision 2026-10-21; it used to apply only to CostsActionSlot rows). The exempt rows are NOT real
+# cooldowns: their Cooldown(s) cell is a trigger-rate / internal-interval surrogate (e.g. 1 / attack speed),
+# which CDR must not shrink to the 0.1s floor.
+CDR_EXEMPT_ROW_KEYS = ['ENCHANTED_QUIVER_DRAIN', 'FINAL_ATTACK_BOW', 'FLASH_MIRAGE', 'QUIVER_CARTRIDGE']
+
+
+def cdr_applies_expr(key):
+    return "FALSE" if key in CDR_EXEMPT_ROW_KEYS else "TRUE"
+
+
+# Rows whose Cooldown(s) is a function of Actions Per Second. The Skills-sheet cell reads the MAIN Summary's APS,
+# which a Sensitivity block sweeping Attack Speed / Cooldown Decrease / Buff Duration (all of which move APS via
+# Nimble Feet) cannot see — so the block recomputes the same expression from its OWN APS cell.
+AS_SCALED_COOLDOWN_EXPR = {
+    "FINAL_ATTACK_BOW": lambda aps, ib: f'1/{aps}',
+    "QUIVER_CARTRIDGE": lambda aps, ib: f'1-0.4*MIN(1,({aps}-1)/1.5)',
+    "ENCHANTED_QUIVER_DRAIN": lambda aps, ib: f'1-0.4*MIN(1,({aps}-1)/1.5)',
+    "FLASH_MIRAGE": lambda aps, ib: f'IF({ib("level")}>=122,3,5)+1/(((20+30*({aps}-1)*100/150)/100)*{aps})',
+}
+_MAIN_APS_REF = f"Summary!$B${R_APS}"
+for _row in SKILL_ROWS:
+    if _row[0] in AS_SCALED_COOLDOWN_EXPR:
+        assert _row[3] == "=" + AS_SCALED_COOLDOWN_EXPR[_row[0]](_MAIN_APS_REF, IB), _row[0]
+
+
 def build_skills_sheet(wb):
     ws = wb.create_sheet("Skills")
     for i, name in enumerate(SKILL_COLUMNS):
@@ -2362,7 +2422,7 @@ def build_skills_sheet(wb):
 # ---------------------------------------------------------------------------
 # Row categories consumed by build_calc_sheet/build_summary_sheet/build_sensitivity_sheet.
 # ---------------------------------------------------------------------------
-DAMAGE_ROW_KEYS = ["COVERING_FIRE", "QUIVER_CARTRIDGE", "PHOENIX", "ARROW_PLATTER", "FLASH_MIRAGE", "HURRICANE", "FINAL_ATTACK_BOW"]
+DAMAGE_ROW_KEYS = ["COVERING_FIRE", "QUIVER_CARTRIDGE", "ENCHANTED_QUIVER_DRAIN", "PHOENIX", "ARROW_PLATTER", "FLASH_MIRAGE", "HURRICANE", "FINAL_ATTACK_BOW"]
 # Real, always-on buff rows (NOT baked into Inputs) whose (F * uptime) feeds the shared
 # multiplicative avg_buff_mult chain via BuffTargetStat="ATTACK" or duty-cycle FD sources.
 ATTACK_BUFF_ROW_KEYS = ["MARKSMANSHIP_BASE", "MARKSMANSHIP_COND", "ILLUSION_STEP"]
@@ -2422,7 +2482,7 @@ def build_calc_sheet(wb):
         has_cooldown = ROW_HAS_COOLDOWN[key]
         if has_cooldown:
             eff_cd_r = (
-                f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+                f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), cdr_applies_expr(key))}'
                 f'*(1-{artifact_soul_contract_pct_expr(IB("soul_contract_equipped"), IB("content_type"), IB("soul_contract_star"))}/100))'
             )
             if key in BUFF_ROW_KEYS:
@@ -2653,7 +2713,7 @@ def build_summary_sheet(wb):
 
     def buff_uptime(row):
         return uptime_fraction_or_exact_expr(
-            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), S("Cooldown(s)", row),
+            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), f'(1/Calc!Q{row})',
             bdi_main, IB("fight_duration"),
         )
 
@@ -2672,8 +2732,8 @@ def build_summary_sheet(wb):
     ))
 
     sharp_eyes_uptime = buff_uptime(r_se)
-    ws.cell(row=R_CRIT_RATE_BONUS, column=1, value="Global Crit Rate Bonus % (Sharp Eyes, flat 20, duty-cycle averaged)")
-    ws.cell(row=R_CRIT_RATE_BONUS, column=2, value=f'=(Calc!C{r_se}=TRUE)*20*{sharp_eyes_uptime}')
+    ws.cell(row=R_CRIT_RATE_BONUS, column=1, value="Global Crit Rate Bonus % (no live source — Sharp Eyes has no Crit Rate component)")
+    ws.cell(row=R_CRIT_RATE_BONUS, column=2, value=0)
 
     ws.cell(row=R_MONSTER_DMG_BONUS, column=1, value="Global Monster Damage-Taken Bonus % (Artifact Enemy Damage Taken Bonus)")
     ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=f'={art_ref("AGG_ENEMY_DMG_TAKEN")}')
@@ -2700,7 +2760,7 @@ def build_summary_sheet(wb):
 
     ws.cell(row=R_CRIT_DAMAGE_BONUS, column=1, value="Global Critical Damage Bonus % (Sharp Eyes scaling + Concentration steady-state max stacks)")
     ws.cell(row=R_CRIT_DAMAGE_BONUS, column=2, value=(
-        f'=(Calc!C{r_se}=TRUE)*Calc!F{r_se}*{sharp_eyes_uptime}+(Calc!C{r_conc}=TRUE)*30'
+        f'=(Calc!C{r_se}=TRUE)*Calc!F{r_se}*{sharp_eyes_uptime}+(Calc!C{r_conc}=TRUE)*7*Calc!F{r_conc}'
     ))
 
     ws.cell(row=R_MORTAL_BLOW_BONUS, column=1, value="Global Final Damage Bonus % (Mortal Blow, steady-state always-active)")
@@ -2850,15 +2910,21 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Min Damage Multiplier %": "min_damage",
     "Max Damage Multiplier %": "max_damage",
     "Defense Penetration": "def_pen",
-    "Dex %": "dex_pct",
-    "Dex": "flat_dex",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
     "Skill Cooldown Decrease (seconds)": "skill_cooldown_decrease",
     "Buff Duration Increase %": "buff_duration_increase_pct",
     "All Skill Level": "skill_lvl_all",
     "Basic Attack Target Increase": "basic_attack_target_increase",
+    "Dex %": "dex_pct",
+    "Dex": "flat_dex",
+    "Str": "str",
 }
+
+# Sub-stat PERCENT potential lines: the Sensitivity sweep for the sub-stat is a flat +1 point, so a
+# "+N% sub-stat" roll is worth N% of the current total sub-stat in points (approximation: Inputs holds the
+# final sub-stat value, no separate flat/% split). Main-stat lines map 1:1 above.
+POTENTIAL_SUB_STAT_PCT_LINES = {"Str %": ("str", "str")}
 
 
 def dps_per_unit_expr(stat_name):
@@ -2881,6 +2947,9 @@ def dps_per_unit_expr(stat_name):
         )
     if stat_name == "Companion Summoning Time Increase %":
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]}'
+    if stat_name in POTENTIAL_SUB_STAT_PCT_LINES:
+        sweep_key, inputs_key = POTENTIAL_SUB_STAT_PCT_LINES[stat_name]
+        return f'=Sensitivity!H{SENSITIVITY_ROW_FOR[sweep_key]}*{IB(inputs_key)}/100'
     key = POTENTIAL_STAT_TO_SWEEP_KEY.get(stat_name)
     if key is None:
         return "0"
@@ -2986,7 +3055,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
             fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
-            S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
+            f'(1/Q{local_row})', bdi_block, ib("fight_duration"),
         )
 
     delta_by_slot = {}
@@ -3256,8 +3325,11 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
         has_cooldown = ROW_HAS_COOLDOWN[key]
         if has_cooldown:
+            _cd_ref_block = (
+                AS_SCALED_COOLDOWN_EXPR[key](aps_ref, ib) if key in AS_SCALED_COOLDOWN_EXPR else S("Cooldown(s)", r)
+            )
             eff_cd_row = (
-                f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+                f'({effective_cooldown_expr(ib("monster_type"), _cd_ref_block, ib("skill_cooldown_decrease"), cdr_applies_expr(key))}'
                 f'*(1-{artifact_soul_contract_pct_expr(ib("soul_contract_equipped"), ib("content_type"), ib("soul_contract_star"))}/100))'
             )
             if key in BUFF_ROW_KEYS:
@@ -3390,9 +3462,14 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
         elif key in DAMAGE_ROW_KEYS:
             prefix = f'H{row}*N{row}*{rate_row}'
+            # Final Attack's target count is "6 + Basic Attack Target Increase" — read it through this block's
+            # own ib() (the Skills-sheet cell would point at the MAIN Inputs and miss the swept +1).
+            _targets_block = (
+                f'(6+{ib("basic_attack_target_increase")})' if key == "FINAL_ATTACK_BOW" else S("NormalMonsterTargets", r)
+            )
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
                 prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
-                S("NormalMonsterTargets", r), ib("max_enemies_hit"),
+                _targets_block, ib("max_enemies_hit"),
                 extra_boss_mult_block, extra_normal_mult_block,
             )
             ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
@@ -3418,7 +3495,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ws.cell(row=s_avgbuff, column=2, value=f'={attack_bucket_block}')
 
     ws.cell(row=s_crit_rate_bonus, column=1, value="Global Crit Rate Bonus %")
-    ws.cell(row=s_crit_rate_bonus, column=2, value=f'=(C{row_of["SHARP_EYES"]}=TRUE)*20*{buff_uptime_block(row_of["SHARP_EYES"], r_se)}')
+    ws.cell(row=s_crit_rate_bonus, column=2, value=0)
 
     ws.cell(row=s_as_bonus, column=1, value="Attack Speed Buff Bonus %")
     ws.cell(row=s_as_bonus, column=2, value=f'={nimble_feet_avg}')
@@ -3443,7 +3520,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ws.cell(row=s_crit_damage_bonus, column=1, value="Global Critical Damage Bonus % (Sharp Eyes + Concentration)")
     ws.cell(row=s_crit_damage_bonus, column=2, value=(
         f'=(C{row_of["SHARP_EYES"]}=TRUE)*F{row_of["SHARP_EYES"]}*{buff_uptime_block(row_of["SHARP_EYES"], r_se)}'
-        f'+(C{row_of["CONCENTRATION"]}=TRUE)*30'
+        f'+(C{row_of["CONCENTRATION"]}=TRUE)*7*F{row_of["CONCENTRATION"]}'
     ))
 
     ws.cell(row=s_mortal_blow_bonus, column=1, value="Global Final Damage Bonus % (Mortal Blow)")

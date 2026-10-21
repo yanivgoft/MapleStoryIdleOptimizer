@@ -1076,3 +1076,83 @@ the Buff Duration Increase sensitivity from 3.19 to 3.84, although Inputs!buff_d
 (the in-game stat) already includes that passive. `bdi_with_buff_mastery_expr` was adding the
 passive's Calc!F value on top at level >= 117. It now returns the Inputs value unchanged; the verify
 scripts match. The passive's skill row stays as an informational row.
+
+
+## 2026-10-21 full data audit (all 12 classes) — what changed, and what is still an assumption
+
+Source: `maplestoryidle.info`'s embedded game tables (+ its patched/base skill text), `idle.maplestorywiki.net`
+(pre-Aug-13) and the Aug-13 patch notes. Raw snapshots, the per-class findings and the user's decisions are in
+`data/ref_maplestoryidle_info/` (`VERIFICATION_FINDINGS_2026-10-20.md` is the entry point). Every class was
+rebuilt and re-verified against its independent `verify_<class>_workbook.py` afterwards.
+
+### Cross-class changes
+- **Basic-attack mastery chains are RAW tiers** (+10/+11/+12/+13/+14/+15 = 75% at max) in all 12 classes — 11
+  of them used `{10, 1, 1, 1, 1, 1}` (15%). CLAUDE.md structural-bug #2 was reversed accordingly.
+- **Skill Cooldown Decrease now applies to EVERY real cooldown** — actively cast skills, buffs and passives
+  (user request). It used to apply only to `CostsActionSlot` rows. Buff / debuff uptimes (main sheet AND every
+  Sensitivity block) now use the row's *effective* cooldown (CDR + Soul Contract + any class-specific divisor)
+  instead of the raw Skills-sheet cooldown, so CDR finally moves buff uptime. Rows whose `Cooldown(s)` is a
+  trigger-rate / internal-interval SURROGATE (not a real cooldown) are exempt (`CDR_EXEMPT_ROW_KEYS` in each
+  build script): Bowmaster Final Attack / Quiver Cartridge / Enchanted Quiver Drain / Flash Mirage, FP-Mage Ignite /
+  Elemental Drain, Night Lord Venom / Mark of Assassin, Paladin Divine Judgment, Shadower Venom. Proc internal
+  cooldowns that live in the `ICD(s)` column (Meteor / Blizzard / Nautilus Final Attack, Majestic Presence) are
+  NOT reduced by CDR — assumption; tell me if the game does reduce them.
+- **Buff-uptime caps**: uptime is now `MIN(1, duration/cooldown)` (steady state) and exact fixed-duration uptime
+  counts `(casts-1)*MIN(duration, cooldown)`; a buff whose (Buff-Duration-boosted) duration exceeds its cooldown
+  used to report >100% uptime (e.g. Paladin Combat Orders, 35s vs a 32.5s effective cooldown).
+- **Soul Contract** (Chapter Hunt cooldown artifact) is now wired into Ice/Lightning's Sensitivity blocks (was
+  main-sheet only).
+- Potential Cubes: the DPS value of a "<Main stat> %" / "<Main stat>" / sub-stat line now maps to the class's real
+  main/sub stat (Paladin showed DEX instead of STR).
+- Multi-trigger "When attacking ... chance, 1s cooldown" Final Attack masteries (Ice/Lightning Blizzard FA,
+  Buccaneer/Corsair Nautilus Strike FA, Corsair Majestic Presence) use the FP-Mage Meteor-Proc steady-state formula
+  `(c*R)/(1+ICD*c*R)`. Trigger set = basic attack + the class's action-costing direct-attack skills; summons,
+  turrets and DoT ticks are excluded (ASSUMPTION copied from the user's FP-Mage decision).
+
+### Per-class highlights (full list: the findings file + `git log`)
+- **Bowmaster / Marksman / Night Lord**: stale shifted mastery tables replaced by the current one (chain levels
+  102/106/116/120/128/132, boss 111/124, Strike 136, many 2nd-4th job masteries), Quiver Cartridge 1 hit with an
+  attack-speed-scaled interval, Hurricane / Flash Mirage targets, Phoenix window, Enchanted Quiver Drain (new
+  row), Sharp Eyes = Crit Damage only, Concentration 7 stacks scaling with level, Snipe-Empowered / Spectral
+  Shadows / Drain "N*(1+0.005x)%" masteries entered as literal percent, Night Lord Shadow Partner / Shadow
+  Shifter (-> Final Damage) / Venom unlock 74 / Toxic Venom 130 ...
+- **Shadower**: Assassinate factorIndex 12, Meso Mastery (Lv75, new row, 75% Meso chance, Attack buff), Steal moved
+  from the Attack Speed stack (bug) to the Attack% bucket.
+- **Hero / Dark Knight**: Puncture / Enhanced Raging Blow / Beam Blade / Rush / Spirit Blade / Combo masteries,
+  Evil Eye / Hex / Rush reuse masteries, Magic Crash weaken as a GLOBAL damage-taken bonus (DK's old hack
+  removed), Hex boss +20%, Final Attack mastery @54, Self Recovery FD.
+- **Paladin**: Combat Orders now modeled for the player (time-averaged +skill-level factor lookup, +25%p Attack at
+  Lv82, +18 levels for 4th-job skills at Lv104), Parashock Guard (+10%p on the skill used, as a live term), buff
+  factorIndices 22 -> 21, missing masteries (HP Recovery, Divine Blessing, Vessel, Greater Vessel, Rush,
+  Noble Demand reuse, Divine Mark detonation, Divine Judgment).
+- **Ice/Lightning**: Blizzard Final Attack off any attack; Blizzard +50% @134 (incl. FA); Frozen Orb interval
+  -0.2s @126 (0.5 -> 0.3); Elquines interval -20% moved 126 -> 130 (**level and value still unverified in game —
+  the wiki's text is garbled**).
+- **FP-Mage**: Meditation factorIndex 22 -> 21 (the other items the audit raised were confirmed correct by the user).
+- **Bishop**: Triumph Feather's angel-power window has an 18s cooldown (on-fraction `p*R*10/(1+p*R*18)`).
+- **Buccaneer** (rebuilt from the game capture): Sea Serpent Burst has a 7s cooldown (5s @78, 3s @118; it used to
+  fire on every basic attack), Greater Sea Serpent I/II implemented (430% / +targets / +100% FD on Sea Serpent
+  Burst only), Serpent Assault shares Sea Serpent Burst's trigger + cooldown (game table), Assault-Mode uptime
+  `u = A/(A+N*T)` with activation interval `T = cooldown + 0.5/basic-attack-rate`, Serpent Scale pre-Assault +2%
+  per held scale (avg 4% while rebuilding), Speed Infusion as a real action-costing buff (AS +20% x f21 and FD =
+  20% of AS), Sea Serpent's Rage factorIndex 21 + Assault Mark (+15% x f21 damage taken, 5s per Octopunch cast),
+  Raging Serpent Assault 2 hits per tick, Octopunch reuse @134, unlock levels, JobSteps (Serpent Assault / Serpent
+  Scale / Roll of the Dice / Groggy are 3rd job), Crossbones / Time Leap factorIndex 21, Time Leap Grant +10%p.
+  Assumptions: Serpent Assault shares the 7s cooldown; the 430% Greater-Sea-Serpent-I line uses factorIndex 12
+  (no table ratio); smoothed (non-integer) activations per Assault window.
+- **Corsair**: real mastery table (Blackboot +50 @73, Scurvy +50 @49, All Aboard +50 @78 and -30% intervals @94,
+  Siege Bomber +50 @82 and Setup @68, Rapid Fire +70 @130, Swift Fire Weaken @54, Broadside Bombardment @118 /
+  Setup @138), unlock levels, factorIndices (Majestic Presence 21 + 0.5s ICD, Jolly Roger 21, Ahoy Mateys 21),
+  **Quickdraw second effect modeled** (every 3rd Easton doubled -> x(1+1/3); Brain Scrambler / Rapid Fire
+  cooldown divided by `1+0.25*B*`, B* solved in closed form; the 1.5s cut per 3 casts is **assumed split evenly**
+  between the two skills).
+  Assumption to double-check: Bombardment (Lv118) replaces the Battleship's 330% ticks with 1900% x3 hits on 8
+  targets every 2s — it is a large share of Corsair's DPS.
+
+### Still open / needs an in-game check
+- Ice/Lightning Elquines strike-interval mastery (level 126 vs 130, -20% vs the garbled "0.2%").
+- Illusion Step Lv118 semantics (Bowmaster/Marksman): modeled as always-on, 28% during the 9s evasion window.
+- Hero Puncture's wound damage-taken debuff — see the Hero entry above.
+- Groggy Mastery's conditional Final Damage (Buccaneer), Fullmetal Jacket Def-Pen mastery (Corsair), Perseverance
+  and other HP-conditional masteries: not modeled (assumed inside your Inputs).
+- Final Attack / Majestic Presence internal cooldowns are not reduced by CDR (see above).

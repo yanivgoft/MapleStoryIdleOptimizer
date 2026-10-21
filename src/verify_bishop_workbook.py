@@ -63,7 +63,10 @@ def _in(key):
     if key in ("level", "content_type"):
         return _inputs_ws.cell(row=IN[key], column=2).value
     active_ct = _inputs_ws.cell(row=IN["content_type"], column=2).value
-    return _inputs_ws.cell(row=IN[key], column=_ct_col.get(active_ct, 2)).value
+    value = _inputs_ws.cell(row=IN[key], column=_ct_col.get(active_ct, 2)).value
+    # A blank per-content-type cell (key not applicable to the active content type) mirrors Excel's
+    # INDEX-into-an-empty-cell behavior (0, not None) for the workbook's live =INDEX(...) formula.
+    return 0 if value is None else value
 
 
 level = _in("level")
@@ -178,7 +181,7 @@ def level_gated_sum(pairs):
     return sum(inc for lvl, inc in pairs.items() if level >= lvl)
 
 
-big_bang_mastery = level_gated_sum({102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1})
+big_bang_mastery = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 big_bang_boss_mastery = level_gated_sum({111: 10, 124: 10})
 big_bang_hits = 6 if level >= 136 else 5
 
@@ -254,10 +257,14 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15
 
 
-def eff_cooldown(cooldown, costs_action):
+def eff_cooldown(cooldown, costs_action=None, exempt=False):
+    """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
+    buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
+    compatibility and no longer gates CDR). `exempt=True` marks the trigger-rate / internal-interval
+    surrogate rows (mirror of the build script's CDR_EXEMPT_ROW_KEYS)."""
     if monster_type == "pvp":
         return PVP_FIGHT_DURATION
-    return max(0.1, cooldown - (skill_cooldown_decrease if costs_action else 0))
+    return max(0.1, cooldown - (0 if exempt else skill_cooldown_decrease))
 
 
 def eff_duration(duration):
@@ -286,7 +293,7 @@ def exact_buff_uptime(cooldown, buff_duration):
     casts = exact_casts(cooldown)
     remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
     last_uptime = min(buff_duration, remaining_after_last)
-    return (casts - 1) * buff_duration + last_uptime
+    return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
 def coeff_pct(base, fidx, scales, job_step):
@@ -320,7 +327,7 @@ if unlocked("DIVINE_PROTECTION"):
     elif monster_type == "pvp":
         dp_uptime = min(eff_duration(15), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        dp_uptime = eff_duration(15) / dp_eff_cd
+        dp_uptime = min(1.0, eff_duration(15) / dp_eff_cd)
     divine_protection_bonus = divine_protection_pct * dp_uptime
 else:
     divine_protection_bonus = 0.0
@@ -339,7 +346,7 @@ if level >= 68:
     if monster_type == "pvp":
         hf_uptime = min(eff_duration(15), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        hf_uptime = eff_duration(15) / hf_eff_cd
+        hf_uptime = min(1.0, eff_duration(15) / hf_eff_cd)
     monster_dmg_bonus = 20 * hf_uptime
 else:
     monster_dmg_bonus = 0.0
@@ -355,7 +362,7 @@ if unlocked("HOLY_SYMBOL"):
     elif monster_type == "pvp":
         hsym_uptime = min(eff_duration(holy_symbol_duration), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        hsym_uptime = eff_duration(holy_symbol_duration) / hsym_eff_cd
+        hsym_uptime = min(1.0, eff_duration(holy_symbol_duration) / hsym_eff_cd)
     normal_dmg_bonus = holy_symbol_pct * hsym_uptime
 else:
     normal_dmg_bonus = 0.0
@@ -377,7 +384,7 @@ if fixed_duration_active:
 elif monster_type == "pvp":
     nimble_feet_uptime = min(eff_duration(15), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
 else:
-    nimble_feet_uptime = eff_duration(15) / nimble_feet_eff_cd
+    nimble_feet_uptime = min(1.0, eff_duration(15) / nimble_feet_eff_cd)
 nimble_feet_avg = nimble_feet_pct * nimble_feet_uptime if unlocked("NIMBLE_FEET") else 0.0
 
 as_bonus = (mp_eater_as_pct if unlocked("MP_EATER_MP_BOOST") else 0.0) + (15 if level >= 134 else 0) + nimble_feet_avg
@@ -444,7 +451,7 @@ for key, b in BUFFS.items():
     elif monster_type == "pvp":
         uptime_fraction = min(eff_duration(b["duration"]), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        uptime_fraction = eff_duration(b["duration"]) / eff_cd
+        uptime_fraction = min(1.0, eff_duration(b["duration"]) / eff_cd)
     avg_pct = pct * uptime_fraction
     if b["target"] == "ATTACK":
         attack_bucket_sum += avg_pct
@@ -524,7 +531,8 @@ if unlocked("TRIUMPH_FEATHER"):
     r_total = actions_per_second
     p1 = 25 if level >= 78 else 15
     d1 = 10
-    harness_fraction = (p1 / 100 * r_total * d1) / (1 + p1 / 100 * r_total * d1)
+    tf_cd = eff_cooldown(18, True)
+    harness_fraction = (p1 / 100 * r_total * d1) / (1 + p1 / 100 * r_total * tf_cd)
     p2 = 35
     icd2 = 1
     feather_rate = (p2 / 100 * r_total) / (1 + icd2 * p2 / 100 * r_total)

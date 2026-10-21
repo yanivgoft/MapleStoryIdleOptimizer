@@ -63,7 +63,10 @@ def _in(key):
     if key in ("level", "content_type"):
         return _inputs_ws.cell(row=IN[key], column=2).value
     active_ct = _inputs_ws.cell(row=IN["content_type"], column=2).value
-    return _inputs_ws.cell(row=IN[key], column=_ct_col.get(active_ct, 2)).value
+    value = _inputs_ws.cell(row=IN[key], column=_ct_col.get(active_ct, 2)).value
+    # A blank per-content-type cell (key not applicable to the active content type) mirrors Excel's
+    # INDEX-into-an-empty-cell behavior (0, not None) for the workbook's live =INDEX(...) formula.
+    return 0 if value is None else value
 
 
 level = _in("level")
@@ -223,7 +226,7 @@ SKILLS = {
     "FLAME_HAZE_FOG": dict(job_step=4, cooldown=25, hits=1, icd=poison_mist_dot_icd, window=20, base=700, fidx=12, scales=True, mastery=0, mastery_boss=0, mastery_normal=0, costs_action=False),
 }
 BUFFS = {
-    "MEDITATION": dict(job_step=2, cooldown=30, duration=19.5, base=200, fidx=22, scales=True, target="ATTACK", costs_action=True),
+    "MEDITATION": dict(job_step=2, cooldown=30, duration=19.5, base=200, fidx=21, scales=True, target="ATTACK", costs_action=True),
     "MAGIC_GUARD": dict(job_step=1, cooldown=21, duration=15, base=120, fidx=21, scales=True, target="ATTACK", costs_action=True),
     "NIMBLE_FEET": dict(job_step=1, cooldown=60, duration=15, base=150, fidx=0, scales=False, target="ATTACK_SPEED", costs_action=True),
     "INFINITY": dict(job_step=4, cooldown=30, duration=15, base=216.67, fidx=21, scales=True, target="FINAL_DAMAGE", costs_action=True),
@@ -298,15 +301,17 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15  # mirrors build_fp_mage_workbook.PVP_FIGHT_DURATION
 
 
-def eff_cooldown(cooldown, costs_action):
-    # CDR only applies to skills/buffs the character actually casts (confirmed by the user) —
-    # Mist Eruption (costs_action=False) is passed POISON_MIST_BURST's costs_action instead by
-    # its caller below, mirroring the workbook's CDR_COSTS_ACTION_ROW override. PvP fights are
-    # capped at PVP_FIGHT_DURATION regardless of a skill's own real cooldown (pre-existing gap —
-    # this branch was missing entirely before this session, so PvP was never actually verified).
+def eff_cooldown(cooldown, costs_action=None, exempt=False):
+    """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
+    buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
+    compatibility and no longer gates CDR). `exempt=True` marks the trigger-rate / internal-interval
+    surrogate rows (mirror of the build script's CDR_EXEMPT_ROW_KEYS)."""
     if monster_type == "pvp":
         return PVP_FIGHT_DURATION
-    return max(0.1, cooldown - (skill_cooldown_decrease if costs_action else 0))
+    return max(0.1, cooldown - (0 if exempt else skill_cooldown_decrease))
+
+
+CDR_EXEMPT = {"IGNITE", "ELEMENTAL_DRAIN"}  # mirrors the build script (rate-surrogate cooldowns)
 
 
 def eff_duration(duration):
@@ -345,7 +350,7 @@ def exact_buff_uptime(cooldown, buff_duration):
     casts = exact_casts(cooldown)
     remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
     last_uptime = min(buff_duration, remaining_after_last)
-    return (casts - 1) * buff_duration + last_uptime
+    return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
 def coeff_pct(base, fidx, scales, job_step):
@@ -400,7 +405,7 @@ for key, b in BUFFS.items():
         # itself — pre-existing gap, this branch was missing entirely before this session.
         uptime_fraction = min(eff_duration(b["duration"]), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        uptime_fraction = eff_duration(b["duration"]) / eff_cd
+        uptime_fraction = min(1.0, eff_duration(b["duration"]) / eff_cd)
     avg_pct = pct * uptime_fraction
     if b["target"] == "ATTACK_SPEED":
         as_bonus += avg_pct
@@ -495,7 +500,7 @@ for key, s in SKILLS.items():
     # Mist Eruption's own costs_action is False, but the user confirmed CDR on Poison Mist
     # should carry over to it too (mirrors CDR_COSTS_ACTION_ROW in the workbook).
     cdr_costs_action = SKILLS["POISON_MIST_BURST"]["costs_action"] if key == "MIST_ERUPTION" else s["costs_action"]
-    eff_cd = eff_cooldown(s["cooldown"], cdr_costs_action)
+    eff_cd = eff_cooldown(s["cooldown"], cdr_costs_action, exempt=key in CDR_EXEMPT)
     if fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
@@ -529,7 +534,7 @@ skill_dps["METEOR_PROC"] = meteor_proc_rate * meteor_hit * boss_normal_multiplie
 meteor_shower_rate = 1 / eff_cooldown(SKILLS["METEOR_SHOWER_BURST"]["cooldown"], SKILLS["METEOR_SHOWER_BURST"]["costs_action"])
 ifrit_rate = 1 / eff_cooldown(SKILLS["IFRIT"]["cooldown"], SKILLS["IFRIT"]["costs_action"])
 flame_haze_extra_rate = 0.05 * (basic_attacks_per_second + meteor_shower_rate + meteor_proc_rate + ifrit_rate) if level >= 126 else 0.0
-flame_haze_burst_cooldown = SKILLS["FLAME_HAZE_BURST"]["cooldown"]
+flame_haze_burst_cooldown = eff_cooldown(SKILLS["FLAME_HAZE_BURST"]["cooldown"], True)
 flame_haze_dot_stack_multiplier = 1 + flame_haze_extra_rate * flame_haze_burst_cooldown
 flame_haze_total_stacks = (
     SKILLS["FLAME_HAZE_DOT"]["window"] / flame_haze_burst_cooldown + flame_haze_extra_rate * SKILLS["FLAME_HAZE_DOT"]["window"]

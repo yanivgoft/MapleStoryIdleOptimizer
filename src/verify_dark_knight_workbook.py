@@ -185,10 +185,14 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15
 
 
-def eff_cooldown(cooldown, costs_action):
+def eff_cooldown(cooldown, costs_action=None, exempt=False):
+    """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
+    buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
+    compatibility and no longer gates CDR). `exempt=True` marks the trigger-rate / internal-interval
+    surrogate rows (mirror of the build script's CDR_EXEMPT_ROW_KEYS)."""
     if monster_type == "pvp":
         return PVP_FIGHT_DURATION
-    return max(0.1, cooldown - (skill_cooldown_decrease if costs_action else 0))
+    return max(0.1, cooldown - (0 if exempt else skill_cooldown_decrease))
 
 
 def eff_duration(duration):
@@ -217,7 +221,7 @@ def exact_buff_uptime(cooldown, buff_duration):
     casts = exact_casts(cooldown)
     remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
     last_uptime = min(buff_duration, remaining_after_last)
-    return (casts - 1) * buff_duration + last_uptime
+    return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
 def coeff_pct(base, fidx, scales, job_step):
@@ -234,7 +238,7 @@ def buff_avg(pct, duration, cooldown, costs_action):
     elif monster_type == "pvp":
         uptime = min(eff_duration(duration), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        uptime = eff_duration(duration) / eff_cd
+        uptime = min(1.0, eff_duration(duration) / eff_cd)
     return pct * uptime
 
 
@@ -262,7 +266,7 @@ def monster_blend(boss_val, normal_val):
 
 # ---- Helper rows (Final Attack, Advanced Final Attack, Maple Hero, Evil Eye Shock Enhancement)
 #      — own D/E/F only, no independent DPS. ----
-final_attack_pct = coeff_pct(350, 21, True, 2) if unlocked("FINAL_ATTACK_HELPER") else 0.0
+final_attack_pct = (coeff_pct(350, 21, True, 2) + level_gated_sum({54: 50})) if unlocked("FINAL_ATTACK_HELPER") else 0.0
 advanced_final_attack_pct = (
     coeff_pct(5000, 21, True, 4) + level_gated_sum({113: 50})
     if unlocked("ADVANCED_FINAL_ATTACK_HELPER") else 0.0
@@ -277,7 +281,7 @@ dark_impale_final_attack_addition = (
     final_attack_pct / 100 * (1 + advanced_final_attack_pct / 100) * 25
     if unlocked("FINAL_ATTACK_HELPER") else 0.0
 )
-dark_impale_mastery_damage = level_gated_sum({102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1})
+dark_impale_mastery_damage = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 dark_impale_mastery_boss_damage = level_gated_sum({111: 10, 124: 10})
 dark_impale_pct = skill_coefficient_base + dark_impale_final_attack_addition + dark_impale_mastery_damage
 dark_impale_targets = 6 + basic_attack_target_increase
@@ -289,7 +293,9 @@ hex_pct = (
     coeff_pct(150, 22, True, 3) + level_gated_sum({98: 50})
     if unlocked("HEX_OF_THE_EVIL_EYE") else 0.0
 )
-hex_avg = buff_avg(hex_pct, 20, 30, False) if unlocked("HEX_OF_THE_EVIL_EYE") else 0.0
+EVIL_EYE_CD = (30 * 0.7) if level >= 104 else 30
+hex_avg = buff_avg(hex_pct, 20, EVIL_EYE_CD, False) if unlocked("HEX_OF_THE_EVIL_EYE") else 0.0
+hex_boss_avg = (monster_blend(20, 0) * buff_avg(1.0, 20, EVIL_EYE_CD, False)) if (unlocked("HEX_OF_THE_EVIL_EYE") and level >= 82) else 0.0
 
 dark_resonance_pct = coeff_pct(300, 21, True, 4) if unlocked("DARK_RESONANCE") else 0.0
 dark_resonance_duration = 20 * 1.4 if level >= 130 else 20
@@ -335,8 +341,9 @@ evil_eye_pct = (
     coeff_pct(150, 21, True, 2) + level_gated_sum({39: 10})
     if unlocked("EVIL_EYE") else 0.0
 )
-evil_eye_avg = buff_avg(evil_eye_pct, 20, 30, True) if unlocked("EVIL_EYE") else 0.0
-monster_dmg_bonus = evil_eye_avg + dark_resonance_boss_avg
+evil_eye_avg = buff_avg(evil_eye_pct, 20, EVIL_EYE_CD, True) if unlocked("EVIL_EYE") else 0.0
+magic_crash_weaken_avg = (10 * min(1, 15 / eff_cooldown(28, True))) if (unlocked("MAGIC_CRASH") and level >= 126) else 0.0
+monster_dmg_bonus = evil_eye_avg + magic_crash_weaken_avg + dark_resonance_boss_avg + hex_boss_avg
 
 # ---- Nimble Feet (Attack Speed buff, duty-cycle averaged) ----
 nimble_feet_pct = coeff_pct(150, 0, False, 1)
@@ -379,12 +386,12 @@ COST_ACTION_ROWS = [
     ("MAGIC_CRASH", 28, True, 1),
     ("GUNGNIRS_DESCENT", 13, True, 1),
     ("EVIL_EYE_SHOCK", 18, True, 1),
-    ("RUSH", 22, True, 1),
-    ("HEX_OF_THE_EVIL_EYE", 30, False, 1),
+    ("RUSH", (22 * 0.7) if level >= 90 else 22, True, 1),
+    ("HEX_OF_THE_EVIL_EYE", EVIL_EYE_CD, False, 1),
     ("DARK_RESONANCE", 32, True, 1),
     ("CROSS_OVER_CHAINS", 30, True, 1),
     ("HYPER_BODY", 30, True, 1),
-    ("EVIL_EYE", 30, True, 1),
+    ("EVIL_EYE", EVIL_EYE_CD, True, 1),
     ("LORD_OF_DARKNESS_CRITRATE", 3, False, 1),
     ("LORD_OF_DARKNESS_CRITDMG", 3, False, 1),
     ("NIMBLE_FEET", 60, True, 1),
@@ -427,7 +434,7 @@ dark_impale_dps = DARK_IMPALE_HITS * dark_impale_hit * dark_impale_per_second * 
 
 # ---- Damage skills ----
 magic_crash_targets = 5 + (4 if level >= 100 else 0)
-magic_crash_mastery = level_gated_sum({126: 15})
+magic_crash_mastery = 0
 evil_eye_shock_targets = 6 + (3 if level >= 75 else 0)
 evil_eye_of_dominant_targets = 6 + (3 if level >= 94 else 0)
 
@@ -438,14 +445,14 @@ DAMAGE_SKILLS = {
                          targets=magic_crash_targets),
     "GUNGNIRS_DESCENT": dict(job_step=4, cooldown=13, hits=(6 if level >= 134 else 2),
                               base=(9000 if level >= 134 else 18000), fidx=12, scales=True,
-                              mastery=0, mastery_boss=0, mastery_normal=0, costs_action=True,
+                              mastery=level_gated_sum({108: 50}), mastery_boss=0, mastery_normal=0, costs_action=True,
                               targets=1),
     "EVIL_EYE_SHOCK": dict(job_step=2, cooldown=18, hits=6, base=700, fidx=12, scales=True,
                             mastery=level_gated_sum({44: 50}) + (evil_eye_shock_enh_pct if level >= 75 else 0.0),
                             mastery_boss=0, mastery_normal=0, costs_action=True,
                             targets=evil_eye_shock_targets,
                             maple_ratio=MAPLE_HERO_RATIOS.get("EVIL_EYE_SHOCK", 0)),
-    "EVIL_EYE_OF_DOMINANT": dict(job_step=3, cooldown=30, hits=1, icd=1, window=20, base=600, fidx=21,
+    "EVIL_EYE_OF_DOMINANT": dict(job_step=3, cooldown=EVIL_EYE_CD, hits=1, icd=1, window=20, base=600, fidx=21,
                                   scales=True, mastery=level_gated_sum({78: 50}), mastery_boss=0,
                                   mastery_normal=0, costs_action=False,
                                   targets=evil_eye_of_dominant_targets,
@@ -453,13 +460,13 @@ DAMAGE_SKILLS = {
     "REVENGE_OF_THE_EVIL_EYE": dict(
         job_step=4, cooldown=5, hits=2, base=8500, fidx=12, scales=True,
         mastery=level_gated_sum({122: 50}) + (
-            220 * (get_factor(input_level(4, level, skill1, skill2, skill3, skill4, skill_all), 12) / 1000)
+            2200 * (get_factor(input_level(4, level, skill1, skill2, skill3, skill4, skill_all), 12) / 1000)
             if level >= 138 else 0.0
         ),
         mastery_boss=0, mastery_normal=0, costs_action=False, targets=1,
     ),
-    "RUSH": dict(job_step=3, cooldown=22, hits=1, base=6000, fidx=12, scales=True,
-                 mastery=0, mastery_boss=0, mastery_normal=0, costs_action=True,
+    "RUSH": dict(job_step=3, cooldown=(22 * 0.7) if level >= 90 else 22, hits=1, base=6000, fidx=12, scales=True,
+                 mastery=level_gated_sum({68: 80}), mastery_boss=0, mastery_normal=0, costs_action=True,
                  targets=12, maple_ratio=MAPLE_HERO_RATIOS.get("RUSH", 0)),
 }
 NORMAL_MONSTER_TARGETS = {k: v["targets"] for k, v in DAMAGE_SKILLS.items()}

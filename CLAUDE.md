@@ -4,10 +4,13 @@ This file is for anyone — human or AI — picking up this codebase to add a cl
 or extend the tooling. It captures conventions and pitfalls that were only discovered by building
 all 12 classes; following them will save you from re-discovering the same bugs.
 
-**Current priority** (see README.md's "Future work" section): Bishop's own remaining gap (Divine
-Protection's growth curve) is the last significant per-skill data hole in the four historically
-weakest classes — Paladin, Buccaneer, and Corsair were substantially closed out via
-`maplestoryidle.info` (see "Ground truth sourcing" below). MP consumption and Companions are
+**Current priority** (see README.md's "Future work" section): a full 12-class data audit against
+`maplestoryidle.info`'s embedded game tables was completed 2026-10-21 (findings, the user's per-item
+decisions and the raw source snapshots live in `data/ref_maplestoryidle_info/`, start with
+`VERIFICATION_FINDINGS_2026-10-20.md`); see "Ground truth sourcing → game tables" below for what
+changed in the method. Bishop's own remaining gap (Divine Protection's growth curve) is the last
+significant per-skill data hole in the four historically weakest classes — Paladin, Buccaneer, and
+Corsair were substantially closed out via `maplestoryidle.info`. MP consumption and Companions are
 planned after that, project-wide, though MP consumption specifically has no scaling data on either
 source (see that section) and may stay permanently out of scope. Artifacts (Equip Effects
 for all 36 artifacts, plus a reference-only Artifact Potentials calculator) has already shipped for
@@ -67,6 +70,43 @@ assumption instead of a verified wiki value, and why.
   asking the user, who may have direct in-game knowledge) before inferring absence-of-data means
   absence-of-mechanic.
 
+### Game tables (the strongest ground truth — added 2026-10-21)
+
+`maplestoryidle.info` ships its own structured game tables (`job-skill-impact.json`, snapshot in
+`data/ref_maplestoryidle_info/site_job_skill_impact_all.json`): per skill, the real `ratioE3`
+(= BaseDamage in tenths-of-%), `factorIndex`, `hitCount`/`maxHitCount` (hits / max targets),
+`cooldownMs`/`durationMs`/`tickTimeMs`, trigger rules (`OnAttack`, trigger %, cooldown, condition
+expression) and `statOps` (stat buffs/debuffs with their own factorIndex). It beat the site's own
+rendered description text on every disagreement tested (the text said Poison Breath 160% / Elemental
+Drain 8%; tables and the user's in-game numbers say 200% x F12 / 12% x F21). Resolve a skill's
+`(baseDamage, factorIndex)` from the table first; the old "burst -> 12, buff -> 22" FLAGGED-ASSUMPTION
+guess was wrong for several buffs (Paladin Guardian/Divine Blessing/HP Recovery, Buccaneer Serpent
+Scale/Crossbones/Time Leap, Corsair Majestic Presence/Jolly Roger/Ahoy Mateys, FP Meditation, ...).
+When the table has no row for a variant (e.g. Greater Sea Serpent I's 430% line) the factorIndex is
+still a flagged assumption — say so in the row's Note. Site `reqLevel` is the unlock level.
+
+Patterns introduced by that audit (reuse them, don't reinvent):
+- **"When attacking ... X% chance, 1s cooldown" mastery procs** (Meteor/Blizzard/Nautilus Final
+  Attack, Majestic Presence) trigger off ANY attack: steady-state rate `(c*R)/(1+ICD*c*R)` with R the
+  combined cast rate of the triggering attacks (Basic attack rate + action-costing damage skills;
+  summons and DoT ticks excluded, per the user's FP-Mage precedent). They have no Cooldown of their
+  own (ICD(s) column, RollsPerCast 1) and a Summary "trigger rate" cell mirrored in every Sensitivity
+  block with the BLOCK-LOCAL `C/Q/R` columns (bug #6).
+- **Temporary skill-level buffs (Paladin's Combat Orders)** are modeled by time-averaging the
+  FactorTable lookup: `(1-u)*F(D) + u*F(D+bonus)`, u = the buff's uptime (a Summary cell).
+- **Resource loops (Buccaneer's Serpent Scales/Assault Mode)** use a smoothed steady-state cycle
+  (activation interval T = trigger cooldown + half a basic-attack period; uptime u = A/(A+N*T)).
+- **A circular dependency can hide inside a SUMPRODUCT range**: excluding a row with a `<>` mask still
+  makes that row's cell a precedent. When a quantity feeds back into some rows' cooldowns (Corsair's
+  Quickdraw), sum the OTHER rows' cells explicitly instead of ranging over the whole column, and solve
+  the fixed point in closed form. The `formulas` package silently drops circular cells (the symptom is
+  `KeyError: cell not found in workbook: SUMMARY!B3` in a verify script).
+- **Skills-sheet formulas that read Inputs (e.g. a window that depends on Buff Duration Increase)
+  are invisible to Sensitivity blocks** — those must re-read the Input through the block's own `ib()`.
+- Verify scripts do not model artifacts: run them against a copy with the artifact slots cleared
+  (`Inputs` rows "Slot 1-4" → "(none)"), otherwise a saved workbook that has artifacts equipped will
+  "mismatch" by exactly the artifact bonus.
+
 ## The FLAGGED ASSUMPTION convention
 
 Some classes (Bishop, Paladin, Buccaneer, Corsair) have little or no individual per-skill wiki
@@ -95,11 +135,15 @@ you're building a new class, check for all of these *before* your first build, n
    exact level, it varies: 134 for some classes, 136 for others). Never default to the
    *target*-count formula (`=6+basic_attack_target_increase`) for this field — that's a different
    field (`NormalMonsterTargets`) entirely, and confusing the two silently inflates DPS.
-2. **Mastery chains showing cumulative per-tier displayed percentages must be summed as DELTAS**,
-   not the raw displayed values. If a chain shows 10%/11%/12%/13%/14%/15% across six level tiers,
-   the correct `level_gated_sum` dict is `{lvl1: 10, lvl2: 1, lvl3: 1, lvl4: 1, lvl5: 1, lvl6: 1}`
-   (10, then +1 five times → correct max total 15%), not the raw values (`{...: 15}`, which sums
-   to a wrong 75%).
+2. **Mastery chains showing per-tier percentages are summed as RAW tier values — every tier is its
+   own add-on.** (REVERSED 2026-10-21 on the user's in-game confirmation; this item used to say the
+   opposite, "sum as deltas", which silently under-counted the basic-attack chain in 11 classes.) A
+   chain that shows 10%/11%/12%/13%/14%/15% across six level tiers is
+   `{lvl1: 10, lvl2: 11, lvl3: 12, lvl4: 13, lvl5: 14, lvl6: 15}` → 75% at max (e.g. 33% at Lv117 for
+   the 102/106/116 tiers), NOT `{10, 1, 1, 1, 1, 1}` (15%). Percent masteries add *points* to the
+   skill's displayed coefficient% (a 363% skill with a "+70%" mastery shows 433%), they are not
+   relative multipliers; a plain "%" in Nexon's text is points unless the user says otherwise (Dark
+   Knight's Cross Over Chains/Hex "+100%/+50% Attack" are points — they look huge but are real).
 3. **Any "helper row"** (used when one skill's effect folds into another's coefficient, e.g. Final
    Attack folding into a basic attack) **must have its `SkillMasteryBonus%` actually wired into
    the Calc-sheet F-column formula** — in *both* the main Calc sheet and the Sensitivity sheet's
@@ -262,6 +306,22 @@ you're building a new class, check for all of these *before* your first build, n
     `potential_cubes_ev.py`'s `optimal_stopping_trace`/`probability_any_better_roll` both take
     `potential_type` as an explicit parameter and index into the matching sub-table — never
     reintroduce a single shared pity table across both tracks.
+
+18. **Skill Cooldown Decrease applies to every REAL cooldown** (skills, buffs and passives; user decision
+    2026-10-21) — not just `CostsActionSlot` rows. Each build script routes every effective-cooldown call
+    through `cdr_applies_expr(key)`; rows whose `Cooldown(s)` is a trigger-rate / internal-interval SURROGATE
+    (e.g. `1/APS`, a 1s tick) must be listed in that script's `CDR_EXEMPT_ROW_KEYS` or CDR would crush them to
+    the 0.1s floor. Buff/debuff UPTIMES must use the row's effective cooldown (`1/Calc!Q{row}` on the main
+    sheet, the block-local `1/Q{row}` in a Sensitivity block), never the raw Skills-sheet cell, and are capped
+    at 100% (`MIN(1, dur/cd)` steady state, `(casts-1)*MIN(dur, cd) + last` when fixed-duration exact).
+19. **A Skills-sheet formula that reads a swept Input (or the main Summary) is invisible to Sensitivity
+    blocks.** Level is never swept so `IF(Inputs!level>=...)` is fine, but `6+basic_attack_target_increase`,
+    attack-speed-scaled cooldowns (`Summary!APS`), Buff-Duration-dependent windows and any `Summary!...`
+    ProcChance% must be re-derived inside the block from its own `ib()` / local cells (see Bowmaster's
+    `AS_SCALED_COOLDOWN_EXPR`, Corsair's `crew_window_expr`, Buccaneer's block-local Assault uptime).
+    Check with a full-model run: set a swept stat's Input to the Sensitivity row's "New Value" in a stripped
+    copy of the workbook and compare Summary!Total DPS with the Sensitivity "New Total DPS" (pure-boss and
+    pure-normal content, where the time-weighted and dollar blends coincide).
 
 ## Cross-checking a new class against its siblings
 

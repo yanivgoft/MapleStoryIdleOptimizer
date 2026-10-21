@@ -922,7 +922,7 @@ def build_inputs_sheet(wb, existing=None):
 
     ws.cell(row=31, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
-        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
+        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
@@ -1579,7 +1579,7 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
     scaled_duration = f'({duration_ref}*(1+{bdi_ref}/100))'
     return (
         f'IF({monster_type_ref}="pvp",MIN({scaled_duration},{PVP_FIGHT_DURATION})/{PVP_FIGHT_DURATION},'
-        f'{scaled_duration}/{cooldown_ref})'
+        f'MIN(1,{scaled_duration}/{cooldown_ref}))'
     )
 
 
@@ -1650,7 +1650,9 @@ def exact_buff_uptime_expr(casts_ref, buff_duration_ref, cooldown_ref, fight_dur
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{fight_duration_ref}-{last_cast_start})'
     last_uptime = f'MIN({buff_duration_ref},{remaining_after_last})'
-    return f'(({casts_ref}-1)*{buff_duration_ref}+{last_uptime})'
+    # A recast that lands before the previous buff ends only extends coverage by one cooldown, so each full
+    # cycle contributes MIN(duration, cooldown) of uptime — never more (otherwise uptime could exceed 100%).
+    return f'(({casts_ref}-1)*MIN({buff_duration_ref},{cooldown_ref})+{last_uptime})'
 
 
 def uptime_fraction_or_exact_expr(fixed_duration_active_ref, casts_ref, monster_type_ref,
@@ -1722,6 +1724,29 @@ ROW_ORDER = [
 ROW = {key: i for i, key in enumerate(ROW_ORDER, start=2)}
 LAST_ROW = 1 + len(ROW_ORDER)
 
+# Blizzard - Final Attack's trigger set: (row key, triggers per cast). Chain Lightning's own cast
+# rate (Summary!BASIC_ATTACKS_PER_SEC) is always added on top, 1 trigger per cast. Blizzard counts 3 per
+# cast (its 3 frost spears are independent trigger opportunities — same convention as FP-Mage's
+# Meteor Shower). Summons / DoT ticks (Thunder Sphere, Elquines) are excluded, as in FP-Mage.
+BLIZZARD_PROC_TRIGGERS = [
+    ("THUNDER_BOLT", 1), ("GLACIER_WALL", 1), ("FREEZING_BREATH", 1), ("BLIZZARD", 3), ("FROZEN_ORB", 1),
+]
+
+
+def blizzard_proc_rate_expr(h_ref, icd_ref, trigger_rate_ref):
+    """Steady-state Blizzard-FA trigger rate per second: (Chance*R)/(1+ICD*Chance*R), R = combined
+    cast rate of every triggering attack. Same formula as FP-Mage's meteor_proc_rate_expr."""
+    return f'({h_ref}*{trigger_rate_ref})/(1+{icd_ref}*{h_ref}*{trigger_rate_ref})'
+
+
+def blizzard_trigger_rate_expr(fda_ref, fight_duration_ref, baps_ref, terms):
+    """Combined cast rate of every Blizzard-FA triggering attack. `terms` = (unlocked_ref,
+    casts_in_fight_ref, inv_cooldown_ref, triggers_per_cast) for each BLIZZARD_PROC_TRIGGERS row;
+    the caller supplies main-sheet or block-local refs (block-local Q/R — never the main sheet's)."""
+    exact = "+".join(f'(({c}=TRUE)*{r}*{n})' for c, r, q, n in terms)
+    steady = "+".join(f'(({c}=TRUE)*{q}*{n})' for c, r, q, n in terms)
+    return f'IF({fda_ref},({exact})/{fight_duration_ref},{steady})+{baps_ref}'
+
 # Unlock level (character level) for every row, taken directly from each skill's own wiki page
 # ("Level Required") or (for mastery-only rows) the mastery table — gated all the way down
 # (unlike FP-Mage's own "only bothered gating the 102-138 batch" shortcut), matching Night
@@ -1762,11 +1787,12 @@ def unlock_expr(key):
     return "=TRUE" if level is None else f"={IB('level')}>={level}"
 
 
-# Blizzard - Final Attack (Mastery Lv.113) procs only off Blizzard's own casts, not an external
-# multi-skill trigger set (simpler than FP-Mage's Meteor Proc) — shares Blizzard's own live
-# Cooldown(s) cell, same cross-reference pattern as Night Lord's SUDDEN_RAID_DOT mirroring
-# SUDDEN_RAID_BURST's cooldown / FP-Mage's Mist Eruption mirroring Poison Mist (burst)'s.
-_BLIZZARD_FINAL_ATTACK_COOLDOWN = f"=Skills!{SC['Cooldown(s)']}{ROW['BLIZZARD']}"
+# Blizzard - Final Attack (Mastery Lv.113): '[Blizzard in Slot] When attacking, deals 950% additional
+# damage with a 30% chance', 1s internal cooldown (Aug-13 patch note: "Cooldown set to 1s") — i.e. ANY
+# attack can trigger it, exactly like FP-Mage's Meteor Shower Final Attack (METEOR_PROC). Modeled the
+# same way: steady-state proc rate = (Chance*R)/(1+ICD*Chance*R) with R = the combined cast rate of the
+# triggering attacks (BLIZZARD_PROC_TRIGGERS below + Chain Lightning's own cast rate), no cooldown of
+# its own.
 
 # (key, name, jobstep, cooldown, costsAction, hits, icd, window, chance, rolls,
 #  baseDamage, factorIndex, scales, skillMasteryBonusPct, masteryBossDmgPct, masteryNormalDmgPct,
@@ -1775,7 +1801,7 @@ SKILL_ROWS = [
     ("CHAIN_LIGHTNING", "Chain Lightning", 4, "", False,
      f'=IF({IB("level")}>=136,6,5)', 0, 0, 100, 1,
      "", "", True,
-     level_gated_sum(IB("level"), {102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1}),
+     level_gated_sum(IB("level"), {102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15}),
      level_gated_sum(IB("level"), {111: 10, 124: 10}),
      0,
      f'=6+{IB("basic_attack_target_increase")}', "", 0, "", "", "",
@@ -1785,9 +1811,9 @@ SKILL_ROWS = [
      "Inputs!skill_coefficient (=290*basic_factor/1000) exactly, so this row's own coefficient "
      "is just that Inputs value + SkillMasteryBonus% (same mechanism as FP-Mage/Night Lord's "
      "own Basic Attack/Showdown rows). SkillMasteryBonus% is the 6-tier 'Chain Lightning - "
-     "Damage' mastery chain (102/106/116/120/128/132), cumulative totals 10%->15% per the "
-     "game's own tooltip convention, so level_gated_sum uses DELTA increments (10, then +1 "
-     "five times). MasteryBossDamage% is the 2-tier 'Chain Lightning - Boss Monster Damage' "
+     "Damage' mastery chain (102/106/116/120/128/132): every tier is its own add-on "
+     "(user-confirmed 2026-10-21: +10, +11, +12, +13, +14, +15 = 75% total at max), so "
+     "level_gated_sum uses the RAW tier values. MasteryBossDamage% is the 2-tier 'Chain Lightning - Boss Monster Damage' "
      "chain (111/124), each independently +10%, totaling +20%. HitsPerCast 5->6 once the "
      "level-136 'Strike' mastery unlocks."),
     ("MAGIC_GUARD", "Magic Guard", 1,
@@ -1861,34 +1887,43 @@ SKILL_ROWS = [
      "added in a later build stage."),
     ("BLIZZARD", "Blizzard", 4, 33, True, 3, 0, 0, 100, 1,
      6000, 12, True,
-     level_gated_sum(IB("level"), {130: 40}),
+     level_gated_sum(IB("level"), {134: 50}),
      0, 0, 7, "", 0,
      "", "", "",
      "Wiki: 600%->1200% (levels 1-200) to 5 target(s) 3 time(s) (patched targets 5->7, Aug 13 "
      "2026 patch note — the wiki page is stale), cooldown 33s. factorIndex 12, baseDamage 6000 "
-     "tenths%. Mastery Lv.130 (corrected name/description pairing — wiki mismatch resolved via "
-     "content-matching, see the plan) 'Blizzard - Damage' +40% flat (real SkillMasteryBonus%). "
+     "tenths%. Mastery Lv.134 'Blizzard - Damage' +50% (user-confirmed in-game text: 'Blizzard "
+     "and Blizzard Final Attack damage +50%'; the wiki's Lv.130 '+40%' line was a garbled "
+     "name/description pairing) — real SkillMasteryBonus%, and the same +50 is applied to the "
+     "Final Attack row below. "
      "Mastery Lv.113 'Blizzard - Final Attack' is its own separate proc row, see "
      "BLIZZARD_FINAL_ATTACK below, not part of this row's own fields."),
     ("BLIZZARD_FINAL_ATTACK", "Blizzard - Final Attack (Mastery Lv.113)", 4,
-     _BLIZZARD_FINAL_ATTACK_COOLDOWN, False, 1, 0, 0, 30, 3,
+     "", False, 1, 1, 0, 30, 1,
      9500, 21, True,
-     0, 0, 0, 1, "", 0,
+     level_gated_sum(IB("level"), {134: 50}),
+     0, 0, 1, "", 0,
      "", "", "",
-     "Standalone proc row, mirrors FP-Mage's own METEOR_PROC row structure but simpler: procs "
-     "only off Blizzard's own casts (per the wiki's own '[Blizzard in Slot] When attacking, "
-     "deals...' phrasing — self-contained, not a multi-skill trigger set), so it shares "
-     "Blizzard's own live Cooldown(s) cell directly instead of needing an external combined-"
-     "cast-rate formula. Wiki formula ({#expr:750*(1+x*0.004)}%, patched base 750->950%, "
+     "Standalone proc row, same structure as FP-Mage's METEOR_PROC: '[Blizzard in Slot] When "
+     "attacking, deals ...% additional damage with a 30% chance' + the Aug-13 patch note "
+     "'Cooldown set to 1s' => ANY attack can trigger it (30% per attack, 1s ICD), not just "
+     "Blizzard's own casts (an earlier version modeled Blizzard-only triggers, a large "
+     "undercount). Steady-state proc rate = (Chance*R)/(1+ICD*Chance*R) where R is the "
+     "combined cast rate of the triggering attacks (Summary!BLIZZARD_TRIGGER_RATE): Chain "
+     "Lightning's cast rate + one trigger per cast of Thunder Bolt/Glacier Wall/Freezing "
+     "Breath/Frozen Orb + 3 per Blizzard cast (its 3 frost spears are independent triggers, same "
+     "convention as Meteor Shower in FP-Mage). ASSUMPTION (mirrors FP-Mage's user-confirmed "
+     "trigger set): summons and damage-over-time ticks (Thunder Sphere, Elquines) do not "
+     "trigger it. This row has NO cooldown of its own (RollsPerCast=1: Chance applies per "
+     "triggering attack; ICD(s)=1 is the internal cooldown, ActiveWindow=0 so EffectiveHits is "
+     "unused). Mastery Lv.134 'Blizzard - Damage' also boosts this row by +50 (same "
+     "SkillMasteryBonus% as Blizzard). Wiki formula ({#expr:750*(1+x*0.004)}%, patched base 750->950%, "
      "chance 20%->30%): reverse-engineered as factorIndex 21, baseDamage 9500 tenths% (950%, "
-     "already the patched value). RollsPerCast=3 (Blizzard's own 3 hits, each an independent "
-     "30% roll -> ProcProbability = 1-(1-0.3)^3 = 65.7% chance per Blizzard cast), ICD(s)=0 "
-     "(already capped to at most one proc per Blizzard cast via HitsPerCast=1, no further ICD "
-     "needed). Single-target (NormalMonsterTargets=1), matching FP-Mage's own Meteor Proc "
-     "precedent for an 'additional damage on a hit' style proc, absent any wiki text "
+     "already the patched value). Single-target (NormalMonsterTargets=1), matching FP-Mage's own "
+     "Meteor Proc precedent for an 'additional damage on a hit' style proc, absent any wiki text "
      "specifying a target count of its own."),
     ("FROZEN_ORB", "Frozen Orb", 4, 23, True, 1,
-     f'=IF({IB("level")}>=134,0.5*0.5,0.5)', 6, 100, 1,
+     f'=IF({IB("level")}>=126,0.5-0.2,0.5)', 6, 100, 1,
      9000, 12, True,
      level_gated_sum(IB("level"), {122: 50}),
      0, 0, 10, "", 0,
@@ -1898,20 +1933,22 @@ SKILL_ROWS = [
      "'If there is 1 target near the orb, the damage is halved' — a single-target (boss) "
      "halving mechanic implemented ONLY in this row's own Calc!O (DPS) formula in a later build "
      "stage (x0.5 when monster_type=boss, x1 otherwise), not a Skills-sheet field. Mastery "
-     "Lv.122 'Frozen Orb - Damage' +50% (real SkillMasteryBonus%), Lv.134 (corrected "
-     "name/description pairing) 'Frozen Orb - Strike Interval' -50% tick interval (0.5s->0.25s, "
-     "baked into the ICD(s) formula)."),
+     "Lv.122 'Frozen Orb - Damage' +50% (real SkillMasteryBonus%), Lv.126 'Frozen Orb - Strike "
+     "Interval' -0.2 SEC tick interval (0.5s->0.3s, baked into the ICD(s) formula; user-confirmed "
+     "in-game text — earlier versions had this as -50% at Lv.134, a garbled wiki pairing)."),
     ("ELQUINES", "Elquines", 4, 80, True, 1,
-     f'=IF({IB("level")}>=126,4*0.8,4)', 30, 100, 1,
+     f'=IF({IB("level")}>=130,4*0.8,4)', 30, 100, 1,
      35000, 12, True,
      level_gated_sum(IB("level"), {138: 50}),
      0, 0,
      f'=IF({IB("level")}>=138,6,3)', "", 0,
      "", "", "",
      "Summon, wiki: 3500%->7000% (levels 1-200) to 3 target(s) every 4s for a 30s duration, "
-     "cooldown 80s. factorIndex 12, baseDamage 35000 tenths%. Mastery Lv.126 (corrected "
-     "name/description pairing, user-confirmed 20% not the wiki's typo'd 0.2%) 'Elquines - "
-     "Strike Interval' -20% attack interval (4s->3.2s, baked into the ICD(s) formula), Lv.138 "
+     "cooldown 80s. factorIndex 12, baseDamage 35000 tenths%. Mastery Lv.130 'Elquines - "
+     "Strike Interval' -20% attack interval (4s->3.2s, baked into the ICD(s) formula; the wiki "
+     "prints a typo'd '0.2%' on the Lv.126 row, an earlier session recorded the user confirming "
+     "20%, and BOTH sources' mastery NAMES put Elquines-Strike Interval at Lv.130 — the level was "
+     "moved 126->130 on that basis; the exact in-game text is still unverified), Lv.138 "
      "'Elquines - Damage & Target' +50% damage (real SkillMasteryBonus%) AND +3 max targets "
      "(3->6, baked into the NormalMonsterTargets formula)."),
     ("MP_EATER_MP_BOOST", "MP Eater - MP Boost (Mastery Lv.49)", 2, "", False, 1, 0, 0, 100, 1,
@@ -2043,7 +2080,17 @@ ROW_HAS_COOLDOWN = {row[0]: row[3] not in ("", None) for row in SKILL_ROWS}
 # the same cross-row-CDR-eligibility pattern as Night Lord's SUDDEN_RAID_DOT mirroring
 # SUDDEN_RAID_BURST / FP-Mage's MIST_ERUPTION mirroring POISON_MIST_BURST.
 CDR_COSTS_ACTION_ROW = {key: r for key, r in ROW.items()}
-CDR_COSTS_ACTION_ROW["BLIZZARD_FINAL_ATTACK"] = ROW["BLIZZARD"]
+
+
+# Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills, buffs and passives alike
+# (user decision 2026-10-21; it used to apply only to CostsActionSlot rows). The exempt rows are NOT real
+# cooldowns: their Cooldown(s) cell is a trigger-rate / internal-interval surrogate (e.g. 1 / attack speed),
+# which CDR must not shrink to the 0.1s floor.
+CDR_EXEMPT_ROW_KEYS = []
+
+
+def cdr_applies_expr(key):
+    return "FALSE" if key in CDR_EXEMPT_ROW_KEYS else "TRUE"
 
 
 def build_skills_sheet(wb):
@@ -2111,10 +2158,11 @@ SUMMARY_ROW = {
     "STARTUP_TIME": 21,
     "BOSS_ONLY_TOTAL": 22,
     "NORMAL_ONLY_TOTAL": 23,
+    "BLIZZARD_TRIGGER_RATE": 24,
 }
 # The two variable-length summary tables (Per-Skill Breakdown, sized off DAMAGE_DEALING_KEYS, and
 # Marginal DPS & Stat Value, sized off STAT_SWEEP) start after this fixed block, with a 2-row gap.
-BREAKDOWN_SECTION_ROW = SUMMARY_ROW["NORMAL_ONLY_TOTAL"] + 2
+BREAKDOWN_SECTION_ROW = SUMMARY_ROW["BLIZZARD_TRIGGER_RATE"] + 2
 
 
 def build_calc_sheet(wb):
@@ -2149,13 +2197,18 @@ def build_calc_sheet(wb):
     # removes elsewhere (see Bishop's ANGEL_RAY_BOSS_PROC comment for the detailed rationale).
 
 
+    blizzard_proc_rate_main = blizzard_proc_rate_expr(
+        f'H{ROW["BLIZZARD_FINAL_ATTACK"]}', S("ICD(s)", ROW["BLIZZARD_FINAL_ATTACK"]),
+        f'Summary!$B${SUMMARY_ROW["BLIZZARD_TRIGGER_RATE"]}',
+    )
+
     for key, r in ROW.items():
         ws.cell(row=r, column=1, value=f"={S('Key', r)}")
         ws.cell(row=r, column=2, value=f"={S('Name', r)}")
         ws.cell(row=r, column=3, value=unlock_expr(key))
 
         eff_cd_r = (
-            f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+            f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), cdr_applies_expr(key))}'
             f'*(1-{artifact_soul_contract_pct_expr(IB("soul_contract_equipped"), IB("content_type"), IB("soul_contract_star"))}/100))'
         )
         # Duration actually available for this row's casts in fixed-duration mode: the raw fight
@@ -2322,6 +2375,18 @@ def build_calc_sheet(wb):
             ws.cell(row=r, column=21, value=(
                 f'=IF(C{r},H{r}*N{r}*{rate_r}*1*{frozen_orb_normal_mult}*{extra_normal_mult_r},0)'
             ))
+        elif key == "BLIZZARD_FINAL_ATTACK":
+            # No cooldown of its own — steady-state proc rate from the combined cast rate of every
+            # triggering attack (Summary!BLIZZARD_TRIGGER_RATE), see the Skills-sheet Note. H{r} is the
+            # per-attack proc chance (RollsPerCast=1).
+            prefix = f'{blizzard_proc_rate_main}*N{r}'
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                S("NormalMonsterTargets", r), IB("max_enemies_hit"),
+                extra_boss_mult_r, extra_normal_mult_r,
+            )
+            ws.cell(row=r, column=19, value=f'=IF(C{r},{boss_expr},0)')
+            ws.cell(row=r, column=21, value=f'=IF(C{r},{normal_expr},0)')
         elif key in DAMAGE_ROW_KEYS:
             prefix = f'H{r}*N{r}*{rate_r}'
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
@@ -2417,7 +2482,7 @@ def build_summary_sheet(wb):
 
     def buff_uptime(row):
         return uptime_fraction_or_exact_expr(
-            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), S("Cooldown(s)", row),
+            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), f'(1/Calc!Q{row})',
             bdi_main, IB("fight_duration"),
         )
 
@@ -2444,7 +2509,7 @@ def build_summary_sheet(wb):
     # (ILM has no separate multiplicative "ED_MULT" bucket like FP-Mage's own Elemental Decrease,
     # so it joins this additive bucket instead — a genuine ILM-specific adaptation). Feeds into
     # both boss_dmg_pct_r/row and normal_dmg_pct_r/row additively (both branches).
-    fb_cd = S("Cooldown(s)", ROW["FREEZING_BREATH"])
+    fb_cd = f'(1/Calc!Q{ROW["FREEZING_BREATH"]})'
     ws.cell(row=r_mdb, column=1, value=(
         "Monster Damage Taken Bonus % (Freezing Breath - Weaken + Elemental Reset + Artifact "
         "Enemy Damage Taken, summed)"
@@ -2489,6 +2554,13 @@ def build_summary_sheet(wb):
 
     ws.cell(row=r_baps, column=1, value="Chain Lightning Casts Per Second (basic-attack rate)")
     ws.cell(row=r_baps, column=2, value=f'=MAX(0,B{r_aps}-B{r_castrate})')
+
+    r_trig = SUMMARY_ROW["BLIZZARD_TRIGGER_RATE"]
+    ws.cell(row=r_trig, column=1, value="Blizzard Final Attack — triggering attacks' combined cast rate, incl. Chain Lightning (1/s)")
+    ws.cell(row=r_trig, column=2, value="=" + blizzard_trigger_rate_expr(
+        fda_main, IB("fight_duration"), f"B{r_baps}",
+        [(f"Calc!C{ROW[k]}", f"Calc!R{ROW[k]}", f"Calc!Q{ROW[k]}", n) for k, n in BLIZZARD_PROC_TRIGGERS],
+    ))
 
     r_startup = SUMMARY_ROW["STARTUP_TIME"]
     ws.cell(row=r_startup, column=1, value=(
@@ -2620,15 +2692,20 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Min Damage Multiplier %": "min_damage",
     "Max Damage Multiplier %": "max_damage",
     "Defense Penetration": "def_pen",
-    "Int %": "int_pct",
-    "Int": "flat_int",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
     "Skill Cooldown Decrease (seconds)": "skill_cooldown_decrease",
     "Buff Duration Increase %": "buff_duration_increase_pct",
     "All Skill Level": "skill_lvl_all",
     "Basic Attack Target Increase": "basic_attack_target_increase",
+    "Int %": "int_pct",
+    "Int": "flat_int",
 }
+
+# Sub-stat PERCENT potential lines: the Sensitivity sweep for the sub-stat is a flat +1 point, so a
+# "+N% sub-stat" roll is worth N% of the current total sub-stat in points (approximation: Inputs holds the
+# final sub-stat value, no separate flat/% split). Main-stat lines map 1:1 above.
+POTENTIAL_SUB_STAT_PCT_LINES = {}  # mages have no LUK (sub-stat) Sensitivity sweep, so Luk lines stay unpriced
 
 
 def dps_per_unit_expr(stat_name):
@@ -2651,6 +2728,9 @@ def dps_per_unit_expr(stat_name):
         )
     if stat_name == "Companion Summoning Time Increase %":
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]}'
+    if stat_name in POTENTIAL_SUB_STAT_PCT_LINES:
+        sweep_key, inputs_key = POTENTIAL_SUB_STAT_PCT_LINES[stat_name]
+        return f'=Sensitivity!H{SENSITIVITY_ROW_FOR[sweep_key]}*{IB(inputs_key)}/100'
     key = POTENTIAL_STAT_TO_SWEEP_KEY.get(stat_name)
     if key is None:
         return "0"
@@ -2661,7 +2741,7 @@ def dps_per_unit_expr(stat_name):
 # row (2..LAST_ROW) + 8 local summary rows (ed/avgbuff/mdb/db/asb/aps/castrate/baps, same count
 # as FP-Mage's own 8: bm/ed/avgbuff/asbonus/aps/castrate/baps/meteor) + 1 blank + total + 2
 # blank spacer rows before the next block. Derived from LAST_ROW so it can't drift out of sync.
-BLOCK_HEIGHT = LAST_ROW + 16
+BLOCK_HEIGHT = LAST_ROW + 17
 BLOCK_START = SENSITIVITY_HEADER_ROW + len(STAT_SWEEP) + SENSITIVITY_ARTIFACT_TABLE_HEADER_ROWS + 3
 
 
@@ -2711,6 +2791,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     s_boss_total = calc_end + 11
     s_normal_total = calc_end + 12
     s_total = calc_end + 13
+    s_trig = calc_end + 14
     avgbuff_ref, mdb_ref = f"B{s_avgbuff}", f"B{s_mdb}"
     db_ref, asb_ref, aps_ref = f"B{s_db}", f"B{s_asb}", f"B{s_aps}"
     castrate_ref, baps_ref, total_ref = f"B{s_castrate}", f"B{s_baps}", f"B{s_total}"
@@ -2947,15 +3028,19 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     )
     ws[basic_coeff_cell] = f'=290*{basic_factor_cell}/1000'
 
+    blizzard_proc_rate_block = blizzard_proc_rate_expr(
+        f'H{row_of["BLIZZARD_FINAL_ATTACK"]}', S("ICD(s)", ROW["BLIZZARD_FINAL_ATTACK"]), f"B{s_trig}",
+    )
+
     for key, r in ROW.items():
         row = row_of[key]
         ws.cell(row=row, column=1, value=f"={S('Key', r)}")
         ws.cell(row=row, column=2, value=f"={S('Name', r)}")
         ws.cell(row=row, column=3, value=unlock_expr(key))
 
-        eff_cd_row = effective_cooldown_expr(
-            ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"),
-            S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]),
+        eff_cd_row = (
+            f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), cdr_applies_expr(key))}'
+            f'*(1-{artifact_soul_contract_pct_expr(ib("soul_contract_equipped"), ib("content_type"), ib("soul_contract_star"))}/100))'
         )
         # Block-local mirror of available_duration_r (main sheet) — must use this block's own
         # startup_ref, not the main sheet's, since sweeping skill_cooldown_decrease/attack_speed/
@@ -3071,6 +3156,15 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             ws.cell(row=row, column=21, value=(
                 f'=IF(C{row},H{row}*N{row}*{rate_row}*1*{frozen_orb_normal_mult_block}*{extra_normal_mult_block},0)'
             ))
+        elif key == "BLIZZARD_FINAL_ATTACK":
+            prefix = f'{blizzard_proc_rate_block}*N{row}'
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                S("NormalMonsterTargets", r), ib("max_enemies_hit"),
+                extra_boss_mult_block, extra_normal_mult_block,
+            )
+            ws.cell(row=row, column=19, value=f'=IF(C{row},{boss_expr},0)')
+            ws.cell(row=row, column=21, value=f'=IF(C{row},{normal_expr},0)')
         elif key in DAMAGE_ROW_KEYS:
             prefix = f'H{row}*N{row}*{rate_row}'
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
@@ -3103,7 +3197,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
             fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
-            S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
+            f'(1/Q{local_row})', bdi_block, ib("fight_duration"),
         )
 
     ws.cell(row=s_avgbuff, column=1, value="Average Buff Multiplier (Magic Guard + Meditation + Artifact Attack%, summed; then Infinity)")
@@ -3113,7 +3207,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         f'*IF(C{inf}=TRUE,(1+F{inf}*{buff_uptime_block(inf, ROW["INFINITY"])}/100),1)'
     ))
 
-    fb_cd_block = S("Cooldown(s)", ROW["FREEZING_BREATH"])
+    fb_cd_block = f'(1/Q{row_of["FREEZING_BREATH"]})'
     ws.cell(row=s_mdb, column=1, value=(
         "Monster Damage Taken Bonus % (Freezing Breath - Weaken + Elemental Reset + Artifact "
         "Enemy Damage Taken, summed)"
@@ -3148,6 +3242,12 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     ws.cell(row=s_baps, column=1, value="Chain Lightning Casts Per Second")
     ws.cell(row=s_baps, column=2, value=f'=MAX(0,{aps_ref}-{castrate_ref})')
+
+    ws.cell(row=s_trig, column=1, value="Blizzard Final Attack trigger rate (this block's own Q/R)")
+    ws.cell(row=s_trig, column=2, value="=" + blizzard_trigger_rate_expr(
+        fda_block, ib("fight_duration"), baps_ref,
+        [(f"C{row_of[k]}", f"R{row_of[k]}", f"Q{row_of[k]}", n) for k, n in BLIZZARD_PROC_TRIGGERS],
+    ))
 
     ws.cell(row=s_startup, column=1, value="Buff-Casting Startup Delay (s, fixed-duration only)")
     ws.cell(row=s_startup, column=2, value="=" + buff_cast_startup_time_expr(

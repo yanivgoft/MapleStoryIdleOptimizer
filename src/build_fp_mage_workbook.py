@@ -1251,7 +1251,7 @@ def build_inputs_sheet(wb, existing=None):
 
     ws.cell(row=31, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
-        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
+        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
@@ -2019,7 +2019,7 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
     scaled_duration = f'({duration_ref}*(1+{bdi_ref}/100))'
     return (
         f'IF({monster_type_ref}="pvp",MIN({scaled_duration},{PVP_FIGHT_DURATION})/{PVP_FIGHT_DURATION},'
-        f'{scaled_duration}/{cooldown_ref})'
+        f'MIN(1,{scaled_duration}/{cooldown_ref}))'
     )
 
 
@@ -2117,7 +2117,9 @@ def exact_buff_uptime_expr(casts_ref, buff_duration_ref, cooldown_ref, fight_dur
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{fight_duration_ref}-{last_cast_start})'
     last_uptime = f'MIN({buff_duration_ref},{remaining_after_last})'
-    return f'(({casts_ref}-1)*{buff_duration_ref}+{last_uptime})'
+    # A recast that lands before the previous buff ends only extends coverage by one cooldown, so each full
+    # cycle contributes MIN(duration, cooldown) of uptime — never more (otherwise uptime could exceed 100%).
+    return f'(({casts_ref}-1)*MIN({buff_duration_ref},{cooldown_ref})+{last_uptime})'
 
 
 def uptime_fraction_or_exact_expr(fixed_duration_active_ref, casts_ref, monster_type_ref,
@@ -2229,8 +2231,10 @@ SKILL_ROWS = [
      120, 21, True, 0, 0, 0, 1, "", 0, False, False, 1, 1500, 23, "",
      "Poison assumed permanently at 5 stacks (max instances)."),
     ("MEDITATION", "Meditation", 2, "", 30, True, 1, 0, 0, 100, 1,
-     200, 22, True, 0, 0, 0, 1, "ATTACK", 19.5, False, False, 1, "", "", "",
-     "Buff — averaged Attack% = BaseDamage/10 * Factor/1000 * Duration/Cooldown."),
+     200, 21, True, 0, 0, 0, 1, "ATTACK", 19.5, False, False, 1, "", "", "",
+     "Buff — averaged Attack% = BaseDamage/10 * Factor/1000 * Duration/Cooldown. FactorIndex 21 "
+     "(game table: 20%/f21 — shared with Ice/Lightning's identical Meditation; an earlier version "
+     "had 22, found in the 2026-10-21 audit)."),
     ("POISON_MIST_BURST", "Poison Mist (burst)", 3, "Poison", 24.5, True, 3, 0, 0, 100, 1,
      1600, 12, True, 50, 0, 0, 10, "", 0, True, True, 1, 100, 23, "",
      "Skill Mastery: +50% added directly to the coefficient%. (Does not apply to the fog DoT — see that row.) "
@@ -2377,6 +2381,17 @@ SKILL_ROWS = [
 ROW_HAS_COOLDOWN = {row[0]: row[4] not in ("", None) for row in SKILL_ROWS}
 
 
+# Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills, buffs and passives alike
+# (user decision 2026-10-21; it used to apply only to CostsActionSlot rows). The exempt rows are NOT real
+# cooldowns: their Cooldown(s) cell is a trigger-rate / internal-interval surrogate (e.g. 1 / attack speed),
+# which CDR must not shrink to the 0.1s floor.
+CDR_EXEMPT_ROW_KEYS = ['ELEMENTAL_DRAIN', 'IGNITE']
+
+
+def cdr_applies_expr(key):
+    return "FALSE" if key in CDR_EXEMPT_ROW_KEYS else "TRUE"
+
+
 def build_skills_sheet(wb):
     ws = wb.create_sheet("Skills")
     for i, name in enumerate(SKILL_COLUMNS):
@@ -2443,10 +2458,10 @@ def build_calc_sheet(wb):
         IB("level"), f"Summary!$B${R_BAPS}", f'Q{ROW["METEOR_SHOWER_BURST"]}', meteor_proc_rate_main, f'Q{ROW["IFRIT"]}',
     )
     flame_haze_dot_multiplier_main = flame_haze_dot_stack_multiplier_expr(
-        flame_haze_extra_rate_main, S("Cooldown(s)", ROW["FLAME_HAZE_BURST"]),
+        flame_haze_extra_rate_main, f'(1/Calc!Q{ROW["FLAME_HAZE_BURST"]})',
     )
     flame_haze_total_stacks_main = flame_haze_total_stacks_expr(
-        flame_haze_extra_rate_main, S("ActiveWindow(s)", ROW["FLAME_HAZE_DOT"]), S("Cooldown(s)", ROW["FLAME_HAZE_BURST"]),
+        flame_haze_extra_rate_main, S("ActiveWindow(s)", ROW["FLAME_HAZE_DOT"]), f'(1/Calc!Q{ROW["FLAME_HAZE_BURST"]})',
     )
 
     # Fixed fight-duration mode (exact cast/tick counts instead of the steady-state average) —
@@ -2467,7 +2482,7 @@ def build_calc_sheet(wb):
         # multiplicative wrapper here rather than inside effective_cooldown_expr itself, since it's
         # a simple postfix scale and keeps that well-tested function untouched.
         eff_cd_r = (
-            f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+            f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), cdr_applies_expr(key))}'
             f'*(1-{artifact_soul_contract_pct_expr(IB("soul_contract_equipped"), IB("content_type"), IB("soul_contract_star"))}/100))'
         )
         # Duration actually available for this row's casts in fixed-duration mode: the raw fight
@@ -2767,7 +2782,7 @@ def build_summary_sheet(wb):
 
     def buff_uptime(row):
         return uptime_fraction_or_exact_expr(
-            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), S("Cooldown(s)", row),
+            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), f'(1/Calc!Q{row})',
             bdi_main, IB("fight_duration"),
         )
 
@@ -2985,15 +3000,20 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Min Damage Multiplier %": "min_damage",
     "Max Damage Multiplier %": "max_damage",
     "Defense Penetration": "def_pen",
-    "Int %": "int_pct",
-    "Int": "flat_int",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
     "Skill Cooldown Decrease (seconds)": "skill_cooldown_decrease",
     "Buff Duration Increase %": "buff_duration_increase_pct",
     "All Skill Level": "skill_lvl_all",
     "Basic Attack Target Increase": "basic_attack_target_increase",
+    "Int %": "int_pct",
+    "Int": "flat_int",
 }
+
+# Sub-stat PERCENT potential lines: the Sensitivity sweep for the sub-stat is a flat +1 point, so a
+# "+N% sub-stat" roll is worth N% of the current total sub-stat in points (approximation: Inputs holds the
+# final sub-stat value, no separate flat/% split). Main-stat lines map 1:1 above.
+POTENTIAL_SUB_STAT_PCT_LINES = {}  # mages have no LUK (sub-stat) Sensitivity sweep, so Luk lines stay unpriced
 
 
 def dps_per_unit_expr(stat_name):
@@ -3037,6 +3057,9 @@ def dps_per_unit_expr(stat_name):
         # roll instead (confirmed by the user). Unconditional, unlike Crit Rate's cap check,
         # since it's *never* modeled, not just past some threshold.
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]}'
+    if stat_name in POTENTIAL_SUB_STAT_PCT_LINES:
+        sweep_key, inputs_key = POTENTIAL_SUB_STAT_PCT_LINES[stat_name]
+        return f'=Sensitivity!H{SENSITIVITY_ROW_FOR[sweep_key]}*{IB(inputs_key)}/100'
     key = POTENTIAL_STAT_TO_SWEEP_KEY.get(stat_name)
     if key is None:
         return "0"
@@ -3158,10 +3181,10 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         ib("level"), baps_ref, f'Q{row_of["METEOR_SHOWER_BURST"]}', meteor_proc_rate_block, f'Q{row_of["IFRIT"]}',
     )
     flame_haze_dot_multiplier_block = flame_haze_dot_stack_multiplier_expr(
-        flame_haze_extra_rate_block, S("Cooldown(s)", ROW["FLAME_HAZE_BURST"]),
+        flame_haze_extra_rate_block, f'(1/Q{row_of["FLAME_HAZE_BURST"]})',
     )
     flame_haze_total_stacks_block = flame_haze_total_stacks_expr(
-        flame_haze_extra_rate_block, S("ActiveWindow(s)", ROW["FLAME_HAZE_DOT"]), S("Cooldown(s)", ROW["FLAME_HAZE_BURST"]),
+        flame_haze_extra_rate_block, S("ActiveWindow(s)", ROW["FLAME_HAZE_DOT"]), f'(1/Q{row_of["FLAME_HAZE_BURST"]})',
     )
 
     # Fixed fight-duration mode — block-local mirror of the same computation in build_calc_sheet.
@@ -3432,7 +3455,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         # needed (sweeping skill_cooldown_decrease itself needs this to reflect the override).
         # Soul Contract's % CDR (Chapter Hunt only) applied the same way as the main Calc sheet.
         eff_cd_row = (
-            f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+            f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), cdr_applies_expr(key))}'
             f'*(1-{artifact_soul_contract_pct_expr(ib("soul_contract_equipped"), ib("content_type"), ib("soul_contract_star"))}/100))'
         )
         # Block-local mirror of available_duration_r (main sheet) — must use this block's own
@@ -3607,7 +3630,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
             fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
-            S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
+            f'(1/Q{local_row})', bdi_block, ib("fight_duration"),
         )
 
     ws.cell(row=s_avgbuff, column=1, value="Average Buff Multiplier (Magic Guard + Meditation + Artifact Attack%, summed; then Infinity)")

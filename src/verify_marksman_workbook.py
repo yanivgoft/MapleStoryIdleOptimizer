@@ -178,10 +178,14 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15
 
 
-def eff_cooldown(cooldown, costs_action):
+def eff_cooldown(cooldown, costs_action=None, exempt=False):
+    """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
+    buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
+    compatibility and no longer gates CDR). `exempt=True` marks the trigger-rate / internal-interval
+    surrogate rows (mirror of the build script's CDR_EXEMPT_ROW_KEYS)."""
     if monster_type == "pvp":
         return PVP_FIGHT_DURATION
-    return max(0.1, cooldown - (skill_cooldown_decrease if costs_action else 0))
+    return max(0.1, cooldown - (0 if exempt else skill_cooldown_decrease))
 
 
 def eff_duration(duration):
@@ -210,7 +214,7 @@ def exact_buff_uptime(cooldown, buff_duration):
     casts = exact_casts(cooldown)
     remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
     last_uptime = min(buff_duration, remaining_after_last)
-    return (casts - 1) * buff_duration + last_uptime
+    return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
 def coeff_pct(base, fidx, scales, job_step):
@@ -227,7 +231,7 @@ def buff_avg(pct, duration, cooldown, costs_action):
     elif monster_type == "pvp":
         uptime = min(eff_duration(duration), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
-        uptime = eff_duration(duration) / eff_cd
+        uptime = min(1.0, eff_duration(duration) / eff_cd)
     return pct * uptime
 
 
@@ -266,11 +270,11 @@ def monster_blend(boss_val, normal_val):
 # ---- Helper rows (Final Attack: Crossbow, Advanced Final Attack, Maple Hero) — own D/E/F
 #      only, no independent DPS. ----
 final_attack_crossbow_pct = (
-    coeff_pct(350, 21, True, 2) + level_gated_sum({52: 50})
+    coeff_pct(350, 21, True, 2) + level_gated_sum({54: 50})
     if unlocked("FINAL_ATTACK_CROSSBOW_HELPER") else 0.0
 )
 advanced_final_attack_pct = (
-    coeff_pct(5000, 21, True, 4) + level_gated_sum({111: 50})
+    coeff_pct(5000, 21, True, 4) + level_gated_sum({113: 50})
     if unlocked("ADVANCED_FINAL_ATTACK_HELPER") else 0.0
 )
 maple_hero_pct = coeff_pct(250, 23, True, 4) if unlocked("MAPLE_HERO_HELPER") else 0.0
@@ -282,8 +286,8 @@ epa_final_attack_addition = (
     final_attack_crossbow_pct / 100 * (1 + advanced_final_attack_pct / 100) * 25
     if unlocked("FINAL_ATTACK_CROSSBOW_HELPER") else 0.0
 )
-epa_damage_mastery = level_gated_sum({98: 10, 104: 1, 113: 1, 118: 1, 126: 1, 130: 1})
-epa_boss_mastery = level_gated_sum({108: 10, 122: 10})
+epa_damage_mastery = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
+epa_boss_mastery = level_gated_sum({111: 10, 124: 10})
 
 # ---- Attack% bucket: Marksmanship (base + conditional) + Illusion Step + Blink Bolt (modeled
 #      unconditional, no duty-cycle — see BLINK_BOLT's own Note in the build script for the
@@ -291,8 +295,10 @@ epa_boss_mastery = level_gated_sum({108: 10, 122: 10})
 marksmanship_base_pct = coeff_pct(100, 22, True, 3) if unlocked("MARKSMANSHIP_BASE") else 0.0
 marksmanship_cond_pct_raw = coeff_pct(100, 22, True, 3) if unlocked("MARKSMANSHIP_COND") else 0.0
 marksmanship_cond_avg = monster_blend(marksmanship_cond_pct_raw, 0.0) if unlocked("MARKSMANSHIP_COND") else 0.0
-illusion_step_pct = coeff_pct(140, 22, True, 4) if unlocked("ILLUSION_STEP") else 0.0
-illusion_step_avg = buff_avg(illusion_step_pct, 15, 24, False) if unlocked("ILLUSION_STEP") else 0.0
+illusion_step_pct = (
+    coeff_pct(140, 22, True, 4) * (1.375 if level >= 118 else 1.0)
+) if unlocked("ILLUSION_STEP") else 0.0
+illusion_step_avg = buff_avg(illusion_step_pct, 24 if level >= 118 else 15, 24, False) if unlocked("ILLUSION_STEP") else 0.0
 blink_bolt_pct = coeff_pct(250, 22, True, 3) if unlocked("BLINK_BOLT") else 0.0
 
 attack_bucket_mult = 1 + (marksmanship_base_pct + marksmanship_cond_avg + illusion_step_avg + blink_bolt_pct) / 100
@@ -300,9 +306,9 @@ attack_bucket_mult = 1 + (marksmanship_base_pct + marksmanship_cond_avg + illusi
 # ---- Sharp Eyes (self-inclusive ally buff: flat 20 Crit Rate + scaling Crit Damage) ----
 sharp_eyes_crit_damage_pct = coeff_pct(400, 21, True, 4) if unlocked("SHARP_EYES") else 0.0
 sharp_eyes_uptime = (
-    buff_avg(1.0, 18, 35, True) if unlocked("SHARP_EYES") else 0.0
+    buff_avg(1.0, 27 if level >= 126 else 18, 35, True) if unlocked("SHARP_EYES") else 0.0
 )  # buff_avg(1,...) returns the uptime fraction itself
-crit_rate_bonus = (20 * sharp_eyes_uptime) if unlocked("SHARP_EYES") else 0.0
+crit_rate_bonus = 0.0  # Sharp Eyes has no Crit Rate component (audit 2026-10-21)
 sharp_eyes_crit_damage_avg = sharp_eyes_crit_damage_pct * sharp_eyes_uptime if unlocked("SHARP_EYES") else 0.0
 
 # Marksman has no Concentration-equivalent stacking passive.
@@ -356,7 +362,7 @@ BUFF_KEYS_STARTUP = {"SHARP_EYES", "NIMBLE_FEET"}
 COST_ACTION_ROWS = [
     ("COVERING_FIRE", 19, True, 1),
     ("BOLT_BURST", 21, True, 1),
-    ("FROSTPREY", (60 * 0.6) if level >= 102 else 60, True, 1),
+    ("FROSTPREY", (60 * 0.6) if level >= 104 else 60, True, 1),
     ("SNIPE", 12, True, 1),
     ("ARROW_ILLUSION", 45, True, 1),
     ("SHARP_EYES", 35, True, 1),
@@ -398,7 +404,7 @@ def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0, extra_fd_pct=0.0):
 epa_pct = skill_coefficient_base + epa_final_attack_addition + epa_damage_mastery
 epa_targets = 6 + basic_attack_target_increase
 epa_hit = hit_damage(epa_pct, True)
-EPA_HITS = 6 if level >= 134 else 5
+EPA_HITS = 6 if level >= 136 else 5
 epa_dps = EPA_HITS * epa_hit * epa_per_second * boss_normal_multiplier(epa_targets, epa_boss_mastery, 0) if unlocked("EMPOWERED_PIERCING_ARROW") else 0.0
 epa_hit_rate = EPA_HITS * epa_per_second * target_multiplier(epa_targets) if unlocked("EMPOWERED_PIERCING_ARROW") else 0.0
 
@@ -409,20 +415,20 @@ DAMAGE_SKILLS = {
                            mastery=level_gated_sum({39: 50}), mastery_boss=0, mastery_normal=0,
                            costs_action=True, targets=1, maple_ratio=MAPLE_HERO_RATIOS.get("COVERING_FIRE", 0)),
     "BOLT_BURST": dict(job_step=3, cooldown=21, hits=3, base=4500, fidx=12, scales=True,
-                        mastery=level_gated_sum({66: 50}), mastery_boss=0, mastery_normal=0,
+                        mastery=level_gated_sum({68: 50}), mastery_boss=0, mastery_normal=0,
                         costs_action=True, targets=10, maple_ratio=MAPLE_HERO_RATIOS.get("BOLT_BURST", 0)),
-    "FROSTPREY": dict(job_step=3, cooldown=(60 * 0.6) if level >= 102 else 60,
+    "FROSTPREY": dict(job_step=3, cooldown=(60 * 0.6) if level >= 104 else 60,
                        hits=1, icd=1.5, window=30, base=3000, fidx=12, scales=True,
-                       mastery=level_gated_sum({80: 50}), mastery_boss=0,
-                       mastery_normal=100 if level >= 92 else 0, costs_action=True,
-                       targets=3 + (2 if level >= 76 else 0),
+                       mastery=level_gated_sum({82: 50}), mastery_boss=0,
+                       mastery_normal=100 if level >= 94 else 0, costs_action=True,
+                       targets=3 + (2 if level >= 78 else 0),
                        maple_ratio=MAPLE_HERO_RATIOS.get("FROSTPREY", 0)),
     "SNIPE": dict(job_step=4, cooldown=12, hits=1, base=38000, fidx=12, scales=True,
-                  mastery=level_gated_sum({106: 50}) + (coeff_pct(5700, 12, True, 4) if level >= 134 else 0.0),
+                  mastery=level_gated_sum({108: 50}) + (coeff_pct(57000, 12, True, 4) if level >= 134 else 0.0),
                   mastery_boss=0, mastery_normal=0,
                   costs_action=True, targets=1),
     "ARROW_ILLUSION": dict(job_step=4, cooldown=45, hits=1, icd=1.5, window=25, base=12000, fidx=12,
-                            scales=True, mastery=level_gated_sum({128: 50}), mastery_boss=0,
+                            scales=True, mastery=level_gated_sum({130: 50}), mastery_boss=0,
                             mastery_normal=0, costs_action=True, targets=10),
 }
 NORMAL_MONSTER_TARGETS = {k: v["targets"] for k, v in DAMAGE_SKILLS.items()}
@@ -466,10 +472,10 @@ snipe_hit_rate = hit_rate_per_sec(DAMAGE_SKILLS["SNIPE"], snipe_eff_cd) if unloc
 
 # ---- Bolt Surplus: dual-trigger proc off Empowered Piercing Arrow AND Snipe casts ----
 bolt_surplus_trigger_rate = epa_hit_rate + snipe_hit_rate
-bolt_surplus_hits = 2 + (1 if level >= 136 else 0)
-bolt_surplus_targets = 3 + (2 if level >= 136 else 0)
+bolt_surplus_hits = 2 + (1 if level >= 138 else 0)
+bolt_surplus_targets = 3 + (2 if level >= 138 else 0)
 if unlocked("BOLT_SURPLUS"):
-    bolt_surplus_pct = coeff_pct(6500, 21, True, 4) + level_gated_sum({120: 50})
+    bolt_surplus_pct = coeff_pct(6500, 21, True, 4) + level_gated_sum({122: 50})
     bolt_surplus_hd = hit_damage(bolt_surplus_pct, False)
     bolt_surplus_dps = 0.15 * bolt_surplus_trigger_rate * bolt_surplus_hits * bolt_surplus_hd * boss_normal_multiplier(bolt_surplus_targets, 0, 0)
 else:

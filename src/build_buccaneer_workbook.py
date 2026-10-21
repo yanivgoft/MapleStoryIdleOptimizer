@@ -26,7 +26,7 @@ Aug 13 patch notes PDF's Buccaneer section. All patched skills confirmed STALE o
 Key mechanics/simplifications specific to this kit:
   - Hook Bomber (basic attack) reuses the universal 4th-job-basic-attack constant (baseDamage
     2900, factorIndex 21). HitsPerCast=5, bumping to 6 once Mastery Lv.136 unlocks. Real Damage
-    mastery chain (102/106/116/120/128/132, DELTAS {102:10,106:1,116:1,120:1,128:1,132:1}) and
+    mastery chain (102/106/116/120/128/132, raw tiers +10/11/12/13/14/15 = 75% at max) and
     Boss Monster Damage chain (111/124, +10% each) included — same level breakpoints as Hero's
     own Hook Bomber chain.
   - Sea Serpent Burst / Serpent Assault / Serpent Scale model Buccaneer's "Assault Mode" resource
@@ -922,45 +922,31 @@ def build_readme_sheet(wb):
         "(damage-taken reduction) is purely defensive, not modeled. Mastery Lv.54 'Advanced "
         "Dash - Protection' references a skill absent from the entire skill overview list — "
         "flagged, unmodeled, no base skill to attach it to.",
-        "This class has NO individual wiki pages at all (worse than Bishop) — every scaling "
-        "skill's (baseDamage, factorIndex) is a FLAGGED ASSUMPTION derived from its single "
-        "known level-1 value using the per-skill-type factorIndex convention, not a verified "
-        "curve. Hook Bomber (basic attack) is the one exception, reusing the universal "
-        "cross-class 4th-job-basic-attack constant (2900, 21). The Mastery table (Lv.12-138) "
-        "IS real and confirmed — its discrete level-gated deltas are layered on top of the "
-        "assumed base curves as genuine SkillMasteryBonus%/MasteryBossDamage% contributions.",
-        "Sea Serpent Burst / Serpent Assault / Serpent Scale model Buccaneer's 'Assault Mode' "
-        "resource economy (5 Serpent Scales -> 10s Assault Mode, swapping the basic-attack proc "
-        "and adding +25% Final Damage) as a steady-state duty cycle, not an exact stack-gain/"
-        "mode-toggle state machine — a documented approximation, reusing the existing "
-        "ProcChance% machinery rather than inventing new state tracking. Because Corkscrew "
-        "Blow (Lv.73+) costs its own action-slot time, unlocking it slightly *reduces* total "
-        "DPS at that exact level boundary (verified numerically, not a bug) — it eats into "
-        "Hook Bomber's own cast rate, which lowers Assault Mode uptime, and Serpent Assault "
-        "loses more DPS from that than Corkscrew Blow itself adds.",
-        "Octopunch + Sea Serpent's Rage + Raging Serpent Assault: Sea Serpent's Rage triggers "
-        "unconditionally on every Octopunch cast (folded additively into Octopunch's own "
-        "coefficient) plus its own extra-hits tick (Raging Serpent Assault) gated by the same "
-        "Assault-Mode-uptime fraction above, since it only fires while in Assault Mode.",
-        "Nautilus Strike (1950% dmg/15 targets/5 hits) is confirmed SHARED verbatim with "
-        "Corsair (byte-identical wiki description) — a FLAGGED ASSUMPTION tuple (no cooldown "
-        "stated anywhere either, 45s assumed by convention), reused directly by Corsair's own "
-        "build rather than re-derived. Its own Mastery 'Nautilus Strike - Final Attack' "
-        "(Lv.113, patched 15%->30% trigger chance, cooldown set to 1s) procs off basic attacks, "
-        "modeled as its own row, same machinery as Bowmaster's Flash Mirage.",
-        "Groggy Mastery's Aug-13 patch is a mechanic-TYPE change, not just a number change — "
-        "generic 'damage +25%' becomes specifically 'Final Damage +8%'. Modeled as +8% Final "
-        "Damage per the patch.",
-        "Maple Hero's own wiki entry is genuinely truncated in the wiki's source (verified via "
-        "raw wikitext, not a fetch bug): 'Increases Final Damage of the following skills: "
-        "Serpent Assault 60%, Corkscrew...' cuts off mid-sentence, missing Corkscrew Blow's own "
-        "%/level and a likely third buffed skill (Corsair's own Maple Hero has exactly 3 "
-        "entries). Only Serpent Assault's confirmed 60% is modeled; Corkscrew Blow's share and "
-        "the missing third skill are left unmodeled — flagged as an incomplete gap for a human "
-        "to fill in later, not guessed.",
-        "Crossbones, Speed Infusion, Time Leap, and Roll of the Dice have no cooldown data "
-        "anywhere on the wiki — modeled as always-active once unlocked, flagged as a likely "
-        "DPS overestimate versus their real (unknown) cooldowns.",
+        "Data source (2026-10-21 audit): Buccaneer's numbers come from maplestoryidle.info's GAME CAPTURE "
+        "(skill text + the game's own tables: ratios, factorIndices, hit/target counts, cooldowns, trigger "
+        "rules), which beats the wiki (no Req.Level/Cooldown/Mastery data there). Unlock levels, "
+        "cooldowns, factorIndices and the full mastery table are real; the few exceptions are marked "
+        "FLAGGED ASSUMPTION in the Skills sheet notes (Serpent Assault / Raging Serpent Assault / "
+        "Greater Sea Serpent I's 430% line use factorIndex 12 — no table ratio exists for them).",
+        "Sea Serpent Burst is an OnAttack passive on BASIC attacks with a 7s cooldown (5s from Lv78, 3s "
+        "from Lv118) — NOT one burst per basic attack. Each activation grants 1 Serpent Scale (2 from "
+        "Lv104); 5 scales -> Assault Mode for 10s (15s from Lv94) with +25% Final Damage, during which "
+        "the SAME trigger fires Serpent Assault instead (shared cooldown) and no scales are gained. "
+        "Modeled as a smoothed steady-state cycle: activation interval T = cooldown + half a "
+        "basic-attack period, Assault uptime u = A/(A + N*T). Greater Sea Serpent I (Lv72) / II (Lv110) "
+        "are implemented (430% / +2 targets each / +100% Final Damage on Sea Serpent Burst only). "
+        "Corkscrew Blow / Octopunch / Nautilus Strike / Speed Infusion / Crossbones / Time Leap cost "
+        "action slots, which lowers the basic-attack rate and therefore lengthens T.",
+        "Octopunch + Sea Serpent's Rage (fires on every Octopunch, leaves an Assault Mark = +15% x f21 "
+        "damage taken for 5s) + Raging Serpent Assault (only while in Assault Mode; 2 hits per 1s tick "
+        "for 5s) all share Octopunch's live cooldown (16s, -30% from Lv134).",
+        "Nautilus Strike - Final Attack (Lv113): 30% chance per attack, 1s internal cooldown, modeled as "
+        "(c*R)/(1+ICD*c*R) with R = the combined cast rate of Hook Bomber + Corkscrew Blow + Octopunch + "
+        "Nautilus Strike (summons/passive procs excluded — assumption). "
+        "Groggy Mastery's Aug-13 patch is a mechanic-TYPE change (generic 'damage +25%' became 'Final "
+        "Damage +8%'); its Lv98 conditional +5% Final Damage (needs status effects) is not modeled.",
+        "Maple Hero: Serpent Assault 60%, Corkscrew Blow 40% (the earlier 'truncated text' gap is closed). "
+        "Skill Cooldown Decrease applies to every cooldown (skills, buffs and passives alike).",
         "Content Type (Inputs) picks what you're fighting — Chapter Boss/Breakthrough/PvP/EXP "
         "Dungeon/Equipment Dungeon/Weapon Dungeon/Enhancement Dungeon/Hero Dungeon/World Boss/"
         "Chapter Hunt — and Monster Defense and Fixed Fight Duration are both auto-computed from "
@@ -1093,7 +1079,7 @@ def build_inputs_sheet(wb, existing=None):
 
     ws.cell(row=31, column=1, value="Additional Bonuses").font = SECTION_FONT
     bonus_rows = [
-        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds, only skills/buffs the character actively casts)", 0),
+        ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
         ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
@@ -1756,7 +1742,7 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
     scaled_duration = f'({duration_ref}*(1+{bdi_ref}/100))'
     return (
         f'IF({monster_type_ref}="pvp",MIN({scaled_duration},{PVP_FIGHT_DURATION})/{PVP_FIGHT_DURATION},'
-        f'{scaled_duration}/{cooldown_ref})'
+        f'MIN(1,{scaled_duration}/{cooldown_ref}))'
     )
 
 
@@ -1827,7 +1813,9 @@ def exact_buff_uptime_expr(casts_ref, buff_duration_ref, cooldown_ref, fight_dur
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{fight_duration_ref}-{last_cast_start})'
     last_uptime = f'MIN({buff_duration_ref},{remaining_after_last})'
-    return f'(({casts_ref}-1)*{buff_duration_ref}+{last_uptime})'
+    # A recast that lands before the previous buff ends only extends coverage by one cooldown, so each full
+    # cycle contributes MIN(duration, cooldown) of uptime — never more (otherwise uptime could exceed 100%).
+    return f'(({casts_ref}-1)*MIN({buff_duration_ref},{cooldown_ref})+{last_uptime})'
 
 
 def uptime_fraction_or_exact_expr(fixed_duration_active_ref, casts_ref, monster_type_ref,
@@ -1880,6 +1868,7 @@ ROW_ORDER = [
     "ROLL_OF_THE_DICE_DICE", "CROSSBONES_FD", "TIME_LEAP_FD",
     "SHADOW_HEART", "QUICK_MOTION", "AGILE_KNUCKLES", "DARK_CLARITY",
     "KNUCKLE_MASTERY", "PHYSICAL_TRAINING", "GROGGY_MASTERY_FD", "NIMBLE_FEET",
+    "SPEED_INFUSION", "GSS_II_FD", "SSR_WEAKEN",
 ]
 ROW = {key: i for i, key in enumerate(ROW_ORDER, start=2)}
 LAST_ROW = 1 + len(ROW_ORDER)
@@ -1902,39 +1891,43 @@ R_HOOK_BOMBER_DPS = 22
 R_STARTUP_TIME = 23                 # Buff-Casting Startup Delay (s, fixed-duration only)
 R_BOSS_ONLY_TOTAL = 24               # Total DPS if every hit were against a boss (Breakthrough Sensitivity baseline)
 R_NORMAL_ONLY_TOTAL = 25             # Total DPS if every hit were against normal monsters (Breakthrough Sensitivity baseline)
+R_SERPENT_T = 26                    # Sea Serpent Burst activation interval T = its cooldown + half a basic-attack period (s)
+R_ASSAULT_U = 27                    # Assault Mode steady-state uptime fraction u = A/(A + scales_needed_activations*T)
+R_NAUTILUS_TRIGGER_RATE = 28        # Nautilus Strike - Final Attack: combined cast rate of the triggering attacks (1/s)
 # The two variable-length summary tables (Per-Skill Breakdown, sized off DAMAGE_DEALING_KEYS, and
 # Marginal DPS & Stat Value, sized off STAT_SWEEP) start after this fixed block, with a 2-row gap
 # (title goes at HEADER_ROW-1, so the constant itself sits 3 past the last fixed row).
-SUMMARY_BREAKDOWN_HEADER_ROW = R_NORMAL_ONLY_TOTAL + 3
+SUMMARY_BREAKDOWN_HEADER_ROW = R_NAUTILUS_TRIGGER_RATE + 3
 
-# NOTE: Buccaneer's wiki overview page has NO Req.Level column at all (unlike every other class
-# built so far) — every unlock level below is a FLAGGED ASSUMPTION inferred from the skill's own
-# position in the overview list (which follows job-tier order) and cross-checked against the one
-# hard constraint each Mastery-table entry gives (a mastery's own req-level is always >= its base
-# skill's unlock level). Documented per-row below; a human should revisit these if real Req.Level
-# data ever surfaces.
+# Unlock levels: maplestoryidle.info `reqLevel` (a direct game capture for Buccaneer — trusted over the
+# wiki, which has no Req.Level column at all). Re-verified 2026-10-21 against the site's skill list; the
+# earlier values here were FLAGGED ASSUMPTIONS inferred from list order. Mastery-only rows use the mastery's
+# own required level.
 UNLOCK_LEVEL = {
     "HOOK_BOMBER": 100,
     "SEA_SERPENT_BURST": 35,
-    "SERPENT_ASSAULT": 60,
-    "SERPENT_SCALE_FD": 60,
+    "SERPENT_ASSAULT": 69,
+    "SERPENT_SCALE_FD": 66,
     "CORKSCREW_BLOW": 63,
-    "OCTOPUNCH": 100,
-    "SEA_SERPENTS_RAGE": 110,
-    "RAGING_SERPENT_ASSAULT": 110,
-    "NAUTILUS_STRIKE": 103,
+    "OCTOPUNCH": 103,
+    "SEA_SERPENTS_RAGE": 117,
+    "RAGING_SERPENT_ASSAULT": 120,
+    "NAUTILUS_STRIKE": 105,
     "NAUTILUS_FINAL_ATTACK": 113,
     "MAPLE_HERO_HELPER": 100,
-    "ROLL_OF_THE_DICE_DICE": 66,
-    "CROSSBONES_FD": 107,
-    "TIME_LEAP_FD": 115,
-    "SHADOW_HEART": 15,
-    "QUICK_MOTION": 10,
+    "ROLL_OF_THE_DICE_DICE": 74,
+    "CROSSBONES_FD": 115,
+    "TIME_LEAP_FD": 125,
+    "SHADOW_HEART": 10,
+    "QUICK_MOTION": 15,
     "AGILE_KNUCKLES": 33,
     "DARK_CLARITY": 40,
     "KNUCKLE_MASTERY": 43,
     "PHYSICAL_TRAINING": 38,
     "GROGGY_MASTERY_FD": 75,
+    "SPEED_INFUSION": 107,
+    "GSS_II_FD": 110,
+    "SSR_WEAKEN": 117,
     # NIMBLE_FEET: no threshold (shared Explorer skill, level 0) — stays unconditionally unlocked.
 }
 
@@ -1959,26 +1952,52 @@ MAPLE_HERO_RATIOS = {
     "CORKSCREW_BLOW": 40 / 60,
 }
 
-# Assault Mode resource-economy uptime — Sea Serpent Burst procs on every basic attack (PATCHED:
-# 40% chance -> guaranteed), granting 1 Serpent Scale (+1 more once Lv.104 mastery). At 5 scales,
-# Assault Mode triggers for 10s (+5s once Lv.94 mastery), during which Serpent Assault replaces
-# Sea Serpent Burst and Serpent Scale's own +25% FD buff is live. Modeled as a steady-state duty
-# cycle (a documented approximation of a resource-stack economy, not an exact state machine):
-# uptime = AssaultDuration / (AssaultDuration + ScalesNeeded/ScaleGainRate).
+# Assault Mode resource economy (rebuilt 2026-10-21 from the site's game tables). Sea Serpent Burst is an
+# OnAttack passive on BASIC attacks with a 7s COOLDOWN (5s after Greater Sea Serpent I - Reuse @78, 3s after
+# Greater Sea Serpent II - Strike & Reuse @118) — an earlier version fired it on every basic attack. Each
+# activation grants 1 Serpent Scale (2 after Serpent Scale - Stack @104); at 5 scales the character enters
+# Assault Mode for 10s (+5s @94, Serpent Scale - Persistence) with +25% Final Damage, during which the SAME
+# trigger activates Serpent Assault INSTEAD of Sea Serpent Burst (game table: the Sea Serpent Burst trigger
+# UseSkill's Serpent Assault when AssaultMode>0 — so both share the one cooldown) and no scales can be gained.
+# Steady-state model: activations occur every T = cooldown + half a basic-attack period (the activation waits
+# for the next basic attack after the cooldown ends); one cycle = A (assault window) + N*T (N activations to
+# rebuild 5 scales, N=5, or 3 once 2 scales/activation) so the Assault uptime is u = A/(A + N*T), Serpent
+# Assault activates at u/T per second and Sea Serpent Burst at (1-u)/T per second. Smoothed (non-integer
+# activations per window) steady-state approximation of a discrete resource loop — documented simplification.
+# Serpent Scale - Start @68 (5 scales at battle start) only shifts the first cycle and is not modeled.
 def _assault_duration_expr(ib=IB):
     return f'(10+IF({ib("level")}>=94,5,0))'
 
 
-def _scale_gain_rate_expr(baps_ref, ib=IB):
-    return f'({baps_ref}*(1+IF({ib("level")}>=104,1,0)))'
+def _activations_to_assault_expr(ib=IB):
+    return f'IF({ib("level")}>=104,3,5)'
 
 
-def assault_uptime_expr(baps_ref=None, ib=IB):
-    if baps_ref is None:
-        baps_ref = f"Summary!$B${R_BAPS}"
+def serpent_interval_expr(ssb_cooldown_ref, baps_ref):
+    """T: seconds between successive Sea Serpent Burst/Serpent Assault activations."""
+    return f'({ssb_cooldown_ref}+IFERROR(0.5/{baps_ref},0))'
+
+
+def assault_uptime_expr(serpent_scale_unlocked_ref, t_ref, ib=IB):
     dur = _assault_duration_expr(ib)
-    rate = _scale_gain_rate_expr(baps_ref, ib)
-    return f'({dur}/({dur}+5/{rate}))'
+    return f'IF({serpent_scale_unlocked_ref}=TRUE,{dur}/({dur}+{_activations_to_assault_expr(ib)}*{t_ref}),0)'
+
+
+def nautilus_proc_rate_expr(h_ref, icd_ref, trigger_rate_ref):
+    """Steady-state Nautilus-FA trigger rate: (Chance*R)/(1+ICD*Chance*R), R = combined cast rate of the
+    triggering attacks (same formula as FP-Mage's Meteor Proc / Ice-Lightning's Blizzard FA)."""
+    return f'({h_ref}*{trigger_rate_ref})/(1+{icd_ref}*{h_ref}*{trigger_rate_ref})'
+
+
+def nautilus_trigger_rate_expr(fda_ref, fight_duration_ref, baps_ref, terms):
+    """terms = (unlocked_ref, casts_in_fight_ref, inv_cooldown_ref) per triggering action-costing attack
+    (Corkscrew Blow, Octopunch, Nautilus Strike); Hook Bomber's own cast rate is added on top."""
+    exact = "+".join(f'(({c}=TRUE)*{r})' for c, r, q in terms)
+    steady = "+".join(f'(({c}=TRUE)*{q})' for c, r, q in terms)
+    return f'IF({fda_ref},({exact})/{fight_duration_ref},{steady})+{baps_ref}'
+
+
+NAUTILUS_TRIGGER_KEYS = ["CORKSCREW_BLOW", "OCTOPUNCH", "NAUTILUS_STRIKE"]
 
 
 # (key, name, jobstep, cooldown, costsAction, actionsPerCast, hits, icd, window, chance, rolls,
@@ -1988,128 +2007,100 @@ SKILL_ROWS = [
     ("HOOK_BOMBER", "Hook Bomber", 4, "", False, 1,
      f'=IF({IB("level")}>=136,6,5)', 0, 0, 100, 1,
      2900, 21, True,
-     f"={level_gated_sum_raw(IB('level'), {102: 10, 106: 1, 116: 1, 120: 1, 128: 1, 132: 1})}",
+     f"={level_gated_sum_raw(IB('level'), {102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})}",
      level_gated_sum(IB("level"), {111: 10, 124: 10}), 0,
      f'=6+{IB("basic_attack_target_increase")}', "", 0, "", "",
-     "4th-job basic-attack effect (supersedes Somersault Kick/Shotgun Punch/Turning Kick, "
-     "confirmed identical wiki wording — 290% damage to 6 target(s) in front 5 time(s) — to "
-     "every other class's own 4th-job basic attack). factorIndex 21, baseDamage 2900 tenths%. "
-     "HitsPerCast=5, bumping to 6 once Mastery Lv.136 'Hook Bomber - Strike' unlocks. Real "
-     "Damage mastery chain (102/106/116/120/128/132, DELTAS not cumulative) and Boss Monster "
-     "Damage chain (111/124, +10% each) — same level breakpoints as Hero's own Hook Bomber "
-     "chain. No 'Final Attack' skill exists anywhere in Buccaneer's own kit, so unlike Hero/"
-     "Dark Knight/Bowmaster/Marksman there is no two-stage Final-Attack-folding helper needed "
-     "here."),
-    ("SEA_SERPENT_BURST", "Sea Serpent Burst", 2, "", False, 1, 2, 0, 0,
-     f'=100*(1-{assault_uptime_expr()})', 1,
-     1300, 12, True,
-     0, 0, 0, 5, "", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists — only the level-1 value is known): "
-     "'When attacking with Basic Attack, Sea Serpent's waves spread...to deal 130% additional "
-     "damage to 5 target(s) in front 2 time(s).' factorIndex 12 (burst convention), baseDamage "
-     "1300 tenths%. PATCHED: 40% chance -> guaranteed on basic attack. Modeled as the "
-     "'out of Assault Mode' half of this project's own Assault-Mode duty-cycle approximation "
-     "(see assault_uptime_expr) — ProcChance% below is set to 100*(1-uptime), reusing the "
-     "existing ProcProbability machinery to represent 'fraction of basic attacks NOT spent in "
-     "Assault Mode' rather than a flat RNG chance. Greater Sea Serpent I (a slottable upgrade "
-     "skill, not a mastery-table row — assumed always-equipped once unlocked, same convention "
-     "as every other permanent passive-if-equipped skill in this project) changes targets to 7 "
-     "and damage to 430% — folded directly into this row's own baseDamage/targets rather than "
-     "modeled as a separate row, since it's a straight replacement of Sea Serpent Burst's own "
-     "numbers, not an additive bonus."),
-    ("SERPENT_ASSAULT", "Serpent Assault", 2, "", False, 1, 3, 0, 0,
-     f'=100*{assault_uptime_expr()}', 1,
+     "4th-job basic-attack effect (supersedes Somersault Kick/Shotgun Punch/Turning Kick): 290% damage "
+     "to 6 target(s) in front 5 time(s). factorIndex 21, baseDamage 2900 tenths% (game table). "
+     "HitsPerCast=5, bumping to 6 once Mastery Lv.136 'Hook Bomber - Strike' unlocks. Damage mastery "
+     "chain (102/106/116/120/128/132): every tier is its own add-on (user-confirmed 2026-10-21: raw "
+     "+10/+11/+12/+13/+14/+15 = 75% at max) and Boss Monster Damage chain (111/124, +10% each). No "
+     "'Final Attack' skill exists in Buccaneer's own kit (Nautilus Strike - Final Attack is separate)."),
+    ("SEA_SERPENT_BURST", "Sea Serpent Burst", f'=IF({IB("level")}>=72,3,2)',
+     f'=7-IF({IB("level")}>=78,2,0)-IF({IB("level")}>=118,2,0)', False, 1,
+     f'=2+IF({IB("level")}>=118,1,0)', 0, 0, 100, 1,
+     f'=IF({IB("level")}>=72,4300,1300)', 12, True,
+     level_gated_sum(IB("level"), {39: 50}), 0, 0,
+     f'=5+IF({IB("level")}>=72,2,0)+IF({IB("level")}>=110,2,0)', "", 0, "", "",
+     "Game capture (maplestoryidle.info): 'When attacking with Basic Attack, Sea Serpent's waves always "
+     "spread to deal 130% additional damage to 5 target(s) in front 2 time(s)', 7s COOLDOWN (game table "
+     "cooldownMs 7000; PATCHED 40% chance -> guaranteed). An earlier version fired it on EVERY basic "
+     "attack with no cooldown (a large overcount of the whole Serpent kit). Modeled as an activation "
+     "every T = cooldown + half a basic-attack period (Summary!SERPENT_T), weighted (1-u) by the Assault "
+     "Mode uptime u (Summary!ASSAULT_U) — see the Assault-Mode economy comment in the build script "
+     "(before Serpent Assault is unlocked at Lv69 nothing replaces it during Assault Mode, so it fires on "
+     "every activation). "
+     "Greater Sea Serpent I (Lv72, assumed slotted once unlocked): damage 130% -> 430% (scaling with "
+     "GSS I's 3rd-job skill level, so JobStep switches 2->3 and BaseDamage 1300->4300 at Lv72; "
+     "factorIndex 12 is the burst convention — the 430% line has no ratio in the game tables, "
+     "FLAGGED ASSUMPTION) and +2 max targets; Greater Sea Serpent II (Lv110): +2 more targets, +100% "
+     "Final Damage (GSS_II_FD helper row, multiplicative on THIS row only). Masteries: Sea Serpent "
+     "Burst - Damage +50% @39; GSS I - Reuse -2s @78; GSS II - Strike & Reuse (+1 strike, -2s) @118."),
+    ("SERPENT_ASSAULT", "Serpent Assault", 3, "", False, 1, 3, 0, 0, 100, 1,
      4800, 12, True,
-     0, 0, 0, 12, "", 0, 600, 23,
-     "FLAGGED ASSUMPTION (no individual wiki page exists): 'When attacking with Basic Attack in "
-     "Assault Mode, activates instead of Sea Serpent Burst to deal 480% additional damage to 12 "
-     "nearby target(s) 3 time(s).' factorIndex 12, baseDamage 4800 tenths%. ProcChance% below is "
-     "set to 100*uptime (see assault_uptime_expr) — the complementary half of Sea Serpent "
-     "Burst's own duty-cycle split. Greater Sea Serpent II (slottable upgrade, assumed always-"
-     "equipped once unlocked) adds +100% Final Damage and more targets ('spreads farther', "
-     "exact new target count not stated anywhere on the wiki) — the +100% FD is folded in as a "
-     "flat x2 multiplier baked into this row's own baseDamage (4800 already reflects it: raw "
-     "level-1 value would be 2400, doubled here) since the target-count increase has no stated "
-     "number to use. Maple Hero target (own confirmed 60% share, ratio 1.0) — see "
-     "MAPLE_HERO_RATIOS."),
-    ("SERPENT_SCALE_FD", "Serpent Scale (Assault Mode Final Damage)", 2, "", False, 1, 1, 0, 0, 100, 1,
-     250, 22, True,
+     level_gated_sum(IB("level"), {82: 50}), 0, 0, 12, "", 0, 600, 23,
+     "Game capture: 'When attacking with Basic Attack in Assault Mode, activates instead of Sea Serpent "
+     "Burst to deal 480% additional damage to 12 nearby target(s) 3 time(s)' — a 3rd-job skill "
+     "(JobStep 3; an earlier version used JobStep 2). Shares Sea Serpent Burst's trigger and cooldown "
+     "(game table), so it activates u/T per second (Assault uptime u, interval T). baseDamage 4800 "
+     "tenths% (the real level-1 value; an earlier version doubled it to 4800 = 2 x 2400 to mimic GSS II, "
+     "but GSS II's +100% Final Damage only applies to Sea Serpent Burst per the game table — Serpent "
+     "Assault only receives Maple Hero). factorIndex 12 (burst convention — no ratio in the tables, "
+     "FLAGGED ASSUMPTION). Mastery Lv.82 'Serpent Assault - Damage' +50%. Maple Hero 60% share "
+     "(ratio 1.0) — see MAPLE_HERO_RATIOS."),
+    ("SERPENT_SCALE_FD", "Serpent Scale (Assault Mode Final Damage)", 3, "", False, 1, 1, 0, 0, 100, 1,
+     250, 21, True,
      0, 0, 0, 0, "FINAL_DAMAGE", 0, "", "",
-     "FLAGGED ASSUMPTION (no individual wiki page exists): '[5 Serpent Scales Required] Consumes "
-     "all Serpent Scales to enter Assault Mode...increases Final Damage by 25%.' factorIndex 22, "
-     "baseDamage 250 tenths%. Modeled as active for exactly the assault_uptime_expr() fraction "
-     "of the time (NOT the standard cooldown-driven buff_uptime() helper — this is a resource-"
-     "stack economy, not a player cooldown, same category of deviation as Bowmaster's own "
-     "AS-scaled Quiver Cartridge cooldown). The OTHER stated effect ('[Serpent Scale in Slot] "
-     "when Sea Serpent Burst is activated, obtains Serpent Scale and increases Final Damage by "
-     "2%, stacks up to 5 times' — a SEPARATE, smaller FD buff active BEFORE reaching Assault "
-     "Mode) is NOT modeled — stacking an approximation on top of an already-approximated "
-     "resource economy was judged out of scope for this session."),
+     "'[5 Serpent Scales Required] Consumes all Serpent Scales to enter Assault Mode for 10 sec and "
+     "increases Final Damage by 25%. [Serpent Scale in Slot] When Sea Serpent Burst is activated, "
+     "obtains Serpent Scale and increases Final Damage by 2%. This stacks up to 5 times, and Serpent "
+     "Scales cannot be obtained in Assault Mode.' 3rd-job skill, factorIndex 21 (game table; was 22), "
+     "baseDamage 250 tenths%. The 25% applies for the Assault uptime fraction u; the pre-Assault +2% "
+     "per held scale is modeled as the average 2 scales held while rebuilding = +4% for (1-u) of the "
+     "time (flat, the table shows no scaling for it). Both are read directly by the Summary FD bucket "
+     "(not the standard cooldown-driven buff helper: resource-stack economy, not a player cooldown)."),
     ("CORKSCREW_BLOW", "Corkscrew Blow", 3, 21, True, 1, 2, 0, 0, 100, 1,
      3400, 12, True,
      level_gated_sum(IB("level"), {73: 80}), 0, 0, 7, "", 0, "", "",
-     "'Charges to the front...to deal 340% damage to 7 target(s) 2 "
-     "time(s) and stun them' (stun not modeled), 21s cooldown — confirmed via maplestoryidle.info "
-     "cross-reference (corrected from a previously-assumed 20s, since no cooldown existed on the "
-     "wiki either). factorIndex 12, baseDamage 3400 tenths%. "
-     "Mastery Lv.73 'Corkscrew Blow - Damage' +80% (real SkillMasteryBonus%). CONFIRMED, "
-     "EXPLAINED level-boundary DPS DIP at unlock (Lv.63, not a bug): this skill's own "
-     "CostsActionSlot=True consumes basic-attack action-slot time, lowering Hook Bomber's own "
-     "cast rate (Summary!$B$R_BAPS) — which the Assault-Mode duty cycle (assault_uptime_expr) "
-     "is inversely sensitive to, since regen_time=5/(BAPS*scalesPerProc) grows as BAPS shrinks. "
-     "Because Serpent Assault (riding on that same uptime) deals far more DPS than Corkscrew "
-     "Blow itself adds, the net effect at Lv.63 is a small TOTAL DPS decrease versus Lv.62 — "
-     "verified directly (Lv.62: 153242 total, uptime 0.6667; Lv.63: 148737 total, uptime 0.6552, "
-     "Corkscrew Blow's own +5476 outweighed by Serpent Assault's -9725 and Sea Serpent Burst's "
-     "-256). A genuine emergent consequence of the resource-economy approximation interacting "
-     "with the shared action-slot budget, not a coding error — flagged explicitly here rather "
-     "than silently accepted or hidden, per this project's own level-boundary-sweep rigor bar. "
-     "Maple Hero target (own confirmed 40% share, ratio 40/60) — see MAPLE_HERO_RATIOS, "
-     "resolved from the wiki's own previously-truncated Maple Hero text via maplestoryidle.info."),
-    ("OCTOPUNCH", "Octopunch", 4, 16, True, 1,
+     "'Charges to the front...to deal 340% damage to 7 target(s) 2 time(s) and stun them for 1.8 sec' "
+     "(stun not modeled), 21s cooldown (game table). factorIndex 12, baseDamage 3400 tenths%. Mastery "
+     "Lv.73 'Corkscrew Blow - Damage' +80%. Its CostsActionSlot=True consumes basic-attack action-slot "
+     "time, which lowers Hook Bomber's cast rate (and so lengthens the Assault-Mode activation "
+     "interval T) — a genuine emergent interaction, not a bug. Maple Hero 40% share (game table: "
+     "'Serpent Assault 60%, Corkscrew Blow 40%', ratio 40/60) — see MAPLE_HERO_RATIOS."),
+    ("OCTOPUNCH", "Octopunch", 4, f'=IF({IB("level")}>=134,16*0.7,16)', True, 1,
      f'=3+IF(OR({IB("monster_type")}="boss",{IB("monster_type")}="pvp"),2,0)', 0, 0, 100, 1,
      9000, 12, True,
      level_gated_sum(IB("level"), {108: 50}), 0, 0,
      4, "", 0, "", "",
-     "'Throws a series of "
-     "punches to deal 900% damage to 4 target(s) in front 3 time(s).' 16s cooldown — confirmed "
-     "via maplestoryidle.info cross-reference (corrected from a previously-assumed 15s, since no "
-     "cooldown existed on the wiki either). factorIndex 12, baseDamage "
-     "9000 tenths%. Mastery Lv.108 'Octopunch - Damage' +50% (real SkillMasteryBonus%). The "
-     "skill's own 'if the target is a boss, deals the same damage 2 more time(s)' clause is "
-     "modeled via HitsPerCast (see below), NOT via this row's own NormalMonsterTargets field. "
-     "Mastery Lv.134 'Octopunch - Reuse' (-30% cooldown) not separately modeled, same treatment "
-     "as Hero's own Rush cooldown masteries."),
-    ("SEA_SERPENTS_RAGE", "Sea Serpent's Rage", 4, 16, False, 1, 2, 0, 0, 100, 1,
-     17000, 12, True,
+     "'Throws a series of punches to deal 900% damage to 4 target(s) in front 3 time(s). If the target is "
+     "a boss, deals the same damage 2 more time(s).' 16s cooldown (game table); Lv.103 unlock (was 100). "
+     "factorIndex 12, baseDamage 9000 tenths%. Mastery Lv.108 'Octopunch - Damage' +50%; Lv.134 "
+     "'Octopunch - Reuse' -30% cooldown (16s -> 11.2s, baked into the Cooldown(s) formula; Sea "
+     "Serpent's Rage / Raging Serpent Assault / the Assault Mark debuff follow it). The boss clause "
+     "is HitsPerCast (3, +2 vs boss/PvP)."),
+    ("SEA_SERPENTS_RAGE", "Sea Serpent's Rage", 4, f"=Skills!{SC['Cooldown(s)']}{ROW['OCTOPUNCH']}", False, 1, 2, 0, 0, 100, 1,
+     17000, 21, True,
      level_gated_sum(IB("level"), {122: 100}), 0, 0, 8, "", 0, "", "",
-     "'When Octopunch is activated, a Sea "
-     "Serpent appears and deals 1700% additional damage to 8 target(s) in front 2 time(s)' — "
-     "UNCONDITIONAL on every Octopunch cast (own damage-taken-increase debuff on hit targets, "
-     "15% for 5s, not modeled). Modeled as its own row sharing Octopunch's own Cooldown(s) value "
-     "(16s, kept in manual lockstep — this row has no live formula reference to Octopunch's own "
-     "cooldown cell, so both must be updated together) with CostsActionSlot=False and effectively "
-     "guaranteed (ProcChance 100, RollsPerCast 1) — "
-     "same 'shares parent's cast timing, doesn't double-count in the action economy' pattern as "
-     "Hero's own PUNCTURE_WOUND sharing PUNCTURE's cooldown, chosen over folding into Octopunch's "
-     "own coefficient because the two skills' target counts/hit counts differ (4/3 vs 8/2) and "
-     "coefficient-folding assumes a shared target/hit shape. factorIndex 12, baseDamage 17000 "
-     "tenths%. Mastery Lv.122 'Sea Serpent's Rage - Damage' +100% (real SkillMasteryBonus%, "
-     "confirmed via maplestoryidle.info — previously missing entirely)."),
-    ("RAGING_SERPENT_ASSAULT", "Raging Serpent Assault", 4, 16, False, 1, 1, 1, 5,
-     f'=100*{assault_uptime_expr()}', 1,
+     "'When Octopunch is activated, a Sea Serpent appears and deals 1700% additional damage to 8 "
+     "target(s) in front 2 time(s) and leaves an Assault Mark on the hit targets to increase their "
+     "damage taken by 15% for 5 sec.' Lv.117 unlock (was 110). Fires on every Octopunch cast (game "
+     "table trigger OnActiveSkill = Octopunch), so its Cooldown(s) is a LIVE reference to Octopunch's "
+     "(incl. the Lv.134 Reuse) and it takes Octopunch's CDR eligibility. factorIndex 21 (game table; "
+     "was 12), baseDamage 17000 tenths%. Mastery Lv.122 'Sea Serpent's Rage - Damage' +100%. The "
+     "Assault Mark (+15% damage taken, scales with level, factorIndex 21) is the SSR_WEAKEN helper "
+     "row, folded into Summary's monster-damage-taken bucket."),
+    ("RAGING_SERPENT_ASSAULT", "Raging Serpent Assault", 4, f"=Skills!{SC['Cooldown(s)']}{ROW['OCTOPUNCH']}", False, 1, 2, 1, 5,
+     f'=100*Summary!$B${R_ASSAULT_U}', 1,
      13000, 12, True,
      level_gated_sum(IB("level"), {130: 50}), 0, 0, 9, "", 0, "", "",
-     "'When attacking with Sea Serpent's "
-     "Rage in Assault Mode, calls upon an enraged Sea Serpent...to deal 1300% damage to 9 nearby "
-     "target(s) every 1 sec' for 5 sec (EffectiveHits = ActiveWindow/ICD = 5 ticks/cast). Shares "
-     "SEA_SERPENTS_RAGE's own Cooldown(s) (16s, same cast timing, CostsActionSlot=False, kept in "
-     "manual lockstep) — gated "
-     "ADDITIONALLY by the SAME Assault-Mode-uptime fraction as SEA_SERPENT_BURST/SERPENT_ASSAULT "
-     "(ProcChance% = 100*uptime, see assault_uptime_expr) since this effect only fires while in "
-     "Assault Mode, on top of Sea Serpent's Rage's own already-guaranteed trigger. factorIndex "
-     "12, baseDamage 13000 tenths%. Mastery Lv.130 'Raging Serpent Assault - Damage' +50% (real "
-     "SkillMasteryBonus%, confirmed via maplestoryidle.info — previously missing entirely)."),
+     "'When attacking with Sea Serpent's Rage in Assault Mode, calls upon an enraged Sea Serpent in "
+     "front for 5 sec to deal 1300% damage to 9 nearby target(s) 2 time(s) every 1 sec.' Lv.120 unlock "
+     "(was 110). HitsPerCast=2 per tick (the game capture says '2 time(s) every 1 sec'; an earlier "
+     "version used 1), ICD 1s, 5s window = 5 ticks x 2 hits per cast. Shares Octopunch's live "
+     "cooldown (it follows each Sea Serpent's Rage) and is gated by the Assault-Mode uptime u "
+     "(ProcChance% = 100*u, Summary!ASSAULT_U). factorIndex 12 (no ratio in the tables, FLAGGED "
+     "ASSUMPTION), baseDamage 13000 tenths%. Mastery Lv.130 'Raging Serpent Assault - Damage' +50%."),
     ("NAUTILUS_STRIKE", "Nautilus Strike", 4, 33, True, 1, 5, 0, 0, 100, 1,
      19500, 12, True,
      level_gated_sum(IB("level"), {126: 50}), 0, 0, 15, "", 0, "", "",
@@ -2123,84 +2114,59 @@ SKILL_ROWS = [
      "CONFIRMED SHARED VERBATIM WITH CORSAIR (byte-identical wiki description on both classes' "
      "overview pages) — Corsair's own build should reuse this exact (19500, 12, 33s cooldown, "
      "Lv.126 +50% mastery) tuple directly rather than re-deriving it."),
-    ("NAUTILUS_FINAL_ATTACK", "Nautilus Strike - Final Attack", 4, 1, False, 1, 1, 0, 0, 30, 1,
+    ("NAUTILUS_FINAL_ATTACK", "Nautilus Strike - Final Attack", 4, "", False, 1, 1, 1, 0, 30, 1,
      8500, 21, True,
      0, 0, 0, 1, "", 0, "", "",
-     "Mastery Lv.113 proc, not a base skill: '[Nautilus Strike in Slot] When attacking, deals "
-     "850% additional damage' — PATCHED: trigger chance 15%->30%, 'cooldown set to 1s' (both "
-     "baked in directly: ProcChance%=30, Cooldown(s)=1). Triggers off basic attacks generically "
-     "(same Cooldown+ProcChance-gated machinery as Bowmaster's own Flash Mirage), CostsActionSlot"
-     "=False so it doesn't compete with Hook Bomber's own action economy. factorIndex 21 "
-     "(Final-Attack-style convention, matching every other 'additional damage on attack' proc in "
-     "this project), baseDamage 8500 tenths%. Gated at Lv.113 (the mastery's own unlock level, "
-     "not Nautilus Strike's base unlock) since the proc doesn't exist until this specific "
-     "mastery tier is slotted."),
+     "Mastery Lv.113 proc: '[Nautilus Strike in Slot] When attacking, deals 850% additional damage with "
+     "a 30% chance and a 1-sec cooldown' (PATCHED 15% -> 30%, 'cooldown set to 1s'). ANY attack can "
+     "trigger it (same wording/mechanic as FP-Mage's Meteor Shower FA and Ice/Lightning's Blizzard "
+     "FA), so it is modeled as a steady-state proc: rate = (Chance*R)/(1+ICD*Chance*R) with R = the "
+     "combined cast rate of the triggering attacks (Summary!NAUTILUS_TRIGGER_RATE: Hook Bomber + "
+     "Corkscrew Blow + Octopunch + Nautilus Strike). The earlier cooldown-gated model (Chance/1s = "
+     "0.3 per second regardless of attack rate) undercounted by ~20-25%. Summons / passive procs "
+     "(Sea Serpent Burst etc.) are NOT counted as triggers — ASSUMPTION mirroring FP-Mage's "
+     "user-confirmed trigger set. This row has no cooldown of its own (ICD(s)=1 is the internal "
+     "cooldown, RollsPerCast=1, ActiveWindow=0 so EffectiveHits is unused). factorIndex 21, "
+     "baseDamage 8500 tenths% (LITERAL percent reading, consistent with Blizzard/Meteor FA). Gated "
+     "at Lv.113 (the mastery's own level)."),
     ("MAPLE_HERO_HELPER", "Maple Hero (helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
      600, 23, True,
      0, 0, 0, 0, "", 0, "", "",
-     "Shared ratio-feeder row (see MAPLE_HERO_RATIOS) for Serpent Assault's own Final Damage "
-     "chain — mirrors every other class's own Maple Hero mechanism. FLAGGED ASSUMPTION: the "
-     "wiki's own source text for this row is genuinely TRUNCATED mid-sentence ('Serpent Assault "
-     "60%, Corkscrew...') and no individual Maple_Hero_(Buccaneer) page exists to confirm a real "
-     "growth curve — factorIndex 23 assumed by convention (matches the universal Maple Hero "
-     "'growth-reduction after Lv.120' shape confirmed on every other class), baseDamage 600 "
-     "tenths% anchored to the one confirmed level-1 value (60%). Corkscrew Blow's own share and "
-     "a likely third buffed skill are completely unmodeled — a known incomplete gap, not "
-     "guessed, per direct user decision. No independent DPS row of its own (Calc columns J-N "
-     "blank/0, only D/E/F computed, read directly by Serpent Assault's own K-column formula)."),
-    ("ROLL_OF_THE_DICE_DICE", "Roll of the Dice (dice component)", 2, "", False, 1, 1, 0, 0, 100, 1,
+     "Shared ratio-feeder row (see MAPLE_HERO_RATIOS) for Serpent Assault's and Corkscrew Blow's Final "
+     "Damage chain. RESOLVED 2026-10-21 via the game capture/tables: 'Increases Final Damage of the "
+     "following skills: Serpent Assault 60%, Corkscrew Blow 40%.' (only two skills). factorIndex 23 "
+     "(universal Maple Hero convention), baseDamage 600 tenths% = the 60% share at ratio 1.0; "
+     "Corkscrew Blow uses ratio 40/60. No independent DPS row (Calc J-N blank; D/E/F read by the "
+     "Serpent Assault / Corkscrew Blow K formulas)."),
+    ("ROLL_OF_THE_DICE_DICE", "Roll of the Dice (dice component)", 3, "", False, 1, 1, 0, 0, 100, 1,
      25, 22, True,
      0, 0, 0, 0, "ATTACK", 0, "", "",
-     "Confirmed via maplestoryidle.info cross-reference (same wording as the wiki, now with no "
-     "ambiguity): 'Increases Attack by 20%. Rolls a six-sided die every 7 sec to increase Attack "
-     "by 0-5% in proportion to the number on the die for 5 sec. A number that has appeared once "
-     "does not appear again for 30 sec.' The flat, unconditional +20% Attack base effect is "
-     "Magic-Critical-pattern (assumed already reflected in your own Inputs!ATTACK_PCT, see "
-     "PASSIVE_DELTA_SLOT) — this row models ONLY the random dice component. The 'no repeat within "
-     "30s' rule guarantees a uniform long-run frequency over the 6 faces regardless of draw order, "
-     "so the time-averaged roll magnitude is exactly the simple mean of 0/1/2/3/4/5% = 2.5% (not "
-     "an approximation) — baseDamage 25 tenths% is this mean. The 7s-roll/5s-duration timing IS "
-     "now modeled as a real duty cycle: the buff is only up 5 of every 7 sec, so the row's own use "
-     "site (the Attack%% bucket multiplier) multiplies this row's coefficient by 5/7, not treated "
-     "as always-active (previously a FLAGGED ASSUMPTION gap; ProcChance% is left at 100/unused "
-     "since this row type reads Calc!F directly rather than through the ProcChance-derived column "
-     "— see the 5/7 factor at its use site instead). factorIndex 22 (matches every other "
-     "Magic-Critical-pattern flat buff row, e.g. Crossbones/Jolly Roger) — a wiki table showing "
-     "no per-level growth on THIS component isn't reliable evidence it's truly non-scaling "
-     "(same lesson as Bowmaster's Hurricane/Flash Mirage/Soul Arrow, all previously mis-flagged "
-     "factorIndex 0 for the same reason)."),
+     "'Increases Attack by 20%. Rolls a six-sided die every 7 sec to increase Attack by 0-5% in "
+     "proportion to the number on the die for 5 sec. A number that has appeared once does not appear "
+     "again for 30 sec.' 3rd-job skill (JobStep 3; was 2), Lv.74 unlock (was 66). The flat +20% Attack "
+     "is Magic-Critical-pattern (already in Inputs!ATTACK_PCT, see PASSIVE_DELTA_SLOT) — this row "
+     "models ONLY the random dice component: the no-repeat rule makes the long-run face frequency "
+     "uniform, so the mean roll is exactly 2.5% (baseDamage 25 tenths%, factorIndex 22 per the game "
+     "table's 10/20/30/40/50 raw values x f22); active 5 of every 7 seconds (x5/7 at the use site). "
+     "Mastery Lv.90 'Roll of the Dice - Attack' (+5%p) adds to the flat Attack component, i.e. "
+     "already inside your Inputs!ATTACK_PCT — not modeled separately."),
     ("CROSSBONES_FD", "Crossbones", 4, 28, True, 1, 1, 0, 0, 100, 1,
-     100, 22, True,
+     100, 21, True,
      0, 0, 0, 0, "FINAL_DAMAGE", 12, "", "",
-     "Confirmed via maplestoryidle.info cross-reference: a real Type=Active cast (mpCost 90, 28s "
-     "cooldown), not a passive — CostsActionSlot corrected from False to True and given its real "
-     "28s cooldown/12s duration (previously modeled as an always-active, no-cooldown-known "
-     "passive, which both overstated its uptime to 100% AND wrongly gave it a free action-economy "
-     "ride). Duty-cycle averaged now via the standard buff_uptime() helper, same treatment as "
-     "Nimble Feet. 'Increases "
-     "Final Damage by 10% and Defense Penetration by 5% for 12 sec.' Only the Final Damage "
-     "component is modeled — this project has no live per-skill Defense-Penetration-bucket "
-     "mechanism anywhere to reuse (Def Pen is normally a static Inputs field with its own "
-     "diminishing-returns formula, not something a skill can contribute to live). factorIndex "
-     "22, baseDamage 100 tenths%."),
+     "Active cast (28s cooldown, 12s duration): 'Increases Final Damage by 10% and Defense Penetration "
+     "by 5% for 12 sec.' Lv.115 unlock (was 107). factorIndex 21 (game table; was 22), baseDamage 100 "
+     "tenths%. Duty-cycle averaged by the standard buff_uptime() helper. Only the Final Damage "
+     "component is modeled (no live per-skill Defense-Penetration mechanism exists in this project)."),
     ("TIME_LEAP_FD", "Time Leap", 4, 65, True, 1, 1, 0, 0, 100, 1,
-     150, 22, True,
-     0, 0, 0, 0, "FINAL_DAMAGE", 40, "", "",
-     "Confirmed via maplestoryidle.info cross-reference: a real Type=Active cast (mpCost 40, 65s "
-     "cooldown, 40s duration), not a passive — CostsActionSlot corrected from False to True and "
-     "given its real cooldown/duration (previously modeled as an always-active, no-cooldown-known "
-     "passive after an assumed initial delay). Duty-cycle averaged now via the standard "
-     "buff_uptime() helper, same treatment as Nimble Feet/Crossbones. The skill's own 'a 12-sec "
-     "cooldown is applied at the start of battle when this skill is in slot' quirk (a one-time "
-     "delayed-first-cast behavior) is NOT modeled — this project has no start-of-battle-delay "
-     "mechanic beyond the shared buff-casting-startup-delay, and layering a skill-specific one on "
-     "top was judged out of scope. 'Instantly decreases the cooldown of Active Skills by 50% and "
-     "increases Final Damage by 30% for 40 sec.' PATCHED: Final Damage 30%->15% (a nerf) — "
-     "modeled value already reflects the patch. The cooldown-reduction-for-self/allies effect "
-     "is not modeled (no mechanic exists in this project for one skill's cooldown to modify "
-     "another's, nor for other players). factorIndex 22, baseDamage 150 tenths% (already the "
-     "patched 15%). Mastery Lv.138 'Time Leap - Grant' (+10%p own Final Damage boost, plus an "
-     "ally-CDR-grant effect) not modeled — no other players exist in this project's model."),
+     150, 21, True,
+     level_gated_sum(IB("level"), {138: 10}), 0, 0, 0, "FINAL_DAMAGE", 40, "", "",
+     "Active cast (65s cooldown, 40s duration): 'Instantly decreases the cooldown of Active Skills by "
+     "50% and increases Final Damage by 15% for 40 sec. When this skill is in slot, a 12-sec cooldown "
+     "is applied at the start of battle.' Lv.125 unlock (was 115). PATCHED FD 30% -> 15% "
+     "(baseDamage 150 tenths% = the patched value). factorIndex 21 (game table; was 22). Mastery "
+     "Lv.138 'Time Leap - Grant': +10%p to this Final Damage boost (SkillMasteryBonus%; its "
+     "ally-cooldown-grant effect is not modeled). Duty-cycle averaged by buff_uptime(). Not modeled: "
+     "the one-time 50% cooldown refund of your own active skills and the 12s start-of-battle delay."),
     ("SHADOW_HEART", "Shadow Heart", 1, "", False, 1, 1, 0, 0, 100, 1,
      50, 22, True,
      0, 0, 0, 0, "CRIT_RATE", 0, "", "",
@@ -2208,7 +2174,7 @@ SKILL_ROWS = [
      "Level Bonus delta. FLAGGED ASSUMPTION (no individual wiki page exists): 'Increases "
      "Critical Rate by 5%.' factorIndex 22, baseDamage 50 tenths%."),
     ("QUICK_MOTION", "Quick Motion", 1, "", False, 1, 1, 0, 0, 100, 1,
-     61, 22, True,
+     60, 22, True,
      level_gated_sum(IB("level"), {24: 5}), 0, 0, 0, "ATTACK_SPEED", 0, "", "",
      "Magic Critical pattern — already baked into Inputs!ATTACK_SPEED%; feeds the 1st-Job Skill "
      "Level Bonus delta. Confirmed via maplestoryidle.info cross-reference: 'Increases Attack "
@@ -2246,7 +2212,7 @@ SKILL_ROWS = [
      "2nd-Job Skill Level Bonus delta. FLAGGED ASSUMPTION (no individual wiki page exists, "
      "though byte-identical wording to every other class's own Physical Training): 'Increases "
      "Basic Attack Damage by 10%.' factorIndex 22, baseDamage 100 tenths%."),
-    ("GROGGY_MASTERY_FD", "Groggy Mastery", 2, "", False, 1, 1, 0, 0, 100, 1,
+    ("GROGGY_MASTERY_FD", "Groggy Mastery", 3, "", False, 1, 1, 0, 0, 100, 1,
      80, 22, True,
      0, 0, 0, 0, "FINAL_DAMAGE", 0, "", "",
      "PATCHED — a mechanic-TYPE change, not just a number: pre-patch text reads 'Increases "
@@ -2267,11 +2233,52 @@ SKILL_ROWS = [
      "separate, unrelated flat passive). Flat +15% Attack Speed / +10% Speed for 15s, "
      "non-scaling. Speed component not modeled (no Speed stat anywhere in this project). "
      "FactorIndex unused placeholder."),
+    ("SPEED_INFUSION", "Speed Infusion", 4, 35, True, 1, 1, 0, 0, 100, 1,
+     200, 21, True,
+     0, 0, 0, 0, "ATTACK_SPEED", 15, "", "",
+     "Active cast (35s cooldown, 15s duration, Lv.107): 'Increases Attack Speed by 20% and Final "
+     "Damage by 20% of Attack Speed for 15 sec.' Game table: Attack Speed 20% x factorIndex 21 "
+     "(scales with level). The earlier version only had a Summary-level Final Damage formula "
+     "(unlocked at an assumed Lv.110, no cast cost) and omitted the Attack Speed component entirely. "
+     "Now a real action-costing buff row: its AS% (duty-cycled by buff_uptime(), like Nimble Feet) "
+     "joins the Attack Speed stack in Summary!AS_BONUS, and the Final Damage component = 20 x "
+     "(Actions-per-second DURING the buff - 1) x uptime joins Summary's FD bucket. Its cast also "
+     "costs an action slot (reducing Hook Bomber's cast rate) and counts in the buff-casting startup "
+     "delay."),
+    ("GSS_II_FD", "Greater Sea Serpent II (Sea Serpent Burst Final Damage helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
+     1000, 22, True,
+     0, 0, 0, 0, "", 0, "", "",
+     "Helper row (no independent DPS): GSS II's '+100% Final Damage' on Sea Serpent Burst (game table "
+     "ModSkillStat FinalDamage, 1000 raw = 100% x factorIndex 22, scales with GSS II's 4th-job skill "
+     "level). Lv.110 unlock. Only Sea Serpent Burst's own K formula reads this row's F (multiplicative "
+     "per-row Final Damage, same shape as Maple Hero); Serpent Assault does NOT receive it."),
+    ("SSR_WEAKEN", "Sea Serpent's Rage - Assault Mark (Weakness helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
+     150, 21, True,
+     0, 0, 0, 0, "", 5, "", "",
+     "Helper row (no independent DPS): the Assault Mark Sea Serpent's Rage leaves on hit targets, "
+     "'increase their damage taken by 15% for 5 sec' (game table Weakness 15% x factorIndex 21, "
+     "scales with level; Lv.117). Applied once per Octopunch cast, so its uptime is "
+     "MIN(1, 5s x (1+Buff Duration%) / Octopunch's effective cooldown) — read by Summary's "
+     "Monster Damage-Taken bucket (both the main sheet and each Sensitivity block)."),
 ]
 
 # Rows with a real Cooldown(s) value (literal or a live formula reference).
 ROW_HAS_COOLDOWN = {row[0]: row[3] not in ("", None) for row in SKILL_ROWS}
 CDR_COSTS_ACTION_ROW = {key: r for key, r in ROW.items()}
+# Sea Serpent's Rage / Raging Serpent Assault fire off Octopunch's cast, so they share its CDR eligibility.
+CDR_COSTS_ACTION_ROW["SEA_SERPENTS_RAGE"] = ROW["OCTOPUNCH"]
+CDR_COSTS_ACTION_ROW["RAGING_SERPENT_ASSAULT"] = ROW["OCTOPUNCH"]
+
+
+# Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills, buffs and passives alike
+# (user decision 2026-10-21; it used to apply only to CostsActionSlot rows). The exempt rows are NOT real
+# cooldowns: their Cooldown(s) cell is a trigger-rate / internal-interval surrogate (e.g. 1 / attack speed),
+# which CDR must not shrink to the 0.1s floor.
+CDR_EXEMPT_ROW_KEYS = []
+
+
+def cdr_applies_expr(key):
+    return "FALSE" if key in CDR_EXEMPT_ROW_KEYS else "TRUE"
 
 
 def build_skills_sheet(wb):
@@ -2306,21 +2313,18 @@ ATTACK_BUFF_ROW_KEYS = ["ROLL_OF_THE_DICE_DICE"]
 # casts. Nimble Feet/Crossbones/Time Leap are all real timed, action-costing buffs with live
 # BuffDuration>0 (confirmed via maplestoryidle.info — Crossbones/Time Leap were previously assumed
 # passive with no cooldown).
-BUFF_ROW_KEYS = ["NIMBLE_FEET", "CROSSBONES_FD", "TIME_LEAP_FD"]
+BUFF_ROW_KEYS = ["NIMBLE_FEET", "CROSSBONES_FD", "TIME_LEAP_FD", "SPEED_INFUSION"]
 PASSIVE_MULT_ROW_KEYS = [
     "SHADOW_HEART", "QUICK_MOTION", "AGILE_KNUCKLES", "DARK_CLARITY",
     "KNUCKLE_MASTERY", "PHYSICAL_TRAINING", "GROGGY_MASTERY_FD",
 ]
-HELPER_ROW_KEYS = ["MAPLE_HERO_HELPER"]
+HELPER_ROW_KEYS = ["MAPLE_HERO_HELPER", "GSS_II_FD", "SSR_WEAKEN"]
 MAPLE_HERO_ROW_KEYS = ["MAPLE_HERO_HELPER"]
 DAMAGE_DEALING_KEYS = ["HOOK_BOMBER"] + DAMAGE_ROW_KEYS
-# Sea Serpent Burst/Serpent Assault have NO real cooldown of their own — they fire exactly once
-# per basic-attack cast (weighted by the Assault-Mode duty-cycle fraction via their own
-# ProcChance% formula), so their own O-column DPS rides directly on Hook Bomber's own
-# Summary!$B$R_BAPS cast rate instead of the generic Cooldown-driven rate machinery (which would
-# otherwise force these rows into the PVP-fixed-15s branch of effective_cooldown_expr — wrong,
-# since they should still fire at the real basic-attack rate in PvP, not once every 15 seconds).
-RIDES_BASIC_ATTACK_KEYS = ["SEA_SERPENT_BURST", "SERPENT_ASSAULT"]
+# Sea Serpent Burst / Serpent Assault are driven by the Assault-Mode activation economy (Summary!SERPENT_T /
+# ASSAULT_U), not by the generic Cooldown-driven rate machinery (which would put them in the PvP-fixed-15s
+# branch of effective_cooldown_expr — wrong, their 7s trigger cooldown is real in PvP too).
+SERPENT_ACTIVATION_KEYS = ["SEA_SERPENT_BURST", "SERPENT_ASSAULT"]
 
 CALC_HEADERS = [
     "Key", "Name", "Unlocked", "InputLevel", "Factor", "CoefficientPercent",
@@ -2348,6 +2352,12 @@ def build_calc_sheet(wb):
     crit_damage_total_ref = f'({IB("crit_damage")}+Summary!$B${R_CRIT_DAMAGE_BONUS}+{art_ref("AGG_CRIT_DAMAGE")})'
     avg_buff_mult_ref = f"Summary!$B${R_AVGBUFF}"
     final_damage_extra_ref = f"Summary!$B${R_FD_BONUS}"
+    serpent_u_ref = f"Summary!$B${R_ASSAULT_U}"
+    serpent_t_ref = f"Summary!$B${R_SERPENT_T}"
+    nautilus_proc_rate_main = nautilus_proc_rate_expr(
+        f'H{ROW["NAUTILUS_FINAL_ATTACK"]}', S("ICD(s)", ROW["NAUTILUS_FINAL_ATTACK"]),
+        f"Summary!$B${R_NAUTILUS_TRIGGER_RATE}",
+    )
 
     for key, r in ROW.items():
         ws.cell(row=r, column=1, value=f"={S('Key', r)}")
@@ -2360,7 +2370,7 @@ def build_calc_sheet(wb):
             # multiplicative wrapper here rather than inside effective_cooldown_expr itself, since
             # it's a simple postfix scale and keeps that well-tested function untouched.
             eff_cd_r = (
-                f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+                f'({effective_cooldown_expr(IB("monster_type"), S("Cooldown(s)", r), IB("skill_cooldown_decrease"), cdr_applies_expr(key))}'
                 f'*(1-{artifact_soul_contract_pct_expr(IB("soul_contract_equipped"), IB("content_type"), IB("soul_contract_star"))}/100))'
             )
             # Duration actually available for this row's casts in fixed-duration mode: the raw
@@ -2431,6 +2441,10 @@ def build_calc_sheet(wb):
             mh_row = ROW["MAPLE_HERO_HELPER"]
             maple_hero_gated = f'IF(C{mh_row}=TRUE,F{mh_row},0)'
             maple_term = f'*(1+{maple_ratio}*{maple_hero_gated}/100)' if maple_ratio else ''
+            if key == "SEA_SERPENT_BURST":
+                # Greater Sea Serpent II: +100% Final Damage on THIS skill only (GSS_II_FD helper row).
+                gss2_row = ROW["GSS_II_FD"]
+                maple_term = f'*(1+IF(C{gss2_row}=TRUE,F{gss2_row},0)/100)'
             ws.cell(row=r, column=11, value=(
                 f'=J{r}*(1+{IB("stat_damage")}/100)*(1+{IB("damage")}/100)'
                 f'*(1+{IB("damage_amp")}/100)'
@@ -2497,8 +2511,28 @@ def build_calc_sheet(wb):
             )
             ws.cell(row=r, column=20, value=f'=IF(C{r},{boss_expr},0)')
             ws.cell(row=r, column=22, value=f'=IF(C{r},{normal_expr},0)')
-        elif key in RIDES_BASIC_ATTACK_KEYS:
-            prefix = f"{S('HitsPerCast', r)}*H{r}*N{r}*Summary!$B${R_BAPS}"
+        elif key in SERPENT_ACTIVATION_KEYS:
+            # Activation economy: one Sea Serpent Burst OR Serpent Assault activation every T seconds
+            # (their shared trigger cooldown + half a basic-attack period), split (1-u)/u by the
+            # Assault-Mode uptime. Hits per activation = HitsPerCast.
+            # Before Serpent Assault is unlocked (Lv69) nothing replaces Sea Serpent Burst during Assault Mode
+            # (game table: SSB's trigger only swaps to Serpent Assault when the passive is owned), so SSB
+            # then fires on EVERY activation.
+            share = (
+                f"IF(C{ROW['SERPENT_ASSAULT']}=TRUE,1-{serpent_u_ref},1)" if key == "SEA_SERPENT_BURST" else serpent_u_ref
+            )
+            prefix = f"{S('HitsPerCast', r)}*N{r}*{share}/{serpent_t_ref}"
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                S("NormalMonsterTargets", r), IB("max_enemies_hit"),
+                extra_boss_mult_r, extra_normal_mult_r,
+            )
+            ws.cell(row=r, column=20, value=f'=IF(C{r},{boss_expr},0)')
+            ws.cell(row=r, column=22, value=f'=IF(C{r},{normal_expr},0)')
+        elif key == "NAUTILUS_FINAL_ATTACK":
+            # No cooldown of its own — steady-state proc rate from the combined cast rate of the
+            # triggering attacks (Summary!NAUTILUS_TRIGGER_RATE); H{r} = per-attack proc chance.
+            prefix = f'{nautilus_proc_rate_main}*N{r}'
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
                 prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
                 S("NormalMonsterTargets", r), IB("max_enemies_hit"),
@@ -2591,7 +2625,7 @@ def build_summary_sheet(wb):
 
     def buff_uptime(row):
         return uptime_fraction_or_exact_expr(
-            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), S("Cooldown(s)", row),
+            fda_main, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), f'(1/Calc!Q{row})',
             bdi_main, IB("fight_duration"),
         )
 
@@ -2604,7 +2638,27 @@ def build_summary_sheet(wb):
     roll_of_dice_avg = f'((Calc!C{r_rd}=TRUE)*Calc!F{r_rd}*5/7)'
     # Serpent Scale's Assault-Mode FD buff: active for the assault_uptime_expr() fraction of the
     # time (a resource-economy duty cycle, NOT the standard cooldown-driven buff_uptime() helper).
-    serpent_scale_avg = f'((Calc!C{r_ssfd}=TRUE)*Calc!F{r_ssfd}*{assault_uptime_expr()})'
+    r_ssb = ROW["SEA_SERPENT_BURST"]
+    ws.cell(row=R_SERPENT_T, column=1, value=(
+        "Sea Serpent Burst / Serpent Assault activation interval T (s) = shared trigger cooldown + 0.5 x basic-attack period"
+    ))
+    ws.cell(row=R_SERPENT_T, column=2, value="=" + serpent_interval_expr(f"(1/Calc!Q{r_ssb})", f"B{R_BAPS}"))
+    ws.cell(row=R_ASSAULT_U, column=1, value=(
+        "Assault Mode steady-state uptime u = A/(A + activations_to_rebuild x T)"
+    ))
+    ws.cell(row=R_ASSAULT_U, column=2, value="=" + assault_uptime_expr(f"Calc!C{r_ssfd}", f"B{R_SERPENT_T}"))
+    ws.cell(row=R_NAUTILUS_TRIGGER_RATE, column=1, value=(
+        "Nautilus Strike - Final Attack: triggering attacks' combined cast rate, incl. Hook Bomber (1/s)"
+    ))
+    ws.cell(row=R_NAUTILUS_TRIGGER_RATE, column=2, value="=" + nautilus_trigger_rate_expr(
+        fda_main, IB("fight_duration"), f"B{R_BAPS}",
+        [(f"Calc!C{ROW[k]}", f"Calc!R{ROW[k]}", f"Calc!Q{ROW[k]}") for k in NAUTILUS_TRIGGER_KEYS],
+    ))
+    # Serpent Scale: +25% Final Damage while in Assault Mode (uptime u) + the pre-Assault +2% FD per held
+    # Serpent Scale, averaging 2 scales held while rebuilding = +4% for the (1-u) remainder.
+    serpent_scale_avg = (
+        f'((Calc!C{r_ssfd}=TRUE)*(Calc!F{r_ssfd}*B{R_ASSAULT_U}+4*(1-B{R_ASSAULT_U})))'
+    )
     # Crossbones/Time Leap: real, action-costing, cooldown-gated buffs (confirmed via
     # maplestoryidle.info) — duty-cycle averaged via the standard buff_uptime() helper, same as
     # Nimble Feet, not always-active.
@@ -2617,9 +2671,16 @@ def build_summary_sheet(wb):
     # TotalAS% = (APS-1)*100. Real 35s cooldown/15s duration confirmed via maplestoryidle.info —
     # duty-cycle averaged (steady-state, not fixed-duration-exact, since this is a live formula
     # rather than a Skills-sheet row with its own Calc!R CastsInFight column to reference).
-    speed_infusion_avg = (
-        f'(({IB("level")}>=110)*20*(B{R_APS}-1)*{uptime_fraction_expr(IB("monster_type"), 15, 35, bdi_main)})'
+    r_si = ROW["SPEED_INFUSION"]
+    r_nf_si = ROW["NIMBLE_FEET"]
+    si_uptime = buff_uptime(r_si)
+    speed_infusion_as_avg = f'((Calc!C{r_si}=TRUE)*Calc!F{r_si}*{si_uptime})'
+    _nimble_for_si = f'((Calc!C{r_nf_si}=TRUE)*Calc!F{r_nf_si}*{buff_uptime(r_nf_si)})'
+    # Final Damage = 20% of Attack Speed WHILE the buff is up (APS including its own +AS), over its uptime.
+    _aps_during_si = (
+        f'(1+MIN(150,150*(1-(1-{IB("attack_speed")}/150)*(1-({_nimble_for_si}+Calc!F{r_si})/150)))/100)'
     )
+    speed_infusion_avg = f'((Calc!C{r_si}=TRUE)*20*({_aps_during_si}-1)*{si_uptime})'
 
     ws.cell(row=R_AVGBUFF, column=1, value="Attack%% Bucket Multiplier (Roll of the Dice's dice component + Artifact Attack%, summed additively)")
     ws.cell(row=R_AVGBUFF, column=2, value=f'=1+({roll_of_dice_avg}+{art_ref("AGG_ATTACK_PCT")})/100')
@@ -2627,13 +2688,19 @@ def build_summary_sheet(wb):
     ws.cell(row=R_CRIT_RATE_BONUS, column=1, value="Global Crit Rate Bonus % (unused — no live Crit-Rate-buff source exists)")
     ws.cell(row=R_CRIT_RATE_BONUS, column=2, value=0)
 
-    ws.cell(row=R_MONSTER_DMG_BONUS, column=1, value="Global Monster Damage-Taken Bonus % (Artifact Enemy Damage Taken Bonus)")
-    ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=f'={art_ref("AGG_ENEMY_DMG_TAKEN")}')
+    r_ssrw, r_oct = ROW["SSR_WEAKEN"], ROW["OCTOPUNCH"]
+    ssr_weaken_avg = (
+        f'((Calc!C{r_ssrw}=TRUE)*Calc!F{r_ssrw}*MIN(1,5*(1+{bdi_main}/100)*Calc!Q{r_oct}))'
+    )
+    ws.cell(row=R_MONSTER_DMG_BONUS, column=1, value=(
+        "Global Monster Damage-Taken Bonus % (Sea Serpent's Rage Assault Mark + Artifact Enemy Damage Taken Bonus)"
+    ))
+    ws.cell(row=R_MONSTER_DMG_BONUS, column=2, value=f'={ssr_weaken_avg}+{art_ref("AGG_ENEMY_DMG_TAKEN")}')
 
     r_nf = ROW["NIMBLE_FEET"]
     nimble_feet_as_avg = f'((Calc!C{r_nf}=TRUE)*Calc!F{r_nf}*{buff_uptime(r_nf)})'
-    ws.cell(row=R_AS_BONUS, column=1, value="Attack Speed Buff Bonus % (Nimble Feet, duty-cycle averaged)")
-    ws.cell(row=R_AS_BONUS, column=2, value=f'={nimble_feet_as_avg}')
+    ws.cell(row=R_AS_BONUS, column=1, value="Attack Speed Buff Bonus % (Nimble Feet + Speed Infusion, duty-cycle averaged)")
+    ws.cell(row=R_AS_BONUS, column=2, value=f'={nimble_feet_as_avg}+{speed_infusion_as_avg}')
 
     ws.cell(row=R_APS, column=1, value="Actions Per Second")
     ws.cell(row=R_APS, column=2, value=(
@@ -2802,15 +2869,21 @@ POTENTIAL_STAT_TO_SWEEP_KEY = {
     "Min Damage Multiplier %": "min_damage",
     "Max Damage Multiplier %": "max_damage",
     "Defense Penetration": "def_pen",
-    "Dex %": "dex",
-    "Dex": "dex",
     "Basic Attack Damage %": "basic_attack_damage",
     "Skill Damage %": "skill_damage",
     "Skill Cooldown Decrease (seconds)": "skill_cooldown_decrease",
     "Buff Duration Increase %": "buff_duration_increase_pct",
     "All Skill Level": "skill_lvl_all",
     "Basic Attack Target Increase": "basic_attack_target_increase",
+    "Str %": "str_pct",
+    "Str": "flat_str",
+    "Dex": "dex",
 }
+
+# Sub-stat PERCENT potential lines: the Sensitivity sweep for the sub-stat is a flat +1 point, so a
+# "+N% sub-stat" roll is worth N% of the current total sub-stat in points (approximation: Inputs holds the
+# final sub-stat value, no separate flat/% split). Main-stat lines map 1:1 above.
+POTENTIAL_SUB_STAT_PCT_LINES = {"Dex %": ("dex", "dex")}
 
 
 def dps_per_unit_expr(stat_name):
@@ -2836,6 +2909,9 @@ def dps_per_unit_expr(stat_name):
         )
     if stat_name == "Companion Summoning Time Increase %":
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]}'
+    if stat_name in POTENTIAL_SUB_STAT_PCT_LINES:
+        sweep_key, inputs_key = POTENTIAL_SUB_STAT_PCT_LINES[stat_name]
+        return f'=Sensitivity!H{SENSITIVITY_ROW_FOR[sweep_key]}*{IB(inputs_key)}/100'
     key = POTENTIAL_STAT_TO_SWEEP_KEY.get(stat_name)
     if key is None:
         return "0"
@@ -2900,7 +2976,7 @@ def make_ib(override_key, override_expr):
     return ib
 
 
-BLOCK_HEIGHT = LAST_ROW + 16
+BLOCK_HEIGHT = LAST_ROW + 19
 BLOCK_START = SENSITIVITY_HEADER_ROW + len(STAT_SWEEP) + SENSITIVITY_ARTIFACT_TABLE_HEADER_ROWS + 3
 
 
@@ -2923,6 +2999,10 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     s_boss_total = calc_end + 11
     s_normal_total = calc_end + 12
     s_total = calc_end + 13
+    s_serpent_t = calc_end + 14
+    s_assault_u = calc_end + 15
+    s_naut_trig = calc_end + 16
+    serpent_t_block_ref, assault_u_block_ref, naut_trig_block_ref = f"B{s_serpent_t}", f"B{s_assault_u}", f"B{s_naut_trig}"
     crit_rate_bonus_ref = f"B{s_crit_rate_bonus}"
     as_bonus_ref, aps_ref, castrate_ref, baps_ref = f"B{s_as_bonus}", f"B{s_aps}", f"B{s_castrate}", f"B{s_baps}"
     crit_damage_bonus_ref = f"B{s_crit_damage_bonus}"
@@ -2937,7 +3017,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
             fda_block, f'R{local_row}', ib("monster_type"), S("BuffDuration(s)", skills_row),
-            S("Cooldown(s)", skills_row), bdi_block, ib("fight_duration"),
+            f'(1/Q{local_row})', bdi_block, ib("fight_duration"),
         )
 
     delta_by_slot = {}
@@ -3173,12 +3253,28 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     roll_of_dice_avg = f'((C{row_of["ROLL_OF_THE_DICE_DICE"]}=TRUE)*F{row_of["ROLL_OF_THE_DICE_DICE"]}*5/7)'
     serpent_scale_avg = (
-        f'((C{row_of["SERPENT_SCALE_FD"]}=TRUE)*F{row_of["SERPENT_SCALE_FD"]}*'
-        f'{assault_uptime_expr(baps_ref, ib)})'
+        f'((C{row_of["SERPENT_SCALE_FD"]}=TRUE)*(F{row_of["SERPENT_SCALE_FD"]}*{assault_u_block_ref}'
+        f'+4*(1-{assault_u_block_ref})))'
+    )
+    ssr_weaken_block = (
+        f'((C{row_of["SSR_WEAKEN"]}=TRUE)*F{row_of["SSR_WEAKEN"]}'
+        f'*MIN(1,5*(1+{bdi_block}/100)*Q{row_of["OCTOPUNCH"]}))'
+    )
+    nautilus_proc_rate_block = nautilus_proc_rate_expr(
+        f'H{row_of["NAUTILUS_FINAL_ATTACK"]}', S("ICD(s)", ROW["NAUTILUS_FINAL_ATTACK"]), naut_trig_block_ref,
     )
     crossbones_avg = f'((C{row_of["CROSSBONES_FD"]}=TRUE)*F{row_of["CROSSBONES_FD"]}*{buff_uptime_block(row_of["CROSSBONES_FD"], ROW["CROSSBONES_FD"])})'
     time_leap_avg = f'((C{row_of["TIME_LEAP_FD"]}=TRUE)*F{row_of["TIME_LEAP_FD"]}*{buff_uptime_block(row_of["TIME_LEAP_FD"], ROW["TIME_LEAP_FD"])})'
-    speed_infusion_avg = f'(({ib("level")}>=110)*20*({aps_ref}-1)*{uptime_fraction_expr(ib("monster_type"), 15, 35, bdi_block)})'
+    r_si_b = row_of["SPEED_INFUSION"]
+    si_uptime_block = buff_uptime_block(r_si_b, ROW["SPEED_INFUSION"])
+    speed_infusion_as_avg_block = f'((C{r_si_b}=TRUE)*F{r_si_b}*{si_uptime_block})'
+    _nf_si_b = row_of["NIMBLE_FEET"]
+    _nimble_for_si_block = f'((C{_nf_si_b}=TRUE)*F{_nf_si_b}*{buff_uptime_block(_nf_si_b, ROW["NIMBLE_FEET"])})'
+    _aps_during_si_block = (
+        f'(1+MIN(150,150*(1-(1-({ib("attack_speed")}+{delta["attack_speed"]})/150)'
+        f'*(1-({_nimble_for_si_block}+F{r_si_b})/150)))/100)'
+    )
+    speed_infusion_avg = f'((C{r_si_b}=TRUE)*20*({_aps_during_si_block}-1)*{si_uptime_block})'
     # Attack% bucket: every live skill/buff Attack% source and every Attack%-granting artifact sum
     # additively into ONE combined percentage before a single multiplication — matches
     # Verification item 6.
@@ -3209,7 +3305,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         has_cooldown = ROW_HAS_COOLDOWN[key]
         if has_cooldown:
             eff_cd_row = (
-                f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), S("CostsActionSlot", CDR_COSTS_ACTION_ROW[key]))}'
+                f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), cdr_applies_expr(key))}'
                 f'*(1-{artifact_soul_contract_pct_expr(ib("soul_contract_equipped"), ib("content_type"), ib("soul_contract_star"))}/100))'
             )
             if key in BUFF_ROW_KEYS:
@@ -3267,6 +3363,10 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             f'={S("HitsPerCast", r)}*IF({S("ICD(s)", r)}>0,{S("ActiveWindow(s)", r)}/{S("ICD(s)", r)},1)'
         ))
         ws.cell(row=row, column=8, value=f'=1-(1-{S("ProcChance%", r)}/100)^{S("RollsPerCast", r)}')
+        if key == "RAGING_SERPENT_ASSAULT":
+            # Gated by THIS block's own Assault-Mode uptime (the Skills-sheet ProcChance% points at the
+            # main sheet's u, which would not move when this block sweeps Attack Speed etc.).
+            ws.cell(row=row, column=8, value=f'={assault_u_block_ref}')
         ws.cell(row=row, column=9, value="1")
 
         if key in (["HOOK_BOMBER"] + DAMAGE_ROW_KEYS):
@@ -3279,6 +3379,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             mh_row_of = row_of["MAPLE_HERO_HELPER"]
             maple_hero_gated_block = f'IF(C{mh_row_of}=TRUE,F{mh_row_of},0)'
             maple_term = f'*(1+{maple_ratio}*{maple_hero_gated_block}/100)' if maple_ratio else ''
+            if key == "SEA_SERPENT_BURST":
+                gss2_b = row_of["GSS_II_FD"]
+                maple_term = f'*(1+IF(C{gss2_b}=TRUE,F{gss2_b},0)/100)'
             ws.cell(row=row, column=11, value=(
                 f'=J{row}*(1+{ib("stat_damage")}/100)*(1+{ib("damage")}/100)'
                 f'*(1+{ib("damage_amp")}/100)'
@@ -3301,8 +3404,8 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             for col in (10, 11, 12, 13, 14):
                 ws.cell(row=row, column=col, value="")
 
-        boss_dmg_pct_row = f'{ib("boss_damage")}+{delta["boss_damage"]}+{S("MasteryBossDamage%", r)}+{agg_boss_damage_block}+{agg_enemy_dmg_taken_block}'
-        normal_dmg_pct_row = f'{ib("normal_damage")}+{S("MasteryNormalDamage%", r)}+{agg_normal_damage_block}+{agg_enemy_dmg_taken_block}'
+        boss_dmg_pct_row = f'{ib("boss_damage")}+{delta["boss_damage"]}+{S("MasteryBossDamage%", r)}+{agg_boss_damage_block}+{agg_enemy_dmg_taken_block}+{ssr_weaken_block}'
+        normal_dmg_pct_row = f'{ib("normal_damage")}+{S("MasteryNormalDamage%", r)}+{agg_normal_damage_block}+{agg_enemy_dmg_taken_block}+{ssr_weaken_block}'
 
         # The Contract of Darkness's boss-branch-only Crit Rate, via a crit-blend ratio correction
         # using THIS row's own L/M cells (only valid for damage-dealing rows, where
@@ -3330,8 +3433,21 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             )
             ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
             ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
-        elif key in RIDES_BASIC_ATTACK_KEYS:
-            prefix = f"{S('HitsPerCast', r)}*H{row}*N{row}*{baps_ref}"
+        elif key in SERPENT_ACTIVATION_KEYS:
+            share_b = (
+                f"IF(C{row_of['SERPENT_ASSAULT']}=TRUE,1-{assault_u_block_ref},1)"
+                if key == "SEA_SERPENT_BURST" else assault_u_block_ref
+            )
+            prefix = f"{S('HitsPerCast', r)}*N{row}*{share_b}/{serpent_t_block_ref}"
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                S("NormalMonsterTargets", r), ib("max_enemies_hit"),
+                extra_boss_mult_block, extra_normal_mult_block,
+            )
+            ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
+            ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
+        elif key == "NAUTILUS_FINAL_ATTACK":
+            prefix = f'{nautilus_proc_rate_block}*N{row}'
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
                 prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
                 S("NormalMonsterTargets", r), ib("max_enemies_hit"),
@@ -3373,8 +3489,8 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     nf = row_of["NIMBLE_FEET"]
     nimble_feet_as_avg_block = f'((C{nf}=TRUE)*F{nf}*{buff_uptime_block(nf, ROW["NIMBLE_FEET"])})'
-    ws.cell(row=s_as_bonus, column=1, value="Attack Speed Buff Bonus % (Nimble Feet, duty-cycle averaged)")
-    ws.cell(row=s_as_bonus, column=2, value=f'={nimble_feet_as_avg_block}')
+    ws.cell(row=s_as_bonus, column=1, value="Attack Speed Buff Bonus % (Nimble Feet + Speed Infusion, duty-cycle averaged)")
+    ws.cell(row=s_as_bonus, column=2, value=f'={nimble_feet_as_avg_block}+{speed_infusion_as_avg_block}')
 
     ws.cell(row=s_aps, column=1, value="Actions Per Second")
     ws.cell(row=s_aps, column=2, value=(
@@ -3412,6 +3528,16 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     ws.cell(row=s_total, column=1, value="TOTAL DPS").font = LABEL_FONT
     ws.cell(row=s_total, column=2, value=f"=SUM(O{calc_start}:O{calc_end})").font = LABEL_FONT
+
+    ws.cell(row=s_serpent_t, column=1, value="Serpent activation interval T (this block's own Hook Bomber rate)")
+    ws.cell(row=s_serpent_t, column=2, value="=" + serpent_interval_expr(f'(1/Q{row_of["SEA_SERPENT_BURST"]})', baps_ref))
+    ws.cell(row=s_assault_u, column=1, value="Assault Mode uptime u (this block)")
+    ws.cell(row=s_assault_u, column=2, value="=" + assault_uptime_expr(f"C{row_of['SERPENT_SCALE_FD']}", serpent_t_block_ref, ib))
+    ws.cell(row=s_naut_trig, column=1, value="Nautilus Strike - Final Attack trigger rate (this block's own Q/R)")
+    ws.cell(row=s_naut_trig, column=2, value="=" + nautilus_trigger_rate_expr(
+        fda_block, ib("fight_duration"), baps_ref,
+        [(f"C{row_of[k]}", f"R{row_of[k]}", f"Q{row_of[k]}") for k in NAUTILUS_TRIGGER_KEYS],
+    ))
 
     return total_ref, boss_total_ref, normal_total_ref
 
