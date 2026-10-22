@@ -1298,6 +1298,13 @@ def build_factor_table_sheet(wb):
 PVP_FIGHT_DURATION = 15
 
 
+def pvp_capped_window_expr(window_ref, monster_type_ref):
+    """In PvP the fight lasts PVP_FIGHT_DURATION seconds, so a summon / damage-over-time window longer than the
+    fight (Ifrit 30-40s, Arrow Platter 60s, ...) can only tick for the fight's length (2026-10-22 fix: PvP used
+    to count the full window while only crediting one cast per fight, ~2x too many ticks for a 30s summon)."""
+    return f'IF({monster_type_ref}="pvp",MIN({window_ref},{PVP_FIGHT_DURATION}),{window_ref})'
+
+
 def effective_cooldown_expr(monster_type_ref, cooldown_ref, cdr_ref, costs_action_ref):
     return (
         f'IF({monster_type_ref}="pvp",{PVP_FIGHT_DURATION},'
@@ -2510,7 +2517,7 @@ def build_calc_sheet(wb):
                 )
 
         ws.cell(row=r, column=7, value=(
-            f'={S("HitsPerCast", r)}*IF({S("ICD(s)", r)}>0,{S("ActiveWindow(s)", r)}/{S("ICD(s)", r)},1)'
+            f'={S("HitsPerCast", r)}*IF({S("ICD(s)", r)}>0,{pvp_capped_window_expr(S("ActiveWindow(s)", r), IB("monster_type"))}/{S("ICD(s)", r)},1)'
         ))
         ws.cell(row=r, column=8, value=f'=1-(1-{S("ProcChance%", r)}/100)^{S("RollsPerCast", r)}')
         ws.cell(

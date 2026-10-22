@@ -1078,6 +1078,17 @@ passive's Calc!F value on top at level >= 117. It now returns the Inputs value u
 scripts match. The passive's skill row stays as an informational row.
 
 
+## PvP summon / DoT windows are capped at the 15s fight (2026-10-22, all 12 classes)
+
+Reported on FP-Mage: Ifrit was ~35% of PvP DPS (vs ~7% in boss content). PvP credits one cast per 15s fight
+(cooldown = 15s) but used to tick the skill for its FULL ActiveWindow, so a 30-40s summon got ~2x the ticks that
+fit in the fight (Arrow Platter's 60s window ~4x). The Calc/Sensitivity EffectiveHits column now caps the window
+at `PVP_FIGHT_DURATION` in PvP (`pvp_capped_window_expr`); verify scripts mirror it (`capped_window`). Not caused
+by the audit (Ifrit's own row was untouched; its +2% in the audit came from the Meditation factor fix). Effect on
+PvP totals at the saved Inputs: Bowmaster -32%, Corsair -28%, Bishop -23%, Ice/Lightning -21%, FP-Mage -20%,
+Marksman -17%, Night Lord -8%, Shadower -7%, Dark Knight -3%; Buccaneer/Hero/Paladin unchanged (no window > 15s).
+Still a simplification: PvP gives every skill exactly one cast per fight regardless of its real cooldown.
+
 ## 2026-10-21 full data audit (all 12 classes) — what changed, and what is still an assumption
 
 Source: `maplestoryidle.info`'s embedded game tables (+ its patched/base skill text), `idle.maplestorywiki.net`

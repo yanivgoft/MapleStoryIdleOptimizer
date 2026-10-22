@@ -301,6 +301,11 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15  # mirrors build_fp_mage_workbook.PVP_FIGHT_DURATION
 
 
+def capped_window(window):
+    """PvP fights last PVP_FIGHT_DURATION seconds, so a longer summon / DoT window can only tick that long."""
+    return min(window, PVP_FIGHT_DURATION) if monster_type == "pvp" else window
+
+
 def eff_cooldown(cooldown, costs_action=None, exempt=False):
     """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
     buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
@@ -504,7 +509,7 @@ for key, s in SKILLS.items():
     if fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
-        hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
+        hits = s["hits"] * ((capped_window(s["window"]) / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
     skill_dps[key] = rate * proc * hd * boss_normal_multiplier(key, s)
 

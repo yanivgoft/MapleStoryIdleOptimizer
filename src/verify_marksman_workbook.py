@@ -178,6 +178,11 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15
 
 
+def capped_window(window):
+    """PvP fights last PVP_FIGHT_DURATION seconds, so a longer summon / DoT window can only tick that long."""
+    return min(window, PVP_FIGHT_DURATION) if monster_type == "pvp" else window
+
+
 def eff_cooldown(cooldown, costs_action=None, exempt=False):
     """Effective cooldown. Skill Cooldown Decrease applies to EVERY real cooldown — actively cast skills,
     buffs and passives alike (user decision 2026-10-21; `costs_action` is kept only for call-site
@@ -448,7 +453,7 @@ for key, s in DAMAGE_SKILLS.items():
     if fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
-        hits = s["hits"] * ((s["window"] / s["icd"]) if s.get("icd") else 1)
+        hits = s["hits"] * ((capped_window(s["window"]) / s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
     tm = boss_normal_multiplier(s["targets"], s.get("mastery_boss", 0), s.get("mastery_normal", 0))
     skill_dps[key] = proc_prob * rate * hd * tm
@@ -459,7 +464,7 @@ def hit_rate_per_sec(s, eff_cd):
     hits_per_cast = s["hits"]
     icd = s.get("icd")
     window = s.get("window")
-    effective_hits = hits_per_cast * (window / icd if icd else 1)
+    effective_hits = hits_per_cast * (capped_window(window) / icd if icd else 1)
     if fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, hits_per_cast, icd, window) / fight_duration / effective_hits if effective_hits else 0
     else:
