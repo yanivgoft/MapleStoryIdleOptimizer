@@ -1089,6 +1089,13 @@ PvP totals at the saved Inputs: Bowmaster -32%, Corsair -28%, Bishop -23%, Ice/L
 Marksman -17%, Night Lord -8%, Shadower -7%, Dark Knight -3%; Buccaneer/Hero/Paladin unchanged (no window > 15s).
 Still a simplification: PvP gives every skill exactly one cast per fight regardless of its real cooldown.
 
+**Whole ticks (2026-10-22, all 12 classes):** every summon / DoT now lands WHOLE hits — `INT(window/ICD + 1e-9)`
+per cast (the epsilon absorbs float error such as 6/0.3), in the steady-state / PvP EffectiveHits column and in the
+exact fixed-duration tick count (full windows and the truncated last cast). It used to credit fractional ticks
+(Ifrit in PvP: 15s/4s = 3.75 hits; now 3, so FP-Mage Ifrit is ~19% of PvP DPS instead of 22%, and its full 30s
+window in boss content is 7 hits instead of 7.5). Ticks are assumed to start one interval after the cast; if a
+skill actually strikes the instant it appears it would be one more hit.
+
 ## 2026-10-21 full data audit (all 12 classes) — what changed, and what is still an assumption
 
 Source: `maplestoryidle.info`'s embedded game tables (+ its patched/base skill text), `idle.maplestorywiki.net`

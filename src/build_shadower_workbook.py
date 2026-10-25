@@ -1905,8 +1905,9 @@ def guarded_casts_expr(available_duration_ref, cooldown_ref):
 def exact_total_hits_expr(casts_ref, hits_ref, icd_ref, window_ref, cooldown_ref, duration_ref):
     last_cast_start = f'(({casts_ref}-1)*{cooldown_ref})'
     remaining_after_last = f'MAX(0,{duration_ref}-{last_cast_start})'
-    full_window_ticks = f'IF({icd_ref}>0,{window_ref}/{icd_ref},1)'
-    last_cast_ticks = f'IF({icd_ref}>0,MIN({window_ref},{remaining_after_last})/{icd_ref},1)'
+    # Whole ticks only: a summon / DoT cannot land a fractional hit (floor; the epsilon absorbs float error such as 6/0.3).
+    full_window_ticks = f'IF({icd_ref}>0,INT({window_ref}/{icd_ref}+0.000000001),1)'
+    last_cast_ticks = f'IF({icd_ref}>0,INT(MIN({window_ref},{remaining_after_last})/{icd_ref}+0.000000001),1)'
     return f'({hits_ref}*(({casts_ref}-1)*{full_window_ticks}+{last_cast_ticks}))'
 
 
@@ -2565,7 +2566,7 @@ def build_calc_sheet(wb):
                 ))
 
         ws.cell(row=r, column=7, value=(
-            f'={S("HitsPerCast", r)}*IF({S("ICD(s)", r)}>0,{pvp_capped_window_expr(S("ActiveWindow(s)", r), IB("monster_type"))}/{S("ICD(s)", r)},1)'
+            f'={S("HitsPerCast", r)}*IF({S("ICD(s)", r)}>0,INT({pvp_capped_window_expr(S("ActiveWindow(s)", r), IB("monster_type"))}/{S("ICD(s)", r)}+0.000000001),1)'
         ))
         ws.cell(row=r, column=8, value=f'=1-(1-{S("ProcChance%", r)}/100)^{S("RollsPerCast", r)}')
         ws.cell(row=r, column=9, value="1")
@@ -3455,7 +3456,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
                 ))
 
         ws.cell(row=row, column=7, value=(
-            f'={S("HitsPerCast", r)}*IF({S("ICD(s)", r)}>0,{pvp_capped_window_expr(S("ActiveWindow(s)", r), ib("monster_type"))}/{S("ICD(s)", r)},1)'
+            f'={S("HitsPerCast", r)}*IF({S("ICD(s)", r)}>0,INT({pvp_capped_window_expr(S("ActiveWindow(s)", r), ib("monster_type"))}/{S("ICD(s)", r)}+0.000000001),1)'
         ))
         ws.cell(row=row, column=8, value=f'=1-(1-{S("ProcChance%", r)}/100)^{S("RollsPerCast", r)}')
         ws.cell(row=row, column=9, value="1")

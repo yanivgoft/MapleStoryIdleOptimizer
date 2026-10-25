@@ -271,6 +271,11 @@ def unlocked(key):
 PVP_FIGHT_DURATION = 15
 
 
+def ticks(window, icd):
+    """Whole ticks only: a summon / DoT cannot land a fractional hit (mirrors the workbook's INT(window/ICD+1e-9))."""
+    return math.floor(window / icd + 1e-9)
+
+
 def capped_window(window):
     """PvP fights last PVP_FIGHT_DURATION seconds, so a longer summon / DoT window can only tick that long."""
     return min(window, PVP_FIGHT_DURATION) if monster_type == "pvp" else window
@@ -300,8 +305,8 @@ def exact_total_hits(cooldown, hits_per_cast, icd, window, duration=None):
     casts = exact_casts(cooldown, d)
     remaining_after_last = max(0.0, d - (casts - 1) * cooldown)
     if icd:
-        full_window_ticks = window / icd
-        last_cast_ticks = min(window, remaining_after_last) / icd
+        full_window_ticks = ticks(window, icd)
+        last_cast_ticks = ticks(min(window, remaining_after_last), icd)
     else:
         full_window_ticks = 1
         last_cast_ticks = 1
@@ -528,7 +533,7 @@ for key, s in SKILLS.items():
     if fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
-        hits = s["hits"] * ((capped_window(s["window"]) / s["icd"]) if s.get("icd") else 1)
+        hits = s["hits"] * (ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
     if key == "FROZEN_ORB":
         # Frozen Orb's own boss/normal damage multiplier (0.5 vs single target, 1.0 vs
