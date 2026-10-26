@@ -1096,6 +1096,26 @@ exact fixed-duration tick count (full windows and the truncated last cast). It u
 window in boss content is 7 hits instead of 7.5). Ticks are assumed to start one interval after the cast; if a
 skill actually strikes the instant it appears it would be one more hit.
 
+## Potential Cubes price Skill Cooldown Decrease from the CDR table (2026-10-26, all 12 classes)
+
+`potential_cubes_ev.py` used to value every potential line as `value x CubeData's DPS-per-unit rate`; for Skill
+Cooldown Decrease that rate is Sensitivity's single "+1 second" test, scaled linearly. CDR is a step function (a
+fixed-duration fight only gains a cast when a cooldown crosses a threshold), so that badly misprices bigger rolls:
+on the FP-Mage workbook +1s = +1.09% but the CDR milestone table says +2s = +3.44% and +3s = +5.79% (linear: 2.17% /
+3.26%). The script now reads the Sensitivity sheet's "Cooldown Reduction Milestone Sweep" table instead and
+interpolates it. Details worth knowing:
+- Your Inputs CDR already includes the CDR on gear, so each (slot, potential type) row is priced against its own
+  baseline = Inputs CDR minus that row's current CDR lines (`row_cdr_baseline`).
+- If that baseline is below the table's first step (0.5s) — you have CDR in Inputs and one row holds all of it — the
+  script re-evaluates the workbook once at that CDR (takes about as long as the initial load); if that fails it falls
+  back to the old +1s rate. Totals above the table's top step (5.0s) extend the last segment's slope.
+- The table's "Total DPS" is a dollar blend, while the Sensitivity table's % Gain is time-weighted, so in blended
+  content (Breakthrough, Hero Dungeon) the table's +1s (0.99%) differs slightly from the Sensitivity "+1" row (1.09%).
+  The cube calculator follows the table.
+- Not changed: CubeData!K and the workbook's other consumers of `Sensitivity!H` still use the linear +1s rate (Equipment
+  Compare has no CDR option; Artifact Potentials has no CDR line). The prebuilt `potential_cubes_ev-*` release
+  executables need rebuilding to pick this up.
+
 ## 2026-10-21 full data audit (all 12 classes) — what changed, and what is still an assumption
 
 Source: `maplestoryidle.info`'s embedded game tables (+ its patched/base skill text), `idle.maplestorywiki.net`

@@ -53,6 +53,12 @@ this is a proper optimal-stopping problem, solved exactly via backward induction
      V_K - current_value, which is therefore always >= 0 (you're never forced to make things
      worse — you always retain the option to simply not cube).
 
+Skill Cooldown Decrease lines are the one stat NOT priced as "value x a per-unit rate": CDR's DPS
+effect is a step function (fixed-duration fights gain a whole extra cast only when the cooldown
+crosses a threshold), so a single "+1 second" test says almost nothing about +2 or +3 seconds. They
+are priced from the Sensitivity sheet's "Cooldown Reduction Milestone Sweep" table instead
+(interpolating between its 0.5s steps) — see cdr_total_dps()/cdr_factor() below.
+
 This replaces two earlier, less accurate versions: one assumed a free undo across all N cubes
 (order statistics / max of N draws), the other used a *fixed* stopping threshold (your original
 value) instead of the correct recursive one — which meant it would "settle" for a roll that
@@ -63,6 +69,7 @@ or sampling.
 import argparse
 import csv
 import multiprocessing
+import re
 import sys
 from pathlib import Path
 
@@ -217,7 +224,130 @@ def find_total_dps():
 BASELINE_DPS = find_total_dps()
 
 
-def combined_dps_gain(stat_value_pairs):
+# ---------------------------------------------------------------------------
+# Skill Cooldown Decrease — priced from the Sensitivity sheet's "Cooldown Reduction Milestone
+# Sweep" table (absolute CDR seconds -> full-model Total DPS), NOT from CubeData's single
+# DPS-per-unit rate. That rate is the gain from one "+1 second" test, and CDR is a step function in
+# fixed-duration content: the same workbook can show ~1% for +1s but ~3.4% for +2s and ~5.8% for
+# +3s, so scaling the +1s gain linearly badly under-values bigger CDR rolls.
+#
+# The table is in ABSOLUTE seconds and your Inputs CDR (CDR_CURRENT) already includes whatever CDR
+# lines are rolled on gear right now, so a roll's value is always evaluated against a per-row
+# baseline: your total CDR minus the CDR on that row's own current lines (see row_cdr_baseline).
+# ---------------------------------------------------------------------------
+CDR_STAT = "Skill Cooldown Decrease (seconds)"
+CDR_INPUT_ROW = None
+_CDR_NOTES = set()
+_CDR_EXACT_FAILED = set()
+
+
+def load_cdr_curve():
+    ws = _wb["Sensitivity"]
+    try:
+        stat_row = find_row_by_label(ws, CDR_STAT, column=1, max_row=150)
+        current = read_formula_num("SENSITIVITY", f"D{stat_row}")  # "Current Value" column of the Stat table
+        # "Current Value" is a formula like =Inputs!$B$32 — remember that cell so the model can be re-evaluated
+        # at another CDR value if a baseline ever falls below the table's first step (see exact_total_at_cdr).
+        match = re.search(r"Inputs!\$?B\$?(\d+)", str(ws.cell(row=stat_row, column=4).value))
+        global CDR_INPUT_ROW
+        CDR_INPUT_ROW = int(match.group(1)) if match else None
+    except KeyError:
+        return 0.0, None
+    title_row = None
+    for row in range(1, ws.max_row + 1):
+        value = ws.cell(row=row, column=1).value
+        if isinstance(value, str) and value.startswith("Cooldown Reduction Milestone Sweep"):
+            title_row = row
+            break
+    if title_row is None:
+        return current, None
+    points = {}
+    row = title_row + 2  # title, then the header row, then one row per swept CDR value
+    while True:
+        cdr = ws.cell(row=row, column=1).value
+        if not isinstance(cdr, (int, float)):
+            break
+        points[float(cdr)] = read_formula_num("SENSITIVITY", f"B{row}")
+        row += 1
+    if not points:
+        return current, None
+    points[float(current)] = BASELINE_DPS  # the live model state is exact, wherever it falls on the grid
+    return current, sorted(points.items())
+
+
+CDR_CURRENT, CDR_POINTS = load_cdr_curve()
+
+
+def exact_total_at_cdr(cdr):
+    """Re-evaluates the whole model with Inputs' Skill Cooldown Decrease set to `cdr` and returns Total DPS
+    (None if that can't be done). Only needed when a row's CDR baseline is BELOW the table's first step
+    (0.5s) — i.e. you already have CDR in Inputs and one row holds all of it, so its baseline is 0s — which
+    the table can't answer. Takes about as long as the initial workbook load, and runs at most once per value."""
+    if CDR_INPUT_ROW is None or cdr in _CDR_EXACT_FAILED:
+        return None
+    _CDR_EXACT_FAILED.add(cdr)  # cleared again on success below, so a failure is only ever attempted once
+    try:
+        print(f"  (re-evaluating the workbook once at {cdr:g}s of Skill Cooldown Decrease — the table starts at 0.5s)")
+        cell = f"'[{XLSX_PATH.name}]INPUTS'!B{CDR_INPUT_ROW}"
+        sol = xl_model.calculate(inputs={cell: cdr})
+        total_row = find_row_by_label(_wb["Summary"], "TOTAL DPS", column=1, max_row=40)
+        suffix = f"SUMMARY'!B{total_row}"
+        for k, v in sol.items():
+            if k.upper().endswith(suffix):
+                _CDR_EXACT_FAILED.discard(cdr)
+                return float(np.asarray(v.value).reshape(-1)[0])
+    except Exception as exc:  # fall back to the +1s rate rather than failing the whole run
+        print(f"  (couldn't re-evaluate the workbook at {cdr:g}s of CDR: {exc})")
+    return None
+
+
+def cdr_total_dps(cdr):
+    """Total DPS at a given TOTAL Skill Cooldown Decrease: piecewise-linear through the table's points.
+    Beyond the table's top step the last segment's slope continues. Below its first point (only reachable
+    when your current CDR is above 0 and one row holds all of it) the model is re-evaluated at that CDR
+    once (exact_total_at_cdr); if that fails, the old +1s rate is used."""
+    xs = [x for x, _ in CDR_POINTS]
+    if cdr < xs[0] and not any(abs(cdr - x) < 1e-9 for x in xs):
+        exact = exact_total_at_cdr(cdr)
+        if exact is not None:
+            CDR_POINTS.append((float(cdr), exact))
+            CDR_POINTS.sort()
+            return cdr_total_dps(cdr)
+    if cdr <= xs[0]:
+        if cdr < xs[0]:
+            _CDR_NOTES.add("below")
+        return max(0.0, CDR_POINTS[0][1] - (xs[0] - cdr) * DPS_PER_UNIT.get(CDR_STAT, 0.0))
+    if cdr >= xs[-1]:
+        if cdr > xs[-1]:
+            _CDR_NOTES.add("above")
+        (x0, t0), (x1, t1) = CDR_POINTS[-2], CDR_POINTS[-1]
+        return t1 + (cdr - x1) * max(0.0, (t1 - t0) / (x1 - x0))
+    import bisect
+    i = bisect.bisect_right(xs, cdr)
+    (x0, t0), (x1, t1) = CDR_POINTS[i - 1], CDR_POINTS[i]
+    return t0 + (t1 - t0) * (cdr - x0) / (x1 - x0)
+
+
+def cdr_factor(extra_cdr, baseline_cdr):
+    """Multiplicative DPS factor from `extra_cdr` seconds of CDR on top of `baseline_cdr` seconds."""
+    if CDR_POINTS is None:  # workbook without the milestone table: fall back to the linear +1s rate
+        return 1.0 + extra_cdr * DPS_PER_UNIT.get(CDR_STAT, 0.0) / BASELINE_DPS
+    base = cdr_total_dps(baseline_cdr)
+    return cdr_total_dps(baseline_cdr + extra_cdr) / base if base > 0 else 1.0
+
+
+def row_cdr_baseline(state):
+    """Total CDR the character would have WITHOUT this row's own current CDR lines."""
+    own = sum(v for stat, v in state["lines"] if stat == CDR_STAT)
+    if own > CDR_CURRENT + 1e-9:
+        print(
+            f"  note: {state['slot']} / {state['potential_type']} lists {own:g}s of Skill Cooldown Decrease but your "
+            f"Inputs CDR is only {CDR_CURRENT:g}s — treating the rest of your CDR as 0."
+        )
+    return max(0.0, CDR_CURRENT - own)
+
+
+def combined_dps_gain(stat_value_pairs, cdr_baseline=None):
     """Combines multiple (stat, raw_value) lines into one true DPS-Gain number, instead of the
     naive `sum(value*dps_per_unit(stat) for ...)` this project used everywhere until now.
 
@@ -235,6 +365,10 @@ def combined_dps_gain(stat_value_pairs):
     take the product of all distinct stats' factors — exactly the "1.01 * 1.01" shape above,
     generalized to any number of distinct stats. Returns an absolute DPS delta (same units as the
     old naive sum), so every caller downstream is unaffected by this change in how it's computed.
+
+    Skill Cooldown Decrease is the exception to "value x per-unit rate": its group's factor comes from
+    cdr_factor() (the Sensitivity sheet's CDR table), evaluated on top of `cdr_baseline` seconds of CDR
+    (defaults to your whole current CDR; per-row callers pass row_cdr_baseline()).
     """
     grouped = {}
     for stat, value in stat_value_pairs:
@@ -243,7 +377,10 @@ def combined_dps_gain(stat_value_pairs):
         grouped[stat] = grouped.get(stat, 0.0) + value
     factor = 1.0
     for stat, total_value in grouped.items():
-        factor *= 1.0 + (total_value * dps_per_unit(stat)) / BASELINE_DPS
+        if stat == CDR_STAT:
+            factor *= cdr_factor(total_value, CDR_CURRENT if cdr_baseline is None else cdr_baseline)
+        else:
+            factor *= 1.0 + (total_value * dps_per_unit(stat)) / BASELINE_DPS
     return BASELINE_DPS * (factor - 1.0)
 
 
@@ -333,8 +470,8 @@ def read_current_state():
     return rows
 
 
-def current_dps_value(lines):
-    return combined_dps_gain(lines)
+def current_dps_value(lines, cdr_baseline=None):
+    return combined_dps_gain(lines, cdr_baseline)
 
 
 # ---------------------------------------------------------------------------
@@ -346,8 +483,10 @@ def current_dps_value(lines):
 _roll_dist_cache = {}
 
 
-def roll_distribution(rarity, slot):
-    cache_key = (rarity, slot)
+def roll_distribution(rarity, slot, cdr_baseline=None):
+    # Rows with different CDR baselines (see row_cdr_baseline) price a CDR roll differently, so the
+    # baseline is part of the cache key; rows without CDR lines all share one entry.
+    cache_key = (rarity, slot, None if cdr_baseline is None else round(cdr_baseline, 6))
     if cache_key in _roll_dist_cache:
         return _roll_dist_cache[cache_key]
 
@@ -367,7 +506,7 @@ def roll_distribution(rarity, slot):
     for stat1, v1, p1 in per_line[0]:
         for stat2, v2, p2 in per_line[1]:
             for stat3, v3, p3 in per_line[2]:
-                v = combined_dps_gain([(stat1, v1), (stat2, v2), (stat3, v3)])
+                v = combined_dps_gain([(stat1, v1), (stat2, v2), (stat3, v3)], cdr_baseline)
                 combos[v] = combos.get(v, 0.0) + p1 * p2 * p3
 
     values = np.array(sorted(combos))
@@ -412,13 +551,13 @@ def _expected_max_with_threshold(values, tail_prob, tail_exp, c):
 # (mystic, or any tier with no further upgrade) has no pity dimension, so its state is a single
 # scalar rather than a per-pity-bucket array.
 # ---------------------------------------------------------------------------
-def optimal_stopping_trace(start_rarity, start_pity, slot, current_value, potential_type, max_cubes=MAX_CUBES):
+def optimal_stopping_trace(start_rarity, start_pity, slot, current_value, potential_type, max_cubes=MAX_CUBES, cdr_baseline=None):
     rates = RARITY_UPGRADE_RATES[potential_type]
     idx0 = RARITY_ORDER.index(start_rarity)
     tiers = RARITY_ORDER[idx0:]
     dist = {}
     for t in tiers:
-        values, cdf = roll_distribution(t, slot)
+        values, cdf = roll_distribution(t, slot, cdr_baseline)
         probs = np.diff(np.concatenate([[0.0], cdf]))
         dist[t] = (values, *_tail_sums(values, probs))
 
@@ -478,18 +617,18 @@ def smallest_n_positive(trace, current_value):
 # every cube's roll is checked against the ORIGINAL current_value directly (not a recursive
 # continuation value), since the question here is just "did I ever beat what I started with."
 # ---------------------------------------------------------------------------
-def roll_beat_probability(rarity, slot, current_value):
-    values, cdf = roll_distribution(rarity, slot)
+def roll_beat_probability(rarity, slot, current_value, cdr_baseline=None):
+    values, cdf = roll_distribution(rarity, slot, cdr_baseline)
     idx = np.searchsorted(values, current_value, side="right") - 1
     f = cdf[idx] if idx >= 0 else 0.0
     return 1.0 - f
 
 
-def probability_any_better_roll(start_rarity, start_pity, slot, current_value, potential_type, max_cubes=MAX_CUBES):
+def probability_any_better_roll(start_rarity, start_pity, slot, current_value, potential_type, max_cubes=MAX_CUBES, cdr_baseline=None):
     rates = RARITY_UPGRADE_RATES[potential_type]
     idx0 = RARITY_ORDER.index(start_rarity)
     tiers = RARITY_ORDER[idx0:]
-    p = {t: roll_beat_probability(t, slot, current_value) for t in tiers}
+    p = {t: roll_beat_probability(t, slot, current_value, cdr_baseline) for t in tiers}
     surv = {t: np.zeros(max(int(rates[t]["max"]), 1)) for t in tiers}
     surv[start_rarity][int(start_pity)] = 1.0
 
@@ -529,17 +668,21 @@ def smallest_n_for_probability(prob_any, threshold):
 
 def main():
     baseline_dps = BASELINE_DPS
+    if CDR_POINTS is not None:
+        print(f"Skill Cooldown Decrease is priced from the Sensitivity CDR table (your current CDR: {CDR_CURRENT:g}s):")
+        print("  " + "  ".join(f"{x:g}s: {t / baseline_dps * 100 - 100:+.2f}%" for x, t in CDR_POINTS if x != CDR_CURRENT))
     rows = read_current_state()
     results = []
     for state in rows:
-        cur_val = current_dps_value(state["lines"])
-        trace = optimal_stopping_trace(state["rarity"], state["pity"], state["slot"], cur_val, state["potential_type"])
+        cdr_base = row_cdr_baseline(state)
+        cur_val = current_dps_value(state["lines"], cdr_base)
+        trace = optimal_stopping_trace(state["rarity"], state["pity"], state["slot"], cur_val, state["potential_type"], cdr_baseline=cdr_base)
         milestone_ev = {
             n: trace[n] - cur_val
             for n in CUBE_MILESTONES
         }
         smallest_n = smallest_n_positive(trace, cur_val)
-        prob_any = probability_any_better_roll(state["rarity"], state["pity"], state["slot"], cur_val, state["potential_type"])
+        prob_any = probability_any_better_roll(state["rarity"], state["pity"], state["slot"], cur_val, state["potential_type"], cdr_baseline=cdr_base)
         n_for_50pct = smallest_n_for_probability(prob_any, 0.5)
         n_for_75pct = smallest_n_for_probability(prob_any, 0.75)
         results.append(dict(
@@ -603,6 +746,10 @@ def main():
                 + [pct(r["milestone_ev"][n]) for n in CUBE_MILESTONES]
             )
     print(f"\nFull 24-milestone breakdown (absolute DPS + % gain) written to {CSV_PATH}")
+    if "above" in _CDR_NOTES:
+        print("note: some Skill Cooldown Decrease totals exceed the CDR table's top step; its last segment's slope was extended.")
+    if "below" in _CDR_NOTES:
+        print("note: some Skill Cooldown Decrease baselines fell below the CDR table's first step; the +1s rate was used there.")
 
 
 if __name__ == "__main__":
