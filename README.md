@@ -54,7 +54,9 @@ your own stats, and every other sheet recalculates live.
    and double-click it — no Python required. (On macOS, right-click → Open the first time, since
    it isn't signed by an Apple-registered developer.) If you'd rather run it from source instead,
    `python3 potential_cubes_ev.py` from inside that folder does the same thing (auto-detects the
-   one `.xlsx` file next to it); requires `pip install openpyxl formulas`. Skill Cooldown Decrease
+   one `.xlsx` file next to it); requires `pip install openpyxl formulas`. It reads the calculated values Excel
+   stored in the file (a few seconds), so open and save the workbook in Excel first — a freshly generated file has
+   no stored values and makes it recompute every formula itself (many minutes; `--recalc` forces that). Skill Cooldown Decrease
    lines are priced from the Sensitivity sheet's "Cooldown Reduction Milestone Sweep" table (CDR is a
    step function, so one "+1 second" rate would misprice +2s or +3s rolls), not from CubeData's per-unit rate.
 

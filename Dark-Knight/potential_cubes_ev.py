@@ -16,7 +16,10 @@ Usage:
     python3 potential_cubes_ev.py MyClass-DPS-Calculator.xlsx
 
 Run after regenerating/saving the workbook with your real gear filled into the PotentialCubes
-sheet. Writes a full milestone breakdown to "<workbook name>_potential_cubes_ev.csv" next to
+sheet. Save it from Excel (or LibreOffice) first: Excel stores every formula's calculated value in the
+file, and the script reads those (a few seconds in total). A workbook that has never been opened and
+saved in Excel has no stored values, so the script falls back to recomputing all ~40,000 formulas with
+the `formulas` package, which takes many minutes; `--recalc` forces that path. Writes a full milestone breakdown to "<workbook name>_potential_cubes_ev.csv" next to
 the workbook.
 
 Methodology
@@ -102,6 +105,13 @@ def parse_args():
         help="Path to the workbook (e.g. Night-Lord-DPS-Calculator.xlsx). If omitted, "
              "auto-detects the single .xlsx file in the current directory.",
     )
+    parser.add_argument(
+        "--recalc", action="store_true",
+        help="Recompute every formula with the `formulas` package instead of reading the values Excel stored "
+             "in the file (slow: several minutes). Only needed if the file was last saved by something that "
+             "doesn't store calculated values (e.g. freshly built by the generator) — the script falls back "
+             "to this automatically when a needed value is missing.",
+    )
     return parser.parse_args()
 
 
@@ -133,25 +143,54 @@ XLSX_PATH = resolve_xlsx_path(args.xlsx)
 CSV_PATH = XLSX_PATH.with_name(f"{XLSX_PATH.stem}_potential_cubes_ev.csv")
 
 # ---------------------------------------------------------------------------
-# Load the workbook twice: `openpyxl` for the literal (non-formula) tables — CubeData's
-# flattened roll table (A:H, except the live H column), its Rarity/Rate/MaxPity/PotentialType
-# table (M:P), and the PotentialCubes current-gear table — and `formulas` (a real Excel formula evaluator)
-# for the handful of cells that are genuinely live formulas: CubeData's own "Stat -> DPSPerUnit"
-# lookup table (J:K) and the Summary sheet's Total DPS cell, both of which chain back through
-# Sensitivity!H's marginal-DPS-per-stat formulas.
+# Reading live (formula) cells. FAST PATH: a workbook saved by Excel/LibreOffice stores every formula's
+# calculated value, and `openpyxl` (data_only=True) reads those in a fraction of a second. SLOW PATH
+# (only if a needed value is missing — e.g. a freshly generated, never-opened workbook — or --recalc):
+# `formulas`, a Python re-implementation of Excel that recomputes all ~40,000 formulas (minutes).
+# The two agree exactly (checked cell-for-cell on Summary/Calc). `openpyxl` also reads the literal
+# tables — CubeData's roll table (A:H), its Rarity/Rate/MaxPity/PotentialType table (M:P), and the
+# PotentialCubes current-gear table.
 # ---------------------------------------------------------------------------
 print(f"Loading workbook: {XLSX_PATH}")
 _wb = openpyxl.load_workbook(XLSX_PATH, data_only=False)
+_wb_values = None if args.recalc else openpyxl.load_workbook(XLSX_PATH, data_only=True)
 
-import formulas  # noqa: E402
+_xl_model = None
+_solution = None
 
-xl_model = formulas.ExcelModel().loads(str(XLSX_PATH)).finish()
-solution = xl_model.calculate()
+
+def get_xl_model():
+    """The `formulas` model, built on first use (slow)."""
+    global _xl_model
+    if _xl_model is None:
+        import formulas  # noqa: E402
+        print("  (evaluating the workbook's formulas with the `formulas` package — this takes a few minutes)")
+        _xl_model = formulas.ExcelModel().loads(str(XLSX_PATH)).finish()
+    return _xl_model
+
+
+def get_solution():
+    global _solution
+    if _solution is None:
+        _solution = get_xl_model().calculate()
+    return _solution
 
 
 def read_formula_raw(sheet, cell):
+    if _wb_values is not None:
+        for name in _wb_values.sheetnames:
+            if name.upper() == sheet.upper():
+                value = _wb_values[name][cell].value
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    return value
+                if isinstance(value, str):  # unpriced stats store their rate as the text "0"
+                    try:
+                        return float(value)
+                    except ValueError:
+                        pass
+                break  # missing / error / non-numeric stored value: fall through to a real recalculation
     suffix = f"{sheet.upper()}'!{cell.upper()}"
-    for k, v in solution.items():
+    for k, v in get_solution().items():
         if k.upper().endswith(suffix):
             return np.asarray(v.value).reshape(-1)[0]
     raise KeyError(f"cell not found in workbook: {sheet}!{cell}")
@@ -289,7 +328,7 @@ def exact_total_at_cdr(cdr):
     try:
         print(f"  (re-evaluating the workbook once at {cdr:g}s of Skill Cooldown Decrease — the table starts at 0.5s)")
         cell = f"'[{XLSX_PATH.name}]INPUTS'!B{CDR_INPUT_ROW}"
-        sol = xl_model.calculate(inputs={cell: cdr})
+        sol = get_xl_model().calculate(inputs={cell: cdr})
         total_row = find_row_by_label(_wb["Summary"], "TOTAL DPS", column=1, max_row=40)
         suffix = f"SUMMARY'!B{total_row}"
         for k, v in sol.items():
