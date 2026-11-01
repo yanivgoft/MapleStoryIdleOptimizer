@@ -81,7 +81,7 @@ alone (e.g. `28`) since it has no sub-stage.
 | Enhancement Dungeon | `80` (stage only) | `950 + Stage × 50` | 25s |
 | EXP Dungeon | `80` (stage only) | `250 + Stage × 50` | 40s |
 | Equipment Dungeon | `80` (stage only) | `250 + Stage × 50` | 40s |
-| PvP | — | your own Defense stat (assumes the opponent has the same) | own fixed 15s window |
+| PvP | — | your own Defense stat (assumes the opponent has the same) | your **PvP Fight Length** input (default 15s) |
 
 For Breakthrough/Chapter Hunt, the number after the dash is the sub-stage shown in-game (the "9"
 in 28-9). Chapters 29–38 have 14 sub-stages each before that chapter's own boss; chapter 39 onward

@@ -1116,6 +1116,29 @@ interpolates it. Details worth knowing:
   Compare has no CDR option; Artifact Potentials has no CDR line). The prebuilt `potential_cubes_ev-*` release
   executables need rebuilding to pick this up.
 
+## FP-Mage: Flame Haze's level-118 fog is Poison Mist's own fog (2026-10-26)
+
+The mastery text is "Creates Poison Mist poisonous fog upon using Flame Haze. Poison Mist max count +1", but the
+`FLAME_HAZE_FOG` row had been modeled as a Flame Haze effect (4th-job level pool, no Maple Hero bonus) and Mist
+Eruption ignored the second fog. Reported by the user (fog 3.79% vs Poison Mist's 6.74% of DPS, no Mist Eruption
+increase). Now: the fog row uses the 3rd-job level pool and Poison Mist's Maple Hero bonus exactly like
+`POISON_MIST_DOT` (only its cast rate differs: Flame Haze's 25s vs Poison Mist's 24.5s), and from level 118 Mist
+Eruption gets one more batch of explosions per Flame Haze cast (each fog explodes on its own). At the user's Inputs:
+fog +74%, Mist Eruption +100%, Total DPS +12% (verify script and Sensitivity blocks updated and checked). Assumption:
+both fogs' explosions are independent, each fog having its own 4s-cooldown explosions.
+
+## PvP fight length is an Input (2026-11-01, all 12 classes)
+
+`PVP_FIGHT_DURATION` used to be a hard-coded 15; it is now an Inputs cell ("PvP Fight Length", row 55, PvP column only,
+default 15) and every PvP duration-dependent formula reads it: DoT / summon windows (capped at the fight), the
+one-cast-per-fight cast rate, buff uptimes, and the time-based artifacts (Candle, Hexagon, Rainbow Snail, Charm of the
+Undead, Ring of Cycles). Reported DPS is total damage / fight length, so a DoT's DPS stays the same while it is active
+(its TOTAL damage shrinks with a shorter fight) and a burst skill's DPS rises (the same one cast in less time).
+- **Known limit — action budget:** PvP still gives every skill exactly one cast per fight. In a short fight that
+  can need more actions than fit: with the saved Inputs a 5s fight needs more cast actions than `Actions/s x 5` in 9 of
+  12 classes (FP-Mage: 10 casts vs 8.5 actions), and several classes already overflow at 8-10s. When that happens Basic
+  Attacks drop to 0 but all skills are still counted in full, so short-fight PvP DPS is overstated.
+
 ## 2026-10-21 full data audit (all 12 classes) — what changed, and what is still an assumption
 
 Source: `maplestoryidle.info`'s embedded game tables (+ its patched/base skill text), `idle.maplestorywiki.net`

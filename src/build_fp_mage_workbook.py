@@ -314,7 +314,10 @@ IN = {
     "monster_defense": 42,
     "fight_duration": 43,
     "breakthrough_normal_weight_pct": 44,
+    # PvP fight length (seconds), PvP content only — rows 54-55 sit below every class's artifact-slot rows.
+    "pvp_fight_length": 55,
 }
+INPUT_PVP_SECTION_ROW = 54
 
 # Rows 46-77 used to hold the 16 artifacts' Equipped?/Star Level cells directly on the Inputs
 # sheet; they now live on the ArtifactsInput sheet instead (see ARTIFACT_INPUT_CELL/IB below), and
@@ -1004,7 +1007,7 @@ def build_readme_sheet(wb):
         "Dungeon/Equipment Dungeon/Weapon Dungeon/Enhancement Dungeon/Hero Dungeon/World Boss/"
         "Chapter Hunt — and Monster Defense and Fixed Fight Duration are both auto-computed from "
         "it (plus Chapter/Stage for the chapter- and dungeon-based types); PvP still forces its "
-        "own fixed 15-second window and uses your own Defense stat as the opponent's Defense "
+        "own fight length (Inputs -> PvP Fight Length, default 15 seconds) and uses your own Defense stat as the opponent's Defense "
         "estimate. See README.md's 'Content Type' section for the exact formulas.",
         "Not modeled (out of scope): crowd control, Accuracy/Evasion/Defense reduction, "
         "movement speed, the character's own Defense stat, and Companion Summoning Time "
@@ -1199,6 +1202,7 @@ def build_inputs_sheet(wb, existing=None):
             "Equipment Dungeon", "Enhancement Dungeon", "EXP Dungeon", "Hero Dungeon",
         ],
         "boss_normal_weight_choice": ["Breakthrough", "Hero Dungeon"],
+        "pvp_fight_length": ["PvP"],
         "max_enemies_hit": [
             "EXP Dungeon", "Equipment Dungeon", "Chapter Hunt", "Breakthrough", "Hero Dungeon",
         ],
@@ -1260,6 +1264,14 @@ def build_inputs_sheet(wb, existing=None):
     ]
     for key, label, default in bonus_rows:
         _write_input_row(key, label, default)
+
+    # PvP fight length — every PvP duration-dependent quantity (DoT/summon windows, buff uptimes, the one-cast-per-
+    # fight cast rate, the time-based artifacts) reads this through PVP_FIGHT_DURATION. PvP content only.
+    ws.cell(row=INPUT_PVP_SECTION_ROW, column=1, value="PvP").font = SECTION_FONT
+    _write_input_row("pvp_fight_length", "PvP Fight Length (seconds; PvP content only — shorter fights cut DoT/summon ticks and buff uptime)", 15)
+    dv_pvp_len = DataValidation(type="decimal", operator="greaterThanOrEqual", formula1="1", allow_blank=False)
+    ws.add_data_validation(dv_pvp_len)
+    dv_pvp_len.add(ws.cell(row=IN["pvp_fight_length"], column=3 + CONTENT_TYPES.index("PvP")))
 
     # Artifacts' Equipped?/Star Level no longer appear on this sheet at all — set them on the
     # ArtifactsInput sheet instead (see build_artifacts_input_sheet); IB() resolves every
@@ -1984,7 +1996,7 @@ CDR_COSTS_ACTION_ROW["MIST_ERUPTION"] = ROW["POISON_MIST_BURST"]
 # monster fights assume. Every cooldown skill and buff in this kit has a real cooldown longer
 # than this, so in PvP mode each one fits at most once — see EFFECTIVE_COOLDOWN_EXPR/
 # UPTIME_FRACTION_EXPR below for how that's plugged into the existing formulas.
-PVP_FIGHT_DURATION = 15
+PVP_FIGHT_DURATION = IB("pvp_fight_length")  # an Inputs cell (PvP content only; default 15 s), not a constant
 
 
 def pvp_capped_window_expr(window_ref, monster_type_ref):
@@ -2258,7 +2270,9 @@ SKILL_ROWS = [
      30000, 12, True, f'=IF({IB("level")}>=122,100,0)', 0, 0, 10, "", 0, False, False, 1, "", "", "",
      "A skill of its own — only related to Poison Mist in that it's triggered while the fog is active, "
      "so it fires at the same rate as Poison Mist's own cast (Cooldown mirrors Skills!Poison Mist "
-     "(burst) row's Cooldown live). Vs boss: 1 explosion per Poison Mist cast (when the fog "
+     "(burst) row's Cooldown live) PLUS, from level 118, once more per Flame Haze cast: that cast creates a second "
+     "Poison Mist fog, and every fog gets its own explosions (the DPS formula adds the Flame Haze fog row's cast "
+     "rate times this row's hits per cast). Vs boss: 1 explosion per Poison Mist cast (when the fog "
      "expires, since bosses don't die mid-fog). Vs normal monster: 3 explosions per cast (base), "
      "+1 (4 total) once the level-108 mastery is unlocked, hitting 10 targets each. Vs Chapter "
      "Breakthrough: weighted average of the boss and normal counts by Inputs!normal_weight_frac. "
@@ -2370,17 +2384,18 @@ SKILL_ROWS = [
      "to boost skill damage only, NOT Basic Attack (Flame Sweep), even though it does cover both "
      "fire- and poison-element skills otherwise. Structurally excluded from Basic Attack's own "
      "term, not just numerically zero."),
-    ("FLAME_HAZE_FOG", "Flame Haze (poison fog DoT)", 4, "Poison",
+    ("FLAME_HAZE_FOG", "Flame Haze (poison fog DoT)", 3, "Poison",
      f"=Skills!{SC['Cooldown(s)']}{ROW['FLAME_HAZE_BURST']}", False, 1,
      f'=IF({IB("level")}>=104,0.4,0.8)', 20, 100, 1,
-     700, 12, True, 0, 0, 0, 10, "", 0, False, False, 1, "", "", "",
-     "Unlocked level 118: Flame Haze creates a second, fully independent poisonous fog that "
-     "triggers Poison Mist's DoT mechanic too — same damage/duration/ICD-mastery-gate math as "
-     "POISON_MIST_DOT, tied to Flame Haze (burst)'s own live Cooldown cell (same live-cross-"
-     "reference pattern MIST_ERUPTION uses for POISON_MIST_BURST). Independent of the existing "
-     "Poison Mist fog — both can be active at the same time (confirmed by the user). No Maple "
-     "Hero bonus (MapleHeroBase blank), matching its jobStep-4 sibling FLAME_HAZE_DOT rather than "
-     "the jobStep-3 POISON_MIST_DOT."),
+     700, 12, True, 0, 0, 0, 10, "", 0, False, False, 1, 100, 23, "",
+     "Unlocked level 118 (mastery 'Flame Haze - Poisonous Fog': \"Creates Poison Mist poisonous fog upon using "
+     "Flame Haze. Poison Mist max count +1\") — so this IS Poison Mist's own fog, cast by Flame Haze instead of "
+     "Poison Mist: identical to POISON_MIST_DOT in every respect (3rd-job Poison Mist skill level, 700% x factor 12, "
+     "the level-104 interval mastery, Maple Hero's Poison Mist bonus, 10 targets, 20s) except its cast rate, which "
+     "is Flame Haze (burst)'s own live Cooldown cell (same live-cross-reference pattern MIST_ERUPTION uses for "
+     "POISON_MIST_BURST). Both fogs can be active at once (max count +1; confirmed by the user). Each extra fog also "
+     "gets its own Mist Eruption explosions — see MIST_ERUPTION. (Until 2026-10-26 this row was modeled as a Flame "
+     "Haze effect: 4th-job level pool and NO Maple Hero bonus, which understated it by ~44%.)"),
 ]
 
 # Which rows have a real Cooldown(s) value (literal or a live formula reference, e.g. Mist
@@ -2663,6 +2678,21 @@ def build_calc_sheet(wb):
             # Same H*N*rate pattern as every other cooldown skill, plus the level-130
             # per-burn-stack damage multiplier (kept rate-based per the user).
             prefix = f'H{r}*N{r}*{rate_r}*(1+IF({IB("level")}>=130,0.2*{flame_haze_total_stacks_main},0))'
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                S("NormalMonsterTargets", r), IB("max_enemies_hit"),
+                extra_boss_mult_r, extra_normal_mult_r,
+            )
+            ws.cell(row=r, column=19, value=f'=IF(C{r},{boss_expr},0)')
+            ws.cell(row=r, column=21, value=f'=IF(C{r},{normal_expr},0)')
+        elif key == "MIST_ERUPTION":
+            # Poison Mist's own casts (rate_r) plus one more batch of explosions per Flame Haze cast from level 118
+            # (its Poison Mist fog — the FLAME_HAZE_FOG row's cast rate; G = hits per cast, no ICD on this row).
+            _fog_r = ROW["FLAME_HAZE_FOG"]
+            extra_fog_rate_r = (
+                f'IF(C{_fog_r}=TRUE,G{r}*IF({fixed_duration_active_main},R{_fog_r}/{IB("fight_duration")},Q{_fog_r}),0)'
+            )
+            prefix = f'H{r}*N{r}*({rate_r}+{extra_fog_rate_r})'
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
                 prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
                 S("NormalMonsterTargets", r), IB("max_enemies_hit"),
@@ -3584,6 +3614,19 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             ws.cell(row=row, column=21, value=f'=IF(C{row},{normal_expr},0)')
         elif key == "IFRIT":
             prefix = f'H{row}*N{row}*{rate_row}*(1+IF({ib("level")}>=130,0.2*{flame_haze_total_stacks_block},0))'
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                S("NormalMonsterTargets", r), ib("max_enemies_hit"),
+                extra_boss_mult_block, extra_normal_mult_block,
+            )
+            ws.cell(row=row, column=19, value=f'=IF(C{row},{boss_expr},0)')
+            ws.cell(row=row, column=21, value=f'=IF(C{row},{normal_expr},0)')
+        elif key == "MIST_ERUPTION":
+            _fog_row = row_of["FLAME_HAZE_FOG"]
+            extra_fog_rate_row = (
+                f'IF(C{_fog_row}=TRUE,G{row}*IF({fda_block},R{_fog_row}/{ib("fight_duration")},Q{_fog_row}),0)'
+            )
+            prefix = f'H{row}*N{row}*({rate_row}+{extra_fog_rate_row})'
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
                 prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
                 S("NormalMonsterTargets", r), ib("max_enemies_hit"),

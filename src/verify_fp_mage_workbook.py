@@ -223,7 +223,7 @@ SKILLS = {
     "FLAME_HAZE_BURST": dict(job_step=4, cooldown=25, hits=3, base=12000, fidx=12, scales=True, mastery=0, mastery_boss=0, mastery_normal=0, costs_action=True),
     "FLAME_HAZE_DOT": dict(job_step=4, cooldown=25, hits=1, icd=0.5, window=flame_haze_dot_window, base=1500, fidx=12, scales=True, mastery=0, mastery_boss=0, mastery_normal=0, costs_action=False),
     "IFRIT": dict(job_step=4, cooldown=80, hits=1, icd=4, window=ifrit_window, base=35000, fidx=12, scales=True, mastery=0, mastery_boss=0, mastery_normal=0, costs_action=True),
-    "FLAME_HAZE_FOG": dict(job_step=4, cooldown=25, hits=1, icd=poison_mist_dot_icd, window=20, base=700, fidx=12, scales=True, mastery=0, mastery_boss=0, mastery_normal=0, costs_action=False),
+    "FLAME_HAZE_FOG": dict(job_step=3, cooldown=25, hits=1, icd=poison_mist_dot_icd, window=20, base=700, fidx=12, scales=True, mastery=0, mastery_boss=0, mastery_normal=0, costs_action=False),
 }
 BUFFS = {
     "MEDITATION": dict(job_step=2, cooldown=30, duration=19.5, base=200, fidx=21, scales=True, target="ATTACK", costs_action=True),
@@ -242,6 +242,7 @@ PASSIVES = {
 MAPLE_TARGETS = {
     "IGNITE": 500, "POISON_BREATH": 800, "ELEMENTAL_DRAIN": 1500,
     "POISON_MIST_BURST": 100, "POISON_MIST_DOT": 100, "CREEPING_TOXIN": 100,
+    "FLAME_HAZE_FOG": 100,  # Poison Mist's own fog, just cast by Flame Haze (level-118 mastery)
 }
 # Meteor Proc: independent 30% chance on every qualifying attack, gated by a shared 1s ICD.
 # Basic Attack always counts (added via basic_attacks_per_second below); Creeping Toxin and Ifrit
@@ -298,7 +299,7 @@ def unlocked(key):
     return threshold is None or level >= threshold
 
 
-PVP_FIGHT_DURATION = 15  # mirrors build_fp_mage_workbook.PVP_FIGHT_DURATION
+PVP_FIGHT_DURATION = _in("pvp_fight_length") or 15  # PvP fight length is an Inputs cell now (default 15)
 
 
 def ticks(window, icd):
@@ -516,6 +517,11 @@ for key, s in SKILLS.items():
     else:
         hits = s["hits"] * (ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
+    if key == "MIST_ERUPTION" and unlocked("FLAME_HAZE_FOG"):
+        # From level 118 every Flame Haze cast also creates a Poison Mist fog, and each fog gets its own explosions.
+        fog_eff_cd = eff_cooldown(SKILLS["FLAME_HAZE_FOG"]["cooldown"], False)
+        fog_casts_per_s = (non_buff_casts(fog_eff_cd) / fight_duration) if fixed_duration_active else 1 / fog_eff_cd
+        rate += s["hits"] * fog_casts_per_s
     skill_dps[key] = rate * proc * hd * boss_normal_multiplier(key, s)
 
 # Meteor Proc: no cooldown of its own — steady-state proc rate from the combined cast rate R of

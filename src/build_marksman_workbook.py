@@ -310,7 +310,10 @@ IN = {
     "monster_defense": 42,
     "fight_duration": 43,
     "breakthrough_normal_weight_pct": 44,
+    # PvP fight length (seconds), PvP content only — rows 54-55 sit below every class's artifact-slot rows.
+    "pvp_fight_length": 55,
 }
+INPUT_PVP_SECTION_ROW = 54
 
 # Rows computed by formula on the Inputs sheet itself (not user-editable) — see
 # build_inputs_sheet's "Computed (do not edit)" block below.
@@ -960,7 +963,7 @@ def build_readme_sheet(wb):
         "Dungeon/Equipment Dungeon/Weapon Dungeon/Enhancement Dungeon/Hero Dungeon/World Boss/"
         "Chapter Hunt — and Monster Defense and Fixed Fight Duration are both auto-computed from "
         "it (plus Chapter/Stage for the chapter- and dungeon-based types); PvP still forces its "
-        "own fixed 15-second window and uses your own Defense stat as the opponent's Defense "
+        "own fight length (Inputs -> PvP Fight Length, default 15 seconds) and uses your own Defense stat as the opponent's Defense "
         "estimate. See README.md's 'Content Type' section for the exact formulas.",
         "Not modeled (out of scope): all forms of crowd control, Accuracy, Evasion, Defense "
         "reduction/penetration debuffs on the character's own Defense stat, movement speed, "
@@ -1040,6 +1043,7 @@ def build_inputs_sheet(wb, existing=None):
             "Equipment Dungeon", "Enhancement Dungeon", "EXP Dungeon", "Hero Dungeon",
         ],
         "boss_normal_weight_choice": ["Breakthrough", "Hero Dungeon"],
+        "pvp_fight_length": ["PvP"],
         "max_enemies_hit": [
             "EXP Dungeon", "Equipment Dungeon", "Chapter Hunt", "Breakthrough", "Hero Dungeon",
         ],
@@ -1098,6 +1102,14 @@ def build_inputs_sheet(wb, existing=None):
     ]
     for key, label, default in bonus_rows:
         _write_input_row(key, label, default)
+
+    # PvP fight length — every PvP duration-dependent quantity (DoT/summon windows, buff uptimes, the one-cast-per-
+    # fight cast rate, the time-based artifacts) reads this through PVP_FIGHT_DURATION. PvP content only.
+    ws.cell(row=INPUT_PVP_SECTION_ROW, column=1, value="PvP").font = SECTION_FONT
+    _write_input_row("pvp_fight_length", "PvP Fight Length (seconds; PvP content only — shorter fights cut DoT/summon ticks and buff uptime)", 15)
+    dv_pvp_len = DataValidation(type="decimal", operator="greaterThanOrEqual", formula1="1", allow_blank=False)
+    ws.add_data_validation(dv_pvp_len)
+    dv_pvp_len.add(ws.cell(row=IN["pvp_fight_length"], column=3 + CONTENT_TYPES.index("PvP")))
 
     dv_content_type = DataValidation(
         type="list", formula1='"' + ",".join(CONTENT_TYPES) + '"', allow_blank=False
@@ -1739,7 +1751,7 @@ def build_factor_table_sheet(wb):
 # ---------------------------------------------------------------------------
 # Action-economy formula helpers — reused verbatim from build_shadower_workbook.py.
 # ---------------------------------------------------------------------------
-PVP_FIGHT_DURATION = 15
+PVP_FIGHT_DURATION = IB("pvp_fight_length")  # an Inputs cell (PvP content only; default 15 s), not a constant
 
 
 def pvp_capped_window_expr(window_ref, monster_type_ref):

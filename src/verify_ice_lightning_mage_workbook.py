@@ -268,7 +268,7 @@ def unlocked(key):
     return threshold is None or level >= threshold
 
 
-PVP_FIGHT_DURATION = 15
+PVP_FIGHT_DURATION = _in("pvp_fight_length") or 15  # PvP fight length is an Inputs cell now (default 15)
 
 
 def ticks(window, icd):
