@@ -212,7 +212,7 @@ flame_haze_dot_window = 10.0 if monster_type == "pvp" else (1 - normal_weight) *
 
 SKILLS = {
     "BASIC_ATTACK": dict(job_step=4, cooldown=None, hits=5, base=None, fidx=None, scales=True, mastery=basic_attack_mastery, mastery_boss=basic_attack_boss_mastery, mastery_normal=0, costs_action=False),
-    "IGNITE": dict(job_step=2, cooldown=1, hits=3, base=130, fidx=21, scales=True, mastery=100, mastery_boss=0, mastery_normal=0, costs_action=False),
+    "IGNITE": dict(job_step=2, cooldown=1, hits=1, base=130, fidx=21, scales=True, mastery=100, mastery_boss=0, mastery_normal=0, costs_action=False),
     "POISON_BREATH": dict(job_step=2, cooldown=18, hits=3, base=2000, fidx=12, scales=True, mastery=70, mastery_boss=0, mastery_normal=0, costs_action=True),
     "ELEMENTAL_DRAIN": dict(job_step=2, cooldown=1, hits=5, base=120, fidx=21, scales=True, mastery=0, mastery_boss=0, mastery_normal=0, costs_action=False),
     "POISON_MIST_BURST": dict(job_step=3, cooldown=24.5, hits=3, base=1600, fidx=12, scales=True, mastery=50, mastery_boss=0, mastery_normal=0, costs_action=True),
@@ -517,6 +517,8 @@ for key, s in SKILLS.items():
     else:
         hits = s["hits"] * (ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
+    if key == "IGNITE":
+        ignite_unit_dps = proc * hd * boss_normal_multiplier(key, s)  # damage per wall tick, all targets, expected
     if key == "MIST_ERUPTION" and unlocked("FLAME_HAZE_FOG"):
         # From level 118 every Flame Haze cast also creates a Poison Mist fog, and each fog gets its own explosions.
         fog_eff_cd = eff_cooldown(SKILLS["FLAME_HAZE_FOG"]["cooldown"], False)
@@ -558,6 +560,36 @@ flame_haze_total_stacks = (
 skill_dps["FLAME_HAZE_DOT"] *= flame_haze_dot_stack_multiplier
 if level >= 130:
     skill_dps["IFRIT"] *= 1 + 0.2 * flame_haze_total_stacks
+
+# Ignite: each fire attack has a 50% chance (2.5s internal cooldown after each success) to create a wall of fire;
+# up to 3 walls tick once per second. The k-th wall arrives after k*a + (k-1)*2.5 s on average (a = mean wait for a
+# successful 50% roll), then the 3-wall steady state is assumed; whole ticks only. Steady-state content: 3 ticks/s.
+def cast_rate_py(key):
+    eff = eff_cooldown(SKILLS[key]["cooldown"], SKILLS[key]["costs_action"])
+    return non_buff_casts(eff) / fight_duration if fixed_duration_active else 1 / eff
+
+
+ifrit_attacks_per_cast = SKILLS["IFRIT"]["hits"] * ticks(capped_window(SKILLS["IFRIT"]["window"]), SKILLS["IFRIT"]["icd"])
+ignite_fire_rate = (
+    basic_attacks_per_second
+    + (cast_rate_py("FLAME_HAZE_BURST") if unlocked("FLAME_HAZE_BURST") else 0.0)
+    + (cast_rate_py("METEOR_SHOWER_BURST") * METEOR_PROC_TRIGGERS_PER_CAST["METEOR_SHOWER_BURST"] if unlocked("METEOR_SHOWER_BURST") else 0.0)
+    + (meteor_proc_rate if unlocked("METEOR_PROC") else 0.0)
+    + (ifrit_attacks_per_cast * cast_rate_py("IFRIT") if unlocked("IFRIT") else 0.0)
+)
+IGNITE_CHANCE, IGNITE_ICD, IGNITE_WALLS, IGNITE_TICK = 0.5, 2.5, 3, SKILLS["IGNITE"]["cooldown"]
+if monster_type != "pvp" and fight_duration == 0:
+    ignite_ticks_per_s = IGNITE_WALLS / IGNITE_TICK
+else:
+    ignite_total = PVP_FIGHT_DURATION if monster_type == "pvp" else fight_duration
+    ignite_avail = PVP_FIGHT_DURATION if monster_type == "pvp" else max(0.0, fight_duration - buff_cast_startup_time)
+    ignite_wait = 1 / (IGNITE_CHANCE * ignite_fire_rate) if ignite_fire_rate > 0 else 1e6
+    ignite_ticks = sum(
+        math.floor(max(0.0, ignite_avail - (k * ignite_wait + (k - 1) * IGNITE_ICD)) / IGNITE_TICK + 1e-9)
+        for k in range(1, IGNITE_WALLS + 1)
+    )
+    ignite_ticks_per_s = ignite_ticks / ignite_total
+skill_dps["IGNITE"] = ignite_ticks_per_s * ignite_unit_dps
 
 total_dps = basic_dps + sum(skill_dps.values())
 

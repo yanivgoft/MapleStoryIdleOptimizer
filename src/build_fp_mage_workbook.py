@@ -260,9 +260,17 @@ METEOR_PROC_RATE_ROW = 21
 R_STARTUP_TIME = 22              # Buff-Casting Startup Delay (s, fixed-duration only)
 R_BOSS_ONLY_TOTAL = 23           # Total DPS if every hit were against a boss (Breakthrough Sensitivity baseline)
 R_NORMAL_ONLY_TOTAL = 24         # Total DPS if every hit were against normal monsters (Breakthrough Sensitivity baseline)
+R_IGNITE_FIRE_RATE = 25          # Ignite's trigger rate: fire attacks per second (see ignite_fire_rate_expr)
 # The two variable-length summary tables start after this fixed block, with a 2-row gap — same
 # gap convention the old (now-removed) hardcoded-after layout used.
-BREAKDOWN_SECTION_ROW = R_NORMAL_ONLY_TOTAL + 2
+BREAKDOWN_SECTION_ROW = R_IGNITE_FIRE_RATE + 2
+
+# Ignite (game table, skillIndex 52060): each fire attack has a 50% chance to create a wall of fire, with a 2.5s
+# internal cooldown after each successful creation; up to 3 walls at once, each ticking every 1s (13% to 3 targets)
+# for 20s. The model ramps to the 3-wall steady state wall by wall (see ignite_hits_per_second_expr).
+IGNITE_SPAWN_CHANCE = 0.5
+IGNITE_TRIGGER_ICD = 2.5
+IGNITE_MAX_WALLS = 3
 
 CONTENT_TYPES = [
     "Chapter Boss", "Breakthrough", "PvP", "EXP Dungeon", "Equipment Dungeon",
@@ -2240,10 +2248,16 @@ SKILL_ROWS = [
      "TriggersMeteorProc=TRUE here. Hits 6+Basic Attack Target Increase targets vs normal "
      "monsters (confirmed by the user), +1 more once Flame Sweep Strike Count is unlocked at "
      "level 136."),
-    ("IGNITE", "Ignite", 2, "", 1, False, 3, 0, 0, 100, 1,
+    ("IGNITE", "Ignite", 2, "", 1, False, 1, 0, 0, 100, 1,
      130, 21, True, 100, 0, 0, 3, "", 0, False, False, 1, 500, 23, "",
-     "3 walls of fire assumed permanently maintained (max instances). +250% vs Normal Monster not modeled. "
-     "Skill Mastery: +100% added directly to the coefficient%. Hits 3 targets vs normal monsters."),
+     "Each fire attack (Flame Sweep, Meteor Shower — 3 meteors —, Meteor Proc, Flame Haze, Ifrit's attacks) has a 50% chance "
+     "to create a wall of fire, with a 2.5s internal cooldown after each creation (game table); up to 3 walls, each "
+     "ticking every 1s (this row's Cooldown(s), a tick interval — HitsPerCast is 1 tick per wall) for 20s. The walls "
+     "appear one by one: the k-th wall arrives after k/(0.5*R) + (k-1)*2.5 s on average (R = fire attacks per second, "
+     "Summary row 25), and once all 3 are up they are assumed maintained for the rest of the fight (user: steady "
+     "state, as before). DPS = whole wall ticks inside the fight / fight length — so the ramp shows in fixed-duration "
+     "and PvP fights; steady-state content (Chapter Hunt) is exactly 3 ticks per second. +250% vs Normal Monster not "
+     "modeled. Skill Mastery: +100% added directly to the coefficient%. Hits 3 targets vs normal monsters."),
     ("POISON_BREATH", "Poison Breath", 2, "Poison", 18, True, 3, 0, 0, 100, 1,
      2000, 12, True, 70, 0, 0, 6, "", 0, True, True, 1, 800, 23, "",
      "Skill Mastery: +70% added directly to the coefficient%. Hits 6 targets vs normal monsters."),
@@ -2457,6 +2471,40 @@ CCOL = {name: get_column_letter(i + 1) for i, name in enumerate(CALC_HEADERS)}
 def S(col_name, r):
     """Shorthand for a Skills-sheet cell reference by column name, e.g. S('Cooldown(s)', 9) -> 'Skills!E9'"""
     return f"Skills!{SC[col_name]}{r}"
+
+
+def ignite_fire_rate_expr(baps_ref, cast_rate, g, unl, meteor_proc_rate):
+    """Fire attacks per second that can each roll Ignite's 50% wall: Basic Attacks, Flame Haze casts, Meteor Shower casts
+    (x its 3 meteors, same per-meteor treatment as Meteor Proc), Meteor Proc's own procs and Ifrit's attacks
+    (HitsPerCast x ticks per cast x casts/s). `cast_rate(key)` = that row's casts per second (steady/PvP 1/cooldown,
+    fixed-duration exact count / fight), `g(key)` = that row's EffectiveHits cell. Fire Haze's burn DoT ticks and Ignite's
+    own walls are not triggers. `unl(key)` = that row's Unlocked cell (a locked skill triggers nothing)."""
+    meteor_per_cast = S("MeteorProcTriggersPerCast", ROW["METEOR_SHOWER_BURST"])
+    def gated(key, term):
+        return f'IF({unl(key)}=TRUE,{term},0)'
+    return (
+        f'={baps_ref}+{gated("FLAME_HAZE_BURST", cast_rate("FLAME_HAZE_BURST"))}'
+        f'+{gated("METEOR_SHOWER_BURST", cast_rate("METEOR_SHOWER_BURST") + "*" + meteor_per_cast)}'
+        f'+{gated("METEOR_PROC", meteor_proc_rate)}'
+        f'+{gated("IFRIT", g("IFRIT") + "*" + cast_rate("IFRIT"))}'
+    )
+
+
+def ignite_hits_per_second_expr(monster_type_ref, fight_duration_ref, startup_ref, fire_rate_ref, tick_ref):
+    """Ignite wall ticks per second over the fight. Wall k (k = 1..IGNITE_MAX_WALLS) appears on average after
+    t_k = k*a + (k-1)*ICD seconds (a = 1/(chance*fire rate) = mean wait for a successful 50% roll; the 2.5s trigger
+    cooldown follows each success) and then ticks once per `tick` seconds — whole ticks only, first tick one interval
+    after creation. Steady-state content (no fixed fight length) keeps the old assumption: all walls up, 3 ticks/s."""
+    steady = f'AND({monster_type_ref}<>"pvp",{fight_duration_ref}=0)'
+    total = f'IF({monster_type_ref}="pvp",{PVP_FIGHT_DURATION},{fight_duration_ref})'
+    # damage can only start once the startup buffs are cast (startup_ref is 0 outside fixed-duration content)
+    avail = f'IF({monster_type_ref}="pvp",{PVP_FIGHT_DURATION},MAX(0,{fight_duration_ref}-{startup_ref}))'
+    wait = f'IFERROR(1/({IGNITE_SPAWN_CHANCE}*{fire_rate_ref}),1000000)'
+    ticks = "+".join(
+        f'INT(MAX(0,{avail}-({k}*{wait}+{k - 1}*{IGNITE_TRIGGER_ICD}))/{tick_ref}+0.000000001)'
+        for k in range(1, IGNITE_MAX_WALLS + 1)
+    )
+    return f'IF({steady},{IGNITE_MAX_WALLS}/{tick_ref},({ticks})/{total})'
 
 
 def build_calc_sheet(wb):
@@ -2685,6 +2733,20 @@ def build_calc_sheet(wb):
             )
             ws.cell(row=r, column=19, value=f'=IF(C{r},{boss_expr},0)')
             ws.cell(row=r, column=21, value=f'=IF(C{r},{normal_expr},0)')
+        elif key == "IGNITE":
+            # Walls appear one by one (ignite_hits_per_second_expr), driven by the Summary fire-attack-rate cell.
+            ignite_rate_main = ignite_hits_per_second_expr(
+                IB("monster_type"), IB("fight_duration"), f'Summary!$B${R_STARTUP_TIME}',
+                f'Summary!$B${R_IGNITE_FIRE_RATE}', S("Cooldown(s)", r),
+            )
+            prefix = f'H{r}*N{r}*{ignite_rate_main}'
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                S("NormalMonsterTargets", r), IB("max_enemies_hit"),
+                extra_boss_mult_r, extra_normal_mult_r,
+            )
+            ws.cell(row=r, column=19, value=f'=IF(C{r},{boss_expr},0)')
+            ws.cell(row=r, column=21, value=f'=IF(C{r},{normal_expr},0)')
         elif key == "MIST_ERUPTION":
             # Poison Mist's own casts (rate_r) plus one more batch of explosions per Flame Haze cast from level 118
             # (its Poison Mist fog — the FLAME_HAZE_FOG row's cast rate; G = hits per cast, no ICD on this row).
@@ -2891,6 +2953,17 @@ def build_summary_sheet(wb):
     ws.cell(row=R_BOSS_ONLY_TOTAL, column=2, value=f"=SUM(Calc!S2:S{LAST_ROW})")
     ws.cell(row=R_NORMAL_ONLY_TOTAL, column=1, value="Normal-Only Total DPS (Sensitivity baseline)")
     ws.cell(row=R_NORMAL_ONLY_TOTAL, column=2, value=f"=SUM(Calc!U2:U{LAST_ROW})")
+
+    ws.cell(row=R_IGNITE_FIRE_RATE, column=1, value=(
+        "Ignite — fire attacks per second that can roll a wall (Basic, Flame Haze, Meteor Shower x3, Meteor Proc, Ifrit)"
+    ))
+    ws.cell(row=R_IGNITE_FIRE_RATE, column=2, value=ignite_fire_rate_expr(
+        f"B{r_baps}",
+        lambda key: f'IF({fda_main},Calc!R{ROW[key]}/{IB("fight_duration")},Calc!Q{ROW[key]})',
+        lambda key: f"Calc!G{ROW[key]}",
+        lambda key: f"Calc!C{ROW[key]}",
+        meteor_proc_rate_expr(f'Calc!H{ROW["METEOR_PROC"]}', S("ICD(s)", ROW["METEOR_PROC"]), f"B{METEOR_PROC_RATE_ROW}"),
+    ))
 
     ws.cell(row=r_basic, column=1, value="Basic Attack DPS")
     ws.cell(row=r_basic, column=2, value=f"=Calc!O{ROW['BASIC_ATTACK']}")
@@ -3185,6 +3258,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     s_boss_total = calc_end + 11
     s_normal_total = calc_end + 12
     s_total = calc_end + 13
+    s_ignite_fire = calc_end + 14   # block-local twin of Summary row R_IGNITE_FIRE_RATE (one of the two spare rows)
     bm_ref, ed_ref, avgbuff_ref = f"B{s_bm}", f"B{s_ed}", f"B{s_avgbuff}"
     asbonus_ref, aps_ref, castrate_ref = f"B{s_asbonus}", f"B{s_aps}", f"B{s_castrate}"
     baps_ref, meteor_ref, total_ref = f"B{s_baps}", f"B{s_meteor}", f"B{s_total}"
@@ -3621,6 +3695,18 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             )
             ws.cell(row=row, column=19, value=f'=IF(C{row},{boss_expr},0)')
             ws.cell(row=row, column=21, value=f'=IF(C{row},{normal_expr},0)')
+        elif key == "IGNITE":
+            ignite_rate_row = ignite_hits_per_second_expr(
+                ib("monster_type"), ib("fight_duration"), startup_ref, f'B{s_ignite_fire}', S("Cooldown(s)", r),
+            )
+            prefix = f'H{row}*N{row}*{ignite_rate_row}'
+            boss_expr, normal_expr = boss_normal_dps_split_exprs(
+                prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                S("NormalMonsterTargets", r), ib("max_enemies_hit"),
+                extra_boss_mult_block, extra_normal_mult_block,
+            )
+            ws.cell(row=row, column=19, value=f'=IF(C{row},{boss_expr},0)')
+            ws.cell(row=row, column=21, value=f'=IF(C{row},{normal_expr},0)')
         elif key == "MIST_ERUPTION":
             _fog_row = row_of["FLAME_HAZE_FOG"]
             extra_fog_rate_row = (
@@ -3735,6 +3821,15 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     ws.cell(row=s_total, column=1, value="TOTAL DPS").font = LABEL_FONT
     ws.cell(row=s_total, column=2, value=f"=SUM(O{calc_start}:O{calc_end})").font = LABEL_FONT
+
+    ws.cell(row=s_ignite_fire, column=1, value="Ignite — fire attacks per second (this block)")
+    ws.cell(row=s_ignite_fire, column=2, value=ignite_fire_rate_expr(
+        baps_ref,
+        lambda key: f'IF({fda_block},R{row_of[key]}/{ib("fight_duration")},Q{row_of[key]})',
+        lambda key: f"G{row_of[key]}",
+        lambda key: f"C{row_of[key]}",
+        meteor_proc_rate_block,
+    ))
 
     return total_ref, boss_total_ref, normal_total_ref
 

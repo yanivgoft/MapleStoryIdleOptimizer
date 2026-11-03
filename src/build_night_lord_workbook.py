@@ -2757,7 +2757,12 @@ def build_summary_sheet(wb):
 
     ws.cell(row=R_AVGBUFF, column=1, value="Average Buff Multiplier (Dark Sight Attack + Frailty Curse self-FD + Adrenalin FD + Artifact Attack%)")
     ws.cell(row=R_AVGBUFF, column=2, value=(
-        f'=(1+{dark_sight_atk_avg}/100)*(1+{frailty_self_fd_avg}/100)*(1+{adrenalin_fd_avg}/100)*(1+{art_ref("AGG_ATTACK_PCT")}/100)'
+        # Attack% sources (Dark Sight Attack + every Attack%-granting artifact) are ONE additive bucket, summed before a
+        # single multiplication — exactly what every Sensitivity block does (attack_bucket_block) and what the other 11
+        # classes' Summary does. Frailty Curse / Adrenalin are Final Damage: separate multiplicative factors.
+        # (Until 2026-11-03 the artifact Attack% was a separate (1+Art/100) factor here, so Summary sat ~2.4% above every
+        # Sensitivity block at the same Inputs and every swept stat showed a negative DPS gain.)
+        f'=(1+({dark_sight_atk_avg}+{art_ref("AGG_ATTACK_PCT")})/100)*(1+{frailty_self_fd_avg}/100)*(1+{adrenalin_fd_avg}/100)'
     ))
 
     ws.cell(row=R_CRIT_RATE_BONUS, column=1, value="Global Crit Rate Bonus % (Critical Throw Lv.47 mastery + Dark Sight Crit Rate, additive)")

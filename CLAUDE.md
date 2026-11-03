@@ -322,6 +322,12 @@ you're building a new class, check for all of these *before* your first build, n
     Check with a full-model run: set a swept stat's Input to the Sensitivity row's "New Value" in a stripped
     copy of the workbook and compare Summary!Total DPS with the Sensitivity "New Total DPS" (pure-boss and
     pure-normal content, where the time-weighted and dollar blends coincide).
+    **Run that check with Attack%-granting artifacts EQUIPPED** (e.g. Bottle of Emotion + Reindeer's Spear in two
+    slots, Star Level 5): the `verify_<class>_workbook.py` scripts ignore artifacts, so a Summary-vs-Sensitivity
+    mismatch in how an artifact bucket is combined is invisible to them. Night Lord's `R_AVGBUFF` multiplied the
+    artifact Attack% as its own `(1+Art/100)` factor while every Sensitivity block (and the other 11 classes) summed it
+    into the same additive bucket as Dark Sight (Attack): every Sensitivity block read ~1.7% below Summary, so every
+    "DPS per +1" and every artifact gain came out negative (fixed 2026-11-03).
 
 ## Cross-checking a new class against its siblings
 

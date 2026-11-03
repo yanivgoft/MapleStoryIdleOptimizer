@@ -1134,10 +1134,39 @@ default 15) and every PvP duration-dependent formula reads it: DoT / summon wind
 one-cast-per-fight cast rate, buff uptimes, and the time-based artifacts (Candle, Hexagon, Rainbow Snail, Charm of the
 Undead, Ring of Cycles). Reported DPS is total damage / fight length, so a DoT's DPS stays the same while it is active
 (its TOTAL damage shrinks with a shorter fight) and a burst skill's DPS rises (the same one cast in less time).
-- **Known limit — action budget:** PvP still gives every skill exactly one cast per fight. In a short fight that
-  can need more actions than fit: with the saved Inputs a 5s fight needs more cast actions than `Actions/s x 5` in 9 of
-  12 classes (FP-Mage: 10 casts vs 8.5 actions), and several classes already overflow at 8-10s. When that happens Basic
-  Attacks drop to 0 but all skills are still counted in full, so short-fight PvP DPS is overstated.
+- **Assumption (user decision 2026-11-01) — action budget:** PvP gives every skill exactly one cast per fight, and the
+  PvP Fight Length is assumed long enough to fit all of those casts. Basic Attacks only get whatever actions are left
+  (possibly none). If you enter a fight length too short for the casts to fit (with the saved Inputs a 5s fight needs
+  more cast actions than `Actions/s x 5` in 9 of 12 classes; FP-Mage: 10 casts vs 8.5 actions), Basic Attacks drop to 0
+  but every skill is still counted in full, so DPS is overstated — the model deliberately does not correct for it.
+
+## FP-Mage: Ignite builds up wall by wall (2026-11-01)
+
+Ignite used to assume its 3 walls of fire were up for the whole fight (and in PvP its "cooldown 1" tick interval was
+mistaken for a once-per-fight cast, which made it ~15x too low). From the game table (skill 52060): each FIRE attack
+has a 50% chance to create a wall, with a **2.5s internal cooldown after each creation**; up to 3 walls, each ticking
+every 1s (13% to 3 targets) for 20s. Modeled (user request): the k-th wall arrives after `k/(0.5*R) + (k-1)*2.5` s on
+average (R = fire attacks/s: Basic Attacks, Flame Haze casts, Meteor Shower casts x3 meteors, Meteor Proc's procs, Ifrit's
+attacks — Summary row 25, mirrored in every Sensitivity block), then the 3-wall steady state holds for the rest of the
+fight (the 20s wall life is ignored, as before); whole ticks only. Steady-state content (Chapter Hunt) is unchanged
+(3 ticks/s). Effect at the saved Inputs: Ignite -14% Breakthrough (40s), -8% Chapter Boss (70s), +~870% in a 15s PvP
+fight (it was nearly missing), total DPS -1.1% / -1.4% / +12.9% respectively. Open assumptions: the 2.5s cooldown comes
+from the game table (the in-game text doesn't mention it; set `IGNITE_TRIGGER_ICD = 0` to drop it); Flame Haze's burn
+ticks and Ignite's own walls do not trigger walls. Elemental Drain (poison stacks, 50%, up to 5) has the same shape
+but is still modeled as permanently maxed (and, in PvP, as a once-per-fight cast).
+
+## Night Lord: artifact Attack% was a separate multiplier in Summary (2026-11-03)
+
+User-reported ("Dark Sight is still broken"): all Sensitivity "DPS per +1" values and all artifact gains were negative.
+Root cause: Night Lord's `Summary!B13` (Average Buff Multiplier) multiplied `(1+Art/100)` as its own factor, while every
+Sensitivity block summed the artifact Attack% (Bottle of Emotion + Reindeer's Spear = 31% in the report) into the SAME
+additive bucket as Dark Sight (Attack), as the other 11 classes' Summary also does and as CLAUDE.md's additive-bucket rule
+requires. So Summary sat above every block by a constant factor (1.45957 vs 1.42418 in the report; 1.7% of Total DPS in
+our test). Fix: `=(1+(DarkSightAtk + Artifacts!AGG_ATTACK_PCT)/100)*(1+FrailtySelfFD/100)*(1+AdrenalinFD/100)`. Verified: with
+the two artifacts equipped each swept stat's Sensitivity block now equals the main sheet re-evaluated at the same Input
+(ratio 1.00000); Shadower (the other Dark Sight class) was already consistent. Night Lord's total with those artifacts
+drops 1.7%. Why it went unseen: the verify scripts ignore artifacts, and the Sensitivity-vs-main check had been run with
+artifact slots cleared.
 
 ## 2026-10-21 full data audit (all 12 classes) — what changed, and what is still an assumption
 
