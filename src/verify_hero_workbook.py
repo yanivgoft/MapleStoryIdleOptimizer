@@ -271,7 +271,7 @@ def boss_normal_multiplier(mastery_boss, mastery_normal, targets):
 # ---- Helper rows (Final Attack, Advanced Final Attack, Maple Hero) — own D/E/F only, no
 #      independent DPS. ----
 final_attack_pct = (
-    coeff_pct(350, 21, True, 2) + level_gated_sum({54: 50})
+    coeff_pct(350, 21, True, 2) * (1 + level_gated_sum({54: 50}) / 100)
     if unlocked("FINAL_ATTACK_HELPER") else 0.0
 )
 advanced_final_attack_pct = (
@@ -288,7 +288,7 @@ raging_blow_final_attack_addition = (
 )
 raging_blow_mastery_damage = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 raging_blow_mastery_boss_damage = level_gated_sum({111: 10, 124: 10})
-raging_blow_pct = skill_coefficient_base + raging_blow_final_attack_addition + raging_blow_mastery_damage
+raging_blow_pct = skill_coefficient_base * (1 + raging_blow_mastery_damage / 100) + raging_blow_final_attack_addition
 raging_blow_targets = 6 + basic_attack_target_increase
 RAGING_BLOW_HITS = 6 if level >= 136 else 5
 
@@ -452,7 +452,7 @@ for key, s in DAMAGE_SKILLS.items():
     if not unlocked(key):
         skill_dps[key] = 0.0
         continue
-    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) + s.get("mastery", 0)
+    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) * (1 + s.get("mastery", 0) / 100) + s.get("fold", 0)  # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03); fold-ins stay additive
     combo_excess_fd = (50 * max(0, combo_stacks - 5)) if (key == "ENHANCED_RAGING_BLOW" and level >= 138) else 0.0
     hd = hit_damage(
         pct, False, s.get("mastery_boss", 0), s.get("mastery_normal", 0),

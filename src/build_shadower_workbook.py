@@ -1865,6 +1865,21 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
     )
 
 
+# Records the most recent boss_normal_dps_split_exprs call's (prefix, targets, cap, monster_type) so
+# the Calc/Sensitivity HitRate(perSec) column can rebuild a damage%-FREE hit count (Toxic Venom rolls
+# once per target hit, so Boss/Normal Damage% of the triggering skill must not leak into its rate).
+_LAST_SPLIT = [None]
+
+
+def hit_count_s_expr(row, w_ref):
+    """Calc!S for the row just built: prefix/N (hits per second) x the target-count-only blend."""
+    if _LAST_SPLIT[0] is None:
+        return 0
+    prefix, tgt, cap, mt = _LAST_SPLIT[0]
+    blend = f'IF({mt}="pvp",1,(1-{w_ref})+{w_ref}*MIN({tgt},{cap}))'
+    return f'=IFERROR(({prefix})/N{row}*{blend},0)'
+
+
 def boss_normal_dps_split_exprs(prefix_expr, monster_type_ref, boss_dmg_pct_expr,
                                  normal_dmg_pct_expr, normal_targets_ref, max_enemies_ref,
                                  extra_boss_mult_expr="1", extra_normal_mult_expr="1"):
@@ -1879,6 +1894,7 @@ def boss_normal_dps_split_exprs(prefix_expr, monster_type_ref, boss_dmg_pct_expr
     (default "1", a no-op) are applied UNCONDITIONALLY, outside the `IF(pvp,1,...)` gating above —
     used for artifact bonuses that are genuinely branch-specific but unrelated to the boss_damage%/
     normal_damage% buckets themselves."""
+    _LAST_SPLIT[0] = (prefix_expr, normal_targets_ref, max_enemies_ref, monster_type_ref)
     capped_targets = f'MIN({normal_targets_ref},{max_enemies_ref})'
     boss_mult = f'IF({monster_type_ref}="pvp",1,1+({boss_dmg_pct_expr})/100)'
     normal_mult = f'IF({monster_type_ref}="pvp",1,(1+({normal_dmg_pct_expr})/100)*({capped_targets}))'
@@ -1977,7 +1993,7 @@ SKILL_COLUMNS = [
     "SkillMasteryBonus%", "MasteryBossDamage%", "MasteryNormalDamage%", "MasteryFinalDamage%",
     "MasteryMaxDamage%", "MasteryMinDamage%", "MasteryCooldownPct", "MasteryTargetIncrease",
     "NormalMonsterTargets", "BuffTargetStat", "BuffDuration(s)", "TriggersToxicVenom",
-    "MapleHeroBase(tenths%)", "MapleHeroFactorIndex", "Stacks", "Note",
+    "MapleHeroBase(tenths%)", "MapleHeroFactorIndex", "Stacks", "SkillFoldBonus%", "Note",
 ]
 SC = {name: get_column_letter(i + 1) for i, name in enumerate(SKILL_COLUMNS)}
 
@@ -2383,6 +2399,59 @@ def cdr_applies_expr(key):
     return "FALSE" if key in CDR_EXEMPT_ROW_KEYS else "TRUE"
 
 
+# ---------------------------------------------------------------------------------------------------------------
+# Skill masteries MULTIPLY the skill's damage (game-confirmed 2026-11-03, FP-Mage: a "+70%" mastery on a 451%-base
+# skill gives 648% = base x 1.7, not 521%; Poison Breath / Ifrit / Ignite / Poison Mist hit damage matched to <0.1%).
+# Calc!F for a damage row is therefore  base_curve x (1 + SkillMasteryBonus%/100) + SkillFoldBonus%, where
+# SkillFoldBonus% is damage that is ADDED as coefficient points rather than multiplied (a Final Attack proc folded into
+# a basic attack, a documented Final Damage approximation, ...). Rows that are buffs (BuffTargetStat set: their mastery is
+# "+X percentage points") and MASTERY_ADDITIVE_EXTRA rows keep the old additive behaviour.
+# ---------------------------------------------------------------------------------------------------------------
+MASTERY_ADDITIVE_EXTRA = set([])
+MASTERY_MIXED_ROW_KEYS = []
+SKILL_FOLD_BONUS = {}
+
+
+def _split_mixed_mastery_rows():
+    """Splits a mixed SkillMasteryBonus% cell ("<fold-in terms> + SUMPRODUCT(level gates) * {mastery tiers}") into the
+    multiplicative mastery part (stays in SkillMasteryBonus%) and the additive fold part (SKILL_FOLD_BONUS)."""
+    global SKILL_ROWS
+    i_sm = SKILL_COLUMNS.index("SkillMasteryBonus%")
+    pattern = re.compile(r"SUMPRODUCT\(\(Inputs!\$B\$3>=\{[^}]*\}\)\*\{[^}]*\}\)")
+    out = []
+    for row in SKILL_ROWS:
+        if row[0] in MASTERY_MIXED_ROW_KEYS:
+            cell = row[i_sm]
+            m = pattern.search(cell)
+            assert m, (row[0], cell)
+            mastery = "=" + m.group(0)
+            rest = (cell[:m.start()] + cell[m.end():]).lstrip("=")
+            rest = re.sub(r"^\+|\+$", "", rest.strip())
+            rest = rest.replace("++", "+")
+            assert rest and "SUMPRODUCT((Inputs!$B$3>={102" not in rest, (row[0], rest)
+            SKILL_FOLD_BONUS[row[0]] = "=" + rest
+            row = tuple(mastery if idx == i_sm else v for idx, v in enumerate(row))
+        out.append(row)
+    SKILL_ROWS = out
+
+
+_split_mixed_mastery_rows()
+MASTERY_ADDITIVE_ROW_KEYS = (
+    {row[0] for row in SKILL_ROWS if row[SKILL_COLUMNS.index("BuffTargetStat")] not in ("", None)} | MASTERY_ADDITIVE_EXTRA
+)
+
+
+def apply_mastery_semantics(key, skills_row, formula):
+    """Rewrites a Calc/Sensitivity coefficient formula "=<base curve>+<mastery ref>" into
+    "=(<base curve>)*(1+<mastery ref>/100)+<fold ref>" for damage rows; buff rows / unusual shapes are left untouched."""
+    sm = S("SkillMasteryBonus%", skills_row)
+    tail = "+" + sm
+    if key in MASTERY_ADDITIVE_ROW_KEYS or not (isinstance(formula, str) and formula.startswith("=") and formula.endswith(tail)):
+        return formula
+    return f"=({formula[1:-len(tail)]})*(1+{sm}/100)+{S('SkillFoldBonus%', skills_row)}"
+
+
+
 def build_skills_sheet(wb):
     ws = wb.create_sheet("Skills")
     for i, name in enumerate(SKILL_COLUMNS):
@@ -2392,11 +2461,14 @@ def build_skills_sheet(wb):
     for row_data in SKILL_ROWS:
         key = row_data[0]
         r = ROW[key]
-        for i, val in enumerate(row_data):
+        # SkillFoldBonus% sits just before Note (the last tuple element); 0 unless the row folds additive coefficient points in
+        full_row = tuple(row_data[:-1]) + (SKILL_FOLD_BONUS.get(key, 0), row_data[-1])
+        for i, val in enumerate(full_row):
             ws.cell(row=r, column=i + 1, value=val)
 
     widths = [26, 30, 8, 11, 15, 13, 11, 8, 13, 11, 12, 18, 11, 14, 17, 16, 18, 17, 16, 16,
               17, 20, 18, 15, 14, 16, 20, 20, 8, 60]
+    widths = widths[:-1] + [14] + widths[-1:]   # SkillFoldBonus% column
     for i, w in enumerate(widths):
         ws.column_dimensions[get_column_letter(i + 1)].width = w
     ws.freeze_panes = "A2"
@@ -2518,6 +2590,7 @@ def build_calc_sheet(wb):
     GENERIC_O_KEYS = DAMAGE_ROW_KEYS + MESO_EXPLOSION_ROW_KEYS + BLOOD_MONEY_ROW_KEYS + ASSASSINATE_ROW_KEYS
 
     for key, r in ROW.items():
+        _LAST_SPLIT[0] = None
         ws.cell(row=r, column=1, value=f"={S('Key', r)}")
         ws.cell(row=r, column=2, value=f"={S('Name', r)}")
         ws.cell(row=r, column=3, value=unlock_expr(key))
@@ -2727,7 +2800,10 @@ def build_calc_sheet(wb):
         if key in TOXIC_VENOM_ROW_KEYS:
             ws.cell(row=r, column=19, value=0)
         else:
-            ws.cell(row=r, column=19, value=f'=IFERROR(O{r}/N{r},0)')
+            ws.cell(row=r, column=19, value=hit_count_s_expr(r, IB("normal_weight_frac")))
+
+    for _key, _r in ROW.items():   # masteries multiply damage (see apply_mastery_semantics)
+        ws.cell(row=_r, column=6).value = apply_mastery_semantics(_key, _r, ws.cell(row=_r, column=6).value)
 
     ws.cell(row=1, column=17, value="InvCooldown")
     ws.cell(row=1, column=18, value="CastsInFight")
@@ -3412,6 +3488,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     GENERIC_O_KEYS = DAMAGE_ROW_KEYS + MESO_EXPLOSION_ROW_KEYS + BLOOD_MONEY_ROW_KEYS + ASSASSINATE_ROW_KEYS
 
     for key, r in ROW.items():
+        _LAST_SPLIT[0] = None
         row = row_of[key]
         ws.cell(row=row, column=1, value=f"={S('Key', r)}")
         ws.cell(row=row, column=2, value=f"={S('Name', r)}")
@@ -3603,7 +3680,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         if key in TOXIC_VENOM_ROW_KEYS:
             ws.cell(row=row, column=19, value=0)
         else:
-            ws.cell(row=row, column=19, value=f'=IFERROR(O{row}/N{row},0)')
+            ws.cell(row=row, column=19, value=hit_count_s_expr(row, ib("normal_weight_frac")))
 
     r_dsc = ROW["DARK_SIGHT_CRIT"]
     r_nf, r_steal = ROW["NIMBLE_FEET"], ROW["STEAL"]
@@ -3682,6 +3759,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     ws.cell(row=s_total, column=1, value="TOTAL DPS").font = LABEL_FONT
     ws.cell(row=s_total, column=2, value=f"=SUM(O{calc_start}:O{calc_end})").font = LABEL_FONT
+
+    for _key, _r in ROW.items():   # same mastery semantics as the main Calc sheet
+        ws.cell(row=row_of[_key], column=6).value = apply_mastery_semantics(_key, _r, ws.cell(row=row_of[_key], column=6).value)
 
     return total_ref, boss_total_ref, normal_total_ref
 

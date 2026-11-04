@@ -276,7 +276,7 @@ def monster_blend(boss_val, normal_val):
 
 # ---- Helper rows (Final Attack, Advanced Final Attack, Maple Hero, Evil Eye Shock Enhancement)
 #      — own D/E/F only, no independent DPS. ----
-final_attack_pct = (coeff_pct(350, 21, True, 2) + level_gated_sum({54: 50})) if unlocked("FINAL_ATTACK_HELPER") else 0.0
+final_attack_pct = (coeff_pct(350, 21, True, 2) * (1 + level_gated_sum({54: 50}) / 100)) if unlocked("FINAL_ATTACK_HELPER") else 0.0
 advanced_final_attack_pct = (
     coeff_pct(5000, 21, True, 4) + level_gated_sum({113: 50})
     if unlocked("ADVANCED_FINAL_ATTACK_HELPER") else 0.0
@@ -293,7 +293,7 @@ dark_impale_final_attack_addition = (
 )
 dark_impale_mastery_damage = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 dark_impale_mastery_boss_damage = level_gated_sum({111: 10, 124: 10})
-dark_impale_pct = skill_coefficient_base + dark_impale_final_attack_addition + dark_impale_mastery_damage
+dark_impale_pct = skill_coefficient_base * (1 + dark_impale_mastery_damage / 100) + dark_impale_final_attack_addition
 dark_impale_targets = 6 + basic_attack_target_increase
 DARK_IMPALE_HITS = 6 if level >= 136 else 5
 
@@ -458,7 +458,7 @@ DAMAGE_SKILLS = {
                               mastery=level_gated_sum({108: 50}), mastery_boss=0, mastery_normal=0, costs_action=True,
                               targets=1),
     "EVIL_EYE_SHOCK": dict(job_step=2, cooldown=18, hits=6, base=700, fidx=12, scales=True,
-                            mastery=level_gated_sum({44: 50}) + (evil_eye_shock_enh_pct if level >= 75 else 0.0),
+                            mastery=level_gated_sum({44: 50}), fold=(evil_eye_shock_enh_pct if level >= 75 else 0.0),
                             mastery_boss=0, mastery_normal=0, costs_action=True,
                             targets=evil_eye_shock_targets,
                             maple_ratio=MAPLE_HERO_RATIOS.get("EVIL_EYE_SHOCK", 0)),
@@ -469,7 +469,7 @@ DAMAGE_SKILLS = {
                                   maple_ratio=MAPLE_HERO_RATIOS.get("EVIL_EYE_OF_DOMINANT", 0)),
     "REVENGE_OF_THE_EVIL_EYE": dict(
         job_step=4, cooldown=5, hits=2, base=8500, fidx=12, scales=True,
-        mastery=level_gated_sum({122: 50}) + (
+        mastery=level_gated_sum({122: 50}), fold=(
             2200 * (get_factor(input_level(4, level, skill1, skill2, skill3, skill4, skill_all), 12) / 1000)
             if level >= 138 else 0.0
         ),
@@ -486,7 +486,7 @@ for key, s in DAMAGE_SKILLS.items():
     if not unlocked(key):
         skill_dps[key] = 0.0
         continue
-    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) + s.get("mastery", 0)
+    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) * (1 + s.get("mastery", 0) / 100) + s.get("fold", 0)  # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03); fold-ins stay additive
     hd = hit_damage(
         pct, False, s.get("mastery_boss", 0), s.get("mastery_normal", 0),
         maple_ratio=s.get("maple_ratio", 0.0),

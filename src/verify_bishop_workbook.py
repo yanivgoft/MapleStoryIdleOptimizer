@@ -471,7 +471,7 @@ avg_buff_mult = (1 + attack_bucket_sum / 100) * final_damage_mult
 
 
 def hit_damage(coeff_pct_val, is_basic, s, key):
-    effective_coeff = coeff_pct_val + s.get("mastery", 0)
+    effective_coeff = coeff_pct_val * (1 + s.get("mastery", 0) / 100)  # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03); fold-ins stay additive
     base_damage = attack * (effective_coeff / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
     elem_amp = element_amp_pct if unlocked("ELEMENT_AMPLIFICATION") else 0.0
@@ -536,7 +536,7 @@ for key, s in SKILLS.items():
 if unlocked("TRIUMPH_FEATHER"):
     tf_base = 1500
     tf_fidx = 21
-    tf_pct = coeff_pct(tf_base, tf_fidx, True, 3) + level_gated_sum({73: 50})
+    tf_pct = coeff_pct(tf_base, tf_fidx, True, 3) * (1 + level_gated_sum({73: 50}) / 100)
     tf_hd = hit_damage(coeff_pct(tf_base, tf_fidx, True, 3), False, dict(mastery=level_gated_sum({73: 50})), "TRIUMPH_FEATHER")
     r_total = actions_per_second
     p1 = 25 if level >= 78 else 15

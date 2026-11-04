@@ -288,7 +288,7 @@ def monster_blend(boss_val, normal_val):
 #      is now its own independent DAMAGE_SKILLS entry below, since it's affected by Skill Damage%,
 #      not Basic Attack Damage% (Arrow Stream's own bucket) — split out per a Discord bug report.
 final_attack_bow_pct = (
-    coeff_pct(350, 21, True, 2) + level_gated_sum({54: 50})
+    coeff_pct(350, 21, True, 2) * (1 + level_gated_sum({54: 50}) / 100)
     if unlocked("FINAL_ATTACK_BOW") else 0.0
 )
 advanced_final_attack_pct = (
@@ -410,7 +410,7 @@ def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0, extra_fd_pct=0.0):
 # ---- Arrow Stream (basic attack) ----
 arrow_stream_mastery_damage = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 arrow_stream_mastery_boss_damage = level_gated_sum({111: 10, 124: 10})
-arrow_stream_pct = skill_coefficient_base + arrow_stream_mastery_damage
+arrow_stream_pct = skill_coefficient_base * (1 + arrow_stream_mastery_damage / 100)
 arrow_stream_targets = 6 + basic_attack_target_increase
 arrow_stream_hit = hit_damage(arrow_stream_pct, True)
 ARROW_STREAM_HITS = 6 if level >= 136 else 5
@@ -465,7 +465,7 @@ for key, s in DAMAGE_SKILLS.items():
     if not unlocked(key):
         skill_dps[key] = 0.0
         continue
-    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) + s.get("mastery", 0)
+    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) * (1 + s.get("mastery", 0) / 100) + s.get("fold", 0)  # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03); fold-ins stay additive
     hd = hit_damage(
         pct, False,
         maple_ratio=s.get("maple_ratio", 0.0), extra_fd_pct=s.get("extra_fd", 0.0),

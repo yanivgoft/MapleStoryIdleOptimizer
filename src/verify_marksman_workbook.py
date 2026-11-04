@@ -280,7 +280,7 @@ def monster_blend(boss_val, normal_val):
 # ---- Helper rows (Final Attack: Crossbow, Advanced Final Attack, Maple Hero) — own D/E/F
 #      only, no independent DPS. ----
 final_attack_crossbow_pct = (
-    coeff_pct(350, 21, True, 2) + level_gated_sum({54: 50})
+    coeff_pct(350, 21, True, 2) * (1 + level_gated_sum({54: 50}) / 100)
     if unlocked("FINAL_ATTACK_CROSSBOW_HELPER") else 0.0
 )
 advanced_final_attack_pct = (
@@ -411,7 +411,7 @@ def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0, extra_fd_pct=0.0):
 
 
 # ---- Empowered Piercing Arrow (basic attack) ----
-epa_pct = skill_coefficient_base + epa_final_attack_addition + epa_damage_mastery
+epa_pct = skill_coefficient_base * (1 + epa_damage_mastery / 100) + epa_final_attack_addition
 epa_targets = 6 + basic_attack_target_increase
 epa_hit = hit_damage(epa_pct, True)
 EPA_HITS = 6 if level >= 136 else 5
@@ -434,7 +434,7 @@ DAMAGE_SKILLS = {
                        targets=3 + (2 if level >= 78 else 0),
                        maple_ratio=MAPLE_HERO_RATIOS.get("FROSTPREY", 0)),
     "SNIPE": dict(job_step=4, cooldown=12, hits=1, base=38000, fidx=12, scales=True,
-                  mastery=level_gated_sum({108: 50}) + (coeff_pct(57000, 12, True, 4) if level >= 134 else 0.0),
+                  mastery=level_gated_sum({108: 50}), fold=(coeff_pct(57000, 12, True, 4) if level >= 134 else 0.0),
                   mastery_boss=0, mastery_normal=0,
                   costs_action=True, targets=1),
     "ARROW_ILLUSION": dict(job_step=4, cooldown=45, hits=1, icd=1.5, window=25, base=12000, fidx=12,
@@ -448,7 +448,7 @@ for key, s in DAMAGE_SKILLS.items():
     if not unlocked(key):
         skill_dps[key] = 0.0
         continue
-    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) + s.get("mastery", 0)
+    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) * (1 + s.get("mastery", 0) / 100) + s.get("fold", 0)  # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03); fold-ins stay additive
     hd = hit_damage(
         pct, False,
         maple_ratio=s.get("maple_ratio", 0.0), extra_fd_pct=s.get("extra_fd", 0.0),
@@ -485,7 +485,7 @@ bolt_surplus_trigger_rate = epa_hit_rate + snipe_hit_rate
 bolt_surplus_hits = 2 + (1 if level >= 138 else 0)
 bolt_surplus_targets = 3 + (2 if level >= 138 else 0)
 if unlocked("BOLT_SURPLUS"):
-    bolt_surplus_pct = coeff_pct(6500, 21, True, 4) + level_gated_sum({122: 50})
+    bolt_surplus_pct = coeff_pct(6500, 21, True, 4) * (1 + level_gated_sum({122: 50}) / 100)
     bolt_surplus_hd = hit_damage(bolt_surplus_pct, False)
     bolt_surplus_dps = 0.15 * bolt_surplus_trigger_rate * bolt_surplus_hits * bolt_surplus_hd * boss_normal_multiplier(bolt_surplus_targets, 0, 0)
 else:

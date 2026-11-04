@@ -264,7 +264,7 @@ NORMAL_MONSTER_TARGETS = {
     "IGNITE": 3, "POISON_BREATH": 6, "POISON_MIST_BURST": 10,
     "POISON_MIST_DOT": 10, "MIST_ERUPTION": 10, "METEOR_SHOWER_BURST": 7,
     "FLAME_HAZE_BURST": 10, "FLAME_HAZE_DOT": 10,
-    "IFRIT": ifrit_targets, "FLAME_HAZE_FOG": 10,
+    "IFRIT": ifrit_targets, "FLAME_HAZE_FOG": 10, "CREEPING_TOXIN": 10,
 }
 
 
@@ -473,7 +473,7 @@ def maple_mult(key):
 
 
 def hit_damage(coeff_pct_val, is_basic, maple_mult_val, s):
-    effective_coeff = coeff_pct_val + s["mastery"]
+    effective_coeff = coeff_pct_val * (1 + s["mastery"] / 100)   # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03)
     base_damage = attack * (effective_coeff / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
     final_mult = (1 + final_damage / 100) * (1 + element_amp_pct / 100) * (1 + arcane_aim_pct / 100) ** 5

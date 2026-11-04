@@ -336,7 +336,7 @@ eight_legs_easton_targets = 6 + basic_attack_target_increase
 EIGHT_LEGS_EASTON_HITS = 6 if level >= 136 else 5
 eight_legs_easton_mastery_damage = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 eight_legs_easton_mastery_boss_damage = level_gated_sum({111: 10, 124: 10})
-eight_legs_easton_pct = skill_coefficient_base + eight_legs_easton_mastery_damage
+eight_legs_easton_pct = skill_coefficient_base * (1 + eight_legs_easton_mastery_damage / 100)
 
 # ---- Cast rate (subtracted from Eight-Legs Easton) — action-costing skills only ----
 # (key, base cooldown, costs_action, actions per cast).  Brain Scrambler / Rapid Fire's EFFECTIVE cooldown is
@@ -494,7 +494,7 @@ for key, s in DAMAGE_SKILLS.items():
     if not unlocked(key):
         skill_dps[key] = 0.0
         continue
-    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) + s.get("mastery", 0)
+    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) * (1 + s.get("mastery", 0) / 100) + s.get("fold", 0)  # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03); fold-ins stay additive
     hd = hit_damage(
         pct, False, s.get("mastery_boss", 0), s.get("mastery_normal", 0),
         maple_ratio=s.get("maple_ratio", 0.0), ahoy_ratio=s.get("ahoy_ratio", 0.0),
@@ -520,7 +520,7 @@ else:
 # ---- Majestic Presence (procs off 3 independent sources: Basic Attack + Brain Scrambler + Rapid
 #      Fire; 25% per attack with a 0.5s internal cooldown => (c*R)/(1+ICD*c*R)) ----
 if unlocked("MAJESTIC_PRESENCE"):
-    mp_pct = coeff_pct(18000, 21, True, 4) + level_gated_sum({134: 50})
+    mp_pct = coeff_pct(18000, 21, True, 4) * (1 + level_gated_sum({134: 50}) / 100)
     mp_hit = hit_damage(mp_pct, False, 0, 0)
 
     def _source_rate(key):

@@ -286,7 +286,7 @@ def boss_normal_multiplier(mastery_boss, mastery_normal, targets):
 # ---- Helper rows (Final Attack, Maple Hero) — own D/E/F only, no independent DPS. Paladin has
 #      NO Advanced Final Attack at all (confirmed absent from its skill list). ----
 final_attack_pct = (
-    coeff_pct(350, 21, True, 2) + level_gated_sum({54: 50})
+    coeff_pct(350, 21, True, 2) * (1 + level_gated_sum({54: 50}) / 100)
     if unlocked("FINAL_ATTACK_HELPER") else 0.0
 )
 maple_hero_pct = coeff_pct(200, 23, True, 4) if unlocked("MAPLE_HERO_HELPER") else 0.0
@@ -301,7 +301,7 @@ blast_final_attack_addition = (
 )
 blast_mastery_damage = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 blast_mastery_boss_damage = level_gated_sum({111: 10, 124: 10})
-blast_pct = skill_coefficient_base + blast_final_attack_addition + blast_mastery_damage
+blast_pct = skill_coefficient_base * (1 + blast_mastery_damage / 100) + blast_final_attack_addition
 blast_targets = 6 + basic_attack_target_increase
 BLAST_HITS = 6 if level >= 136 else 5
 
@@ -471,7 +471,7 @@ for key, s in DAMAGE_SKILLS.items():
     if not unlocked(key):
         skill_dps[key] = 0.0
         continue
-    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) + s.get("mastery", 0)
+    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) * (1 + s.get("mastery", 0) / 100) + s.get("fold", 0)  # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03); fold-ins stay additive
     hd = hit_damage(
         pct, False, s.get("mastery_boss", 0), s.get("mastery_normal", 0),
         maple_ratio=s.get("maple_ratio", 0.0),

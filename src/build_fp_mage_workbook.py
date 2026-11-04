@@ -14,8 +14,9 @@ Sheets:
   Summary     - shared multipliers, action economy, total DPS, per-skill breakdown
 
 Skill Mastery model (per-row, in the Skills sheet — no separate Inputs fields):
-  - SkillMasteryBonus%   adds directly onto that row's coefficient% (same row's own
-                          damage-percent term, before the hit-damage formula runs).
+  - SkillMasteryBonus%   MULTIPLIES that row's coefficient% by (1 + m/100) (confirmed in game 2026-11-03: a
+                          "+70%" mastery on a 451%-base skill gives 648%, not 521%; four skills' hit damage matched
+                          to <0.1% — see KNOWN_GAPS.md). Applied before the hit-damage formula runs.
                           Basic Attack's own Mastery (e.g. 21%) is just this column on
                           the Basic Attack row, same mechanism as every skill.
   - MasteryBossDamage%   adds directly onto Boss Monster Damage% for that row's hit
@@ -2257,10 +2258,10 @@ SKILL_ROWS = [
      "Summary row 25), and once all 3 are up they are assumed maintained for the rest of the fight (user: steady "
      "state, as before). DPS = whole wall ticks inside the fight / fight length — so the ramp shows in fixed-duration "
      "and PvP fights; steady-state content (Chapter Hunt) is exactly 3 ticks per second. +250% vs Normal Monster not "
-     "modeled. Skill Mastery: +100% added directly to the coefficient%. Hits 3 targets vs normal monsters."),
+     "modeled. Skill Mastery: +100% multiplies the skill's damage (x2.0). Hits 3 targets vs normal monsters."),
     ("POISON_BREATH", "Poison Breath", 2, "Poison", 18, True, 3, 0, 0, 100, 1,
      2000, 12, True, 70, 0, 0, 6, "", 0, True, True, 1, 800, 23, "",
-     "Skill Mastery: +70% added directly to the coefficient%. Hits 6 targets vs normal monsters."),
+     "Skill Mastery: +70% multiplies the skill's damage (x1.7). Hits 6 targets vs normal monsters."),
     ("ELEMENTAL_DRAIN", "Elemental Drain", 2, "", 1, False, 5, 0, 0, 100, 1,
      120, 21, True, 0, 0, 0, 1, "", 0, False, False, 1, 1500, 23, "",
      "Poison assumed permanently at 5 stacks (max instances)."),
@@ -2271,7 +2272,7 @@ SKILL_ROWS = [
      "had 22, found in the 2026-10-21 audit)."),
     ("POISON_MIST_BURST", "Poison Mist (burst)", 3, "Poison", 24.5, True, 3, 0, 0, 100, 1,
      1600, 12, True, 50, 0, 0, 10, "", 0, True, True, 1, 100, 23, "",
-     "Skill Mastery: +50% added directly to the coefficient%. (Does not apply to the fog DoT — see that row.) "
+     "Skill Mastery: +50% multiplies the skill's damage (x1.5). (Does not apply to the fog DoT — see that row.) "
      "Hits 10 targets vs normal monsters."),
     ("POISON_MIST_DOT", "Poison Mist (fog DoT)", 3, "Poison", 24.5, False, 1, f'=IF({IB("level")}>=104,0.4,0.8)', 20, 100, 1,
      700, 12, True, 0, 0, 0, 10, "", 0, False, False, 1, 100, 23, "",
@@ -2296,9 +2297,11 @@ SKILL_ROWS = [
      "own 4th-job skill level, same factorIndex 12. Its own SkillMasteryBonus% is the level-122 "
      "mastery (+100% damage), unrelated to Poison Mist's."),
     ("CREEPING_TOXIN", "Creeping Toxin", 3, "Poison", 27, True, 2, 2, 15, 100, 1,
-     1200, 12, True, 50, 0, 100, 1, "", 0, True, False, 1, 100, 23, "",
+     1200, 12, True, 50, 0, 100, 10, "", 0, True, False, 1, 100, 23, "",
      "Assumes a qualifying Fire-element hit is always available within the 2s ICD window. "
-     "Skill Mastery: +50% added directly to the coefficient%, plus +100% Normal Monster Damage mastery. "
+     "Vs normal monsters the explosions chain to every nearby Poisoned target (the 2s lockout is per target), "
+     "modeled as 10 targets like Poison Mist (user decision 2026-11-03). "
+     "Skill Mastery: +50% multiplies the skill's damage (x1.5), plus +100% Normal Monster Damage mastery. "
      "Deliberately excluded from Meteor Proc's trigger set (confirmed by the user)."),
     ("BURNING_MAGIC", "Burning Magic", 3, "", "", False, 1, 0, 0, 100, 1,
      50, 0, False, 0, 0, 0, 1, "", 0, False, False, 1, "", "", 5,
@@ -2580,7 +2583,7 @@ def build_calc_sheet(wb):
             ws.cell(row=r, column=5, value="")
             # Basic Attack's coefficient = the job-tier base coefficient (Inputs sheet) plus
             # this row's own SkillMasteryBonus% — same mechanism as every skill below.
-            ws.cell(row=r, column=6, value=f"={IB('skill_coefficient')}+{S('SkillMasteryBonus%', r)}")
+            ws.cell(row=r, column=6, value=f"={IB('skill_coefficient')}*(1+{S('SkillMasteryBonus%', r)}/100)")
         else:
             ws.cell(
                 row=r, column=4,
@@ -2602,7 +2605,7 @@ def build_calc_sheet(wb):
                 row=r, column=6,
                 value=(
                     f'=IF({S("ScalesWithLevel", r)}=TRUE,({S("BaseDamage(tenths%)", r)}/10)*(E{r}/1000),'
-                    f'{S("BaseDamage(tenths%)", r)}/10)+{S("SkillMasteryBonus%", r)}'
+                    f'{S("BaseDamage(tenths%)", r)}/10)*(1+{S("SkillMasteryBonus%", r)}/100)'
                 ),
             )
 
@@ -3585,7 +3588,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         if key == "BASIC_ATTACK":
             ws.cell(row=row, column=4, value="")
             ws.cell(row=row, column=5, value="")
-            ws.cell(row=row, column=6, value=f"={basic_coeff_cell}+{S('SkillMasteryBonus%', r)}")
+            ws.cell(row=row, column=6, value=f"={basic_coeff_cell}*(1+{S('SkillMasteryBonus%', r)}/100)")
         else:
             ws.cell(row=row, column=4, value=(
                 f'=IF({S("JobStep", r)}=1,60+{ib("skill_lvl_1st")}+{ib("skill_lvl_all")},'
@@ -3599,7 +3602,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             ))
             ws.cell(row=row, column=6, value=(
                 f'=IF({S("ScalesWithLevel", r)}=TRUE,({S("BaseDamage(tenths%)", r)}/10)*(E{row}/1000),'
-                f'{S("BaseDamage(tenths%)", r)}/10)+{S("SkillMasteryBonus%", r)}'
+                f'{S("BaseDamage(tenths%)", r)}/10)*(1+{S("SkillMasteryBonus%", r)}/100)'
             ))
 
         # EffectiveHits/ProcProbability depend only on Skills-sheet cooldown/ICD/etc, never on

@@ -297,7 +297,7 @@ hook_bomber_targets = 6 + basic_attack_target_increase
 HOOK_BOMBER_HITS = 6 if level >= 136 else 5
 hook_bomber_mastery_damage = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
 hook_bomber_mastery_boss_damage = level_gated_sum({111: 10, 124: 10})
-hook_bomber_pct = skill_coefficient_base + hook_bomber_mastery_damage
+hook_bomber_pct = skill_coefficient_base * (1 + hook_bomber_mastery_damage / 100)
 
 
 def exact_buff_uptime(cooldown, buff_duration):
@@ -467,7 +467,7 @@ hook_bomber_dps = HOOK_BOMBER_HITS * hook_bomber_hit * hook_bomber_per_second * 
 # ---- Sea Serpent Burst / Serpent Assault: one activation every T seconds, split (1-u)/u ----
 gss1 = level >= 72
 sea_serpent_burst_pct = (
-    coeff_pct(4300 if gss1 else 1300, 12, True, 3 if gss1 else 2) + level_gated_sum({39: 50})
+    coeff_pct(4300 if gss1 else 1300, 12, True, 3 if gss1 else 2) * (1 + level_gated_sum({39: 50}) / 100)
     if unlocked("SEA_SERPENT_BURST") else 0.0
 )
 gss2_fd_pct = coeff_pct(1000, 22, True, 4) if unlocked("GSS_II_FD") else 0.0
@@ -480,7 +480,7 @@ sea_serpent_burst_dps = (
     if unlocked("SEA_SERPENT_BURST") else 0.0
 )
 
-serpent_assault_pct = (coeff_pct(4800, 12, True, 3) + level_gated_sum({82: 50})) if unlocked("SERPENT_ASSAULT") else 0.0
+serpent_assault_pct = (coeff_pct(4800, 12, True, 3) * (1 + level_gated_sum({82: 50}) / 100)) if unlocked("SERPENT_ASSAULT") else 0.0
 serpent_assault_hit = hit_damage(serpent_assault_pct, False, maple_ratio=MAPLE_HERO_RATIOS.get("SERPENT_ASSAULT", 0))
 serpent_assault_dps = (
     3 * serpent_assault_hit * uptime / serpent_T * boss_normal_multiplier(12, 0, 0)
@@ -515,7 +515,7 @@ for key, s in DAMAGE_SKILLS.items():
     if not unlocked(key):
         skill_dps[key] = 0.0
         continue
-    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) + s.get("mastery", 0)
+    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) * (1 + s.get("mastery", 0) / 100) + s.get("fold", 0)  # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03); fold-ins stay additive
     hd = hit_damage(pct, False, maple_ratio=MAPLE_HERO_RATIOS.get(key, 0))
     proc_prob = s.get("proc_chance", 1.0)
     eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])

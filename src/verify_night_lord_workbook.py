@@ -471,7 +471,7 @@ showdown_per_second = max(0, actions_per_second - cast_rate)
 avg_buff_mult = (1 + dark_sight_atk_avg / 100) * (1 + frailty_self_avg / 100) * (1 + adrenalin_fd_avg / 100)
 
 shadow_partner_mastery = level_gated_sum({68: 100})
-shadow_partner_pct = (coeff_pct(SHADOW_PARTNER["base"], SHADOW_PARTNER["fidx"], True, SHADOW_PARTNER["job_step"]) + shadow_partner_mastery) if unlocked("SHADOW_PARTNER") else 0.0
+shadow_partner_pct = (coeff_pct(SHADOW_PARTNER["base"], SHADOW_PARTNER["fidx"], True, SHADOW_PARTNER["job_step"]) * (1 + shadow_partner_mastery / 100)) if unlocked("SHADOW_PARTNER") else 0.0
 maple_lvl = input_level(4, level, skill1, skill2, skill3, skill4, skill_all)
 maple_factor = get_factor(maple_lvl, 23)
 
@@ -496,11 +496,18 @@ print(f"Cast rate                  = {cast_rate:.6f}")
 print(f"Showdown/sec                = {showdown_per_second:.6f}")
 
 
+def target_count_mult(targets):
+    """Damage%-FREE target-count blend for hit-count / proc-trigger rates (Toxic Venom rolls once per target hit)."""
+    if monster_type == "pvp":
+        return 1
+    return (1 - normal_weight) + normal_weight * min(targets, max_enemies_hit)
+
+
 def hit_damage(coeff_pct_val, is_basic, maple_mult_val, mastery, mastery_boss, mastery_normal, mastery_final):
     # mastery_boss/mastery_normal are unused here now (Boss/Normal Monster Damage% is applied by
     # the caller via boss_normal_multiplier, not blended into base_hit) — kept in the signature so
     # every existing call site (which passes each skill's own mastery values) doesn't need editing.
-    effective_coeff = coeff_pct_val + mastery
+    effective_coeff = coeff_pct_val * (1 + mastery / 100)  # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03); fold-ins stay additive
     base_damage = attack * (effective_coeff / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
     final_mult = (1 + final_damage / 100) * (1 + mastery_final / 100)
@@ -525,7 +532,7 @@ showdown_s = DAMAGE_SKILLS["SHOWDOWN"]
 showdown_hit = hit_damage(skill_coefficient_base, True, 1.0, showdown_mastery, showdown_mastery_boss, 0.0, 0.0)
 showdown_target_mult = boss_normal_multiplier(showdown_s["targets"], showdown_mastery_boss, 0.0)
 showdown_dps = showdown_hits * showdown_hit * showdown_per_second * showdown_target_mult
-hit_rate["SHOWDOWN"] = showdown_hits * showdown_per_second * showdown_target_mult if unlocked("SHOWDOWN") else 0.0
+hit_rate["SHOWDOWN"] = showdown_hits * showdown_per_second * target_count_mult(showdown_s["targets"]) if unlocked("SHOWDOWN") else 0.0
 skill_dps["SHOWDOWN"] = showdown_dps if unlocked("SHOWDOWN") else 0.0
 
 for key, s in DAMAGE_SKILLS.items():
@@ -545,7 +552,7 @@ for key, s in DAMAGE_SKILLS.items():
         rate = hits / eff_cd
     tm = boss_normal_multiplier(s["targets"], s["mastery_boss"], s["mastery_normal"])
     skill_dps[key] = rate * hd * tm
-    hit_rate[key] = rate * tm
+    hit_rate[key] = rate * target_count_mult(s["targets"])
 
 # Toxic Venom — no ICD; trigger rate = combined per-second hit rate (already target-multiplied)
 # of every row in TRIGGERS_TOXIC_VENOM.

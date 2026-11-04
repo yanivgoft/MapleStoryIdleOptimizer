@@ -1168,6 +1168,47 @@ the two artifacts equipped each swept stat's Sensitivity block now equals the ma
 drops 1.7%. Why it went unseen: the verify scripts ignore artifacts, and the Sensitivity-vs-main check had been run with
 artifact slots cleared.
 
+## Skill damage masteries MULTIPLY the skill's damage (2026-11-03, all 12 classes)
+
+User-reported (FP-Mage): Poison Breath did 147.4T per line vs Ifrit 210.2T in the same fight, which made no sense with
+the old model. Four independent in-game numbers (Poison Breath, Ifrit, Ignite, Poison Mist impact) all fit one rule: a
+skill's damage mastery (e.g. "+70% damage") multiplies the skill's damage, `coefficient x (1 + m/100)` (a 363% skill with
+"+70%" does 363% x 1.7, not 433%). The old "+m points" model (Option B) was off by 0.03-0.07% only on the cases where the
+mastery was small relative to the base, and by tens of percent on low-base skills.
+Implementation (all builders): F = `base_curve x (1 + SkillMasteryBonus%/100) + SkillFoldBonus%`, applied by a post-pass
+(`apply_mastery_semantics`) over the Calc and Sensitivity-block F formulas. The new Skills column `SkillFoldBonus%` holds
+terms that are NOT masteries and stay additive: Final Attack fold-ins and mixed cells that used to hold both
+(Dark Knight Dark Impale / Evil Eye Shock / Revenge of the Evil Eye, Hero Raging Blow, Marksman Empowered Piercing Arrow /
+Snipe, Paladin Blast). Maple Hero and Flame Haze's Poison Mist fog use the multiplier form too.
+Still additive on purpose: (1) buff/debuff rows (`BuffTargetStat` set) - their masteries are "+X percentage points" of a
+stat, not damage; (2) the `ADVANCED_FINAL_ATTACK_HELPER` rows (Bowmaster, Dark Knight, Hero, Marksman) - their F is a
+Final Damage %, unverified in game. Basic-attack tier chains (10/11/12/13/14/15%) still sum as raw tier values first, then
+multiply once (that part is unchanged from CLAUDE.md bug #2).
+**Only FP-Mage was measured in game; the other 11 classes assume the same mechanic.** Please confirm with one skill per
+class when convenient. Verify scripts were ported (`* (1 + mastery/100) + fold`) and match the workbooks in all content
+types / level boundaries tested.
+
+## FP-Mage: Creeping Toxin hits 10 targets in normal content (2026-11-03)
+
+Creeping Toxin's explosions chain to every nearby Poisoned target and the 2s lockout is per target, so a pack gets
+about one explosion per mob per 2s. `NormalMonsterTargets` went 1 -> 10 (same as Poison Mist; user decision). Boss/PvP
+unchanged. Chapter Hunt: the row's DPS x10 (0.5% -> 4.7% of total); Breakthrough x6. Assumes the pack stays Poisoned
+and in range (`Max Enemies Actually In Range` still caps it). Its small boss share (about 3.5%) is real: Maple Hero
+gives it only 10% Final Damage (Poison Breath 80%, Elemental Drain 150%).
+
+## Night Lord / Shadower: Toxic Venom's trigger rate carried the triggering skills' damage% (2026-11-04)
+
+User-reported: Toxic Venom showed about 50% of Shadower's DPS. Cause: Toxic Venom rolls 20% per target hit, and its rate
+came from `Calc!S` (HitRate) = `O/N`. Since the Boss/Normal split, `O/N` is no longer a plain hit count: it carries the
+triggering row's Boss Damage% / mastery / damage-taken bonus / artifact boss mults (Reindeer's Spear, Contract of Darkness,
+Final Damage) in boss content (Normal Damage% in normal content), and Toxic Venom then applied its own again. Boss Damage
+235% (the saved Shadower Inputs) therefore counted twice, x3.35. Fix (Marksman and Corsair already did this): `S` is now
+`prefix/N x target-count-only blend` (`hit_count_s_expr`, Calc and every Sensitivity block); the verify scripts use
+`target_count_mult`. Chapter Boss share with typical inputs: Shadower 16%, Night Lord 20%.
+Still open: whether Toxic Venom ("When attacking targets inflicted with Venom ... 20%", OnAttack, excludes one skill
+index) rolls per HIT or per attack action. The model rolls per hit (multi-hit skills and every Meso Explosion/Blood Money
+hit count). If it is per action, the share drops a lot further - needs an in-game reading.
+
 ## 2026-10-21 full data audit (all 12 classes) — what changed, and what is still an assumption
 
 Source: `maplestoryidle.info`'s embedded game tables (+ its patched/base skill text), `idle.maplestorywiki.net`

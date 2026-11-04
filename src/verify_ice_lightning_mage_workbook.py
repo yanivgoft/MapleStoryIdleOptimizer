@@ -477,7 +477,7 @@ def maple_mult(key):
 
 
 def hit_damage(coeff_pct_val, is_basic, maple_mult_val, s):
-    effective_coeff = coeff_pct_val + s["mastery"]
+    effective_coeff = coeff_pct_val * (1 + s["mastery"] / 100)  # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03); fold-ins stay additive
     base_damage = attack * (effective_coeff / 100)
     dmg_reduction = 5000 / (6000 + monster_defense * (1 - def_pen / 100))
     elem_amp = element_amp_pct if unlocked("ELEMENT_AMPLIFICATION") else 0.0

@@ -140,10 +140,15 @@ you're building a new class, check for all of these *before* your first build, n
    opposite, "sum as deltas", which silently under-counted the basic-attack chain in 11 classes.) A
    chain that shows 10%/11%/12%/13%/14%/15% across six level tiers is
    `{lvl1: 10, lvl2: 11, lvl3: 12, lvl4: 13, lvl5: 14, lvl6: 15}` → 75% at max (e.g. 33% at Lv117 for
-   the 102/106/116 tiers), NOT `{10, 1, 1, 1, 1, 1}` (15%). Percent masteries add *points* to the
-   skill's displayed coefficient% (a 363% skill with a "+70%" mastery shows 433%), they are not
-   relative multipliers; a plain "%" in Nexon's text is points unless the user says otherwise (Dark
-   Knight's Cross Over Chains/Hex "+100%/+50% Attack" are points — they look huge but are real).
+   the 102/106/116 tiers), NOT `{10, 1, 1, 1, 1, 1}` (15%). The summed chain then MULTIPLIES the skill's
+   damage — `F = base_curve x (1 + SkillMasteryBonus%/100) + SkillFoldBonus%` (REVISED 2026-11-03 on four
+   in-game measurements in FP-Mage: a 363% skill with a "+70%" mastery does 363% x 1.7, not 433%; see
+   KNOWN_GAPS "Skill damage masteries MULTIPLY"). Each builder's `apply_mastery_semantics` post-pass applies
+   this to the Calc and Sensitivity F formulas. Not-a-mastery additive terms (Final Attack fold-ins) go in the
+   `SkillFoldBonus%` column. Buff/debuff rows (`BuffTargetStat` set; "+X percentage points") and the
+   `ADVANCED_FINAL_ATTACK_HELPER` rows stay additive. Verify scripts must mirror this
+   (`coeff * (1 + mastery/100) + fold`) — hand-written rows that add `level_gated_sum(...)` inline are the
+   usual place a port is missed. Only FP-Mage was measured in game; other classes assume the same mechanic.
 3. **Any "helper row"** (used when one skill's effect folds into another's coefficient, e.g. Final
    Attack folding into a basic attack) **must have its `SkillMasteryBonus%` actually wired into
    the Calc-sheet F-column formula** — in *both* the main Calc sheet and the Sensitivity sheet's
