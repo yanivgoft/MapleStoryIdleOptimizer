@@ -1753,19 +1753,31 @@ BLIZZARD_PROC_TRIGGERS = [
 ]
 
 
-def blizzard_proc_rate_expr(h_ref, icd_ref, trigger_rate_ref):
-    """Steady-state Blizzard-FA trigger rate per second: (Chance*R)/(1+ICD*Chance*R), R = combined
-    cast rate of every triggering attack. Same formula as FP-Mage's meteor_proc_rate_expr."""
-    return f'({h_ref}*{trigger_rate_ref})/(1+{icd_ref}*{h_ref}*{trigger_rate_ref})'
+def blizzard_proc_rate_expr(icd_ref, x_ref):
+    """Steady-state Blizzard-FA proc rate per second: X/(1+ICD*X), X = Summary/block trigger rate = sum over
+    every triggering attack of (attack rate x triggers per cast x P(at least one enemy hit rolls the proc)).
+    A proc chance rolls once per ATTACK per ENEMY HIT, never per damage line (user, 2026-11-04), so an attack
+    that hits N enemies has q = 1-(1-c)^N (the shared ICD allows one proc per attack). The old per-cast
+    formula (c*R)/(1+ICD*c*R) is the N=1 special case."""
+    return f'({x_ref})/(1+{icd_ref}*({x_ref}))'
 
 
-def blizzard_trigger_rate_expr(fda_ref, fight_duration_ref, baps_ref, terms):
-    """Combined cast rate of every Blizzard-FA triggering attack. `terms` = (unlocked_ref,
-    casts_in_fight_ref, inv_cooldown_ref, triggers_per_cast) for each BLIZZARD_PROC_TRIGGERS row;
-    the caller supplies main-sheet or block-local refs (block-local Q/R — never the main sheet's)."""
-    exact = "+".join(f'(({c}=TRUE)*{r}*{n})' for c, r, q, n in terms)
-    steady = "+".join(f'(({c}=TRUE)*{q}*{n})' for c, r, q, n in terms)
-    return f'IF({fda_ref},({exact})/{fight_duration_ref},{steady})+{baps_ref}'
+def blizzard_trigger_rate_expr(fda_ref, fight_duration_ref, baps_ref, terms, chance_ref, branch,
+                               monster_type_ref, max_enemies_ref, chain_targets_ref):
+    """Combined per-enemy-hit trigger rate X of every Blizzard-FA triggering attack, for ONE branch:
+    branch='boss' (one enemy: q=chance; also PvP) or 'normal' (each attack hits MIN(its own target count,
+    max_enemies_hit) enemies, q=1-(1-chance)^N; PvP = 1). `terms` = (unlocked_ref, casts_in_fight_ref,
+    inv_cooldown_ref, triggers_per_cast, normal_targets_ref) for each BLIZZARD_PROC_TRIGGERS row; the caller
+    supplies main-sheet or block-local refs (block-local Q/R — never the main sheet's). Chain Lightning's own
+    cast rate (baps_ref, targets chain_targets_ref) is added on top."""
+    def q(targets_ref):
+        if branch == "boss":
+            return f'{chance_ref}'
+        n = f'IF({monster_type_ref}="pvp",1,MIN({targets_ref},{max_enemies_ref}))'
+        return f'(1-(1-{chance_ref})^{n})'
+    exact = "+".join(f'(({c}=TRUE)*{r}*{n}*{q(t)})' for c, r, qq, n, t in terms)
+    steady = "+".join(f'(({c}=TRUE)*{qq}*{n}*{q(t)})' for c, r, qq, n, t in terms)
+    return f'IF({fda_ref},({exact})/{fight_duration_ref},{steady})+{baps_ref}*{q(chain_targets_ref)}'
 
 # Unlock level (character level) for every row, taken directly from each skill's own wiki page
 # ("Level Required") or (for mastery-only rows) the mastery table — gated all the way down
@@ -1928,9 +1940,13 @@ SKILL_ROWS = [
      "attacking, deals ...% additional damage with a 30% chance' + the Aug-13 patch note "
      "'Cooldown set to 1s' => ANY attack can trigger it (30% per attack, 1s ICD), not just "
      "Blizzard's own casts (an earlier version modeled Blizzard-only triggers, a large "
-     "undercount). Steady-state proc rate = (Chance*R)/(1+ICD*Chance*R) where R is the "
-     "combined cast rate of the triggering attacks (Summary!BLIZZARD_TRIGGER_RATE): Chain "
-     "Lightning's cast rate + one trigger per cast of Thunder Bolt/Glacier Wall/Freezing "
+     "undercount). Proc chances roll once per ATTACK per ENEMY HIT (never per damage "
+     "line; user, 2026-11-04): an attack hitting N enemies has q=1-(1-Chance)^N of triggering (shared "
+     "1s ICD => at most one proc per attack). Steady-state proc rate = X/(1+ICD*X) where X = "
+     "sum over triggering attacks of (attack rate x triggers per cast x q) (Summary!BLIZZARD_TRIGGER_RATE "
+     "= boss/PvP branch, N=1; the cell below it = normal-monster branch, N=MIN(that attack's own "
+     "NormalMonsterTargets, Max Enemies Hit); each branch feeds its own boss-only/normal-only DPS "
+     "column): Chain Lightning's cast rate + one trigger per cast of Thunder Bolt/Glacier Wall/Freezing "
      "Breath/Frozen Orb + 3 per Blizzard cast (its 3 frost spears are independent triggers, same "
      "convention as Meteor Shower in FP-Mage). ASSUMPTION (mirrors FP-Mage's user-confirmed "
      "trigger set): summons and damage-over-time ticks (Thunder Sphere, Elquines) do not "
@@ -2234,11 +2250,12 @@ SUMMARY_ROW = {
     "STARTUP_TIME": 21,
     "BOSS_ONLY_TOTAL": 22,
     "NORMAL_ONLY_TOTAL": 23,
-    "BLIZZARD_TRIGGER_RATE": 24,
+    "BLIZZARD_TRIGGER_RATE": 24,          # boss-branch (and PvP) trigger rate X_boss
+    "BLIZZARD_TRIGGER_RATE_NORMAL": 25,   # normal-branch trigger rate X_normal (per-enemy-hit rolls)
 }
 # The two variable-length summary tables (Per-Skill Breakdown, sized off DAMAGE_DEALING_KEYS, and
 # Marginal DPS & Stat Value, sized off STAT_SWEEP) start after this fixed block, with a 2-row gap.
-BREAKDOWN_SECTION_ROW = SUMMARY_ROW["BLIZZARD_TRIGGER_RATE"] + 2
+BREAKDOWN_SECTION_ROW = SUMMARY_ROW["BLIZZARD_TRIGGER_RATE_NORMAL"] + 2
 
 
 def build_calc_sheet(wb):
@@ -2273,9 +2290,11 @@ def build_calc_sheet(wb):
     # removes elsewhere (see Bishop's ANGEL_RAY_BOSS_PROC comment for the detailed rationale).
 
 
-    blizzard_proc_rate_main = blizzard_proc_rate_expr(
-        f'H{ROW["BLIZZARD_FINAL_ATTACK"]}', S("ICD(s)", ROW["BLIZZARD_FINAL_ATTACK"]),
-        f'Summary!$B${SUMMARY_ROW["BLIZZARD_TRIGGER_RATE"]}',
+    blizzard_proc_rate_main_boss = blizzard_proc_rate_expr(
+        S("ICD(s)", ROW["BLIZZARD_FINAL_ATTACK"]), f'Summary!$B${SUMMARY_ROW["BLIZZARD_TRIGGER_RATE"]}',
+    )
+    blizzard_proc_rate_main_normal = blizzard_proc_rate_expr(
+        S("ICD(s)", ROW["BLIZZARD_FINAL_ATTACK"]), f'Summary!$B${SUMMARY_ROW["BLIZZARD_TRIGGER_RATE_NORMAL"]}',
     )
 
     for key, r in ROW.items():
@@ -2453,11 +2472,16 @@ def build_calc_sheet(wb):
             ))
         elif key == "BLIZZARD_FINAL_ATTACK":
             # No cooldown of its own — steady-state proc rate from the combined cast rate of every
-            # triggering attack (Summary!BLIZZARD_TRIGGER_RATE), see the Skills-sheet Note. H{r} is the
-            # per-attack proc chance (RollsPerCast=1).
-            prefix = f'{blizzard_proc_rate_main}*N{r}'
-            boss_expr, normal_expr = boss_normal_dps_split_exprs(
-                prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+            # triggering attack (Summary!BLIZZARD_TRIGGER_RATE boss / _NORMAL normal), see the Skills-sheet
+            # Note. Each branch uses its own per-enemy-hit trigger rate (proc chance rolls once per attack per
+            # enemy hit; a boss/PvP attack hits 1 enemy, a normal-monster attack hits several).
+            boss_expr, _ = boss_normal_dps_split_exprs(
+                f'{blizzard_proc_rate_main_boss}*N{r}', IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                S("NormalMonsterTargets", r), IB("max_enemies_hit"),
+                extra_boss_mult_r, extra_normal_mult_r,
+            )
+            _, normal_expr = boss_normal_dps_split_exprs(
+                f'{blizzard_proc_rate_main_normal}*N{r}', IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
                 S("NormalMonsterTargets", r), IB("max_enemies_hit"),
                 extra_boss_mult_r, extra_normal_mult_r,
             )
@@ -2635,11 +2659,22 @@ def build_summary_sheet(wb):
     ws.cell(row=r_baps, column=2, value=f'=MAX(0,B{r_aps}-B{r_castrate})')
 
     r_trig = SUMMARY_ROW["BLIZZARD_TRIGGER_RATE"]
-    ws.cell(row=r_trig, column=1, value="Blizzard Final Attack — triggering attacks' combined cast rate, incl. Chain Lightning (1/s)")
-    ws.cell(row=r_trig, column=2, value="=" + blizzard_trigger_rate_expr(
-        fda_main, IB("fight_duration"), f"B{r_baps}",
-        [(f"Calc!C{ROW[k]}", f"Calc!R{ROW[k]}", f"Calc!Q{ROW[k]}", n) for k, n in BLIZZARD_PROC_TRIGGERS],
-    ))
+    r_trig_n = SUMMARY_ROW["BLIZZARD_TRIGGER_RATE_NORMAL"]
+    bfa_row = ROW["BLIZZARD_FINAL_ATTACK"]
+    for r_t, branch, label in (
+        (r_trig, "boss", "Boss/PvP (1 enemy per attack)"),
+        (r_trig_n, "normal", "Normal monsters (each attack rolls once per enemy it hits)"),
+    ):
+        ws.cell(row=r_t, column=1, value=(
+            f"Blizzard Final Attack — trigger rate X, {label}: sum of attack rate x triggers/cast x P(>=1 enemy rolls the proc) (1/s)"
+        ))
+        ws.cell(row=r_t, column=2, value="=" + blizzard_trigger_rate_expr(
+            fda_main, IB("fight_duration"), f"B{r_baps}",
+            [(f"Calc!C{ROW[k]}", f"Calc!R{ROW[k]}", f"Calc!Q{ROW[k]}", n, S("NormalMonsterTargets", ROW[k]))
+             for k, n in BLIZZARD_PROC_TRIGGERS],
+            f"Calc!H{bfa_row}", branch, IB("monster_type"), IB("max_enemies_hit"),
+            S("NormalMonsterTargets", ROW["CHAIN_LIGHTNING"]),
+        ))
 
     r_startup = SUMMARY_ROW["STARTUP_TIME"]
     ws.cell(row=r_startup, column=1, value=(
@@ -2871,6 +2906,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     s_normal_total = calc_end + 12
     s_total = calc_end + 13
     s_trig = calc_end + 14
+    s_trig_n = calc_end + 15
     avgbuff_ref, mdb_ref = f"B{s_avgbuff}", f"B{s_mdb}"
     db_ref, asb_ref, aps_ref = f"B{s_db}", f"B{s_asb}", f"B{s_aps}"
     castrate_ref, baps_ref, total_ref = f"B{s_castrate}", f"B{s_baps}", f"B{s_total}"
@@ -3107,9 +3143,8 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     )
     ws[basic_coeff_cell] = f'=290*{basic_factor_cell}/1000'
 
-    blizzard_proc_rate_block = blizzard_proc_rate_expr(
-        f'H{row_of["BLIZZARD_FINAL_ATTACK"]}', S("ICD(s)", ROW["BLIZZARD_FINAL_ATTACK"]), f"B{s_trig}",
-    )
+    blizzard_proc_rate_block_boss = blizzard_proc_rate_expr(S("ICD(s)", ROW["BLIZZARD_FINAL_ATTACK"]), f"B{s_trig}")
+    blizzard_proc_rate_block_normal = blizzard_proc_rate_expr(S("ICD(s)", ROW["BLIZZARD_FINAL_ATTACK"]), f"B{s_trig_n}")
 
     for key, r in ROW.items():
         row = row_of[key]
@@ -3236,9 +3271,13 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
                 f'=IF(C{row},H{row}*N{row}*{rate_row}*1*{frozen_orb_normal_mult_block}*{extra_normal_mult_block},0)'
             ))
         elif key == "BLIZZARD_FINAL_ATTACK":
-            prefix = f'{blizzard_proc_rate_block}*N{row}'
-            boss_expr, normal_expr = boss_normal_dps_split_exprs(
-                prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+            boss_expr, _ = boss_normal_dps_split_exprs(
+                f'{blizzard_proc_rate_block_boss}*N{row}', ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                S("NormalMonsterTargets", r), ib("max_enemies_hit"),
+                extra_boss_mult_block, extra_normal_mult_block,
+            )
+            _, normal_expr = boss_normal_dps_split_exprs(
+                f'{blizzard_proc_rate_block_normal}*N{row}', ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
                 S("NormalMonsterTargets", r), ib("max_enemies_hit"),
                 extra_boss_mult_block, extra_normal_mult_block,
             )
@@ -3322,11 +3361,15 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ws.cell(row=s_baps, column=1, value="Chain Lightning Casts Per Second")
     ws.cell(row=s_baps, column=2, value=f'=MAX(0,{aps_ref}-{castrate_ref})')
 
-    ws.cell(row=s_trig, column=1, value="Blizzard Final Attack trigger rate (this block's own Q/R)")
-    ws.cell(row=s_trig, column=2, value="=" + blizzard_trigger_rate_expr(
-        fda_block, ib("fight_duration"), baps_ref,
-        [(f"C{row_of[k]}", f"R{row_of[k]}", f"Q{row_of[k]}", n) for k, n in BLIZZARD_PROC_TRIGGERS],
-    ))
+    for s_t, branch, label in ((s_trig, "boss", "boss/PvP"), (s_trig_n, "normal", "normal")):
+        ws.cell(row=s_t, column=1, value=f"Blizzard Final Attack trigger rate X, {label} branch (this block's own Q/R)")
+        ws.cell(row=s_t, column=2, value="=" + blizzard_trigger_rate_expr(
+            fda_block, ib("fight_duration"), baps_ref,
+            [(f"C{row_of[k]}", f"R{row_of[k]}", f"Q{row_of[k]}", n, S("NormalMonsterTargets", ROW[k]))
+             for k, n in BLIZZARD_PROC_TRIGGERS],
+            f"H{row_of['BLIZZARD_FINAL_ATTACK']}", branch, ib("monster_type"), ib("max_enemies_hit"),
+            f'(6+{ib("basic_attack_target_increase")})',
+        ))
 
     ws.cell(row=s_startup, column=1, value="Buff-Casting Startup Delay (s, fixed-duration only)")
     ws.cell(row=s_startup, column=2, value="=" + buff_cast_startup_time_expr(

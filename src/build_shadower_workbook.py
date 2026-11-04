@@ -1871,13 +1871,15 @@ def uptime_fraction_expr(monster_type_ref, duration_ref, cooldown_ref, bdi_ref):
 _LAST_SPLIT = [None]
 
 
-def hit_count_s_expr(row, w_ref):
-    """Calc!S for the row just built: prefix/N (hits per second) x the target-count-only blend."""
+def hit_count_s_expr(row, w_ref, lines_ref):
+    """Calc!S for the row just built: ATTACKS per second x the target-count-only blend. Proc chances roll once per
+    attack per enemy hit, never per damage line (user, 2026-11-04), so prefix/N (damage lines/s) is divided by the
+    skill's HitsPerCast (lines per attack)."""
     if _LAST_SPLIT[0] is None:
         return 0
     prefix, tgt, cap, mt = _LAST_SPLIT[0]
     blend = f'IF({mt}="pvp",1,(1-{w_ref})+{w_ref}*MIN({tgt},{cap}))'
-    return f'=IFERROR(({prefix})/N{row}*{blend},0)'
+    return f'=IFERROR(({prefix})/N{row}/({lines_ref})*{blend},0)'
 
 
 def boss_normal_dps_split_exprs(prefix_expr, monster_type_ref, boss_dmg_pct_expr,
@@ -2800,7 +2802,7 @@ def build_calc_sheet(wb):
         if key in TOXIC_VENOM_ROW_KEYS:
             ws.cell(row=r, column=19, value=0)
         else:
-            ws.cell(row=r, column=19, value=hit_count_s_expr(r, IB("normal_weight_frac")))
+            ws.cell(row=r, column=19, value=hit_count_s_expr(r, IB("normal_weight_frac"), S("HitsPerCast", r)))
 
     for _key, _r in ROW.items():   # masteries multiply damage (see apply_mastery_semantics)
         ws.cell(row=_r, column=6).value = apply_mastery_semantics(_key, _r, ws.cell(row=_r, column=6).value)
@@ -3680,7 +3682,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         if key in TOXIC_VENOM_ROW_KEYS:
             ws.cell(row=row, column=19, value=0)
         else:
-            ws.cell(row=row, column=19, value=hit_count_s_expr(row, ib("normal_weight_frac")))
+            ws.cell(row=row, column=19, value=hit_count_s_expr(row, ib("normal_weight_frac"), S("HitsPerCast", r)))
 
     r_dsc = ROW["DARK_SIGHT_CRIT"]
     r_nf, r_steal = ROW["NIMBLE_FEET"], ROW["STEAL"]

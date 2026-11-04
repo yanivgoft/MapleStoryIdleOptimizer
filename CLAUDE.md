@@ -92,6 +92,11 @@ Patterns introduced by that audit (reuse them, don't reinvent):
   summons and DoT ticks excluded, per the user's FP-Mage precedent). They have no Cooldown of their
   own (ICD(s) column, RollsPerCast 1) and a Summary "trigger rate" cell mirrored in every Sensitivity
   block with the BLOCK-LOCAL `C/Q/R` columns (bug #6).
+- **Proc chances roll once per ATTACK per ENEMY HIT, never per damage line** (user, 2026-11-04): a basic attack's 5-6 lines are one
+  attack; N enemies hit = N rolls; each projectile (3 meteors, Hurricane's 20 arrows) is its own attack. No-ICD procs (Toxic Venom, Bolt
+  Surplus) use `Calc!S` = attacks/s x target-count blend (damage-line rate / HitsPerCast; never `O/N`, which carries Boss/Normal Damage%).
+  ICD-gated procs use q = 1-(1-c)^N per attack and X/(1+ICD*X), separately for the boss/PvP branch (N=1) and the normal branch - two
+  Summary rates, boss-only column vs normal-only column (see KNOWN_GAPS "Proc chances roll per attack per enemy hit").
 - **Temporary skill-level buffs (Paladin's Combat Orders)** are modeled by time-averaging the
   FactorTable lookup: `(1-u)*F(D) + u*F(D+bonus)`, u = the buff's uptime (a Summary cell).
 - **Resource loops (Buccaneer's Serpent Scales/Assault Mode)** use a smoothed steady-state cycle

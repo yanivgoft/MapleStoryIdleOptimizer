@@ -445,7 +445,7 @@ for key, s in DAMAGE_SKILLS.items():
 # ---- Toxic Venom ----
 TOXIC_VENOM_TRIGGER_SKILLS = {"PHASE_DASH", "DARK_FLARE", "SUDDEN_RAID_BURST", "SUDDEN_RAID_DOT"}
 if unlocked("TOXIC_VENOM"):
-    total_hit_rate = cruel_stab_hits * cruel_stab_per_second * target_count_mult(6 + basic_attack_target_increase)
+    total_hit_rate = cruel_stab_per_second * target_count_mult(6 + basic_attack_target_increase)
     for key, s in DAMAGE_SKILLS.items():
         if key in TOXIC_VENOM_TRIGGER_SKILLS and unlocked(key):
             eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
@@ -454,14 +454,14 @@ if unlocked("TOXIC_VENOM"):
             else:
                 hits = s["hits"] * (ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
                 rate = hits / eff_cd
-            total_hit_rate += rate * target_count_mult(s["targets"])
+            total_hit_rate += rate / s["hits"] * target_count_mult(s["targets"])
     if unlocked("ASSASSINATE"):
         _asn_eff_cd = eff_cooldown(13, True)
         if fixed_duration_active:
             _asn_rate = non_buff_total_hits(_asn_eff_cd, 2, None, None) / fight_duration
         else:
             _asn_rate = 2 / _asn_eff_cd
-        total_hit_rate += _asn_rate * target_count_mult(1)
+        total_hit_rate += _asn_rate / 2 * target_count_mult(1)
     # Meso Explosion / Blood Money own hit rates added below once computed
 else:
     total_hit_rate = 0.0
@@ -481,14 +481,14 @@ meso_rate = (1 / eff_cooldown(11, True)) if not fixed_duration_active else (non_
 meso_dps = 3 * meso_hd * meso_rate * boss_normal_multiplier(meso_stack_avg, 0, 0) if unlocked("MESO_EXPLOSION") else 0.0
 skill_dps["MESO_EXPLOSION"] = meso_dps
 if unlocked("TOXIC_VENOM") and unlocked("MESO_EXPLOSION"):
-    total_hit_rate += 3 * meso_rate * target_count_mult(meso_stack_avg)
+    total_hit_rate += meso_rate * target_count_mult(meso_stack_avg)
 
 bm_pct = (coeff_pct(36000, 12, True, 4) * (1 + level_gated_sum({122: 50, 138: 50}) / 100)) if unlocked("BLOOD_MONEY") else 0.0
 bm_hd = hit_damage(bm_pct, False, 0, 0)
 bm_dps = 3 * bm_hd * meso_rate * boss_normal_multiplier(bm_stack_avg * bm_target_mult, 0, 0) if unlocked("BLOOD_MONEY") else 0.0
 skill_dps["BLOOD_MONEY"] = bm_dps
 if unlocked("TOXIC_VENOM") and unlocked("BLOOD_MONEY"):
-    total_hit_rate += 3 * meso_rate * target_count_mult(bm_stack_avg * bm_target_mult)
+    total_hit_rate += meso_rate * target_count_mult(bm_stack_avg * bm_target_mult)
 
 toxic_venom_pct = (coeff_pct(6000, 21, True, 4) * (1 + level_gated_sum({130: 100}) / 100)) if unlocked("TOXIC_VENOM") else 0.0
 toxic_venom_dps = 0.2 * total_hit_rate * hit_damage(toxic_venom_pct, False, 0, 0) * boss_normal_multiplier(1, 0, 0) if unlocked("TOXIC_VENOM") else 0.0

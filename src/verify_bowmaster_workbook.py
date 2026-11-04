@@ -210,7 +210,7 @@ def eff_cooldown(cooldown, costs_action=None, exempt=False):
     return max(0.1, cooldown - (0 if exempt else skill_cooldown_decrease))
 
 
-CDR_EXEMPT = {"FINAL_ATTACK_BOW", "QUIVER_CARTRIDGE", "ENCHANTED_QUIVER_DRAIN", "FLASH_MIRAGE"}  # mirrors the build script
+CDR_EXEMPT = {"QUIVER_CARTRIDGE", "ENCHANTED_QUIVER_DRAIN", "FLASH_MIRAGE"}  # mirrors the build script (Final Attack has no cooldown; Flash Mirage's cooldown is its real ICD)
 
 
 def eff_duration(duration):
@@ -441,7 +441,7 @@ DAMAGE_SKILLS = {
                            costs_action=True, targets=(3 + (1 if level >= 98 else 0)),
                            maple_ratio=MAPLE_HERO_RATIOS.get("ARROW_PLATTER", 0)),
     "FLASH_MIRAGE": dict(job_step=3,
-                          cooldown=((3 if level >= 122 else 5) + 1 / (((20 + 30 * (actions_per_second - 1) * 100 / 150) / 100) * actions_per_second)),
+                          cooldown=(3 if level >= 122 else 5),   # the REAL internal cooldown only; the activation cycle is built per branch below
                           hits=1, base=5500, fidx=21, scales=True,
                           mastery=level_gated_sum({68: 50}), mastery_boss=0, mastery_normal=0,
                           costs_action=False,
@@ -451,14 +451,60 @@ DAMAGE_SKILLS = {
     "HURRICANE": dict(job_step=4, cooldown=40, hits=(20 + (15 if level >= 134 else 0)), base=8000,
                        fidx=12, scales=True, mastery=level_gated_sum({108: 50}), mastery_boss=0,
                        mastery_normal=0, costs_action=True, targets=11),
-    "FINAL_ATTACK_BOW": dict(job_step=2, cooldown=(1 / actions_per_second),
+    "FINAL_ATTACK_BOW": dict(job_step=2, cooldown=None,   # no cooldown: chance per attack per enemy hit (see below)
                               hits=1, base=350, fidx=21, scales=True,
                               mastery=level_gated_sum({54: 50}), mastery_boss=0, mastery_normal=0,
-                              costs_action=False, targets=(6 + basic_attack_target_increase),
+                              costs_action=False, targets=1,
                               proc_chance=25,
                               extra_fd=advanced_final_attack_pct if unlocked("ADVANCED_FINAL_ATTACK_HELPER") else 0.0),
 }
 NORMAL_MONSTER_TARGETS = {k: v["targets"] for k, v in DAMAGE_SKILLS.items()}
+
+# ---- PROC RULE (user, 2026-11-04): a chance proc rolls once per ATTACK per ENEMY HIT, never per damage line.
+#      Arrow Stream's 5-6 lines = 1 attack; every Hurricane arrow is its own attack. Trigger set = Arrow Stream casts +
+#      every action-costing damage skill's casts (buff casts are not attacks). Covering Fire's 3 hits = 1 attack (flagged).
+TRIGGER_CAST_ROWS = ["COVERING_FIRE", "PHOENIX", "ARROW_PLATTER", "HURRICANE"]
+ATTACKS_PER_CAST = {k: 1 for k in TRIGGER_CAST_ROWS}
+ATTACKS_PER_CAST["HURRICANE"] = DAMAGE_SKILLS["HURRICANE"]["hits"]   # each arrow is its own attack
+trigger_attacks = []     # (attacks per second, enemies hit per attack in the normal branch)
+if unlocked("ARROW_STREAM"):
+    trigger_attacks.append((arrow_stream_per_second, min(arrow_stream_targets, max_enemies_hit)))
+for k in TRIGGER_CAST_ROWS:
+    if not unlocked(k):
+        continue
+    s_ = DAMAGE_SKILLS[k]
+    cd_ = eff_cooldown(s_["cooldown"], s_["costs_action"])
+    casts_per_sec = (non_buff_casts(cd_) / fight_duration) if fixed_duration_active else (1 / cd_)
+    trigger_attacks.append((casts_per_sec * ATTACKS_PER_CAST[k], min(s_["targets"], max_enemies_hit)))
+trig_attacks_total = sum(a for a, n in trigger_attacks)
+trig_enemy_rolls = sum(a * n for a, n in trigger_attacks)
+fm_chance = (20 + 30 * (actions_per_second - 1) * 100 / 150) / 100
+fm_x_boss = fm_chance * trig_attacks_total
+fm_x_normal = sum(a * (1 - (1 - fm_chance) ** n) for a, n in trigger_attacks)
+print(f"Proc triggers: attacks/s = {trig_attacks_total:.6f}, attacks/s x enemies = {trig_enemy_rolls:.6f}, "
+      f"FM chance = {fm_chance:.6f}, FM X boss/normal = {fm_x_boss:.6f} / {fm_x_normal:.6f}")
+
+
+def branch_blend(rate_boss, rate_normal, hd_, mastery_boss, mastery_normal, targets):
+    """skill_dps = (1-w)*rate_b*hd*bossbranch + w*rate_n*hd*normalbranch; PvP is single-enemy with neither bonus."""
+    if monster_type == "pvp":
+        return rate_boss * hd_
+    boss_branch = 1 + (boss_damage + mastery_boss + monster_dmg_bonus) / 100
+    normal_branch = (1 + (normal_damage + mastery_normal + monster_dmg_bonus) / 100) * min(targets, max_enemies_hit)
+    return (1 - normal_weight) * rate_boss * hd_ * boss_branch + normal_weight * rate_normal * hd_ * normal_branch
+
+
+def flash_mirage_rate(x):
+    icd = DAMAGE_SKILLS["FLASH_MIRAGE"]["cooldown"]   # real ICD: Skill Cooldown Decrease does not apply (user, 2026-11-04)
+    if x <= 0:
+        return 0.0
+    cycle = icd + 1 / x
+    if fixed_duration_active:
+        avail = max(0.0, fight_duration - buff_cast_startup_time)
+        casts = 0 if avail <= 0 else math.floor(avail / cycle) + 1
+        return casts / fight_duration
+    return 1 / cycle
+
 
 skill_dps = {}
 for key, s in DAMAGE_SKILLS.items():
@@ -471,6 +517,14 @@ for key, s in DAMAGE_SKILLS.items():
         maple_ratio=s.get("maple_ratio", 0.0), extra_fd_pct=s.get("extra_fd", 0.0),
     )
     proc_prob = 1 - (1 - s.get("proc_chance", 100) / 100) ** 1
+    if key == "FINAL_ATTACK_BOW":
+        # no ICD: expected procs per attack = c (one enemy) or c x N (every enemy hit rolls); each proc hits only the enemy it rolled for
+        skill_dps[key] = branch_blend(proc_prob * trig_attacks_total, proc_prob * trig_enemy_rolls, hd, 0, 0, 1)
+        continue
+    if key == "FLASH_MIRAGE":
+        skill_dps[key] = proc_prob * branch_blend(
+            s["hits"] * flash_mirage_rate(fm_x_boss), s["hits"] * flash_mirage_rate(fm_x_normal), hd, 0, 0, s["targets"])
+        continue
     eff_cd = eff_cooldown(s["cooldown"], s["costs_action"], exempt=key in CDR_EXEMPT)
     if fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration

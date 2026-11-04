@@ -368,7 +368,15 @@ blast_per_second = max(0, actions_per_second - cast_rate)
 #      approximated as MIN(1, Duration x ProcChance%/100 x Basic Attack Rate)). Greater Vessel of
 #      Light has no own duty cycle and reuses this same uptime fraction directly. ----
 vessel_of_light_pct = (coeff_pct(150, 22, True, 2) + level_gated_sum({49: 5})) if unlocked("VESSEL_OF_LIGHT") else 0.0
-vessel_of_light_uptime = min(1.0, 10 * (15 / 100) * blast_per_second) if unlocked("VESSEL_OF_LIGHT") else 0.0
+# PROC RULE (2026-11-04): the 15% rolls once per basic ATTACK per ENEMY HIT -> 1-(1-c)^N activations per attack
+# (boss / PvP N=1; normal N = 6+Basic Attack Target Increase capped by Max Enemies Hit), blended by time per branch.
+_vol_n = min(6 + basic_attack_target_increase, max_enemies_hit)
+_vol_u_boss = min(1.0, 10 * 0.15 * blast_per_second)
+_vol_u_normal = min(1.0, 10 * (1 - (1 - 0.15) ** _vol_n) * blast_per_second)
+vessel_of_light_uptime = (
+    (_vol_u_boss if monster_type == "pvp" else (1 - normal_weight) * _vol_u_boss + normal_weight * _vol_u_normal)
+    if unlocked("VESSEL_OF_LIGHT") else 0.0
+)
 vessel_of_light_avg = vessel_of_light_pct * vessel_of_light_uptime if unlocked("VESSEL_OF_LIGHT") else 0.0
 greater_vessel_pct = (coeff_pct(180, 22, True, 4) + level_gated_sum({118: 10})) if unlocked("GREATER_VESSEL_OF_LIGHT") else 0.0
 greater_vessel_avg = greater_vessel_pct * vessel_of_light_uptime if unlocked("GREATER_VESSEL_OF_LIGHT") else 0.0

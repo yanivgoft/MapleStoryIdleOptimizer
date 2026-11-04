@@ -538,26 +538,47 @@ if unlocked("TRIUMPH_FEATHER"):
     tf_fidx = 21
     tf_pct = coeff_pct(tf_base, tf_fidx, True, 3) * (1 + level_gated_sum({73: 50}) / 100)
     tf_hd = hit_damage(coeff_pct(tf_base, tf_fidx, True, 3), False, dict(mastery=level_gated_sum({73: 50})), "TRIUMPH_FEATHER")
-    r_total = actions_per_second
     p1 = 25 if level >= 78 else 15
     d1 = 10
     tf_cd = eff_cooldown(18, True)
-    harness_fraction = (p1 / 100 * r_total * d1) / (1 + p1 / 100 * r_total * tf_cd)
     p2 = 35
     icd2 = 1
-    feather_rate = (p2 / 100 * r_total) / (1 + icd2 * p2 / 100 * r_total)
+
+    # Both stages roll "When attacking, X% chance" once per ATTACK per ENEMY HIT (user, 2026-11-04): an action that
+    # hits N enemies triggers a stage with q = 1-(1-c)^N. Action stream = Big Bang (6+bti targets) + every action-slot
+    # cast; only Angel Ray / Genesis casts hit a known enemy count, every other cast (buffs, Bahamut's summon cast)
+    # is a single roll. Rates are per branch (boss/PvP: N=1; normal: N=min(targets, max_enemies_hit)).
+    def tf_hit_rate(k):
+        if not (SKILLS[k]["costs_action"] and unlocked(k)):
+            return 0.0
+        cd = eff_cooldown(SKILLS[k]["cooldown"], SKILLS[k]["costs_action"])
+        return non_buff_casts(cd) / fight_duration if fixed_duration_active else 1 / cd
+
+    def tf_x(chance, normal_branch):
+        def q(targets):
+            n = min(targets, max_enemies_hit) if (normal_branch and monster_type != "pvp") else 1
+            return 1 - (1 - chance) ** n
+        hit_rates = {k: tf_hit_rate(k) for k in ("ANGEL_RAY", "GENESIS")}
+        x = big_bang_per_second * q(6 + basic_attack_target_increase)
+        x += (cast_rate - sum(hit_rates.values())) * chance
+        x += sum(rt * q(NORMAL_MONSTER_TARGETS[k]) for k, rt in hit_rates.items())
+        return x
+
+    def tf_branch_rate(normal_branch):
+        x1, x2 = tf_x(p1 / 100, normal_branch), tf_x(p2 / 100, normal_branch)
+        return (x1 * d1) / (1 + x1 * tf_cd) * x2 / (1 + icd2 * x2)
+
     tf_targets = triumph_feather_targets
     tf_targets_capped = min(tf_targets, max_enemies_hit)
+    tf_hits = 3 if level >= 104 else 2
     if monster_type == "pvp":
-        tf_target_mult = 1
+        tf_dps_mult = tf_branch_rate(False)
     else:
         tf_boss_term = boss_damage + monster_dmg_bonus
         tf_normal_term = normal_damage + normal_dmg_bonus
-        tf_boss_branch = 1 + tf_boss_term / 100
-        tf_normal_branch = (1 + tf_normal_term / 100) * tf_targets_capped
-        tf_target_mult = (1 - normal_weight) * tf_boss_branch + normal_weight * tf_normal_branch
-    tf_hits = 3 if level >= 104 else 2
-    skill_dps["TRIUMPH_FEATHER"] = tf_hits * tf_hd * harness_fraction * feather_rate * tf_target_mult
+        tf_dps_mult = ((1 - normal_weight) * tf_branch_rate(False) * (1 + tf_boss_term / 100)
+                       + normal_weight * tf_branch_rate(True) * (1 + tf_normal_term / 100) * tf_targets_capped)
+    skill_dps["TRIUMPH_FEATHER"] = tf_hits * tf_hd * tf_dps_mult
 else:
     skill_dps["TRIUMPH_FEATHER"] = 0.0
 

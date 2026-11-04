@@ -416,7 +416,7 @@ epa_targets = 6 + basic_attack_target_increase
 epa_hit = hit_damage(epa_pct, True)
 EPA_HITS = 6 if level >= 136 else 5
 epa_dps = EPA_HITS * epa_hit * epa_per_second * boss_normal_multiplier(epa_targets, epa_boss_mastery, 0) if unlocked("EMPOWERED_PIERCING_ARROW") else 0.0
-epa_hit_rate = EPA_HITS * epa_per_second * target_multiplier(epa_targets) if unlocked("EMPOWERED_PIERCING_ARROW") else 0.0
+epa_hit_rate = epa_per_second * target_multiplier(epa_targets) if unlocked("EMPOWERED_PIERCING_ARROW") else 0.0
 
 # ---- Damage skills (excludes Bolt Surplus, handled separately below via its own dual-trigger
 #      rate) ----
@@ -474,7 +474,7 @@ def hit_rate_per_sec(s, eff_cd):
         rate = non_buff_total_hits(eff_cd, hits_per_cast, icd, window) / fight_duration / effective_hits if effective_hits else 0
     else:
         rate = 1 / eff_cd
-    return effective_hits * rate * target_multiplier(s["targets"])
+    return (effective_hits / hits_per_cast) * rate * target_multiplier(s["targets"])   # attacks/s (damage lines are not separate proc rolls)
 
 
 snipe_eff_cd = eff_cooldown(DAMAGE_SKILLS["SNIPE"]["cooldown"], DAMAGE_SKILLS["SNIPE"]["costs_action"]) if unlocked("SNIPE") else None

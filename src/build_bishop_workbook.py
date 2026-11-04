@@ -1716,10 +1716,15 @@ SKILL_ROWS = [
      "create angel feathers dealing 150% additional damage 2 time(s), 1s ICD per target (treated "
      "as a single global ICD in this per-second-DPS model, not per-target).' Modeled as: this "
      "row's own ProcChance%=35 is stage 2's chance; stage 1's own steady-state busy-fraction "
-     "(chance 15%/25%, duration 10s, 18s cooldown per the game table — user-confirmed 2026-10-21, so the on-fraction is p1*R*10/(1+p1*R*18) — driven by the character's own attack rate) is computed in "
+     "(chance 15%/25%, duration 10s, 18s cooldown per the game table — user-confirmed 2026-10-21, so the on-fraction is X1*10/(1+X1*18)) is computed in "
      "build_calc_sheet as a bespoke multiplier on this row's own Calc!O formula, mirroring the "
      "queueing-rate approximation FP-Mage's own Meteor Proc uses — NOT the generic H-column "
      "ProcProbability-only pattern every other row uses, since this needs BOTH stages combined. "
+     "Per-enemy-hit rule (user, 2026-11-04): both chances roll once per ATTACK per ENEMY HIT (never per damage line "
+     "or per cast), so each stage's trigger rate X = sum over the action stream of (action rate x q), q = 1-(1-chance)^N "
+     "with N = enemies that action hits in the branch (boss/PvP N=1; normal monsters: Big Bang 6+Basic Attack Target "
+     "Increase, Genesis its target count, every other cast one roll; capped by Max Enemies Hit) -- Summary TF_X1_*/TF_X2_* "
+     "cells, one per branch, feeding the boss-only/normal-only DPS columns separately. "
      "Mastery Lv.73 +50% dmg (real SkillMasteryBonus%), Lv.94 'Harnessing' removes the 1s-per-"
      "target activation limit and spreads to 7 random targets (modeled here purely as the "
      "already-uncapped ICD assumption plus NormalMonsterTargets 1->7 — the ICD-removal itself is "
@@ -1970,6 +1975,34 @@ def S(col_name, r):
 # Summary-sheet row numbers, fixed here (build_calc_sheet needs to embed live references to
 # them before build_summary_sheet runs) — mirrors Ice-Lightning-Mage's own SUMMARY_ROW pattern.
 # ---------------------------------------------------------------------------
+# Triumph Feather's two proc stages both roll "When attacking, X% chance" once per ATTACK per ENEMY HIT (never per
+# damage line; user, 2026-11-04). The trigger set is the character's total action stream (Summary APS = Big Bang +
+# every CostsActionSlot cast, the pre-existing "every action counts as attacking" simplification). The only
+# actions that hit a known number of enemies are Big Bang (6+Basic Attack Target Increase) and the damage casts
+# in TRIUMPH_HIT_ROWS (their Skills NormalMonsterTargets); every other action-slot cast (buffs, Bahamut's summon
+# cast) counts as a single roll, exactly as before.
+TRIUMPH_HIT_ROWS = ["ANGEL_RAY", "GENESIS"]
+
+
+def triumph_trigger_rate_expr(fda_ref, fight_duration_ref, castrate_ref, baps_ref, hit_terms, chance_expr, branch,
+                              monster_type_ref, max_enemies_ref, big_bang_targets_ref):
+    """Per-enemy-hit trigger rate X (1/s) of one Triumph Feather stage, for ONE branch. chance_expr = the stage's
+    per-attack chance as a fraction. branch='boss' (one enemy per attack; also PvP): q = chance for every action.
+    branch='normal': q = 1-(1-chance)^N with N = MIN(attack's own target count, max_enemies_hit) (PvP: 1).
+    hit_terms = (unlocked_ref, casts_in_fight_ref, inv_cooldown_ref, normal_targets_ref) per TRIUMPH_HIT_ROWS row
+    (caller passes main-sheet or BLOCK-LOCAL refs). X = baps*q(BigBang) + (castrate - hit casts)*chance
+    + sum(hit cast rate * q(hit targets))."""
+    def q(targets_ref):
+        if branch == "boss":
+            return f'({chance_expr})'
+        n = f'IF({monster_type_ref}="pvp",1,MIN({targets_ref},{max_enemies_ref}))'
+        return f'(1-(1-({chance_expr}))^{n})'
+    rates = [f'IF({fda_ref},({c}=TRUE)*{r}/{fight_duration_ref},({c}=TRUE)*{qq})' for c, r, qq, t in hit_terms]
+    others = f'({castrate_ref}-({"+".join(rates)}))*({chance_expr})'
+    hits = "+".join(f'{rt}*{q(t)}' for rt, (c, r, qq, t) in zip(rates, hit_terms))
+    return f'{baps_ref}*{q(big_bang_targets_ref)}+{others}+{hits}'
+
+
 SUMMARY_ROW = {
     "AVG_BUFF_MULT": 13,
     "MONSTER_DMG_BONUS": 14,
@@ -1986,10 +2019,14 @@ SUMMARY_ROW = {
     "STARTUP_TIME": 24,
     "BOSS_ONLY_TOTAL": 25,
     "NORMAL_ONLY_TOTAL": 26,
+    "TF_X1_BOSS": 27,      # Triumph Feather stage-1 (harnessing) trigger rate X1, boss/PvP branch
+    "TF_X1_NORMAL": 28,    # ... normal-monster branch (per-enemy-hit rolls)
+    "TF_X2_BOSS": 29,      # stage-2 (feather) trigger rate X2, boss/PvP branch
+    "TF_X2_NORMAL": 30,    # ... normal-monster branch
 }
 # The two variable-length summary tables (Per-Skill Breakdown, sized off DAMAGE_DEALING_KEYS, and
 # Marginal DPS & Stat Value, sized off STAT_SWEEP) start after this fixed block, with a 2-row gap.
-BREAKDOWN_SECTION_ROW = SUMMARY_ROW["NORMAL_ONLY_TOTAL"] + 2
+BREAKDOWN_SECTION_ROW = SUMMARY_ROW["TF_X2_NORMAL"] + 2
 DIVINE_PROTECTION_BONUS_REF = f"Summary!$B${SUMMARY_ROW['DIVINE_PROTECTION_BONUS']}"
 
 
@@ -2698,21 +2735,25 @@ def build_calc_sheet(wb):
             # that exact queueing formula for its own rate, nested inside stage 1's fraction.
             # R = the character's total attack rate (Summary!APS, every action counts as
             # "attacking" per the wiki's own unconditional "When attacking..." wording).
-            r_total = f'Summary!$B${SUMMARY_ROW["APS"]}'
             p1 = f'IF({IB("level")}>=78,25,15)'
             d1 = 10
             # Game table: the angel-power trigger has an 18s COOLDOWN (user-confirmed 2026-10-21), so
             # one cycle = 18s cooldown (which contains the 10s window) + the wait for the next trigger
-            # 1/(p1*R): on-fraction = d1 / (18 + 1/(p1*R)) = p1*R*d1 / (1 + p1*R*18).
+            # 1/X1: on-fraction = d1 / (18 + 1/X1) = X1*d1 / (1 + X1*18). X1/X2 = per-enemy-hit trigger rates
+            # (Summary TF_X1_*/TF_X2_*, one per branch; a proc chance rolls once per attack per enemy hit).
             tf_cd = effective_cooldown_expr(IB("monster_type"), "18", IB("skill_cooldown_decrease"), "TRUE")
-            harness_fraction = f'(({p1}/100*{r_total}*{d1})/(1+{p1}/100*{r_total}*{tf_cd}))'
-            feather_rate = (
-                f'({S("ProcChance%", r)}/100*{r_total})/'
-                f'(1+{S("ICD(s)", r)}*{S("ProcChance%", r)}/100*{r_total})'
+            def _tf_prefix(x1_ref, x2_ref):
+                harness_fraction = f'(({x1_ref}*{d1})/(1+{x1_ref}*{tf_cd}))'
+                feather_rate = f'({x2_ref})/(1+{S("ICD(s)", r)}*({x2_ref}))'
+                return f"{S('HitsPerCast', r)}*N{r}*{harness_fraction}*{feather_rate}"
+            sb = lambda k: f'Summary!$B${SUMMARY_ROW[k]}'
+            boss_expr, _ = boss_normal_dps_split_exprs(
+                _tf_prefix(sb("TF_X1_BOSS"), sb("TF_X2_BOSS")), IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                S("NormalMonsterTargets", r), IB("max_enemies_hit"),
+                extra_boss_mult_r, extra_normal_mult_r,
             )
-            prefix = f"{S('HitsPerCast', r)}*N{r}*{harness_fraction}*{feather_rate}"
-            boss_expr, normal_expr = boss_normal_dps_split_exprs(
-                prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+            _, normal_expr = boss_normal_dps_split_exprs(
+                _tf_prefix(sb("TF_X1_NORMAL"), sb("TF_X2_NORMAL")), IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
                 S("NormalMonsterTargets", r), IB("max_enemies_hit"),
                 extra_boss_mult_r, extra_normal_mult_r,
             )
@@ -2898,6 +2939,24 @@ def build_summary_sheet(wb):
     ws.cell(row=r_baps, column=1, value="Big Bang Casts Per Second (basic-attack rate)")
     ws.cell(row=r_baps, column=2, value=f'=MAX(0,B{r_aps}-B{r_castrate})')
 
+    # Triumph Feather per-enemy-hit trigger rates (stage 1 = harnessing chance, stage 2 = feather chance), one per branch.
+    tf_p1_main = f'IF({IB("level")}>=78,25,15)'
+    tf_row = ROW["TRIUMPH_FEATHER"]
+    tf_hit_terms_main = [(f"Calc!C{ROW[k]}", f"Calc!R{ROW[k]}", f"Calc!Q{ROW[k]}", S("NormalMonsterTargets", ROW[k]))
+                         for k in TRIUMPH_HIT_ROWS]
+    for key_t, branch, stage, label in (
+        ("TF_X1_BOSS", "boss", 1, "stage 1 (harnessing), boss/PvP branch (1 enemy per attack)"),
+        ("TF_X1_NORMAL", "normal", 1, "stage 1 (harnessing), normal-monster branch (each attack rolls once per enemy hit)"),
+        ("TF_X2_BOSS", "boss", 2, "stage 2 (feathers), boss/PvP branch (1 enemy per attack)"),
+        ("TF_X2_NORMAL", "normal", 2, "stage 2 (feathers), normal-monster branch (each attack rolls once per enemy hit)"),
+    ):
+        chance = f'{tf_p1_main}/100' if stage == 1 else f'{S("ProcChance%", tf_row)}/100'
+        ws.cell(row=SUMMARY_ROW[key_t], column=1, value=f"Triumph Feather {label}: trigger rate X (1/s)")
+        ws.cell(row=SUMMARY_ROW[key_t], column=2, value="=" + triumph_trigger_rate_expr(
+            fda_main, IB("fight_duration"), f"B{r_castrate}", f"B{r_baps}", tf_hit_terms_main, chance, branch,
+            IB("monster_type"), IB("max_enemies_hit"), S("NormalMonsterTargets", ROW["BIG_BANG"]),
+        ))
+
     r_startup = SUMMARY_ROW["STARTUP_TIME"]
     ws.cell(row=r_startup, column=1, value=(
         "Buff-Casting Startup Delay (s, before first damage-skill cast; fixed-duration only)"
@@ -3082,7 +3141,7 @@ def dps_per_unit_expr(stat_name):
 # baps — one more than Ice-Lightning-Mage's own 8, since Bishop has both a Normal-Monster-only
 # bonus AND a Crit-Damage bonus slot) + 1 blank + total + 2 blank spacer rows before the next
 # block. Derived from LAST_ROW so it can't drift out of sync.
-BLOCK_HEIGHT = LAST_ROW + 17
+BLOCK_HEIGHT = LAST_ROW + 21
 BLOCK_START = SENSITIVITY_HEADER_ROW + len(STAT_SWEEP) + SENSITIVITY_ARTIFACT_TABLE_HEADER_ROWS + 3
 
 
@@ -3143,6 +3202,8 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     s_boss_total = calc_end + 13
     s_normal_total = calc_end + 14
     s_total = calc_end + 15
+    s_tf = {"TF_X1_BOSS": calc_end + 16, "TF_X1_NORMAL": calc_end + 17,
+            "TF_X2_BOSS": calc_end + 18, "TF_X2_NORMAL": calc_end + 19}
     avgbuff_ref, mdb_ref, ndb_ref = f"B{s_avgbuff}", f"B{s_mdb}", f"B{s_ndb}"
     db_ref, cdb_ref, asb_ref = f"B{s_db}", f"B{s_cdb}", f"B{s_asb}"
     aps_ref, castrate_ref, baps_ref = f"B{s_aps}", f"B{s_castrate}", f"B{s_baps}"
@@ -3511,18 +3572,20 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             ws.cell(row=row, column=19, value=f'=IF(C{row},H{row}*N{row}*{rate_row}*{angel_ray_boss_mult_block}*{extra_boss_mult_block},0)')
             ws.cell(row=row, column=21, value=0)
         elif key == "TRIUMPH_FEATHER":
-            r_total = aps_ref
-            p1 = f'IF({ib("level")}>=78,25,15)'
             d1 = 10
             tf_cd = effective_cooldown_expr(ib("monster_type"), "18", ib("skill_cooldown_decrease"), "TRUE")  # see main Calc copy
-            harness_fraction = f'(({p1}/100*{r_total}*{d1})/(1+{p1}/100*{r_total}*{tf_cd}))'
-            feather_rate = (
-                f'({S("ProcChance%", r)}/100*{r_total})/'
-                f'(1+{S("ICD(s)", r)}*{S("ProcChance%", r)}/100*{r_total})'
+            def _tf_prefix_block(x1_ref, x2_ref):
+                harness_fraction = f'(({x1_ref}*{d1})/(1+{x1_ref}*{tf_cd}))'
+                feather_rate = f'({x2_ref})/(1+{S("ICD(s)", r)}*({x2_ref}))'
+                return f"{S('HitsPerCast', r)}*N{row}*{harness_fraction}*{feather_rate}"
+            bref = lambda k: f'B{s_tf[k]}'
+            boss_expr, _ = boss_normal_dps_split_exprs(
+                _tf_prefix_block(bref("TF_X1_BOSS"), bref("TF_X2_BOSS")), ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                S("NormalMonsterTargets", r), ib("max_enemies_hit"),
+                extra_boss_mult_block, extra_normal_mult_block,
             )
-            prefix = f"{S('HitsPerCast', r)}*N{row}*{harness_fraction}*{feather_rate}"
-            boss_expr, normal_expr = boss_normal_dps_split_exprs(
-                prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+            _, normal_expr = boss_normal_dps_split_exprs(
+                _tf_prefix_block(bref("TF_X1_NORMAL"), bref("TF_X2_NORMAL")), ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
                 S("NormalMonsterTargets", r), ib("max_enemies_hit"),
                 extra_boss_mult_block, extra_normal_mult_block,
             )
@@ -3619,6 +3682,20 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     ws.cell(row=s_baps, column=1, value="Big Bang Casts Per Second")
     ws.cell(row=s_baps, column=2, value=f'=MAX(0,{aps_ref}-{castrate_ref})')
+
+    # Triumph Feather per-enemy-hit trigger rates (this block's own C/R/Q, castrate and Big Bang rate; Big Bang's target
+    # count re-derived from the block's own Input since the Skills-sheet cell reads the unswept main Input).
+    tf_hit_terms_block = [(f"C{row_of[k]}", f"R{row_of[k]}", f"Q{row_of[k]}", S("NormalMonsterTargets", ROW[k]))
+                          for k in TRIUMPH_HIT_ROWS]
+    for key_t, branch, stage in (("TF_X1_BOSS", "boss", 1), ("TF_X1_NORMAL", "normal", 1),
+                                 ("TF_X2_BOSS", "boss", 2), ("TF_X2_NORMAL", "normal", 2)):
+        chance = (f'IF({ib("level")}>=78,25,15)/100' if stage == 1
+                  else f'{S("ProcChance%", ROW["TRIUMPH_FEATHER"])}/100')
+        ws.cell(row=s_tf[key_t], column=1, value=f"Triumph Feather stage {stage} trigger rate X, {branch} branch (this block's own Q/R)")
+        ws.cell(row=s_tf[key_t], column=2, value="=" + triumph_trigger_rate_expr(
+            fda_block, ib("fight_duration"), castrate_ref, baps_ref, tf_hit_terms_block, chance, branch,
+            ib("monster_type"), ib("max_enemies_hit"), f'(6+{ib("basic_attack_target_increase")})',
+        ))
 
     ws.cell(row=s_startup, column=1, value="Buff-Casting Startup Delay (s, fixed-duration only)")
     ws.cell(row=s_startup, column=2, value="=" + buff_cast_startup_time_expr(

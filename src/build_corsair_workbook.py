@@ -1928,10 +1928,13 @@ R_STARTUP_TIME = 23                 # Buff-Casting Startup Delay (s, fixed-durat
 R_BOSS_ONLY_TOTAL = 24               # Total DPS if every hit were against a boss (Breakthrough Sensitivity baseline)
 R_NORMAL_ONLY_TOTAL = 25             # Total DPS if every hit were against normal monsters (Breakthrough Sensitivity baseline)
 R_QD_FACTOR = 26                    # Quickdraw (Lv125): Brain Scrambler/Rapid Fire cooldown divisor f = 1 + 0.25*B* (1 when locked/PvP)
-R_NAUTILUS_TRIGGER_RATE = 27        # Nautilus Strike - Final Attack: combined cast rate of the triggering attacks (1/s)
+R_NAUTILUS_TRIGGER_RATE = 27        # Nautilus Strike - Final Attack: combined cast rate of the triggering attacks (1/s) = single-enemy (boss/PvP) attack rate
+R_NAUTILUS_ROLL_RATE_NORMAL = 28    # same, NORMAL-monster branch: expected successful chance-rolls per second, sum(rate_i * (1-(1-c)^N_i)) (pre-ICD)
+R_MAJESTIC_TRIGGER_RATE = 29        # Majestic Presence: combined attack rate of Easton + Brain Scrambler + Rapid Fire (1/s), boss/PvP branch
+R_MAJESTIC_ROLL_RATE_NORMAL = 30    # same, NORMAL-monster branch: expected successful chance-rolls per second (pre-ICD)
 # The two variable-length summary tables (Per-Skill Breakdown, sized off DAMAGE_DEALING_KEYS, and
 # Marginal DPS & Stat Value, sized off STAT_SWEEP) start after this fixed block, with a 2-row gap.
-SUMMARY_BREAKDOWN_HEADER_ROW = R_NAUTILUS_TRIGGER_RATE + 3
+SUMMARY_BREAKDOWN_HEADER_ROW = R_MAJESTIC_ROLL_RATE_NORMAL + 3
 
 
 # Corsair has no BuffDuration(s)>0 skill rows at all (confirmed: no recast-able timed buffs exist
@@ -2016,6 +2019,62 @@ def nautilus_trigger_rate_expr(fda_ref, fight_duration_ref, baps_ref, terms):
 
 
 NAUTILUS_TRIGGER_KEYS = ["SWIFT_FIRE", "BLACKBOOT_BILL", "BRAIN_SCRAMBLER", "NAUTILUS_STRIKE", "RAPID_FIRE"]
+
+
+# "When attacking ... X% chance" procs roll ONCE PER ATTACK PER ENEMY HIT (user decision 2026-11-04): an attack that
+# hits N enemies rolls N times. Single-enemy content (boss, PvP) => N=1 (rolls = attack rate); normal monsters =>
+# N = MIN(the triggering attack's own NormalMonsterTargets, Inputs!max_enemies_hit). The internal-cooldown-gated
+# steady state generalizes (c*R)/(1+ICD*c*R) to X/(1+ICD*X) with X = sum_i attackRate_i * (1-(1-c)^N_i).
+def proc_roll_prob_expr(chance_ref, targets_ref, max_enemies_ref):
+    """Probability that at least one of the N = MIN(targets, max_enemies) per-enemy rolls of ONE attack succeeds."""
+    return f'(1-(1-{chance_ref})^MIN({targets_ref},{max_enemies_ref}))'
+
+
+def proc_rate_from_rolls_expr(x_ref, icd_ref):
+    """Steady-state proc rate with an internal cooldown, X = expected successful chance-rolls per second."""
+    return f'(({x_ref})/(1+{icd_ref}*({x_ref})))'
+
+
+def nautilus_normal_roll_rate_expr(fda_ref, fight_duration_ref, chance_ref, max_enemies_ref, baps_ref, baps_targets_ref, terms):
+    """Normal-monster-branch X for Nautilus Strike - Final Attack. terms = (unlocked_ref, casts_in_fight_ref,
+    inv_cooldown_ref, targets_ref) per triggering action-costing attack; Easton's own cast rate is added."""
+    exact = "+".join(
+        f'(({c}=TRUE)*{r}*{proc_roll_prob_expr(chance_ref, t, max_enemies_ref)})' for c, r, q, t in terms)
+    steady = "+".join(
+        f'(({c}=TRUE)*{q}*{proc_roll_prob_expr(chance_ref, t, max_enemies_ref)})' for c, r, q, t in terms)
+    return (f'IF({fda_ref},({exact})/{fight_duration_ref},{steady})'
+            f'+{baps_ref}*{proc_roll_prob_expr(chance_ref, baps_targets_ref, max_enemies_ref)}')
+
+
+def majestic_source_terms(cell, ib, fda_ref, qd_ref, startup_ref, baps_ref, baps_targets_ref):
+    """Majestic Presence's triggering attacks as [(attack_rate_expr, normal_targets_expr)]: Easton's cast rate plus
+    Brain Scrambler / Rapid Fire hit rates (target-count-INDEPENDENT rates, deliberately NOT Calc!S, which bakes in
+    that row's own target multiplier). `cell(col_letter, key)` resolves a Calc-sheet cell for the surrounding sheet
+    (main Calc, Summary or a Sensitivity block)."""
+    terms = [(baps_ref, baps_targets_ref)]
+    for src_key in MULTI_TRIGGER_SOURCES["MAJESTIC_PRESENCE"]:
+        src_row = ROW[src_key]
+        src_eff_cd = base_eff_cd_expr(src_row, ib, src_key)
+        if src_key in QD_COOLDOWN_KEYS:
+            src_eff_cd = f'({src_eff_cd}/{qd_ref})'
+        if src_key in BUFF_ROW_KEYS:
+            src_available_duration = ib("fight_duration")
+        else:
+            src_available_duration = f'MAX(0,{ib("fight_duration")}-{startup_ref})'
+        rate = rate_or_exact_hits_expr(
+            fda_ref, cell("R", src_key), S("HitsPerCast", src_row), S("ICD(s)", src_row),
+            S("ActiveWindow(s)", src_row), src_eff_cd, src_available_duration, ib("fight_duration"),
+            f'{cell("G", src_key)}*{cell("Q", src_key)}',
+        )
+        terms.append((rate, S("NormalMonsterTargets", src_row)))
+    return terms
+
+
+def majestic_rate_exprs(terms, chance_ref, max_enemies_ref):
+    """(boss/PvP attack rate R, normal-branch roll rate X) from majestic_source_terms."""
+    boss_rate = "(" + "+".join(r for r, _t in terms) + ")"
+    normal_roll = "(" + "+".join(f'{r}*{proc_roll_prob_expr(chance_ref, t, max_enemies_ref)}' for r, t in terms) + ")"
+    return boss_rate, normal_roll
 
 
 def qd_c0_expr(unlocked_ref_fn, q_ref_fn, skills_row_fn):
@@ -2170,10 +2229,14 @@ SKILL_ROWS = [
      0, 0, 0, 1, "", 0, "", "",
      "Shared verbatim with Buccaneer: Mastery Lv.113 '[Nautilus Strike in Slot] When attacking, deals 850% "
      "additional damage with a 30% chance and a 1-sec cooldown.' ANY attack can trigger it, so it is a "
-     "steady-state proc: rate = (Chance*R)/(1+ICD*Chance*R), R = combined cast rate of Eight-Legs Easton + "
-     "Swift Fire + Blackboot Bill + Brain Scrambler + Nautilus Strike + Rapid Fire (Summary!"
-     "NAUTILUS_TRIGGER_RATE); summons/turrets/crews are not counted (ASSUMPTION mirroring FP-Mage's "
-     "user-confirmed trigger set). No cooldown of its own (ICD(s)=1 is the internal cooldown, "
+     "steady-state proc: rate = X/(1+ICD*X), X = expected successful chance-rolls per second. The chance "
+     "rolls once per ATTACK per ENEMY HIT (user decision 2026-11-04; a basic attack's damage lines are ONE "
+     "attack): boss/PvP (1 enemy) X = Chance*R, R = combined cast rate of Eight-Legs Easton + Swift Fire + "
+     "Blackboot Bill + Brain Scrambler + Nautilus Strike + Rapid Fire (Summary!NAUTILUS_TRIGGER_RATE); normal "
+     "monsters X = sum_i rate_i*(1-(1-Chance)^N_i) with N_i = MIN(that attack's NormalMonsterTargets, "
+     "max enemies hit) (Summary!NAUTILUS_ROLL_RATE_NORMAL; boss and normal rates feed the boss-only / "
+     "normal-only DPS columns separately). Summons/turrets/crews are not counted (ASSUMPTION mirroring "
+     "FP-Mage's user-confirmed trigger set). No cooldown of its own (ICD(s)=1 is the internal cooldown, "
      "RollsPerCast=1). factorIndex 21, baseDamage 8500 tenths% (literal percent)."),
     ("RAPID_FIRE", "Rapid Fire", 4, 17, True, 1, 7, 0, 0, 100, 1,
      18000, 12, True,
@@ -2214,8 +2277,11 @@ SKILL_ROWS = [
      "additional damage to up to 6 nearby targets with a 25% chance', 0.5s internal cooldown (game "
      "table cooldownMs 500; an earlier version had no cooldown), Lv.120 unlock (was 125). factorIndex 21 "
      "(game table; was 12), baseDamage 18000 tenths%. Procs off three independent sources (Easton's "
-     "cast rate + Brain Scrambler + Rapid Fire hit rates); steady-state proc rate = (c*R)/(1+ICD*c*R) with "
-     "c=25%, ICD=0.5s. Mastery Lv.134 'Majestic Presence - Damage' +50%. No cooldown of its own in the "
+     "cast rate + Brain Scrambler + Rapid Fire hit rates); steady-state proc rate = X/(1+ICD*X) with c=25%, "
+     "ICD=0.5s and X = expected successful chance-rolls per second. The chance rolls once per attack per "
+     "ENEMY HIT (user decision 2026-11-04): boss/PvP X = c*R (Summary!MAJESTIC_TRIGGER_RATE); normal monsters "
+     "X = sum_i rate_i*(1-(1-c)^N_i), N_i = MIN(that attack's NormalMonsterTargets, max enemies hit) "
+     "(Summary!MAJESTIC_ROLL_RATE_NORMAL). Mastery Lv.134 'Majestic Presence - Damage' +50%. No cooldown of its own in the "
      "Skills sense (CostsActionSlot=False); ICD(s) is the proc's internal cooldown and ActiveWindow=0, "
      "so EffectiveHits is unused."),
     ("MAPLE_HERO_HELPER", "Maple Hero (helper)", 4, "", False, 1, 1, 0, 0, 100, 1,
@@ -2651,42 +2717,34 @@ def build_calc_sheet(wb):
             ws.cell(row=r, column=20, value=f'=IF(C{r},{boss_expr},0)')
             ws.cell(row=r, column=22, value=f'=IF(C{r},{normal_expr},0)')
         elif key == "NAUTILUS_FINAL_ATTACK":
-            prefix = f'{nautilus_proc_rate_main}*N{r}'
-            boss_expr, normal_expr = boss_normal_dps_split_exprs(
-                prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
-                S("NormalMonsterTargets", r), IB("max_enemies_hit"),
-                extra_boss_mult_r, extra_normal_mult_r,
+            # Per-enemy-hit chance rolls: boss/PvP branch rolls once per attack (X = c*R); the normal branch
+            # rolls once per enemy each attack hits (Summary!R_NAUTILUS_ROLL_RATE_NORMAL).
+            targets_ref, max_ref = S("NormalMonsterTargets", r), IB("max_enemies_hit")
+            boss_expr, _unused = boss_normal_dps_split_exprs(
+                f'{nautilus_proc_rate_main}*N{r}', IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                targets_ref, max_ref, extra_boss_mult_r, extra_normal_mult_r,
+            )
+            _unused, normal_expr = boss_normal_dps_split_exprs(
+                f'{proc_rate_from_rolls_expr(f"Summary!$B${R_NAUTILUS_ROLL_RATE_NORMAL}", S("ICD(s)", r))}*N{r}',
+                IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                targets_ref, max_ref, extra_boss_mult_r, extra_normal_mult_r,
             )
             ws.cell(row=r, column=20, value=f'=IF(C{r},{boss_expr},0)')
             ws.cell(row=r, column=22, value=f'=IF(C{r},{normal_expr},0)')
         elif key in MULTI_TRIGGER_KEYS:
-            source_rate_terms = []
-            for src_key in MULTI_TRIGGER_SOURCES[key]:
-                src_row = ROW[src_key]
-                src_eff_cd = base_eff_cd_expr(src_row, IB, src_key)
-                if src_key in QD_COOLDOWN_KEYS:
-                    src_eff_cd = f'({src_eff_cd}/Summary!$B${R_QD_FACTOR})'
-                if src_key in BUFF_ROW_KEYS:
-                    src_available_duration = IB("fight_duration")
-                else:
-                    src_available_duration = f'MAX(0,{IB("fight_duration")}-Summary!$B${R_STARTUP_TIME})'
-                # Target-count-INDEPENDENT rate — deliberately NOT Calc!S (HitRate(perSec)),
-                # which bakes in that row's own target_multiplier and would over-count Rapid
-                # Fire's own 9-target multiplier in normal/breakthrough mode (a real bug caught
-                # by this workbook's own categorical sweep before shipping).
-                source_rate_terms.append(rate_or_exact_hits_expr(
-                    fixed_duration_active_main, f"R{src_row}", S("HitsPerCast", src_row),
-                    S("ICD(s)", src_row), S("ActiveWindow(s)", src_row), src_eff_cd,
-                    src_available_duration, IB("fight_duration"), f"G{src_row}*Q{src_row}",
-                ))
-            combined_rate = f"(Summary!$B${R_BAPS}+{'+'.join(source_rate_terms)})"
-            # 25% chance per triggering attack with a 0.5s internal cooldown: (c*R)/(1+ICD*c*R).
-            majestic_proc_rate = f'(H{r}*{combined_rate})/(1+{S("ICD(s)", r)}*H{r}*{combined_rate})'
-            prefix = f"{majestic_proc_rate}*N{r}"
-            boss_expr, normal_expr = boss_normal_dps_split_exprs(
-                prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
-                S("NormalMonsterTargets", r), IB("max_enemies_hit"),
-                extra_boss_mult_r, extra_normal_mult_r,
+            # Majestic Presence: per-enemy-hit chance rolls off Easton + Brain Scrambler + Rapid Fire; the two
+            # branch rates are Summary cells (R_MAJESTIC_TRIGGER_RATE = attack rate, R_MAJESTIC_ROLL_RATE_NORMAL).
+            targets_ref, max_ref = S("NormalMonsterTargets", r), IB("max_enemies_hit")
+            boss_x = f'(H{r}*Summary!$B${R_MAJESTIC_TRIGGER_RATE})'
+            boss_expr, _unused = boss_normal_dps_split_exprs(
+                f'{proc_rate_from_rolls_expr(boss_x, S("ICD(s)", r))}*N{r}',
+                IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                targets_ref, max_ref, extra_boss_mult_r, extra_normal_mult_r,
+            )
+            _unused, normal_expr = boss_normal_dps_split_exprs(
+                f'{proc_rate_from_rolls_expr(f"Summary!$B${R_MAJESTIC_ROLL_RATE_NORMAL}", S("ICD(s)", r))}*N{r}',
+                IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                targets_ref, max_ref, extra_boss_mult_r, extra_normal_mult_r,
             )
             ws.cell(row=r, column=20, value=f'=IF(C{r},{boss_expr},0)')
             ws.cell(row=r, column=22, value=f'=IF(C{r},{normal_expr},0)')
@@ -2835,6 +2893,32 @@ def build_summary_sheet(wb):
         fda_main, IB("fight_duration"), f"B{R_BAPS}",
         [(f"Calc!C{ROW[k]}", f"Calc!R{ROW[k]}", f"Calc!Q{ROW[k]}") for k in NAUTILUS_TRIGGER_KEYS],
     ))
+
+    ws.cell(row=R_NAUTILUS_ROLL_RATE_NORMAL, column=1, value=(
+        "Nautilus Strike - Final Attack: expected successful chance-rolls/s on NORMAL monsters "
+        "(one roll per enemy each attack hits; before the 1s ICD) (1/s)"
+    ))
+    ws.cell(row=R_NAUTILUS_ROLL_RATE_NORMAL, column=2, value="=" + nautilus_normal_roll_rate_expr(
+        fda_main, IB("fight_duration"), f'Calc!H{ROW["NAUTILUS_FINAL_ATTACK"]}', IB("max_enemies_hit"),
+        f"B{R_BAPS}", S("NormalMonsterTargets", ROW["EIGHT_LEGS_EASTON"]),
+        [(f"Calc!C{ROW[k]}", f"Calc!R{ROW[k]}", f"Calc!Q{ROW[k]}", S("NormalMonsterTargets", ROW[k])) for k in NAUTILUS_TRIGGER_KEYS],
+    ))
+    _maj_terms = majestic_source_terms(
+        lambda col, k: f"Calc!{col}{ROW[k]}", IB, fda_main, f"$B${R_QD_FACTOR}", f"$B${R_STARTUP_TIME}",
+        f"B{R_BAPS}", S("NormalMonsterTargets", ROW["EIGHT_LEGS_EASTON"]),
+    )
+    _maj_boss_rate, _maj_normal_roll = majestic_rate_exprs(
+        _maj_terms, f'Calc!H{ROW["MAJESTIC_PRESENCE"]}', IB("max_enemies_hit"))
+    ws.cell(row=R_MAJESTIC_TRIGGER_RATE, column=1, value=(
+        "Majestic Presence: triggering attacks' combined attack rate (Easton + Brain Scrambler + Rapid Fire), "
+        "boss/PvP branch (1/s)"
+    ))
+    ws.cell(row=R_MAJESTIC_TRIGGER_RATE, column=2, value="=" + _maj_boss_rate)
+    ws.cell(row=R_MAJESTIC_ROLL_RATE_NORMAL, column=1, value=(
+        "Majestic Presence: expected successful chance-rolls/s on NORMAL monsters "
+        "(one roll per enemy each attack hits; before the 0.5s ICD) (1/s)"
+    ))
+    ws.cell(row=R_MAJESTIC_ROLL_RATE_NORMAL, column=2, value="=" + _maj_normal_roll)
 
     r_nf = ROW["NIMBLE_FEET"]
     nimble_feet_as_avg = f'((Calc!C{r_nf}=TRUE)*Calc!F{r_nf}*{buff_uptime(r_nf)})'
@@ -3116,7 +3200,7 @@ def make_ib(override_key, override_expr):
     return ib
 
 
-BLOCK_HEIGHT = LAST_ROW + 18
+BLOCK_HEIGHT = LAST_ROW + 22
 BLOCK_START = SENSITIVITY_HEADER_ROW + len(STAT_SWEEP) + SENSITIVITY_ARTIFACT_TABLE_HEADER_ROWS + 3
 
 
@@ -3141,7 +3225,12 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     s_total = calc_end + 13
     s_qd = calc_end + 14
     s_naut_trig = calc_end + 15
+    s_naut_roll_n = calc_end + 16
+    s_maj_trig = calc_end + 17
+    s_maj_roll_n = calc_end + 18
     qd_block_ref, naut_trig_block_ref = f"B{s_qd}", f"B{s_naut_trig}"
+    naut_roll_n_block_ref, maj_trig_block_ref, maj_roll_n_block_ref = (
+        f"B{s_naut_roll_n}", f"B{s_maj_trig}", f"B{s_maj_roll_n}")
     crit_rate_bonus_ref = f"B{s_crit_rate_bonus}"
     as_bonus_ref, aps_ref, castrate_ref, baps_ref = f"B{s_as_bonus}", f"B{s_aps}", f"B{s_castrate}", f"B{s_baps}"
     crit_damage_bonus_ref = f"B{s_crit_damage_bonus}"
@@ -3561,41 +3650,30 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
             ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
         elif key == "NAUTILUS_FINAL_ATTACK":
-            prefix = f'{nautilus_proc_rate_block}*N{row}'
-            boss_expr, normal_expr = boss_normal_dps_split_exprs(
-                prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
-                S("NormalMonsterTargets", r), ib("max_enemies_hit"),
-                extra_boss_mult_block, extra_normal_mult_block,
+            targets_ref, max_ref = S("NormalMonsterTargets", r), ib("max_enemies_hit")
+            boss_expr, _unused = boss_normal_dps_split_exprs(
+                f'{nautilus_proc_rate_block}*N{row}', ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                targets_ref, max_ref, extra_boss_mult_block, extra_normal_mult_block,
+            )
+            _unused, normal_expr = boss_normal_dps_split_exprs(
+                f'{proc_rate_from_rolls_expr(naut_roll_n_block_ref, S("ICD(s)", r))}*N{row}',
+                ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                targets_ref, max_ref, extra_boss_mult_block, extra_normal_mult_block,
             )
             ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
             ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
         elif key in MULTI_TRIGGER_KEYS:
-            source_rate_terms_block = []
-            for src_key in MULTI_TRIGGER_SOURCES[key]:
-                src_global_row = ROW[src_key]
-                src_local_row = row_of[src_key]
-                src_eff_cd_block = base_eff_cd_expr(src_global_row, ib, src_key)
-                if src_key in QD_COOLDOWN_KEYS:
-                    src_eff_cd_block = f'({src_eff_cd_block}/{qd_block_ref})'
-                if src_key in BUFF_ROW_KEYS:
-                    src_available_duration_block = ib("fight_duration")
-                else:
-                    src_available_duration_block = f'MAX(0,{ib("fight_duration")}-{startup_ref})'
-                # Target-count-INDEPENDENT rate — see build_calc_sheet's own identical fix/comment.
-                source_rate_terms_block.append(rate_or_exact_hits_expr(
-                    fda_block, f"R{src_local_row}", S("HitsPerCast", src_global_row),
-                    S("ICD(s)", src_global_row), S("ActiveWindow(s)", src_global_row), src_eff_cd_block,
-                    src_available_duration_block, ib("fight_duration"), f"G{src_local_row}*Q{src_local_row}",
-                ))
-            combined_rate_block = f"({baps_ref}+{'+'.join(source_rate_terms_block)})"
-            majestic_proc_rate_block = (
-                f'(H{row}*{combined_rate_block})/(1+{S("ICD(s)", r)}*H{row}*{combined_rate_block})'
+            targets_ref, max_ref = S("NormalMonsterTargets", r), ib("max_enemies_hit")
+            boss_x = f'(H{row}*{maj_trig_block_ref})'
+            boss_expr, _unused = boss_normal_dps_split_exprs(
+                f'{proc_rate_from_rolls_expr(boss_x, S("ICD(s)", r))}*N{row}',
+                ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                targets_ref, max_ref, extra_boss_mult_block, extra_normal_mult_block,
             )
-            prefix = f"{majestic_proc_rate_block}*N{row}"
-            boss_expr, normal_expr = boss_normal_dps_split_exprs(
-                prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
-                S("NormalMonsterTargets", r), ib("max_enemies_hit"),
-                extra_boss_mult_block, extra_normal_mult_block,
+            _unused, normal_expr = boss_normal_dps_split_exprs(
+                f'{proc_rate_from_rolls_expr(maj_roll_n_block_ref, S("ICD(s)", r))}*N{row}',
+                ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                targets_ref, max_ref, extra_boss_mult_block, extra_normal_mult_block,
             )
             ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
             ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
@@ -3686,6 +3764,25 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         fda_block, ib("fight_duration"), baps_ref,
         [(f"C{row_of[k]}", f"R{row_of[k]}", f"Q{row_of[k]}") for k in NAUTILUS_TRIGGER_KEYS],
     ))
+    # Per-enemy-hit chance rolls (normal branch) + Majestic's two rates, all from THIS block's own Q/R/APS (bug #6/#19);
+    # Easton's target count is re-derived from this block's swept basic_attack_target_increase.
+    _nf_row = ROW["NAUTILUS_FINAL_ATTACK"]
+    ws.cell(row=s_naut_roll_n, column=1, value="Nautilus Strike - Final Attack chance-rolls/s, normal branch (per enemy hit; this block's own Q/R)")
+    ws.cell(row=s_naut_roll_n, column=2, value="=" + nautilus_normal_roll_rate_expr(
+        fda_block, ib("fight_duration"), f'H{row_of["NAUTILUS_FINAL_ATTACK"]}', ib("max_enemies_hit"),
+        baps_ref, f'(6+{ib("basic_attack_target_increase")})',
+        [(f"C{row_of[k]}", f"R{row_of[k]}", f"Q{row_of[k]}", S("NormalMonsterTargets", ROW[k])) for k in NAUTILUS_TRIGGER_KEYS],
+    ))
+    _maj_terms_b = majestic_source_terms(
+        lambda col, k: f"{col}{row_of[k]}", ib, fda_block, qd_block_ref, startup_ref, baps_ref,
+        f'(6+{ib("basic_attack_target_increase")})',
+    )
+    _maj_boss_rate_b, _maj_normal_roll_b = majestic_rate_exprs(
+        _maj_terms_b, f'H{row_of["MAJESTIC_PRESENCE"]}', ib("max_enemies_hit"))
+    ws.cell(row=s_maj_trig, column=1, value="Majestic Presence attack rate, boss/PvP branch (this block's own Q/R)")
+    ws.cell(row=s_maj_trig, column=2, value="=" + _maj_boss_rate_b)
+    ws.cell(row=s_maj_roll_n, column=1, value="Majestic Presence chance-rolls/s, normal branch (per enemy hit; this block's own Q/R)")
+    ws.cell(row=s_maj_roll_n, column=2, value="=" + _maj_normal_roll_b)
 
     for _key, _r in ROW.items():   # same mastery semantics as the main Calc sheet
         ws.cell(row=row_of[_key], column=6).value = apply_mastery_semantics(_key, _r, ws.cell(row=row_of[_key], column=6).value)

@@ -1146,7 +1146,7 @@ Ignite used to assume its 3 walls of fire were up for the whole fight (and in Pv
 mistaken for a once-per-fight cast, which made it ~15x too low). From the game table (skill 52060): each FIRE attack
 has a 50% chance to create a wall, with a **2.5s internal cooldown after each creation**; up to 3 walls, each ticking
 every 1s (13% to 3 targets) for 20s. Modeled (user request): the k-th wall arrives after `k/(0.5*R) + (k-1)*2.5` s on
-average (R = fire attacks/s: Basic Attacks, Flame Haze casts, Meteor Shower casts x3 meteors, Meteor Proc's procs, Ifrit's
+average (R = successful wall rolls/s - see "Proc chances roll per attack per enemy hit"; originally fire attacks/s: Basic Attacks, Flame Haze casts, Meteor Shower casts x3 meteors, Meteor Proc's procs, Ifrit's
 attacks — Summary row 25, mirrored in every Sensitivity block), then the 3-wall steady state holds for the rest of the
 fight (the 20s wall life is ignored, as before); whole ticks only. Steady-state content (Chapter Hunt) is unchanged
 (3 ticks/s). Effect at the saved Inputs: Ignite -14% Breakthrough (40s), -8% Chapter Boss (70s), +~870% in a 15s PvP
@@ -1205,9 +1205,48 @@ Final Damage) in boss content (Normal Damage% in normal content), and Toxic Veno
 235% (the saved Shadower Inputs) therefore counted twice, x3.35. Fix (Marksman and Corsair already did this): `S` is now
 `prefix/N x target-count-only blend` (`hit_count_s_expr`, Calc and every Sensitivity block); the verify scripts use
 `target_count_mult`. Chapter Boss share with typical inputs: Shadower 16%, Night Lord 20%.
-Still open: whether Toxic Venom ("When attacking targets inflicted with Venom ... 20%", OnAttack, excludes one skill
-index) rolls per HIT or per attack action. The model rolls per hit (multi-hit skills and every Meso Explosion/Blood Money
-hit count). If it is per action, the share drops a lot further - needs an in-game reading.
+Proc rule (user, 2026-11-04): a proc chance rolls once per ATTACK per enemy hit, never per damage line. A basic attack's
+5-6 damage lines are one attack; hitting 10 enemies rolls 10 times; a skill that fires several projectiles (3 meteors,
+Hurricane's 20 arrows) rolls once per projectile. Toxic Venom (Night Lord, Shadower) and Marksman's Bolt Surplus were
+rolling per damage line x target; `Calc!S` is now ATTACKS per second x the target-count blend (the old lines/second divided
+by the row's HitsPerCast; summon/DoT ticks stay one attack per tick). Chapter Boss / Chapter Hunt share after the change:
+Toxic Venom Night Lord 7.4% / 9.7%, Shadower 4.5% / 4.3%; Bolt Surplus 5.2% / 24.3% (was 23% / 65%). See "Proc chances roll per attack per enemy hit" below for the other classes.
+
+## Proc chances roll per attack per enemy hit (2026-11-04, all classes with chance procs)
+
+User rule: a proc chance rolls once per ATTACK per ENEMY HIT - a basic attack's 5-6 damage lines are one attack, 10 enemies hit =
+10 rolls, every projectile (3 meteors, Hurricane's 20 arrows) is its own attack. Procs with a shared internal cooldown use the
+probability of at least one success per attack, q = 1-(1-c)^N (N = enemies that attack hits: boss/PvP 1; normal monsters the
+triggering skill's own NormalMonsterTargets, Basic Attack 6+Basic Attack Target Increase(+1 at Lv136), capped by Max Enemies In
+Range), and the steady-state rate X/(1+ICD*X) with X = sum(attack rate x q). Because q depends on the branch, these procs have a
+boss/PvP rate and a normal-monster rate (separate Summary cells and block-local twins in every Sensitivity block; the row's
+boss-only column uses the first, normal-only column the second; the O blend is unchanged). Boss/World Boss/PvP totals do not move;
+normal content goes up. Chapter Hunt effect: FP Meteor Proc 0.6% -> 1.1% of DPS (total +0.5%; +1.2% at Lv200 incl. Flame Haze DoT /
+Ifrit stacks), Ignite unchanged (its 2.5s cooldown and 3-wall cap dominate), ILM Blizzard FA 0.7% -> 1.4%, Bishop Triumph Feather
+8.5% -> 14.2%, Corsair Majestic Presence 4.2% -> 10.0%, Corsair/Buccaneer Nautilus FA ~x2 (<1%), Bowmaster Flash Mirage 13% -> 23.6%
+and Final Attack: Bow 1.1% -> 2.1% (Chapter Boss also moved: the trigger set now counts attack casts and Hurricane's 20 arrows, not buff
+casts). Toxic Venom / Bolt Surplus (no ICD): see the two sections above.
+Per-class notes and choices that can be reversed:
+- **Bowmaster**: Final Attack: Bow lost its surrogate cooldown (25% x attacks/s, normal: x enemies hit, 1-target payoff); Flash Mirage's
+  Cooldown(s) is now only the real 5s ICD (3s from Lv122) with cycle ICD+1/X; Skill Cooldown Decrease / Soul Contract do NOT shorten it
+  (user decision 2026-11-04; `FLASH_MIRAGE` is in `CDR_EXEMPT_ROW_KEYS`). PvP Final Attack and Flash Mirage used to run at 1/15 per second because the PvP
+  cooldown override hit a surrogate (FA 2.4k -> 116k, FM 127k -> 439k); Quiver Cartridge / Drain still have that 1/15 PvP behaviour.
+  Covering Fire's 3 hits count as one attack and Phoenix / Arrow Platter casts as one each (flagged; `ATTACKS_PER_CAST_IS_HITS_KEYS`).
+- **FP-Mage**: Meteor Proc and Ignite per-branch rates (new Calc column V "EnemiesHit(normal)"); Flame Haze / Ifrit stack multipliers
+  read the branch Meteor rate. The Lv126 Flame Haze burn-stacking mastery (5% per cast) is NOT rolled per enemy (each extra burn is already
+  modelled as a full 10-target DoT instance; rolling per enemy would double count targets).
+- **Corsair / Buccaneer**: Nautilus FA counts one attack per cast of Swift Fire, Blackboot Bill, Nautilus Strike, Rapid Fire, Brain
+  Scrambler (Swift Fire's 3 bullets / Blackboot Bill's 4 hits are NOT separate attacks - flagged), Majestic Presence counts Brain Scrambler
+  and Rapid Fire hits. Buccaneer's Sea Serpent Burst / Serpent Assault / Serpent Scale are guaranteed (no chance roll); Raging Serpent
+  Assault's ProcChance is an uptime factor.
+- **Paladin Vessel of Light**: uptime = MIN(1, duration x q x basic-attack rate) per branch; no change at default inputs (already 100%).
+- **Bishop Triumph Feather**: both stages roll per enemy hit (four Summary cells TF_X1/X2 boss/normal); buff casts and Bahamut's cast stay a
+  single roll. **ILM** Elemental Reset is an uptime proxy, not a roll - unchanged.
+- **Still NOT per enemy (audit, flagged)**: the Final Attack folds in Hero / Paladin / Dark Knight (0.25 x FA% added to every damage LINE: per
+  enemy already, but per line, not per attack; dividing by HitsPerCast would cut the basic attack ~14-16%, ~6-7% of total DPS - needs a
+  decision); Hero Scaring Sword (row ProcChance 25 vs Note 35%, ~8% uptime vs ~30% under the rule); Dark Knight Lord of Darkness (30%,
+  3s ICD, 8s: ~30% of the buff now vs ~100% under the rule); Hero Combo Attack / Synergy are modelled at the stack cap (the rule gives ~4.8
+  concurrent stacks in boss content). Paladin Divine Judgment (every 10 basic attacks) and Dark Knight Revenge (5s cooldown) are not chance rolls.
 
 ## 2026-10-21 full data audit (all 12 classes) — what changed, and what is still an assumption
 

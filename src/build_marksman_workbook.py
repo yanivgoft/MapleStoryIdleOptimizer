@@ -2647,7 +2647,7 @@ def build_calc_sheet(wb):
             hit_rate_targets_blend = target_count_blend_expr(
                 IB("monster_type"), IB("normal_weight_frac"), S("NormalMonsterTargets", r), IB("max_enemies_hit"),
             )
-            ws.cell(row=r, column=19, value=f'=IFERROR(({prefix})/N{r}*{hit_rate_targets_blend},0)')
+            ws.cell(row=r, column=19, value=f'=IFERROR(({prefix})/N{r}/({S("HitsPerCast", r)})*{hit_rate_targets_blend},0)')
         elif key in DAMAGE_ROW_KEYS:
             prefix = f'H{r}*N{r}*{rate_r}'
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
@@ -2660,7 +2660,7 @@ def build_calc_sheet(wb):
             hit_rate_targets_blend = target_count_blend_expr(
                 IB("monster_type"), IB("normal_weight_frac"), S("NormalMonsterTargets", r), IB("max_enemies_hit"),
             )
-            ws.cell(row=r, column=19, value=f'=IFERROR(({prefix})/N{r}*{hit_rate_targets_blend},0)')
+            ws.cell(row=r, column=19, value=f'=IFERROR(({prefix})/N{r}/({S("HitsPerCast", r)})*{hit_rate_targets_blend},0)')
         elif key in BOLT_SURPLUS_ROW_KEYS:
             bolt_surplus_trigger_rate = (
                 f'SUMPRODUCT((Skills!{SC["TriggersBoltSurplus"]}2:{SC["TriggersBoltSurplus"]}{LAST_ROW}=TRUE)*'
@@ -3504,7 +3504,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             hit_rate_targets_blend_block = target_count_blend_expr(
                 ib("monster_type"), ib("normal_weight_frac"), arrow_stream_targets_expr, ib("max_enemies_hit"),
             )
-            ws.cell(row=row, column=19, value=f'=IFERROR(({prefix})/N{row}*{hit_rate_targets_blend_block},0)')
+            ws.cell(row=row, column=19, value=f'=IFERROR(({prefix})/N{row}/({S("HitsPerCast", r)})*{hit_rate_targets_blend_block},0)')
         elif key in DAMAGE_ROW_KEYS:
             prefix = f'H{row}*N{row}*{rate_row}'
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
@@ -3517,7 +3517,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             hit_rate_targets_blend_block = target_count_blend_expr(
                 ib("monster_type"), ib("normal_weight_frac"), S("NormalMonsterTargets", r), ib("max_enemies_hit"),
             )
-            ws.cell(row=row, column=19, value=f'=IFERROR(({prefix})/N{row}*{hit_rate_targets_blend_block},0)')
+            ws.cell(row=row, column=19, value=f'=IFERROR(({prefix})/N{row}/({S("HitsPerCast", r)})*{hit_rate_targets_blend_block},0)')
         elif key in BOLT_SURPLUS_ROW_KEYS:
             bolt_surplus_trigger_rate_block = (
                 f'SUMPRODUCT((Skills!{SC["TriggersBoltSurplus"]}2:{SC["TriggersBoltSurplus"]}{LAST_ROW}=TRUE)*'

@@ -250,6 +250,31 @@ def boss_normal_multiplier(targets, mastery_boss, mastery_normal):
     return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
 
 
+def branch_multipliers(targets, mastery_boss=0, mastery_normal=0):
+    """(boss_branch, normal_branch) damage multipliers; PvP is single-enemy with neither bonus."""
+    if monster_type == "pvp":
+        return 1.0, 1.0
+    t = min(targets, max_enemies_hit)
+    return 1 + (boss_damage + mastery_boss + monster_dmg_bonus) / 100, (1 + (normal_damage + mastery_normal + monster_dmg_bonus) / 100) * t
+
+
+def roll_prob(chance, targets):
+    """P(at least one success) over the per-enemy chance rolls of ONE attack hitting N = min(targets, max_enemies) enemies."""
+    return 1 - (1 - chance) ** min(targets, max_enemies_hit)
+
+
+def proc_branch_dps(chance, icd, sources, payoff_hit, payoff_targets):
+    """A 'When attacking ... X% chance' proc rolls once per attack per ENEMY HIT (user decision 2026-11-04).
+    sources = [(attack_rate_per_s, targets_of_that_attack)]. Boss/PvP branch: 1 enemy => X = c*sum(rate);
+    normal branch: X = sum(rate*(1-(1-c)^N)). Proc rate = X/(1+ICD*X); the two branches blend by time weight."""
+    x_boss = chance * sum(r for r, _ in sources)
+    x_norm = sum(r * roll_prob(chance, t) for r, t in sources)
+    boss_b, norm_b = branch_multipliers(payoff_targets)
+    rate_boss = x_boss / (1 + icd * x_boss)
+    rate_norm = x_norm / (1 + icd * x_norm)
+    return (1 - normal_weight) * rate_boss * payoff_hit * boss_b + normal_weight * rate_norm * payoff_hit * norm_b
+
+
 def coeff_pct(base, fidx, scales, job_step):
     lvl = input_level(job_step, level, skill1, skill2, skill3, skill4, skill_all)
     if not scales:
@@ -504,21 +529,19 @@ for key, s in DAMAGE_SKILLS.items():
 # ---- Nautilus Strike - Final Attack: any attack, 30% chance, 1s ICD => (c*R)/(1+ICD*c*R) with R = the
 #      combined cast rate of Easton + the direct-attack action-costing skills ----
 if unlocked("NAUTILUS_FINAL_ATTACK"):
-    _trig = eight_legs_easton_per_second
+    _sources = [(eight_legs_easton_per_second, eight_legs_easton_targets)]
     for _k in ("SWIFT_FIRE", "BLACKBOOT_BILL", "BRAIN_SCRAMBLER", "NAUTILUS_STRIKE", "RAPID_FIRE"):
         if unlocked(_k):
             _cd = eff_cd_of(_k, DAMAGE_SKILLS[_k]["cooldown"], DAMAGE_SKILLS[_k]["costs_action"])
-            _trig += (non_buff_casts(_cd) / fight_duration) if fixed_duration_active else (1 / _cd)
-    _c = 0.30
-    skill_dps["NAUTILUS_FINAL_ATTACK"] = (
-        (_c * _trig / (1 + 1 * _c * _trig)) * hit_damage(coeff_pct(8500, 21, True, 4), False, 0, 0)
-        * boss_normal_multiplier(1, 0, 0)
-    )
+            _sources.append((((non_buff_casts(_cd) / fight_duration) if fixed_duration_active else (1 / _cd)),
+                             DAMAGE_SKILLS[_k]["targets"]))
+    skill_dps["NAUTILUS_FINAL_ATTACK"] = proc_branch_dps(
+        0.30, 1.0, _sources, hit_damage(coeff_pct(8500, 21, True, 4), False, 0, 0), 1)
 else:
     skill_dps["NAUTILUS_FINAL_ATTACK"] = 0.0
 
 # ---- Majestic Presence (procs off 3 independent sources: Basic Attack + Brain Scrambler + Rapid
-#      Fire; 25% per attack with a 0.5s internal cooldown => (c*R)/(1+ICD*c*R)) ----
+#      Fire; 25% per attack per enemy hit with a 0.5s internal cooldown => X/(1+ICD*X)) ----
 if unlocked("MAJESTIC_PRESENCE"):
     mp_pct = coeff_pct(18000, 21, True, 4) * (1 + level_gated_sum({134: 50}) / 100)
     mp_hit = hit_damage(mp_pct, False, 0, 0)
@@ -528,9 +551,12 @@ if unlocked("MAJESTIC_PRESENCE"):
             return 0.0
         return skill_rate(key, DAMAGE_SKILLS[key])
 
-    mp_combined_rate = eight_legs_easton_per_second + _source_rate("BRAIN_SCRAMBLER") + _source_rate("RAPID_FIRE")
-    _mc = 0.25
-    majestic_presence_dps = (_mc * mp_combined_rate / (1 + 0.5 * _mc * mp_combined_rate)) * mp_hit * boss_normal_multiplier(6, 0, 0)
+    _mp_sources = [
+        (eight_legs_easton_per_second, eight_legs_easton_targets),
+        (_source_rate("BRAIN_SCRAMBLER"), DAMAGE_SKILLS["BRAIN_SCRAMBLER"]["targets"]),
+        (_source_rate("RAPID_FIRE"), DAMAGE_SKILLS["RAPID_FIRE"]["targets"]),
+    ]
+    majestic_presence_dps = proc_branch_dps(0.25, 0.5, _mp_sources, mp_hit, 6)
 else:
     majestic_presence_dps = 0.0
 skill_dps["MAJESTIC_PRESENCE"] = majestic_presence_dps

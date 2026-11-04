@@ -2420,6 +2420,20 @@ def S(col_name, r):
     return f"Skills!{SC[col_name]}{r}"
 
 
+def vessel_of_light_uptime_expr(ib, vol_skills_row, baps_ref):
+    """Vessel of Light's uptime. PROC RULE (user, 2026-11-04): the 15% chance rolls once per ATTACK per ENEMY HIT (a basic
+    attack's 5-6 damage lines are one attack), so a basic attack that hits N enemies activates it with probability
+    1-(1-c)^N (boss / PvP: N = 1; normal: 6 + Basic Attack Target Increase, capped by Max Enemies Hit). Uptime is the
+    existing MIN(1, Duration x activations/s) approximation per branch, blended by the time spent in each (the Attack%
+    bucket is shared by both branches, as for any conditional Attack% source)."""
+    c = f'({S("ProcChance%", vol_skills_row)}/100)'
+    dur = S("BuffDuration(s)", vol_skills_row)
+    n_normal = f'MIN(6+{ib("basic_attack_target_increase")},{ib("max_enemies_hit")})'
+    u_boss = f'MIN(1,{dur}*{c}*{baps_ref})'
+    u_normal = f'MIN(1,{dur}*(1-(1-{c})^{n_normal})*{baps_ref})'
+    return monster_blend_expr(ib("monster_type"), ib("normal_weight_frac"), u_boss, u_normal, u_boss)
+
+
 def build_calc_sheet(wb):
     ws = wb.create_sheet("Calc")
     for i, name in enumerate(CALC_HEADERS):
@@ -2673,10 +2687,12 @@ def build_summary_sheet(wb):
 
     # Vessel of Light: proc off basic attacks with no stated internal cooldown, so its uptime
     # can't use the standard cooldown-driven buff_uptime() helper — approximated instead as
-    # MIN(1, Duration x ProcChance%/100 x Basic Attack Casts Per Second). Greater Vessel of Light
+    # MIN(1, Duration x (activations per basic attack) x Basic Attack Casts Per Second), where the activations per
+    # basic attack follow the 2026-11-04 proc rule (one roll per enemy hit: ProcChance% on a boss/PvP, 1-(1-c)^N on
+    # normal monsters — see vessel_of_light_uptime_expr). Greater Vessel of Light
     # has no own duty cycle at all and reuses this SAME uptime fraction directly (its own effect
     # only exists "for the duration of Vessel of Light").
-    vessel_of_light_uptime = f'MIN(1,{S("BuffDuration(s)", r_vol)}*({S("ProcChance%", r_vol)}/100)*Summary!$B${R_BAPS})'
+    vessel_of_light_uptime = vessel_of_light_uptime_expr(IB, r_vol, f"Summary!$B${R_BAPS}")
     vessel_of_light_avg = f'((Calc!C{r_vol}=TRUE)*Calc!F{r_vol}*{vessel_of_light_uptime})'
     greater_vessel_avg = f'((Calc!C{r_gvol}=TRUE)*Calc!F{r_gvol}*{vessel_of_light_uptime})'
     hp_recovery_avg = f'((Calc!C{r_hpr}=TRUE)*Calc!F{r_hpr}*{buff_uptime(r_hpr)})'
@@ -3271,7 +3287,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     r_ds, r_gu, r_db = ROW["DIVINE_SHIELD"], ROW["GUARDIAN"], ROW["DIVINE_BLESSING"]
     r_hpr, r_nf = ROW["HP_RECOVERY_ATK"], ROW["NIMBLE_FEET"]
 
-    vessel_of_light_uptime_block = f'MIN(1,{S("BuffDuration(s)", r_vol)}*({S("ProcChance%", r_vol)}/100)*{baps_ref})'
+    vessel_of_light_uptime_block = vessel_of_light_uptime_expr(ib, r_vol, baps_ref)
     vessel_of_light_avg = f'((C{row_of["VESSEL_OF_LIGHT"]}=TRUE)*F{row_of["VESSEL_OF_LIGHT"]}*{vessel_of_light_uptime_block})'
     greater_vessel_avg = f'((C{row_of["GREATER_VESSEL_OF_LIGHT"]}=TRUE)*F{row_of["GREATER_VESSEL_OF_LIGHT"]}*{vessel_of_light_uptime_block})'
     hp_recovery_avg = f'((C{row_of["HP_RECOVERY_ATK"]}=TRUE)*F{row_of["HP_RECOVERY_ATK"]}*{buff_uptime_block(row_of["HP_RECOVERY_ATK"], r_hpr)})'

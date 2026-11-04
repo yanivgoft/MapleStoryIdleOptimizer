@@ -532,7 +532,7 @@ showdown_s = DAMAGE_SKILLS["SHOWDOWN"]
 showdown_hit = hit_damage(skill_coefficient_base, True, 1.0, showdown_mastery, showdown_mastery_boss, 0.0, 0.0)
 showdown_target_mult = boss_normal_multiplier(showdown_s["targets"], showdown_mastery_boss, 0.0)
 showdown_dps = showdown_hits * showdown_hit * showdown_per_second * showdown_target_mult
-hit_rate["SHOWDOWN"] = showdown_hits * showdown_per_second * target_count_mult(showdown_s["targets"]) if unlocked("SHOWDOWN") else 0.0
+hit_rate["SHOWDOWN"] = showdown_per_second * target_count_mult(showdown_s["targets"]) if unlocked("SHOWDOWN") else 0.0
 skill_dps["SHOWDOWN"] = showdown_dps if unlocked("SHOWDOWN") else 0.0
 
 for key, s in DAMAGE_SKILLS.items():
@@ -552,7 +552,7 @@ for key, s in DAMAGE_SKILLS.items():
         rate = hits / eff_cd
     tm = boss_normal_multiplier(s["targets"], s["mastery_boss"], s["mastery_normal"])
     skill_dps[key] = rate * hd * tm
-    hit_rate[key] = rate * target_count_mult(s["targets"])
+    hit_rate[key] = rate / s["hits"] * target_count_mult(s["targets"])   # proc rolls: once per attack per enemy hit, not per damage line
 
 # Toxic Venom — no ICD; trigger rate = combined per-second hit rate (already target-multiplied)
 # of every row in TRIGGERS_TOXIC_VENOM.

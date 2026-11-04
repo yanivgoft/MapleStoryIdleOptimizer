@@ -282,6 +282,31 @@ def boss_normal_multiplier(targets, mastery_boss, mastery_normal):
     return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
 
 
+def branch_multipliers(targets, mastery_boss=0, mastery_normal=0):
+    """(boss_branch, normal_branch) damage multipliers; PvP is single-enemy with neither bonus."""
+    if monster_type == "pvp":
+        return 1.0, 1.0
+    t = min(targets, max_enemies_hit)
+    return 1 + (boss_damage + mastery_boss + monster_dmg_bonus) / 100, (1 + (normal_damage + mastery_normal + monster_dmg_bonus) / 100) * t
+
+
+def roll_prob(chance, targets):
+    """P(at least one success) over the per-enemy chance rolls of ONE attack hitting N = min(targets, max_enemies) enemies."""
+    return 1 - (1 - chance) ** min(targets, max_enemies_hit)
+
+
+def proc_branch_dps(chance, icd, sources, payoff_hit, payoff_targets):
+    """A 'When attacking ... X% chance' proc rolls once per attack per ENEMY HIT (user decision 2026-11-04).
+    sources = [(attack_rate_per_s, targets_of_that_attack)]. Boss/PvP branch: 1 enemy => X = c*sum(rate);
+    normal branch: X = sum(rate*(1-(1-c)^N)). Proc rate = X/(1+ICD*X); the two branches blend by time weight."""
+    x_boss = chance * sum(r for r, _ in sources)
+    x_norm = sum(r * roll_prob(chance, t) for r, t in sources)
+    boss_b, norm_b = branch_multipliers(payoff_targets)
+    rate_boss = x_boss / (1 + icd * x_boss)
+    rate_norm = x_norm / (1 + icd * x_norm)
+    return (1 - normal_weight) * rate_boss * payoff_hit * boss_b + normal_weight * rate_norm * payoff_hit * norm_b
+
+
 def coeff_pct(base, fidx, scales, job_step):
     lvl = input_level(job_step, level, skill1, skill2, skill3, skill4, skill_all)
     if not scales:
@@ -526,17 +551,17 @@ for key, s in DAMAGE_SKILLS.items():
         rate = hits / eff_cd
     skill_dps[key] = proc_prob * rate * hd * boss_normal_multiplier(s["targets"], s.get("mastery_boss", 0), s.get("mastery_normal", 0))
 
-# ---- Nautilus Strike - Final Attack: any attack, 30% chance, 1s ICD => (c*R)/(1+ICD*c*R) with R = the
-#      combined cast rate of Hook Bomber + the action-costing damage skills ----
+# ---- Nautilus Strike - Final Attack: any attack, 30% chance per attack per enemy hit, 1s ICD => X/(1+ICD*X),
+#      X = sum over Hook Bomber + the action-costing damage skills of rate*(1-(1-c)^N) (N=1 on boss/PvP) ----
 if unlocked("NAUTILUS_FINAL_ATTACK"):
-    _trig = hook_bomber_per_second
+    _sources = [(hook_bomber_per_second, hook_bomber_targets)]
     for _k in ("CORKSCREW_BLOW", "OCTOPUNCH", "NAUTILUS_STRIKE"):
         if unlocked(_k):
             _cd = eff_cooldown(DAMAGE_SKILLS[_k]["cooldown"], DAMAGE_SKILLS[_k]["costs_action"])
-            _trig += (non_buff_casts(_cd) / fight_duration) if fixed_duration_active else (1 / _cd)
-    _c = 0.30
-    _fa_rate = _c * _trig / (1 + 1 * _c * _trig)
-    skill_dps["NAUTILUS_FINAL_ATTACK"] = _fa_rate * hit_damage(coeff_pct(8500, 21, True, 4), False) * boss_normal_multiplier(1, 0, 0)
+            _sources.append((((non_buff_casts(_cd) / fight_duration) if fixed_duration_active else (1 / _cd)),
+                             DAMAGE_SKILLS[_k]["targets"]))
+    skill_dps["NAUTILUS_FINAL_ATTACK"] = proc_branch_dps(
+        0.30, 1.0, _sources, hit_damage(coeff_pct(8500, 21, True, 4), False), 1)
 else:
     skill_dps["NAUTILUS_FINAL_ATTACK"] = 0.0
 

@@ -268,14 +268,9 @@ NORMAL_MONSTER_TARGETS = {
 }
 
 
-def boss_normal_multiplier(key, s):
-    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
-    full (1+damage%/100)*targets treatment. The two branches are combined here as a plain dollar
-    blend for the real Total DPS (correct — this IS what your actual DPS output looks like when
-    time-averaged across both target types); Sensitivity's marginal-value ranking uses a separate,
-    ratio-based blend instead (see build_sensitivity_sheet), since a dollar blend would let a
-    stat's reported "value" be dominated by whichever branch hits more targets. `s` is the skill's
-    own mastery dict (mastery_boss/mastery_normal), same as hit_damage already reads."""
+def enemies_hit(key):
+    """How many enemies one attack of this skill hits: 1 vs boss/PvP, the skill's own target count (capped by
+    Inputs max_enemies_hit) vs normal monsters. Basic Attack's is 6 (base) + basic_attack_target_increase (+1 at 136)."""
     if monster_type == "pvp":
         return 1
     if key == "BASIC_ATTACK":
@@ -284,14 +279,33 @@ def boss_normal_multiplier(key, s):
         targets = NORMAL_MONSTER_TARGETS.get(key, 1)
     # A skill that could theoretically hit more targets than are actually in range only hits
     # what's there (confirmed by the user) — capped before the Chapter Breakthrough blend.
-    targets = min(targets, max_enemies_hit)
+    return min(targets, max_enemies_hit)
+
+
+def branch_multipliers(key, s):
+    """(boss-branch, normal-branch) multiplier: Boss/Normal Monster Damage% and target count, each branch with its own
+    full (1+damage%/100)*targets treatment (PvP: single target, neither bonus)."""
+    if monster_type == "pvp":
+        return 1.0, 1.0
     boss_term = boss_damage + s["mastery_boss"]
     normal_term = normal_damage + s["mastery_normal"]
-    boss_branch = 1 + boss_term / 100
-    normal_branch = (1 + normal_term / 100) * targets
-    # Chapter Breakthrough blends the two branches by normal_weight — the edge cases (weight=0/1)
-    # reduce exactly to pure boss/normal.
-    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
+    return 1 + boss_term / 100, (1 + normal_term / 100) * enemies_hit(key)
+
+
+def blend_branches(key, s, boss_unit, normal_unit=None):
+    """Time-weighted DPS of one skill: (1-w)*boss_unit*boss_branch + w*normal_unit*normal_branch, where the units are
+    the per-branch rate x damage (they differ only for the per-enemy proc skills, whose rate depends on the branch).
+    Chapter Breakthrough blends the two branches by normal_weight — the edge cases (weight=0/1) reduce exactly to
+    pure boss/normal."""
+    if normal_unit is None:
+        normal_unit = boss_unit
+    b, n = branch_multipliers(key, s)
+    return (1 - normal_weight) * boss_unit * b + normal_weight * normal_unit * n
+
+
+def boss_normal_multiplier(key, s):
+    """Both branches with the same rate (see blend_branches)."""
+    return blend_branches(key, s, 1.0)
 
 
 def unlocked(key):
@@ -499,6 +513,7 @@ basic_hit = hit_damage(skill_coefficient_base, True, 1.0, basic_s)
 basic_dps = 5 * basic_hit * basic_attacks_per_second * boss_normal_multiplier("BASIC_ATTACK", basic_s)
 
 skill_dps = {}
+branch_unit = {}
 for key, s in SKILLS.items():
     if key == "BASIC_ATTACK":
         continue
@@ -518,78 +533,119 @@ for key, s in SKILLS.items():
         hits = s["hits"] * (ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
     if key == "IGNITE":
-        ignite_unit_dps = proc * hd * boss_normal_multiplier(key, s)  # damage per wall tick, all targets, expected
+        ignite_unit_dps = proc * hd  # damage per wall tick on one target, expected; branch multipliers applied below
     if key == "MIST_ERUPTION" and unlocked("FLAME_HAZE_FOG"):
         # From level 118 every Flame Haze cast also creates a Poison Mist fog, and each fog gets its own explosions.
         fog_eff_cd = eff_cooldown(SKILLS["FLAME_HAZE_FOG"]["cooldown"], False)
         fog_casts_per_s = (non_buff_casts(fog_eff_cd) / fight_duration) if fixed_duration_active else 1 / fog_eff_cd
         rate += s["hits"] * fog_casts_per_s
     skill_dps[key] = rate * proc * hd * boss_normal_multiplier(key, s)
+    if key in ("FLAME_HAZE_DOT", "IFRIT"):
+        # these two get a branch-dependent stack multiplier below (it reads the Meteor Proc rate)
+        branch_unit[key] = rate * proc * hd
 
-# Meteor Proc: no cooldown of its own — steady-state proc rate from the combined cast rate R of
-# every triggering attack (mirrors Summary!B14 + Calc!O14's formula in the real workbook).
-if fixed_duration_active:
-    meteor_trigger_rate = sum(
-        METEOR_PROC_TRIGGERS_PER_CAST.get(k, 1) * non_buff_casts(eff_cooldown(SKILLS[k]["cooldown"], SKILLS[k]["costs_action"]))
-        for k in TRIGGERS_METEOR if unlocked(k)
-    ) / fight_duration + basic_attacks_per_second
-else:
-    meteor_trigger_rate = sum(
-        METEOR_PROC_TRIGGERS_PER_CAST.get(k, 1) / eff_cooldown(SKILLS[k]["cooldown"], SKILLS[k]["costs_action"])
-        for k in TRIGGERS_METEOR if unlocked(k)
-    ) + basic_attacks_per_second
-meteor_chance = METEOR_PROC_CHANCE / 100
-meteor_proc_rate = (meteor_chance * meteor_trigger_rate) / (1 + METEOR_PROC_ICD * meteor_chance * meteor_trigger_rate)
-meteor_pct = coeff_pct(METEOR_PROC_BASE, METEOR_PROC_FIDX, True, 4)
-meteor_hit = hit_damage(meteor_pct, False, maple_mult("METEOR_PROC"), dict(mastery=0, mastery_boss=0, mastery_normal=0))
-skill_dps["METEOR_PROC"] = meteor_proc_rate * meteor_hit * boss_normal_multiplier("METEOR_PROC", dict(mastery_boss=0, mastery_normal=0)) if unlocked("METEOR_PROC") else 0.0
+# Per-enemy proc rolls (user decision 2026-11-04): a proc chance rolls once per ATTACK per ENEMY HIT, never per damage
+# line — Basic Attack's 5-6 lines are one attack, an attack hitting N enemies rolls N times, each of Meteor Shower's
+# 3 meteors is its own attack. With an ICD only "at least one success among the N rolls" matters: q = 1-(1-c)^N.
+# Boss/PvP: N = 1 (q = c). Normal monsters: N = that attack's enemies hit. So Meteor Proc, Ignite's wall rate and the
+# burn-stack mastery each have a boss/PvP value and a normal-monster value; each branch's DPS uses its own.
+def q_roll(chance, key, branch):
+    n = 1 if branch == "boss" else enemies_hit(key)
+    return 1 - (1 - chance) ** n
 
-# Level 126/130 Flame Haze burn-stacking mastery — independent re-derivation (Little's Law), not
-# transcribed from the Excel formula strings (see build_fp_mage_workbook's own docstrings for the
-# same derivation): Basic Attack/Meteor Shower/Meteor Proc/Ifrit each add an independent 5%-per-
-# cast/proc chance to also inflict Flame Haze's burn DoT, whose own cast can't stack with itself
-# but these proc-triggered instances can coexist with it and each other.
-meteor_shower_rate = 1 / eff_cooldown(SKILLS["METEOR_SHOWER_BURST"]["cooldown"], SKILLS["METEOR_SHOWER_BURST"]["costs_action"])
-ifrit_rate = 1 / eff_cooldown(SKILLS["IFRIT"]["cooldown"], SKILLS["IFRIT"]["costs_action"])
-flame_haze_extra_rate = 0.05 * (basic_attacks_per_second + meteor_shower_rate + meteor_proc_rate + ifrit_rate) if level >= 126 else 0.0
-flame_haze_burst_cooldown = eff_cooldown(SKILLS["FLAME_HAZE_BURST"]["cooldown"], True)
-flame_haze_dot_stack_multiplier = 1 + flame_haze_extra_rate * flame_haze_burst_cooldown
-flame_haze_total_stacks = (
-    SKILLS["FLAME_HAZE_DOT"]["window"] / flame_haze_burst_cooldown + flame_haze_extra_rate * SKILLS["FLAME_HAZE_DOT"]["window"]
-)
-skill_dps["FLAME_HAZE_DOT"] *= flame_haze_dot_stack_multiplier
-if level >= 130:
-    skill_dps["IFRIT"] *= 1 + 0.2 * flame_haze_total_stacks
 
-# Ignite: each fire attack has a 50% chance (2.5s internal cooldown after each success) to create a wall of fire;
-# up to 3 walls tick once per second. The k-th wall arrives after k*a + (k-1)*2.5 s on average (a = mean wait for a
-# successful 50% roll), then the 3-wall steady state is assumed; whole ticks only. Steady-state content: 3 ticks/s.
 def cast_rate_py(key):
     eff = eff_cooldown(SKILLS[key]["cooldown"], SKILLS[key]["costs_action"])
     return non_buff_casts(eff) / fight_duration if fixed_duration_active else 1 / eff
 
 
-ifrit_attacks_per_cast = SKILLS["IFRIT"]["hits"] * ticks(capped_window(SKILLS["IFRIT"]["window"]), SKILLS["IFRIT"]["icd"])
-ignite_fire_rate = (
-    basic_attacks_per_second
-    + (cast_rate_py("FLAME_HAZE_BURST") if unlocked("FLAME_HAZE_BURST") else 0.0)
-    + (cast_rate_py("METEOR_SHOWER_BURST") * METEOR_PROC_TRIGGERS_PER_CAST["METEOR_SHOWER_BURST"] if unlocked("METEOR_SHOWER_BURST") else 0.0)
-    + (meteor_proc_rate if unlocked("METEOR_PROC") else 0.0)
-    + (ifrit_attacks_per_cast * cast_rate_py("IFRIT") if unlocked("IFRIT") else 0.0)
+meteor_chance = METEOR_PROC_CHANCE / 100
+
+
+def meteor_attempts(branch):
+    """Successful Meteor Proc rolls per second before the ICD in the given branch (boss = boss/PvP, normal)."""
+    x = basic_attacks_per_second * q_roll(meteor_chance, "BASIC_ATTACK", branch)
+    for k in TRIGGERS_METEOR:
+        if unlocked(k):
+            x += METEOR_PROC_TRIGGERS_PER_CAST.get(k, 1) * cast_rate_py(k) * q_roll(meteor_chance, k, branch)
+    return x
+
+
+meteor_x = {br: meteor_attempts(br) for br in ("boss", "normal")}
+meteor_proc_rate = {br: x / (1 + METEOR_PROC_ICD * x) for br, x in meteor_x.items()}
+meteor_pct = coeff_pct(METEOR_PROC_BASE, METEOR_PROC_FIDX, True, 4)
+meteor_s = dict(mastery=0, mastery_boss=0, mastery_normal=0)
+meteor_hit = hit_damage(meteor_pct, False, maple_mult("METEOR_PROC"), meteor_s)
+skill_dps["METEOR_PROC"] = (
+    blend_branches("METEOR_PROC", meteor_s, meteor_proc_rate["boss"] * meteor_hit, meteor_proc_rate["normal"] * meteor_hit)
+    if unlocked("METEOR_PROC") else 0.0
 )
+
+# Level 126/130 Flame Haze burn-stacking mastery — independent re-derivation (Little's Law), not
+# transcribed from the Excel formula strings (see build_fp_mage_workbook's own docstrings for the
+# same derivation): Basic Attack/Meteor Shower/Meteor Proc/Ifrit each add an independent 5%-per-
+# cast/proc chance to also inflict Flame Haze's burn DoT, whose own cast can't stack with itself
+# but these proc-triggered instances can coexist with it and each other. Per cast/proc (NOT per enemy hit — ambiguous
+# whether a burn instance is one enemy or the group, left as is); only the Meteor Proc rate it reads is per-branch.
+meteor_shower_rate = 1 / eff_cooldown(SKILLS["METEOR_SHOWER_BURST"]["cooldown"], SKILLS["METEOR_SHOWER_BURST"]["costs_action"])
+ifrit_rate = 1 / eff_cooldown(SKILLS["IFRIT"]["cooldown"], SKILLS["IFRIT"]["costs_action"])
+flame_haze_burst_cooldown = eff_cooldown(SKILLS["FLAME_HAZE_BURST"]["cooldown"], True)
+flame_haze_extra_rate, flame_haze_dot_stack_multiplier, flame_haze_total_stacks = {}, {}, {}
+for br in ("boss", "normal"):
+    flame_haze_extra_rate[br] = (
+        0.05 * (basic_attacks_per_second + meteor_shower_rate + meteor_proc_rate[br] + ifrit_rate) if level >= 126 else 0.0
+    )
+    flame_haze_dot_stack_multiplier[br] = 1 + flame_haze_extra_rate[br] * flame_haze_burst_cooldown
+    flame_haze_total_stacks[br] = (
+        SKILLS["FLAME_HAZE_DOT"]["window"] / flame_haze_burst_cooldown + flame_haze_extra_rate[br] * SKILLS["FLAME_HAZE_DOT"]["window"]
+    )
+if unlocked("FLAME_HAZE_DOT"):
+    skill_dps["FLAME_HAZE_DOT"] = blend_branches(
+        "FLAME_HAZE_DOT", SKILLS["FLAME_HAZE_DOT"],
+        branch_unit["FLAME_HAZE_DOT"] * flame_haze_dot_stack_multiplier["boss"],
+        branch_unit["FLAME_HAZE_DOT"] * flame_haze_dot_stack_multiplier["normal"],
+    )
+if unlocked("IFRIT"):
+    ifrit_stack = {br: (1 + 0.2 * flame_haze_total_stacks[br]) if level >= 130 else 1.0 for br in ("boss", "normal")}
+    skill_dps["IFRIT"] = blend_branches(
+        "IFRIT", SKILLS["IFRIT"], branch_unit["IFRIT"] * ifrit_stack["boss"], branch_unit["IFRIT"] * ifrit_stack["normal"],
+    )
+
+# Ignite: each fire attack rolls a 50% chance PER ENEMY HIT (2.5s internal cooldown after each success) to create a wall
+# of fire; up to 3 walls tick once per second. The k-th wall arrives after k*a + (k-1)*2.5 s on average (a = mean wait
+# for a successful roll = 1 / sum(rate*q)), then the 3-wall steady state is assumed; whole ticks only. Steady-state
+# content: 3 ticks/s.
+ifrit_attacks_per_cast = SKILLS["IFRIT"]["hits"] * ticks(capped_window(SKILLS["IFRIT"]["window"]), SKILLS["IFRIT"]["icd"])
 IGNITE_CHANCE, IGNITE_ICD, IGNITE_WALLS, IGNITE_TICK = 0.5, 2.5, 3, SKILLS["IGNITE"]["cooldown"]
-if monster_type != "pvp" and fight_duration == 0:
-    ignite_ticks_per_s = IGNITE_WALLS / IGNITE_TICK
-else:
-    ignite_total = PVP_FIGHT_DURATION if monster_type == "pvp" else fight_duration
-    ignite_avail = PVP_FIGHT_DURATION if monster_type == "pvp" else max(0.0, fight_duration - buff_cast_startup_time)
-    ignite_wait = 1 / (IGNITE_CHANCE * ignite_fire_rate) if ignite_fire_rate > 0 else 1e6
-    ignite_ticks = sum(
-        math.floor(max(0.0, ignite_avail - (k * ignite_wait + (k - 1) * IGNITE_ICD)) / IGNITE_TICK + 1e-9)
+
+
+def ignite_ticks(branch):
+    if monster_type != "pvp" and fight_duration == 0:
+        return IGNITE_WALLS / IGNITE_TICK
+    fire_rate = basic_attacks_per_second * q_roll(IGNITE_CHANCE, "BASIC_ATTACK", branch)
+    if unlocked("FLAME_HAZE_BURST"):
+        fire_rate += cast_rate_py("FLAME_HAZE_BURST") * q_roll(IGNITE_CHANCE, "FLAME_HAZE_BURST", branch)
+    if unlocked("METEOR_SHOWER_BURST"):
+        fire_rate += (cast_rate_py("METEOR_SHOWER_BURST") * METEOR_PROC_TRIGGERS_PER_CAST["METEOR_SHOWER_BURST"]
+                      * q_roll(IGNITE_CHANCE, "METEOR_SHOWER_BURST", branch))
+    if unlocked("METEOR_PROC"):
+        fire_rate += meteor_proc_rate[branch] * q_roll(IGNITE_CHANCE, "METEOR_PROC", branch)
+    if unlocked("IFRIT"):
+        fire_rate += ifrit_attacks_per_cast * cast_rate_py("IFRIT") * q_roll(IGNITE_CHANCE, "IFRIT", branch)
+    total = PVP_FIGHT_DURATION if monster_type == "pvp" else fight_duration
+    avail = PVP_FIGHT_DURATION if monster_type == "pvp" else max(0.0, fight_duration - buff_cast_startup_time)
+    wait = 1 / fire_rate if fire_rate > 0 else 1e6
+    n_ticks = sum(
+        math.floor(max(0.0, avail - (k * wait + (k - 1) * IGNITE_ICD)) / IGNITE_TICK + 1e-9)
         for k in range(1, IGNITE_WALLS + 1)
     )
-    ignite_ticks_per_s = ignite_ticks / ignite_total
-skill_dps["IGNITE"] = ignite_ticks_per_s * ignite_unit_dps
+    return n_ticks / total
+
+
+ignite_ticks_per_s = {br: ignite_ticks(br) for br in ("boss", "normal")}
+skill_dps["IGNITE"] = blend_branches(
+    "IGNITE", SKILLS["IGNITE"], ignite_ticks_per_s["boss"] * ignite_unit_dps, ignite_ticks_per_s["normal"] * ignite_unit_dps,
+)
 
 total_dps = basic_dps + sum(skill_dps.values())
 
@@ -600,7 +656,7 @@ print(f"Attack speed buff bonus %  = {as_bonus:.6f}")
 print(f"Actions/sec                = {actions_per_second:.6f}")
 print(f"Cast rate (subtracted)     = {cast_rate:.6f}")
 print(f"Basic attacks/sec          = {basic_attacks_per_second:.6f}")
-print(f"Meteor Proc trigger rate R = {meteor_trigger_rate:.6f}, proc rate = {meteor_proc_rate:.6f}")
+print(f"Meteor Proc rolls/s X (boss, normal) = {meteor_x['boss']:.6f}, {meteor_x['normal']:.6f}; proc rate = {meteor_proc_rate['boss']:.6f}, {meteor_proc_rate['normal']:.6f}")
 print(f"Basic Attack DPS           = {basic_dps:.4f}")
 for k, v in skill_dps.items():
     print(f"  {k:28s} DPS = {v:.4f}")

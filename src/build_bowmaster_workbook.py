@@ -959,6 +959,11 @@ def build_readme_sheet(wb):
         "Maple Hero's own per-level scaling curve is confirmed via idle.maplestorywiki.net/w/"
         "Maple_Hero_(Bowmaster) — all three target skills (Arrow Platter/Phoenix/Covering Fire) "
         "scale by the identical ratio at every level, so one shared curve covers all three.",
+        "Proc rule (2026-11-04): a 'when attacking, X% chance' proc rolls once per ATTACK per ENEMY HIT, never per damage "
+        "line. Arrow Stream's 5-6 lines are one attack; each Hurricane arrow is its own attack. Final Attack: Bow and Flash "
+        "Mirage read per-branch trigger rates from Summary (boss/PvP: one enemy per attack; normal monsters: every enemy "
+        "an attack hits rolls, so Flash Mirage's chance per attack is 1-(1-c)^N and Final Attack's expected procs are c*N). "
+        "Covering Fire's 3 hits and the Phoenix/Arrow Platter casts each count as one attack (flagged assumption).",
         "Content Type (Inputs) picks what you're fighting — Chapter Boss/Breakthrough/PvP/EXP "
         "Dungeon/Equipment Dungeon/Weapon Dungeon/Enhancement Dungeon/Hero Dungeon/World Boss/"
         "Chapter Hunt — and Monster Defense and Fixed Fight Duration are both auto-computed from "
@@ -1935,9 +1940,16 @@ R_ARROW_STREAM_DPS = 22
 R_STARTUP_TIME = 23                 # Buff-Casting Startup Delay (s, fixed-duration only)
 R_BOSS_ONLY_TOTAL = 24               # Total DPS if every hit were against a boss (Breakthrough Sensitivity baseline)
 R_NORMAL_ONLY_TOTAL = 25             # Total DPS if every hit were against normal monsters (Breakthrough Sensitivity baseline)
+# Proc-trigger cells (2026-11-04 proc rule: a chance proc rolls once per ATTACK per enemy hit; see build_calc_sheet's
+# "proc trigger" helpers). Final Attack / Flash Mirage read these instead of the old "one roll per cast" cast rate.
+R_TRIG_ATTACKS = 26                 # SUM of attacks/s over the triggering attack set (Calc!X)
+R_TRIG_ENEMY_ROLLS = 27             # SUM of attacks/s x enemies hit per attack (normal branch, Calc!X * Calc!Y)
+R_FM_CHANCE = 28                    # Flash Mirage's live activation chance per roll (20% -> 50%, scales with Attack Speed)
+R_FM_X_BOSS = 29                    # expected Flash Mirage activations/s ignoring its ICD, boss/PvP branch (1 enemy per attack)
+R_FM_X_NORMAL = 30                  # same, normal branch (1-(1-c)^N per attack, N = that attack's own enemies hit)
 # The two variable-length summary tables (Per-Skill Breakdown, Marginal DPS & Stat Value) start
 # after this fixed block, with a 2-row gap — same gap convention as every sibling workbook.
-SUMMARY_BREAKDOWN_HEADER_ROW = R_NORMAL_ONLY_TOTAL + 3
+SUMMARY_BREAKDOWN_HEADER_ROW = R_FM_X_NORMAL + 3
 
 # Unlock level for every row — gated all the way down (matches every sibling workbook's
 # thorough approach). Levels confirmed live from idle.maplestorywiki.net/w/Bowmaster/Skills
@@ -2024,33 +2036,33 @@ SKILL_ROWS = [
      "+20% — this and the Damage mastery chain above were both caught missing entirely during "
      "the Marksman build's own shared-skill cross-check (Verification item 5) and fixed here."),
     ("FINAL_ATTACK_BOW", "Final Attack: Bow", 2,
-     # Cooldown(s) here is the REAL average interval between ATTACK LINES — one per cast of any
-     # of the character's own active-slot attacks (Arrow Stream, Covering Fire, Phoenix, Arrow
-     # Platter, Hurricane, ...), each counted ONCE regardless of how many individual hits it has
-     # (confirmed by the user: a 20-hit Hurricane cast is still just 1 attack line, gated by its
-     # own 40s cooldown — NOT 20 independent proc opportunities). Summary!APS (R_APS) already IS
-     # exactly this combined total rate by construction: R_BAPS (Arrow Stream's own remaining
-     # cast rate) + R_CASTRATE (every OTHER active-slot skill's own cast rate, each counted once
-     # per cast via its own ActionsPerCast=1) sum to R_APS exactly — no separate accounting
-     # needed, just reference R_APS directly. The real 25% proc chance lives in its own
-     # ProcChance% column (below), not folded into Cooldown(s), so the Skills sheet reads
-     # honestly. Uses raw Summary!APS, NOT Arrow Stream's own post-cast-rate Summary!R_BAPS —
-     # R_BAPS is itself derived from a SUMPRODUCT over every row's own CastsInFight/InvCooldown
-     # column (R_CASTRATE), which would need THIS row's own Cooldown(s) (and thus R_BAPS itself)
-     # already resolved first if referenced here — a genuine circular reference.
-     f'=1/Summary!$B${R_APS}', False, 1, 1, 0, 0, 25, 1,
+     # PROC RULE (user, 2026-11-04): a chance proc rolls once per ATTACK per ENEMY HIT — never per damage line.
+     # Arrow Stream's 5-6 damage lines are ONE attack; each Hurricane arrow is its own attack (Hurricane = 20/35
+     # attacks per cast). This row therefore has NO cooldown of its own: its DPS columns (Calc!T boss / Calc!V normal)
+     # multiply H (25%) by the triggering attack rate of the branch — Summary "attacks per second" (boss/PvP: one enemy
+     # per attack) or "attacks per second x enemies hit by each triggering attack" (normal: every enemy hit rolls the
+     # 25%, and the proc's damage lands on the enemy it rolled for, hence this row hits ONE target per roll).
+     # The triggering set is Arrow Stream's cast rate + every action-costing damage skill's cast rate (x Hurricane's
+     # arrows); buff casts are not attacks. (The earlier version used Cooldown(s) = 1/Summary!APS, which counted buff
+     # casts as attack lines and Hurricane as one.)
+     "", False, 1, 1, 0, 0, 25, 1,
      350, 21, True,
      level_gated_sum(IB("level"), {54: 50}), 0, 0,
-     f'=6+{IB("basic_attack_target_increase")}', "", 0, "", "",
+     1, "", 0, "", "",
+     "PROC RULE (2026-11-04): NormalMonsterTargets = 1 because every enemy hit by a triggering attack rolls the 25% "
+     "separately and the proc's damage lands on the enemy it rolled for; the number of rolls (the triggering attack's own "
+     "enemies hit) is in Summary 'attacks per second x enemies hit'. Expected damage per attack on N enemies = 25% x N x "
+     "one hit, same as before for Arrow Stream, but each triggering skill now contributes its OWN enemy count (Covering "
+     "Fire, Phoenix, Arrow Platter, Hurricane used to be credited with Arrow Stream's 6+) and Hurricane's arrows count as "
+     "separate attacks. "
      "Previously folded into Arrow Stream's own coefficient as a steady-state average addition —"
      " split out into its own independent row per a Discord bug report/user direction, since "
      "Final Attack is affected by Skill Damage%, not Basic Attack Damage% (Arrow Stream's own "
      "bucket). Real proc: 25% chance 'when attacking' to deal 35%->49% additional damage (levels "
      "1-100) to the same target(s) that attack just hit. Modeled as a real ProcChance%=25 tested "
-     "against the character's own total attack-LINE rate (Cooldown(s) = 1/Summary!APS — one "
-     "attack line per cast, across every active-slot skill, per user direction; earlier versions "
+     "against the character's own total ATTACK rate (see the PROC RULE note above; earlier versions "
      "of this row incorrectly multiplied by Arrow Stream's own HitsPerCast, over-counting each "
-     "of its 5-6 individual arrows as a separate attack line). factorIndex 21, baseDamage 350 "
+     "of its 5-6 individual arrows as a separate attack). factorIndex 21, baseDamage 350 "
      "tenths%. Mastery 'Final Attack - Damage' +50% at Lv.54 (RESOLVED this session via "
      "maplestoryidle.info/jobs.html — the wiki's own Mastery page had this at Lv.52, confirmed "
      "wrong by the new source). Its own Final Damage bonus (Advanced Final Attack, +500%->900% "
@@ -2185,20 +2197,16 @@ SKILL_ROWS = [
      "target row's own K-column formula — same 'no independent row' pattern as Shadower's own "
      "Maple Hero)."),
     ("FLASH_MIRAGE", "Flash Mirage", 3,
-     # Real mechanic, confirmed with the user: a genuine 5s hard internal cooldown (the wiki's own
-     # infobox was right about this after all — an earlier version of this row wrongly discarded
-     # it based on maplestoryidle.info's schema simply not surfacing a cooldown field), PLUS a
-     # real chance-per-attack-line (20%->50%, linear with Attack Speed) that only starts rolling
-     # again once the cooldown has expired — the very next attack line after expiry rolls, and
-     # rolling repeats every attack line until one succeeds, then the cooldown restarts. Average
-     # cycle time = 5s + the expected wait for the first success at the combined attack-line rate
-     # (Summary!APS — see FINAL_ATTACK_BOW's own Note for why this already correctly counts every
-     # active-slot skill's own cast, e.g. Hurricane's 20-hit volley, as exactly ONE attack line).
-     # This doesn't decompose into independent Cooldown(s)/ProcChance% columns the way a pure
-     # no-floor chance does (the +5 is additive, not multiplicative, with the chance term) — so
-     # the whole average-cycle expression is folded into Cooldown(s) with ProcChance%=100, same
-     # as Quiver Cartridge's own formula-based Cooldown(s).
-     f'=IF({IB("level")}>=122,3,5)+1/(((20+30*(Summary!$B${R_APS}-1)*100/150)/100)*Summary!$B${R_APS})',
+     # Real mechanic, confirmed with the user: a genuine 5s hard internal cooldown (3s from Lv.122) PLUS a chance per
+     # roll (20%->50%, linear with Attack Speed) that only starts rolling again once the cooldown has expired.
+     # PROC RULE (user, 2026-11-04): the chance rolls once per ATTACK per ENEMY HIT (an attack's 5-6 damage lines are
+     # one attack; each Hurricane arrow is its own attack). Expected activations per attack = q = 1-(1-c)^N with N the
+     # enemies that attack hits in the branch (boss/PvP: 1; normal: that attack's own enemy count capped by max
+     # enemies). X = SUM(attacks/s x q) is kept per branch in Summary (R_FM_X_BOSS / R_FM_X_NORMAL) and the activation
+     # cycle is ICD + 1/X, so the rate is X/(1+ICD*X) in steady state (exact cast counts in fixed-duration mode, as for
+     # every cooldown skill). Cooldown(s) is therefore only the REAL internal cooldown (Skill Cooldown Decrease and
+     # Soul Contract do NOT shorten it - user decision 2026-11-04); the cycle/rate live in Calc!T / Calc!V.
+     f'=IF({IB("level")}>=122,3,5)',
      False, 1, 1, 0, 0, 100, 1,
      5500, 21, True,
      level_gated_sum(IB("level"), {68: 50}), 0, 0,
@@ -2225,10 +2233,11 @@ SKILL_ROWS = [
      "mid-session correction wrongly discarded it, inferring 'no cooldown' purely from "
      "maplestoryidle.info's schema not listing one — caught by a user follow-up question) — "
      "modeled as a genuine 5s floor between procs, with the chance re-rolling on every attack "
-     "line once the floor expires (per user direction on the exact combination mechanic), folded "
-     "into Cooldown(s) as 5+1/(chance*Summary!APS) with ProcChance%=100 (see the comment above "
-     "this row for why it can't cleanly decompose into separate Cooldown/ProcChance columns "
-     "here). Also added a real, previously-unmodeled mastery: 'Flash Mirage - Damage' +50% at "
+     "once the floor expires (per user direction on the exact combination mechanic). PROC RULE "
+     "(2026-11-04): the roll happens once per attack per enemy hit, Hurricane's arrows are separate "
+     "attacks — see the comment above this row; the live chance (20%->50%) is Summary 'Flash Mirage "
+     "chance', ProcChance% stays 100 here because the chance is already inside the per-branch "
+     "activation rate (Summary), and Cooldown(s) is the real internal cooldown only. Also added a real, previously-unmodeled mastery: 'Flash Mirage - Damage' +50% at "
      "Lv.68. Wiki calls this skill 'Flash Mirage'; the Aug 13 patch notes call the SAME skill "
      "'Speed Mirage' (confirmed via mechanic match — targets 5->7, detection range +~14%). Flash "
      "Mirage II (Lv.110, see FLASH_MIRAGE_II_HELPER) adds +targets/+FD once unlocked, baked into "
@@ -2397,7 +2406,7 @@ CDR_COSTS_ACTION_ROW = {key: r for key, r in ROW.items()}
 # (user decision 2026-10-21; it used to apply only to CostsActionSlot rows). The exempt rows are NOT real
 # cooldowns: their Cooldown(s) cell is a trigger-rate / internal-interval surrogate (e.g. 1 / attack speed),
 # which CDR must not shrink to the 0.1s floor.
-CDR_EXEMPT_ROW_KEYS = ['ENCHANTED_QUIVER_DRAIN', 'FINAL_ATTACK_BOW', 'FLASH_MIRAGE', 'QUIVER_CARTRIDGE']
+CDR_EXEMPT_ROW_KEYS = ['ENCHANTED_QUIVER_DRAIN', 'QUIVER_CARTRIDGE', 'FLASH_MIRAGE']   # (Final Attack has no cooldown now; Flash Mirage's Cooldown(s) is its real 5s/3s ICD, which Skill Cooldown Decrease / Soul Contract do not shorten)
 
 
 def cdr_applies_expr(key):
@@ -2408,10 +2417,8 @@ def cdr_applies_expr(key):
 # which a Sensitivity block sweeping Attack Speed / Cooldown Decrease / Buff Duration (all of which move APS via
 # Nimble Feet) cannot see — so the block recomputes the same expression from its OWN APS cell.
 AS_SCALED_COOLDOWN_EXPR = {
-    "FINAL_ATTACK_BOW": lambda aps, ib: f'1/{aps}',
     "QUIVER_CARTRIDGE": lambda aps, ib: f'1-0.4*MIN(1,({aps}-1)/1.5)',
     "ENCHANTED_QUIVER_DRAIN": lambda aps, ib: f'1-0.4*MIN(1,({aps}-1)/1.5)',
-    "FLASH_MIRAGE": lambda aps, ib: f'IF({ib("level")}>=122,3,5)+1/(((20+30*({aps}-1)*100/150)/100)*{aps})',
 }
 _MAIN_APS_REF = f"Summary!$B${R_APS}"
 for _row in SKILL_ROWS:
@@ -2536,6 +2543,76 @@ def S(col_name, r):
     return f"Skills!{SC[col_name]}{r}"
 
 
+# ---------------------------------------------------------------------------
+# PROC RULE (user, 2026-11-04): a chance proc rolls once per ATTACK per ENEMY HIT, never per damage line.
+# Arrow Stream's 5-6 lines are one attack; every Hurricane arrow is its own attack. Final Attack: Bow and Flash Mirage
+# therefore read per-branch trigger rates built from the per-row columns below (Calc!X attacks/s, Calc!Y enemies hit).
+# Covering Fire's 3 hits are counted as ONE attack (FLAGGED: if its 3 hits are 3 projectiles, add it to
+# ATTACKS_PER_CAST_IS_HITS_KEYS). Phoenix / Arrow Platter casts count as one attack each (their summon ticks do not).
+# ---------------------------------------------------------------------------
+TRIGGER_CAST_ROW_KEYS = ["COVERING_FIRE", "PHOENIX", "ARROW_PLATTER", "HURRICANE"]
+ATTACKS_PER_CAST_IS_HITS_KEYS = ["HURRICANE"]
+TRIGGERED_PROC_ROW_KEYS = ["FINAL_ATTACK_BOW", "FLASH_MIRAGE"]
+COL_TRIG_ATTACKS, COL_TRIG_TARGETS = 24, 25      # Calc / Sensitivity-block columns X, Y
+
+
+def fm_chance_expr(aps_ref):
+    """Flash Mirage's activation chance per roll: 20% at 0 Attack Speed rising linearly to 50% at the 150% cap."""
+    return f'((20+30*({aps_ref}-1)*100/150)/100)'
+
+
+def trigger_attacks_cell(key, row, fda_ref, fight_duration_ref, baps_ref, hits_ref):
+    """Attacks per second this row contributes to the proc-trigger set (0 for rows that do not attack)."""
+    if key == "ARROW_STREAM":
+        return f'=IF(C{row},{baps_ref},0)'
+    if key in TRIGGER_CAST_ROW_KEYS:
+        per_cast = hits_ref if key in ATTACKS_PER_CAST_IS_HITS_KEYS else "1"
+        return f'=IF(C{row},IF({fda_ref},R{row}/{fight_duration_ref},Q{row})*{per_cast},0)'
+    return 0
+
+
+def trigger_targets_cell(key, targets_ref, max_enemies_ref):
+    """Enemies hit by ONE attack of this row in the normal branch (boss/PvP is always 1)."""
+    if key == "ARROW_STREAM" or key in TRIGGER_CAST_ROW_KEYS:
+        return f'=MIN({targets_ref},{max_enemies_ref})'
+    return 0
+
+
+def triggered_proc_branch_exprs(key, row, skills_row, ib, monster_type_ref, boss_dmg_pct, normal_dmg_pct, max_enemies_ref,
+                                extra_boss_mult, extra_normal_mult, fda_ref, fight_duration_ref, startup_ref,
+                                trig_attacks_ref, trig_rolls_ref, fm_x_boss_ref, fm_x_normal_ref):
+    """(boss_expr, normal_expr) DPS for the two chance-per-attack proc rows, each with its own branch trigger rate."""
+    h = f'H{row}'
+    n = f'N{row}'
+    targets = S("NormalMonsterTargets", skills_row)
+    if key == "FINAL_ATTACK_BOW":
+        # no ICD: expected procs per attack = c (boss/PvP, one enemy) or c x N (normal, every enemy hit rolls);
+        # the damage of each proc lands on the enemy it rolled for (NormalMonsterTargets = 1)
+        boss_expr, _ = boss_normal_dps_split_exprs(
+            f'{h}*{n}*{trig_attacks_ref}', monster_type_ref, boss_dmg_pct, normal_dmg_pct, targets, max_enemies_ref,
+            extra_boss_mult, extra_normal_mult)
+        _, normal_expr = boss_normal_dps_split_exprs(
+            f'{h}*{n}*{trig_rolls_ref}', monster_type_ref, boss_dmg_pct, normal_dmg_pct, targets, max_enemies_ref,
+            extra_boss_mult, extra_normal_mult)
+        return boss_expr, normal_expr
+    assert key == "FLASH_MIRAGE"
+    # real ICD (Skill Cooldown Decrease / Soul Contract do NOT apply - user decision 2026-11-04) + the expected wait 1/X
+    # for the first success => activation cycle
+    icd = f'{S("Cooldown(s)", skills_row)}'
+    available = f'MAX(0,{ib("fight_duration")}-{startup_ref})'
+    exprs = []
+    for x_ref in (fm_x_boss_ref, fm_x_normal_ref):
+        cycle = f'({icd}+1/{x_ref})'
+        rate = (
+            f'IFERROR(IF({fda_ref},{S("HitsPerCast", skills_row)}*{guarded_casts_expr(available, cycle)}/{fight_duration_ref},'
+            f'{S("HitsPerCast", skills_row)}/{cycle}),0)'
+        )
+        exprs.append(boss_normal_dps_split_exprs(
+            f'{h}*{n}*{rate}', monster_type_ref, boss_dmg_pct, normal_dmg_pct, targets, max_enemies_ref,
+            extra_boss_mult, extra_normal_mult))
+    return exprs[0][0], exprs[1][1]
+
+
 def build_calc_sheet(wb):
     ws = wb.create_sheet("Calc")
     for i, name in enumerate(CALC_HEADERS):
@@ -2594,6 +2671,8 @@ def build_calc_sheet(wb):
             ))
             for col in (7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22):
                 ws.cell(row=r, column=col, value=("1" if col == 9 else ""))
+            ws.cell(row=r, column=COL_TRIG_ATTACKS, value=0)
+            ws.cell(row=r, column=COL_TRIG_TARGETS, value=0)
             continue
 
         if key == "ARROW_STREAM":
@@ -2704,6 +2783,15 @@ def build_calc_sheet(wb):
             )
             ws.cell(row=r, column=20, value=f'=IF(C{r},{boss_expr},0)')
             ws.cell(row=r, column=22, value=f'=IF(C{r},{normal_expr},0)')
+        elif key in TRIGGERED_PROC_ROW_KEYS:
+            boss_expr, normal_expr = triggered_proc_branch_exprs(
+                key, r, r, IB, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r, IB("max_enemies_hit"),
+                extra_boss_mult_r, extra_normal_mult_r, fixed_duration_active_main, IB("fight_duration"),
+                f"Summary!$B${R_STARTUP_TIME}", f"Summary!$B${R_TRIG_ATTACKS}", f"Summary!$B${R_TRIG_ENEMY_ROLLS}",
+                f"Summary!$B${R_FM_X_BOSS}", f"Summary!$B${R_FM_X_NORMAL}",
+            )
+            ws.cell(row=r, column=20, value=f'=IF(C{r},{boss_expr},0)')
+            ws.cell(row=r, column=22, value=f'=IF(C{r},{normal_expr},0)')
         elif key in DAMAGE_ROW_KEYS:
             prefix = f'H{r}*N{r}*{rate_r}'
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
@@ -2716,6 +2804,12 @@ def build_calc_sheet(wb):
         else:
             ws.cell(row=r, column=20, value=0)
             ws.cell(row=r, column=22, value=0)
+
+        ws.cell(row=r, column=COL_TRIG_ATTACKS, value=trigger_attacks_cell(
+            key, r, fixed_duration_active_main, IB("fight_duration"), f"Summary!$B${R_BAPS}", S("HitsPerCast", r)))
+        ws.cell(row=r, column=COL_TRIG_TARGETS, value=trigger_targets_cell(
+            key, (f'(6+{IB("basic_attack_target_increase")})' if key == "ARROW_STREAM" else S("NormalMonsterTargets", r)),
+            IB("max_enemies_hit")))
 
         ws.cell(row=r, column=15, value=f'=(1-{IB("normal_weight_frac")})*T{r}+{IB("normal_weight_frac")}*V{r}')
 
@@ -2738,6 +2832,8 @@ def build_calc_sheet(wb):
     ws.cell(row=1, column=19, value="HitRate(perSec)")
     ws.cell(row=1, column=20, value="BossOnlyDPS")
     ws.cell(row=1, column=22, value="NormalOnlyDPS")
+    ws.cell(row=1, column=COL_TRIG_ATTACKS, value="TriggerAttacks/s")
+    ws.cell(row=1, column=COL_TRIG_TARGETS, value="TriggerEnemiesHit")
 
     widths = [26, 34, 10, 12, 9, 15, 13, 14, 17, 13, 15, 12, 12, 17, 12, 10, 12, 12, 14]
     for i, w in enumerate(widths):
@@ -2860,6 +2956,18 @@ def build_summary_sheet(wb):
     ws.cell(row=R_BOSS_ONLY_TOTAL, column=2, value=f"=SUM(Calc!T2:T{LAST_ROW})")
     ws.cell(row=R_NORMAL_ONLY_TOTAL, column=1, value="Normal-Only Total DPS (Sensitivity baseline)")
     ws.cell(row=R_NORMAL_ONLY_TOTAL, column=2, value=f"=SUM(Calc!V2:V{LAST_ROW})")
+
+    fm_c_ref = f"$B${R_FM_CHANCE}"
+    ws.cell(row=R_TRIG_ATTACKS, column=1, value="Proc triggers: attacks per second (Arrow Stream + action-costing attack skills; Hurricane = 1 per arrow)")
+    ws.cell(row=R_TRIG_ATTACKS, column=2, value=f"=SUM(Calc!X2:X{LAST_ROW})")
+    ws.cell(row=R_TRIG_ENEMY_ROLLS, column=1, value="Proc triggers: attacks per second x enemies hit (normal branch; boss/PvP = 1 enemy)")
+    ws.cell(row=R_TRIG_ENEMY_ROLLS, column=2, value=f"=SUMPRODUCT(Calc!X2:X{LAST_ROW},Calc!Y2:Y{LAST_ROW})")
+    ws.cell(row=R_FM_CHANCE, column=1, value="Flash Mirage activation chance per roll (20% -> 50% with Attack Speed)")
+    ws.cell(row=R_FM_CHANCE, column=2, value=f"={fm_chance_expr(f'B{R_APS}')}")
+    ws.cell(row=R_FM_X_BOSS, column=1, value="Flash Mirage activations per second ignoring its cooldown, boss/PvP (1 enemy per attack)")
+    ws.cell(row=R_FM_X_BOSS, column=2, value=f"={fm_c_ref}*B{R_TRIG_ATTACKS}")
+    ws.cell(row=R_FM_X_NORMAL, column=1, value="Flash Mirage activations per second ignoring its cooldown, normal (1-(1-c)^N per attack)")
+    ws.cell(row=R_FM_X_NORMAL, column=2, value=f"=SUMPRODUCT(Calc!X2:X{LAST_ROW},1-(1-{fm_c_ref})^Calc!Y2:Y{LAST_ROW})")
 
     ws.cell(row=R_ARROW_STREAM_DPS, column=1, value="Arrow Stream (Basic Attack) DPS")
     ws.cell(row=R_ARROW_STREAM_DPS, column=2, value=f"=Calc!O{ROW['ARROW_STREAM']}")
@@ -3097,7 +3205,7 @@ def make_ib(override_key, override_expr):
     return ib
 
 
-BLOCK_HEIGHT = LAST_ROW + 16
+BLOCK_HEIGHT = LAST_ROW + 22
 BLOCK_START = SENSITIVITY_HEADER_ROW + len(STAT_SWEEP) + SENSITIVITY_ARTIFACT_TABLE_HEADER_ROWS + 3
 
 
@@ -3120,6 +3228,11 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     s_boss_total = calc_end + 11
     s_normal_total = calc_end + 12
     s_total = calc_end + 13
+    s_trig_attacks = calc_end + 14
+    s_trig_rolls = calc_end + 15
+    s_fm_chance = calc_end + 16
+    s_fm_x_boss = calc_end + 17
+    s_fm_x_normal = calc_end + 18
     crit_rate_bonus_ref = f"B{s_crit_rate_bonus}"
     as_bonus_ref, aps_ref, castrate_ref, baps_ref = f"B{s_as_bonus}", f"B{s_aps}", f"B{s_castrate}", f"B{s_baps}"
     crit_damage_bonus_ref = f"B{s_crit_damage_bonus}"
@@ -3440,6 +3553,8 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             ))
             for col in (7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22):
                 ws.cell(row=row, column=col, value=("1" if col == 9 else ""))
+            ws.cell(row=row, column=COL_TRIG_ATTACKS, value=0)
+            ws.cell(row=row, column=COL_TRIG_TARGETS, value=0)
             continue
 
         if key == "ARROW_STREAM":
@@ -3539,16 +3654,20 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             )
             ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
             ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
+        elif key in TRIGGERED_PROC_ROW_KEYS:
+            boss_expr, normal_expr = triggered_proc_branch_exprs(
+                key, row, r, ib, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row, ib("max_enemies_hit"),
+                extra_boss_mult_block, extra_normal_mult_block, fda_block, ib("fight_duration"),
+                startup_ref, f"$B${s_trig_attacks}", f"$B${s_trig_rolls}",
+                f"$B${s_fm_x_boss}", f"$B${s_fm_x_normal}",
+            )
+            ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
+            ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
         elif key in DAMAGE_ROW_KEYS:
             prefix = f'H{row}*N{row}*{rate_row}'
-            # Final Attack's target count is "6 + Basic Attack Target Increase" — read it through this block's
-            # own ib() (the Skills-sheet cell would point at the MAIN Inputs and miss the swept +1).
-            _targets_block = (
-                f'(6+{ib("basic_attack_target_increase")})' if key == "FINAL_ATTACK_BOW" else S("NormalMonsterTargets", r)
-            )
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
                 prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
-                _targets_block, ib("max_enemies_hit"),
+                S("NormalMonsterTargets", r), ib("max_enemies_hit"),
                 extra_boss_mult_block, extra_normal_mult_block,
             )
             ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
@@ -3556,6 +3675,13 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         else:
             ws.cell(row=row, column=20, value=0)
             ws.cell(row=row, column=22, value=0)
+
+        # proc-trigger columns (block-local Q/R, block-local Arrow Stream rate — bug #6 / #19)
+        ws.cell(row=row, column=COL_TRIG_ATTACKS, value=trigger_attacks_cell(
+            key, row, fda_block, ib("fight_duration"), baps_ref, S("HitsPerCast", r)))
+        ws.cell(row=row, column=COL_TRIG_TARGETS, value=trigger_targets_cell(
+            key, (f'(6+{ib("basic_attack_target_increase")})' if key == "ARROW_STREAM" else S("NormalMonsterTargets", r)),
+            ib("max_enemies_hit")))
 
         ws.cell(row=row, column=15, value=f'=(1-{ib("normal_weight_frac")})*T{row}+{ib("normal_weight_frac")}*V{row}')
 
@@ -3610,6 +3736,21 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         fda_block, SC["BuffDuration(s)"], SC["CostsActionSlot"], f"C{calc_start}:C{calc_end}",
         aps_ref, LAST_ROW,
     ))
+
+    ws.cell(row=row_header, column=COL_TRIG_ATTACKS, value="TriggerAttacks/s")
+    ws.cell(row=row_header, column=COL_TRIG_TARGETS, value="TriggerEnemiesHit")
+    _xr = f'{get_column_letter(COL_TRIG_ATTACKS)}{calc_start}:{get_column_letter(COL_TRIG_ATTACKS)}{calc_end}'
+    _yr = f'{get_column_letter(COL_TRIG_TARGETS)}{calc_start}:{get_column_letter(COL_TRIG_TARGETS)}{calc_end}'
+    ws.cell(row=s_trig_attacks, column=1, value="Proc triggers: attacks per second")
+    ws.cell(row=s_trig_attacks, column=2, value=f"=SUM({_xr})")
+    ws.cell(row=s_trig_rolls, column=1, value="Proc triggers: attacks per second x enemies hit (normal)")
+    ws.cell(row=s_trig_rolls, column=2, value=f"=SUMPRODUCT({_xr},{_yr})")
+    ws.cell(row=s_fm_chance, column=1, value="Flash Mirage activation chance per roll")
+    ws.cell(row=s_fm_chance, column=2, value=f"={fm_chance_expr(aps_ref)}")
+    ws.cell(row=s_fm_x_boss, column=1, value="Flash Mirage activations/s ignoring ICD, boss/PvP")
+    ws.cell(row=s_fm_x_boss, column=2, value=f"=B{s_fm_chance}*B{s_trig_attacks}")
+    ws.cell(row=s_fm_x_normal, column=1, value="Flash Mirage activations/s ignoring ICD, normal")
+    ws.cell(row=s_fm_x_normal, column=2, value=f"=SUMPRODUCT({_xr},1-(1-B{s_fm_chance})^{_yr})")
 
     ws.cell(row=s_boss_total, column=1, value="Boss-Only Total DPS (this block's swept value)")
     ws.cell(row=s_boss_total, column=2, value=f"=SUM(T{calc_start}:T{calc_end})")

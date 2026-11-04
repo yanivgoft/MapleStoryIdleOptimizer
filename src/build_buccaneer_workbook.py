@@ -1913,11 +1913,12 @@ R_BOSS_ONLY_TOTAL = 24               # Total DPS if every hit were against a bos
 R_NORMAL_ONLY_TOTAL = 25             # Total DPS if every hit were against normal monsters (Breakthrough Sensitivity baseline)
 R_SERPENT_T = 26                    # Sea Serpent Burst activation interval T = its cooldown + half a basic-attack period (s)
 R_ASSAULT_U = 27                    # Assault Mode steady-state uptime fraction u = A/(A + scales_needed_activations*T)
-R_NAUTILUS_TRIGGER_RATE = 28        # Nautilus Strike - Final Attack: combined cast rate of the triggering attacks (1/s)
+R_NAUTILUS_TRIGGER_RATE = 28        # Nautilus Strike - Final Attack: combined cast rate of the triggering attacks (1/s) = single-enemy (boss/PvP) attack rate
+R_NAUTILUS_ROLL_RATE_NORMAL = 29    # same, NORMAL-monster branch: expected successful chance-rolls per second, sum(rate_i * (1-(1-c)^N_i)) (pre-ICD)
 # The two variable-length summary tables (Per-Skill Breakdown, sized off DAMAGE_DEALING_KEYS, and
 # Marginal DPS & Stat Value, sized off STAT_SWEEP) start after this fixed block, with a 2-row gap
 # (title goes at HEADER_ROW-1, so the constant itself sits 3 past the last fixed row).
-SUMMARY_BREAKDOWN_HEADER_ROW = R_NAUTILUS_TRIGGER_RATE + 3
+SUMMARY_BREAKDOWN_HEADER_ROW = R_NAUTILUS_ROLL_RATE_NORMAL + 3
 
 # Unlock levels: maplestoryidle.info `reqLevel` (a direct game capture for Buccaneer — trusted over the
 # wiki, which has no Req.Level column at all). Re-verified 2026-10-21 against the site's skill list; the
@@ -2018,6 +2019,31 @@ def nautilus_trigger_rate_expr(fda_ref, fight_duration_ref, baps_ref, terms):
 
 
 NAUTILUS_TRIGGER_KEYS = ["CORKSCREW_BLOW", "OCTOPUNCH", "NAUTILUS_STRIKE"]
+
+
+# "When attacking ... X% chance" procs roll ONCE PER ATTACK PER ENEMY HIT (user decision 2026-11-04): an attack that
+# hits N enemies rolls N times. Single-enemy content (boss, PvP) => N=1 (rolls = attack rate); normal monsters =>
+# N = MIN(the triggering attack's own NormalMonsterTargets, Inputs!max_enemies_hit). The internal-cooldown-gated
+# steady state generalizes (c*R)/(1+ICD*c*R) to X/(1+ICD*X) with X = sum_i attackRate_i * (1-(1-c)^N_i).
+def proc_roll_prob_expr(chance_ref, targets_ref, max_enemies_ref):
+    """Probability that at least one of the N = MIN(targets, max_enemies) per-enemy rolls of ONE attack succeeds."""
+    return f'(1-(1-{chance_ref})^MIN({targets_ref},{max_enemies_ref}))'
+
+
+def proc_rate_from_rolls_expr(x_ref, icd_ref):
+    """Steady-state proc rate with an internal cooldown, X = expected successful chance-rolls per second."""
+    return f'(({x_ref})/(1+{icd_ref}*({x_ref})))'
+
+
+def nautilus_normal_roll_rate_expr(fda_ref, fight_duration_ref, chance_ref, max_enemies_ref, baps_ref, baps_targets_ref, terms):
+    """Normal-monster-branch X for Nautilus Strike - Final Attack. terms = (unlocked_ref, casts_in_fight_ref,
+    inv_cooldown_ref, targets_ref) per triggering action-costing attack; Hook Bomber's own cast rate is added."""
+    exact = "+".join(
+        f'(({c}=TRUE)*{r}*{proc_roll_prob_expr(chance_ref, t, max_enemies_ref)})' for c, r, q, t in terms)
+    steady = "+".join(
+        f'(({c}=TRUE)*{q}*{proc_roll_prob_expr(chance_ref, t, max_enemies_ref)})' for c, r, q, t in terms)
+    return (f'IF({fda_ref},({exact})/{fight_duration_ref},{steady})'
+            f'+{baps_ref}*{proc_roll_prob_expr(chance_ref, baps_targets_ref, max_enemies_ref)}')
 
 
 # (key, name, jobstep, cooldown, costsAction, actionsPerCast, hits, icd, window, chance, rolls,
@@ -2140,9 +2166,13 @@ SKILL_ROWS = [
      "Mastery Lv.113 proc: '[Nautilus Strike in Slot] When attacking, deals 850% additional damage with "
      "a 30% chance and a 1-sec cooldown' (PATCHED 15% -> 30%, 'cooldown set to 1s'). ANY attack can "
      "trigger it (same wording/mechanic as FP-Mage's Meteor Shower FA and Ice/Lightning's Blizzard "
-     "FA), so it is modeled as a steady-state proc: rate = (Chance*R)/(1+ICD*Chance*R) with R = the "
-     "combined cast rate of the triggering attacks (Summary!NAUTILUS_TRIGGER_RATE: Hook Bomber + "
-     "Corkscrew Blow + Octopunch + Nautilus Strike). The earlier cooldown-gated model (Chance/1s = "
+     "FA), so it is modeled as a steady-state proc: rate = X/(1+ICD*X), X = expected successful "
+     "chance-rolls per second. The chance rolls once per ATTACK per ENEMY HIT (user decision 2026-11-04; a "
+     "basic attack's damage lines are ONE attack): boss/PvP (1 enemy) X = Chance*R with R = the combined cast "
+     "rate of the triggering attacks (Summary!NAUTILUS_TRIGGER_RATE: Hook Bomber + Corkscrew Blow + "
+     "Octopunch + Nautilus Strike); normal monsters X = sum_i rate_i*(1-(1-Chance)^N_i), N_i = MIN(that "
+     "attack's NormalMonsterTargets, max enemies hit) (Summary!NAUTILUS_ROLL_RATE_NORMAL; the boss and "
+     "normal rates feed the boss-only / normal-only DPS columns separately). The earlier cooldown-gated model (Chance/1s = "
      "0.3 per second regardless of attack rate) undercounted by ~20-25%. Summons / passive procs "
      "(Sea Serpent Burst etc.) are NOT counted as triggers — ASSUMPTION mirroring FP-Mage's "
      "user-confirmed trigger set. This row has no cooldown of its own (ICD(s)=1 is the internal "
@@ -2608,11 +2638,17 @@ def build_calc_sheet(wb):
         elif key == "NAUTILUS_FINAL_ATTACK":
             # No cooldown of its own — steady-state proc rate from the combined cast rate of the
             # triggering attacks (Summary!NAUTILUS_TRIGGER_RATE); H{r} = per-attack proc chance.
-            prefix = f'{nautilus_proc_rate_main}*N{r}'
-            boss_expr, normal_expr = boss_normal_dps_split_exprs(
-                prefix, IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
-                S("NormalMonsterTargets", r), IB("max_enemies_hit"),
-                extra_boss_mult_r, extra_normal_mult_r,
+            # Per-enemy-hit chance rolls: boss/PvP branch rolls once per attack (X = c*R); the normal branch
+            # rolls once per enemy each attack hits (Summary!R_NAUTILUS_ROLL_RATE_NORMAL).
+            targets_ref, max_ref = S("NormalMonsterTargets", r), IB("max_enemies_hit")
+            boss_expr, _unused = boss_normal_dps_split_exprs(
+                f'{nautilus_proc_rate_main}*N{r}', IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                targets_ref, max_ref, extra_boss_mult_r, extra_normal_mult_r,
+            )
+            _unused, normal_expr = boss_normal_dps_split_exprs(
+                f'{proc_rate_from_rolls_expr(f"Summary!$B${R_NAUTILUS_ROLL_RATE_NORMAL}", S("ICD(s)", r))}*N{r}',
+                IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                targets_ref, max_ref, extra_boss_mult_r, extra_normal_mult_r,
             )
             ws.cell(row=r, column=20, value=f'=IF(C{r},{boss_expr},0)')
             ws.cell(row=r, column=22, value=f'=IF(C{r},{normal_expr},0)')
@@ -2732,6 +2768,15 @@ def build_summary_sheet(wb):
     ws.cell(row=R_NAUTILUS_TRIGGER_RATE, column=2, value="=" + nautilus_trigger_rate_expr(
         fda_main, IB("fight_duration"), f"B{R_BAPS}",
         [(f"Calc!C{ROW[k]}", f"Calc!R{ROW[k]}", f"Calc!Q{ROW[k]}") for k in NAUTILUS_TRIGGER_KEYS],
+    ))
+    ws.cell(row=R_NAUTILUS_ROLL_RATE_NORMAL, column=1, value=(
+        "Nautilus Strike - Final Attack: expected successful chance-rolls/s on NORMAL monsters "
+        "(one roll per enemy each attack hits; before the 1s ICD) (1/s)"
+    ))
+    ws.cell(row=R_NAUTILUS_ROLL_RATE_NORMAL, column=2, value="=" + nautilus_normal_roll_rate_expr(
+        fda_main, IB("fight_duration"), f'Calc!H{ROW["NAUTILUS_FINAL_ATTACK"]}', IB("max_enemies_hit"),
+        f"B{R_BAPS}", S("NormalMonsterTargets", ROW["HOOK_BOMBER"]),
+        [(f"Calc!C{ROW[k]}", f"Calc!R{ROW[k]}", f"Calc!Q{ROW[k]}", S("NormalMonsterTargets", ROW[k])) for k in NAUTILUS_TRIGGER_KEYS],
     ))
     # Serpent Scale: +25% Final Damage while in Assault Mode (uptime u) + the pre-Assault +2% FD per held
     # Serpent Scale, averaging 2 scales held while rebuilding = +4% for the (1-u) remainder.
@@ -3055,7 +3100,7 @@ def make_ib(override_key, override_expr):
     return ib
 
 
-BLOCK_HEIGHT = LAST_ROW + 19
+BLOCK_HEIGHT = LAST_ROW + 21
 BLOCK_START = SENSITIVITY_HEADER_ROW + len(STAT_SWEEP) + SENSITIVITY_ARTIFACT_TABLE_HEADER_ROWS + 3
 
 
@@ -3081,7 +3126,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     s_serpent_t = calc_end + 14
     s_assault_u = calc_end + 15
     s_naut_trig = calc_end + 16
+    s_naut_roll_n = calc_end + 17
     serpent_t_block_ref, assault_u_block_ref, naut_trig_block_ref = f"B{s_serpent_t}", f"B{s_assault_u}", f"B{s_naut_trig}"
+    naut_roll_n_block_ref = f"B{s_naut_roll_n}"
     crit_rate_bonus_ref = f"B{s_crit_rate_bonus}"
     as_bonus_ref, aps_ref, castrate_ref, baps_ref = f"B{s_as_bonus}", f"B{s_aps}", f"B{s_castrate}", f"B{s_baps}"
     crit_damage_bonus_ref = f"B{s_crit_damage_bonus}"
@@ -3526,11 +3573,15 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
             ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
         elif key == "NAUTILUS_FINAL_ATTACK":
-            prefix = f'{nautilus_proc_rate_block}*N{row}'
-            boss_expr, normal_expr = boss_normal_dps_split_exprs(
-                prefix, ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
-                S("NormalMonsterTargets", r), ib("max_enemies_hit"),
-                extra_boss_mult_block, extra_normal_mult_block,
+            targets_ref, max_ref = S("NormalMonsterTargets", r), ib("max_enemies_hit")
+            boss_expr, _unused = boss_normal_dps_split_exprs(
+                f'{nautilus_proc_rate_block}*N{row}', ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                targets_ref, max_ref, extra_boss_mult_block, extra_normal_mult_block,
+            )
+            _unused, normal_expr = boss_normal_dps_split_exprs(
+                f'{proc_rate_from_rolls_expr(naut_roll_n_block_ref, S("ICD(s)", r))}*N{row}',
+                ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                targets_ref, max_ref, extra_boss_mult_block, extra_normal_mult_block,
             )
             ws.cell(row=row, column=20, value=f'=IF(C{row},{boss_expr},0)')
             ws.cell(row=row, column=22, value=f'=IF(C{row},{normal_expr},0)')
@@ -3616,6 +3667,14 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ws.cell(row=s_naut_trig, column=2, value="=" + nautilus_trigger_rate_expr(
         fda_block, ib("fight_duration"), baps_ref,
         [(f"C{row_of[k]}", f"R{row_of[k]}", f"Q{row_of[k]}") for k in NAUTILUS_TRIGGER_KEYS],
+    ))
+    # Per-enemy-hit chance rolls (normal branch) from THIS block's own Q/R/APS (bug #6/#19); Hook Bomber's target
+    # count is re-derived from this block's swept basic_attack_target_increase.
+    ws.cell(row=s_naut_roll_n, column=1, value="Nautilus Strike - Final Attack chance-rolls/s, normal branch (per enemy hit; this block's own Q/R)")
+    ws.cell(row=s_naut_roll_n, column=2, value="=" + nautilus_normal_roll_rate_expr(
+        fda_block, ib("fight_duration"), f'H{row_of["NAUTILUS_FINAL_ATTACK"]}', ib("max_enemies_hit"),
+        baps_ref, f'(6+{ib("basic_attack_target_increase")})',
+        [(f"C{row_of[k]}", f"R{row_of[k]}", f"Q{row_of[k]}", S("NormalMonsterTargets", ROW[k])) for k in NAUTILUS_TRIGGER_KEYS],
     ))
 
     for _key, _r in ROW.items():   # same mastery semantics as the main Calc sheet

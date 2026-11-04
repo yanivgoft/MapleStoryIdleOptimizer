@@ -515,19 +515,36 @@ for key, s in SKILLS.items():
     proc = 1 - (1 - s.get("chance", 100) / 100) ** s.get("rolls", 1)
     hd = hit_damage(pct, False, maple_mult(key), s)
     if key == "BLIZZARD_FINAL_ATTACK":
-        # Multi-trigger proc (any attack, 30%, 1s ICD): steady-state rate (c*R)/(1+ICD*c*R) with R the
-        # combined cast rate of the triggering attacks + Chain Lightning's own cast rate.
-        trig = chain_lightning_per_second
-        for tk, tn in BLIZZARD_PROC_TRIGGERS.items():
-            if not unlocked(tk):
-                continue
-            tcd = eff_cooldown(SKILLS[tk]["cooldown"], _cdr_costs_action(tk, SKILLS[tk]))
-            if fixed_duration_active:
-                trig += tn * non_buff_casts(tcd) / fight_duration
-            else:
-                trig += tn / tcd
-        proc_rate = proc * trig / (1 + s["icd"] * proc * trig)
-        skill_dps[key] = proc_rate * hd * boss_normal_multiplier(key, s)
+        # Multi-trigger proc (any attack, 30% per ENEMY HIT per attack, 1s ICD). An attack hitting N enemies
+        # triggers with q = 1-(1-c)^N (one proc per attack at most, shared ICD). Steady-state proc rate
+        # X/(1+ICD*X), X = sum(attack rate x triggers per cast x q) -- computed per branch (boss/PvP N=1,
+        # normal N=min(attack's target count, max_enemies_hit)) and time-weighted like every other row.
+        def trig_x(normal_branch):
+            def q(targets):
+                n = min(targets, max_enemies_hit) if (normal_branch and monster_type != "pvp") else 1
+                return 1 - (1 - proc) ** n
+            x = chain_lightning_per_second * q(6 + basic_attack_target_increase)
+            for tk, tn in BLIZZARD_PROC_TRIGGERS.items():
+                if not unlocked(tk):
+                    continue
+                tcd = eff_cooldown(SKILLS[tk]["cooldown"], _cdr_costs_action(tk, SKILLS[tk]))
+                if fixed_duration_active:
+                    rate_k = non_buff_casts(tcd) / fight_duration
+                else:
+                    rate_k = 1 / tcd
+                x += tn * rate_k * q(NORMAL_MONSTER_TARGETS[tk])
+            return x
+        xb, xn = trig_x(False), trig_x(True)
+        rate_b = xb / (1 + s["icd"] * xb)
+        rate_n = xn / (1 + s["icd"] * xn)
+        if monster_type == "pvp":
+            skill_dps[key] = rate_b * hd
+        else:
+            boss_term = boss_damage + s.get("mastery_boss", 0) + monster_dmg_bonus
+            normal_term = normal_damage + s.get("mastery_normal", 0) + monster_dmg_bonus
+            tgt = min(NORMAL_MONSTER_TARGETS.get(key, 1), max_enemies_hit)
+            skill_dps[key] = hd * ((1 - normal_weight) * rate_b * (1 + boss_term / 100)
+                                   + normal_weight * rate_n * (1 + normal_term / 100) * tgt)
         continue
     eff_cd = eff_cooldown(s["cooldown"], _cdr_costs_action(key, s))
     if fixed_duration_active:
