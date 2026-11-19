@@ -200,6 +200,23 @@ def read_formula_num(sheet, cell):
     return float(read_formula_raw(sheet, cell))
 
 
+def read_formula_any(sheet, cell):
+    """Like read_formula_raw but also returns text values (e.g. a content type or a companion name)."""
+    if _wb_values is not None:
+        for name in _wb_values.sheetnames:
+            if name.upper() == sheet.upper():
+                value = _wb_values[name][cell].value
+                if value is not None and not (isinstance(value, str) and value.startswith("#")):
+                    return value
+                break
+    suffix = f"{sheet.upper()}'!{cell.upper()}"
+    for k, v in get_solution().items():
+        if k.upper().endswith(suffix):
+            value = np.asarray(v.value).reshape(-1)[0]
+            return value.item() if hasattr(value, "item") else value
+    raise KeyError(f"cell not found in workbook: {sheet}!{cell}")
+
+
 def find_row_by_label(ws, label, column=1, max_row=60):
     """Scans down a column for a cell whose text matches `label` (case-insensitive, stripped)."""
     target = label.strip().lower()
@@ -317,6 +334,120 @@ def load_cdr_curve():
 CDR_CURRENT, CDR_POINTS = load_cdr_curve()
 
 
+# ---------------------------------------------------------------------------
+# Companion Summoning Time Increase % — priced by re-running the companion model (src/companion_python_model.py, a plain-Python port
+# of the Companion sheet) at "b0 + roll", NOT from a linear per-1% rate: extra duration is a step function (summon-time thresholds
+# such as Hexagon Necklace stacks).  The numeric host values (the player's pipeline numbers, the chosen companion and its level) are
+# exported on the Companion sheet.  b0 = your Inputs value WITHOUT the summoning-time lines listed on PotentialCubes; a roll is
+# evaluated against a per-row baseline = the summoning time on every OTHER row's current lines (see row_companion_base).
+# Workbooks without a Companion sheet (or without a chosen, unlocked companion) fall back to the linear DPS-per-unit rate.
+# ---------------------------------------------------------------------------
+COMPANION_STAT = "Companion Summoning Time Increase %"
+_ROW_COMPANION_BASE = 0.0
+_COMPANION_CACHE = {}
+
+
+def load_companion_model():
+    if "Companion" not in _wb.sheetnames:
+        return None
+    try:
+        import companion_python_model as cpm  # noqa: E402  (copied next to this script)
+    except ImportError:
+        return None
+    ws = _wb["Companion"]
+    header = b0_row = None
+    for row in range(1, ws.max_row + 1):
+        value = ws.cell(row=row, column=1).value
+        if isinstance(value, str) and value.startswith("Host values"):
+            header = row
+        if isinstance(value, str) and value.startswith("b0 ="):
+            b0_row = row
+    if header is None or b0_row is None:
+        return None
+    raw = {}
+    row = header + 1
+    while ws.cell(row=row, column=1).value:
+        raw[ws.cell(row=row, column=1).value] = read_formula_any("COMPANION", f"B{row}")
+        row += 1
+    if raw.get("choice") in (None, "None", "") or float(raw.get("lvl") or 0) < 1:
+        return None
+    num = lambda k: float(raw[k])
+    host = {k: raw[k] for k in ("mt", "content")}
+    for k in raw:
+        if k not in ("mt", "content", "choice", "k1", "fdpart", "hex_per_stack", "total_dps", "comp_blend_current", "lvl", "st_on", "st_S") \
+                and not k.startswith("pst"):
+            host[k] = num(k)
+    # the player's own stunning skills (class builders export pst<k>_cd/_dur/_p/_on/_t0/_tick/_win/_per; absent for classes without any)
+    pst, k_idx = [], 0
+    while f"pst{k_idx}_cd" in raw:
+        e = {f: float(raw[f"pst{k_idx}_{f}"]) for f in ("cd", "dur", "p", "on", "t0", "tick", "win")}
+        e["typ"] = "periodic" if float(raw.get(f"pst{k_idx}_per", 0)) > 0 else "cast"
+        e["on"] = bool(e["on"])
+        pst.append(e)
+        k_idx += 1
+    host["pst"] = pst
+    # Status Effect Damage / KO timeline: the per-second multiplier and fight share of the Timeline sheet's strip (engine on) or the plain input
+    st = dict(on=bool(float(raw.get("st_on") or 0)), S=float(raw.get("st_S") or 0.0), mult=None, act=None)
+    if st["on"] and "Timeline" in _wb.sheetnames:
+        tws = _wb["Timeline"]
+        cols = {}
+        for row in range(1, tws.max_row + 1):
+            for col in range(3, tws.max_column + 1):
+                if tws.cell(row=row, column=col).value in ("mult", "act") and tws.cell(row=row, column=col).value not in cols:
+                    cols[tws.cell(row=row, column=col).value] = (row, col)
+        if len(cols) == 2:
+            from openpyxl.utils import get_column_letter as _gcl
+            st["mult"] = [float(read_formula_any("TIMELINE", f"{_gcl(cols['mult'][1])}{cols['mult'][0] + 1 + i}")) for i in range(75)]
+            st["act"] = [float(read_formula_any("TIMELINE", f"{_gcl(cols['act'][1])}{cols['act'][0] + 1 + i}")) for i in range(75)]
+        else:
+            st["on"] = False
+    host["st"] = st
+    k1, fdpart, hex_per_stack = num("k1"), num("fdpart"), num("hex_per_stack")
+    host["avgbuff_snap"] = lambda charm, extra: (1 + (k1 + charm + extra) / 100) * fdpart
+    host["hex_snap"] = lambda stacks: hex_per_stack * stacks
+    return dict(cpm=cpm, host=host, choice=raw["choice"], lvl=int(num("lvl")), b0=read_formula_num("COMPANION", f"B{b0_row}"),
+                total=num("total_dps"), current_blend=num("comp_blend_current"))
+
+
+COMPANION_MODEL = load_companion_model()
+COMPANION_POINTS = COMPANION_MODEL  # truthy when the curve is available (kept for the callers below)
+
+
+def companion_total_dps(x):
+    """Total DPS with `x` percent of summoning time on top of b0 (the model is re-run at b0 + x; cached by x)."""
+    key = round(float(x), 6)
+    if key not in _COMPANION_CACHE:
+        m = COMPANION_MODEL
+        res = m["cpm"].run(m["host"], m["choice"], m["lvl"], m["b0"] + key)
+        _COMPANION_CACHE[key] = m["total"] - m["current_blend"] + res["comp_blend_dps"]
+    return _COMPANION_CACHE[key]
+
+
+def _companion_run(x):
+    key = ("run", round(float(x), 6))
+    if key not in _COMPANION_CACHE:
+        m = COMPANION_MODEL
+        _COMPANION_CACHE[key] = m["cpm"].run(m["host"], m["choice"], m["lvl"], m["b0"] + key[1])
+    return _COMPANION_CACHE[key]
+
+
+def companion_factor(extra, base):
+    """Relative DPS growth from `extra` percent of summoning time on top of `base` percent (above b0): each branch's own growth
+    (boss-only and normal-only DPS incl. the companion), blended by the content's boss/normal emphasis w - never dollar totals."""
+    m = COMPANION_MODEL
+    h = m["host"]
+    w, pb, pn = h["w"], h["player_boss"], h["player_norm"]
+    rb, rx = _companion_run(base), _companion_run(base + extra)
+    boss = (pb + rx["comp_boss_dps"]) / (pb + rb["comp_boss_dps"]) if pb + rb["comp_boss_dps"] > 0 else 1.0
+    norm = (pn + rx["comp_norm_dps"]) / (pn + rb["comp_norm_dps"]) if pn + rb["comp_norm_dps"] > 0 else 1.0
+    return (1 - w) * boss + w * norm
+
+
+def row_companion_base(state, all_rows):
+    """Summoning time (%) on every OTHER row's current lines, i.e. what stays equipped while this row is rerolled."""
+    return sum(v for other in all_rows if other is not state for stat, v in other["lines"] if stat == COMPANION_STAT)
+
+
 def exact_total_at_cdr(cdr):
     """Re-evaluates the whole model with Inputs' Skill Cooldown Decrease set to `cdr` and returns Total DPS
     (None if that can't be done). Only needed when a row's CDR baseline is BELOW the table's first step
@@ -418,6 +549,8 @@ def combined_dps_gain(stat_value_pairs, cdr_baseline=None):
     for stat, total_value in grouped.items():
         if stat == CDR_STAT:
             factor *= cdr_factor(total_value, CDR_CURRENT if cdr_baseline is None else cdr_baseline)
+        elif stat == COMPANION_STAT and COMPANION_POINTS is not None:
+            factor *= companion_factor(total_value, _ROW_COMPANION_BASE)
         else:
             factor *= 1.0 + (total_value * dps_per_unit(stat)) / BASELINE_DPS
     return BASELINE_DPS * (factor - 1.0)
@@ -525,7 +658,7 @@ _roll_dist_cache = {}
 def roll_distribution(rarity, slot, cdr_baseline=None):
     # Rows with different CDR baselines (see row_cdr_baseline) price a CDR roll differently, so the
     # baseline is part of the cache key; rows without CDR lines all share one entry.
-    cache_key = (rarity, slot, None if cdr_baseline is None else round(cdr_baseline, 6))
+    cache_key = (rarity, slot, None if cdr_baseline is None else round(cdr_baseline, 6), round(_ROW_COMPANION_BASE, 6))
     if cache_key in _roll_dist_cache:
         return _roll_dist_cache[cache_key]
 
@@ -712,7 +845,12 @@ def main():
         print("  " + "  ".join(f"{x:g}s: {t / baseline_dps * 100 - 100:+.2f}%" for x, t in CDR_POINTS if x != CDR_CURRENT))
     rows = read_current_state()
     results = []
+    global _ROW_COMPANION_BASE
+    if COMPANION_POINTS is not None:
+        print("Companion Summoning Time Increase % is priced by re-running the companion model (Total DPS vs. extra summoning time):")
+        print("  " + "  ".join(f"+{n:g}%: {companion_factor(n, 0) * 100 - 100:+.2f}%" for n in (5, 8, 12, 20, 40, 60)))
     for state in rows:
+        _ROW_COMPANION_BASE = row_companion_base(state, rows)
         cdr_base = row_cdr_baseline(state)
         cur_val = current_dps_value(state["lines"], cdr_base)
         trace = optimal_stopping_trace(state["rarity"], state["pity"], state["slot"], cur_val, state["potential_type"], cdr_baseline=cdr_base)

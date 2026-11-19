@@ -4,9 +4,13 @@ Cross-checks Buccaneer-DPS-Calculator.xlsx against an independent Python port of
 using the workbook's own default Inputs values. Then loads the live workbook with the `formulas`
 package and diffs Total DPS + every per-skill DPS cell (Calc!O<row>) against this script's
 independent numbers. Mirrors verify_hero_workbook.py in structure and method.
+
+Also mirrors the Status Effect Damage / KO timeline engine (src/status_timeline.py `solve`) and the Companion model (src/companion_python_model.py).
+Artifacts are not modelled here: run it on a copy with the artifact slots cleared (data/porting/helpers/sv.py does that).
 """
 import json
 import math
+import os
 import re
 import sys
 from pathlib import Path
@@ -16,7 +20,10 @@ import numpy as np
 REPO = Path(__file__).resolve().parent.parent
 XLSX_PATH = REPO / "Buccaneer" / "Buccaneer-DPS-Calculator.xlsx"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from build_buccaneer_workbook import ROW, IN, UNLOCK_LEVEL, MAPLE_HERO_RATIOS, R_TOTAL, R_BAPS  # noqa: E402
+from build_buccaneer_workbook import ROW, IN, UNLOCK_LEVEL, MAPLE_HERO_RATIOS, R_TOTAL  # noqa: E402
+from build_buccaneer_workbook import STATUS_CAST_PREFIX, STATUS_GROUPS, STATUS_BUFFS, STATUS_UNIFORM_ROWS, STATUS_PHI_ROWS, STATUS_FS_KEYS, STATUS_MAIN_LAYOUT  # noqa: E402
+import status_timeline as stl  # noqa: E402
+import companion_python_model as cpm  # noqa: E402
 
 FACTOR_TABLE = json.loads((REPO / "data/factor_table.json").read_text())
 FACTOR_TABLE = {int(k): v for k, v in FACTOR_TABLE.items()}
@@ -155,6 +162,7 @@ damage = _in("damage")
 damage_amp = _in("damage_amp")
 boss_damage = _in("boss_damage")
 normal_damage = _in("normal_damage")
+status_effect_damage = _in("status_effect_damage")
 final_damage = _in("final_damage")
 min_damage = _in("min_damage")
 max_damage = _in("max_damage")
@@ -231,10 +239,33 @@ def exact_total_hits(cooldown, hits_per_cast, icd, window, duration=None):
     return hits_per_cast * ((casts - 1) * full_window_ticks + last_cast_ticks)
 
 
-# Nimble Feet is now the one real, live BuffDuration(s)>0 CostsActionSlot skill in this kit
-# (every other buff-like source is an always-on "FD" passive gated by its own checkbox, not a
-# cast-and-recast buff — see BUFF_ROW_KEYS in the build script); the real value is computed below
-# once actions_per_second is known, and reassigned before any function that reads it is called.
+
+# ---- live workbook access (the `formulas` evaluation is loaded lazily: the companion mirror needs a few cells of the strip) ----
+import formulas  # noqa: E402
+
+_SOLUTION = []
+
+
+def _get_solution():
+    if not _SOLUTION:
+        print(f"Loading live workbook: {XLSX_PATH}")
+        _SOLUTION.append(formulas.ExcelModel().loads(str(XLSX_PATH)).finish().calculate())
+    return _SOLUTION[0]
+
+
+def scalar(value):
+    return float(np.asarray(value).reshape(-1)[0])
+
+
+def read_cell(sheet, cell):
+    suffix = f"{sheet.upper()}'!{cell.upper()}"
+    for k, v in _get_solution().items():
+        if k.upper().endswith(suffix):
+            return scalar(v.value)
+    raise KeyError(f"cell not found in workbook: {sheet}!{cell}")
+
+
+# Buff-casting startup delay (set below once the Actions Per Second and the engine state are known; 0 when the Status/KO engine is on)
 buff_cast_startup_time = 0.0
 
 
@@ -266,20 +297,7 @@ def buff_avg(pct, duration, cooldown, costs_action):
     return pct * uptime
 
 
-def boss_normal_multiplier(targets, mastery_boss, mastery_normal):
-    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
-    full (1+damage%/100)*targets treatment. The two branches are combined here as a plain dollar
-    blend for the real Total DPS (correct); Sensitivity's marginal-value ranking uses a separate,
-    ratio-based blend instead (see build_sensitivity_sheet), since a dollar blend would let a
-    stat's reported "value" be dominated by whichever branch hits more targets."""
-    if monster_type == "pvp":
-        return 1
-    targets = min(targets, max_enemies_hit)
-    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
-    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
-    boss_branch = 1 + boss_term / 100
-    normal_branch = (1 + normal_term / 100) * targets
-    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
+_BRANCH_PAIRS = {}   # key -> (boss DPS, normal DPS) of the row (incl. the timing factors); filled by blend_branches / the Nautilus proc
 
 
 def branch_multipliers(targets, mastery_boss=0, mastery_normal=0):
@@ -290,21 +308,18 @@ def branch_multipliers(targets, mastery_boss=0, mastery_normal=0):
     return 1 + (boss_damage + mastery_boss + monster_dmg_bonus) / 100, (1 + (normal_damage + mastery_normal + monster_dmg_bonus) / 100) * t
 
 
+def blend_branches(key, unit, targets, mastery_boss=0, mastery_normal=0):
+    """Time-weighted DPS of one row: (1-w)*unit*boss_branch*timing_boss + w*unit*normal_branch*timing_normal.  Correct for the real Total DPS; Sensitivity's
+    marginal-value ranking uses a separate, ratio-based blend instead (see build_sensitivity_sheet)."""
+    b, n = branch_multipliers(targets, mastery_boss, mastery_normal)
+    fb, fn = timing_factors(key)
+    _BRANCH_PAIRS[key] = (unit * b * fb, unit * n * fn)
+    return (1 - normal_weight) * unit * b * fb + normal_weight * unit * n * fn
+
+
 def roll_prob(chance, targets):
     """P(at least one success) over the per-enemy chance rolls of ONE attack hitting N = min(targets, max_enemies) enemies."""
     return 1 - (1 - chance) ** min(targets, max_enemies_hit)
-
-
-def proc_branch_dps(chance, icd, sources, payoff_hit, payoff_targets):
-    """A 'When attacking ... X% chance' proc rolls once per attack per ENEMY HIT (user decision 2026-11-04).
-    sources = [(attack_rate_per_s, targets_of_that_attack)]. Boss/PvP branch: 1 enemy => X = c*sum(rate);
-    normal branch: X = sum(rate*(1-(1-c)^N)). Proc rate = X/(1+ICD*X); the two branches blend by time weight."""
-    x_boss = chance * sum(r for r, _ in sources)
-    x_norm = sum(r * roll_prob(chance, t) for r, t in sources)
-    boss_b, norm_b = branch_multipliers(payoff_targets)
-    rate_boss = x_boss / (1 + icd * x_boss)
-    rate_norm = x_norm / (1 + icd * x_norm)
-    return (1 - normal_weight) * rate_boss * payoff_hit * boss_b + normal_weight * rate_norm * payoff_hit * norm_b
 
 
 def coeff_pct(base, fidx, scales, job_step):
@@ -314,10 +329,9 @@ def coeff_pct(base, fidx, scales, job_step):
     return (base / 10) * (get_factor(lvl, fidx) / 1000)
 
 
-# ---- Maple Hero (Serpent Assault only — the wiki's own source is truncated, see build script) ----
+# ---- Maple Hero (Serpent Assault / Corkscrew Blow: see the build script) ----
 maple_hero_pct = coeff_pct(600, 23, True, 4) if unlocked("MAPLE_HERO_HELPER") else 0.0
 
-# ---- Assault Mode duty-cycle economy (see build script's assault_uptime_expr for derivation) ----
 hook_bomber_targets = 6 + basic_attack_target_increase
 HOOK_BOMBER_HITS = 6 if level >= 136 else 5
 hook_bomber_mastery_damage = level_gated_sum({102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15})
@@ -332,20 +346,15 @@ def exact_buff_uptime(cooldown, buff_duration):
     return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
-def uptime_fraction_steady(duration, cooldown):
-    """Steady-state duty cycle (matches the build script's own uptime_fraction_expr exactly, NOT
-    duty_cycle_uptime's fixed-duration-exact math) — used for Speed Infusion, which is a live
-    formula with no Skills-sheet row/Calc!R CastsInFight column to drive the exact version."""
-    scaled_duration = duration * (1 + buff_duration_increase_pct / 100)
-    if monster_type == "pvp":
-        return min(scaled_duration, PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
-    return min(1.0, scaled_duration / cooldown)
+def exact_uptime_at(n, cooldown, buff_duration):
+    """The workbook's exact-uptime formula (exact_buff_uptime_expr) at a GIVEN cast count n: (n-1)*MIN(dur, cd) + MIN(dur, remaining after the last cast)."""
+    remaining_after_last = max(0.0, fight_duration - (n - 1) * cooldown)
+    return ((n - 1) * min(buff_duration, cooldown) + min(buff_duration, remaining_after_last)) / fight_duration
 
 
 def duty_cycle_uptime(cooldown, duration):
     """Exact/fixed-duration-aware uptime fraction for a real cooldown-gated buff — shared by
-    Nimble Feet/Crossbones/Time Leap (all real Type=Active casts confirmed via
-    maplestoryidle.info)."""
+    Nimble Feet/Crossbones/Time Leap/Speed Infusion (all real Type=Active casts confirmed via maplestoryidle.info)."""
     eff_cd = eff_cooldown(cooldown, True)
     if fixed_duration_active:
         return exact_buff_uptime(eff_cd, eff_duration(duration)) / fight_duration
@@ -375,80 +384,111 @@ def _aps_with_extra_as(as_extra):
     return 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - as_extra / 150))) / 100
 
 
-def _actions_per_second_placeholder():
-    # Actions Per Second combines raw Inputs!attack_speed with the duty-cycle-averaged AS buffs
-    # (Nimble Feet + Speed Infusion) via the standard diminishing-returns stack (factor 150).
-    as_bonus = _nimble_feet_as_avg() + _speed_infusion_as_avg()
-    return _aps_with_extra_as(as_bonus)
+# Actions Per Second combines raw Inputs!attack_speed with the duty-cycle-averaged AS buffs (Nimble Feet + Speed Infusion) via the standard
+# diminishing-returns stack (factor 150).  Neither is an engine buff (Attack Speed buffs the engine does not time).
+actions_per_second = _aps_with_extra_as(_nimble_feet_as_avg() + _speed_infusion_as_avg())
 
+# ---------------------------------------------------------------------------------------------------------------
+# Status Effect Damage / KO timeline engine (src/status_timeline.py `solve`, the plain-Python reference): fixed-length single-target content with
+# KO phases (World Boss, Enhancement Dungeon) or a stunning/freezing source (the companion's stuns, the player's own Corkscrew Blow).  The player casts the
+# engine buffs (Crossbones, Time Leap: Final Damage) and the cooldown skills when they pay most.
+# ---------------------------------------------------------------------------------------------------------------
+_companion_choice0 = _in("companion_choice")
+_ci0 = openpyxl.load_workbook(XLSX_PATH)["CompanionsInput"]
+_lv0 = next((_ci0.cell(row=r, column=2).value for r in range(1, _ci0.max_row + 1) if _ci0.cell(row=r, column=1).value == _companion_choice0), None)
+try:
+    c_level0 = int(float(_lv0))
+except (TypeError, ValueError):
+    c_level0 = 0
+_stub = dict(mt=monster_type, T=fight_duration, content=content_type, pvp_len=PVP_FIGHT_DURATION, cap=max_enemies_hit, w=normal_weight, unit=1.0,
+             bad=0.0, sd=0.0, aps=1.5, avgbuff=1.0, attack_bucket_avg=0.0, charm_val=0.0, agg_damage_avg=0.0, hex_avg=0.0, hex_snap=lambda st: 0.0,
+             avgbuff_snap=lambda charm, extra: 1.0, agg_fd_boss_only=0.0, agg_fd_norm_only=0.0, chalice_avg_boss=0.0, chalice_avg_norm=0.0,
+             chalice_full=0.0, horn_avg=0.0, horn_full=0.0, boss_pct=0.0, norm_pct=0.0, extra_boss=1.0, extra_norm=1.0, player_boss=1.0, player_norm=1.0, player_uniform_boss=1.0,
+             player_basic_boss=0.5, player_basic_norm=0.5, cr_total=0.0, cd_total=0.0, min_dmg=100.0, max_dmg=100.0, defense=0.0, def_pen=0.0, taken_bucket=0.0)
+# The player's own stunning skills (game table): Corkscrew Blow stuns for 1.8 s (cooldown 21 s), cast on cooldown from the start
+CORKSCREW_COOLDOWN = 21
+PLAYER_STUN = [dict(id="CORK", key="CORKSCREW_BLOW", typ="cast", dur=1.8, p=1.0, cd=CORKSCREW_COOLDOWN)]
+_pl_on = any(unlocked(e["key"]) for e in PLAYER_STUN)
+stun_info = (cpm.run(_stub, _companion_choice0, c_level0, _in("companion_summon_time_increase_pct"))
+             if (_companion_choice0 != "None" and c_level0 >= 1) else None)
+hasstun = bool(stun_info and stun_info.get("hasstun")) or _pl_on
+KO_WINDOWS = {"World Boss": [(24, 34), (59, 69)], "Enhancement Dungeon": [(fight_duration - 4.5, fight_duration)]}
+status_on = fixed_duration_active and normal_weight == 0 and (content_type in KO_WINDOWS or hasstun)
 
-# Two-step resolution: Hook Bomber's cast rate (BAPS) feeds the Assault-Mode uptime fraction,
-# which in turn is needed for Sea Serpent Burst/Serpent Assault's own trigger weighting — but
-# BAPS itself only depends on the ACTION-COSTING skills' own cast rates, none of which depend on
-# the Assault-Mode uptime, so there's no real circularity, just an ordering requirement.
-actions_per_second = _actions_per_second_placeholder()
-
-# Real value, now that actions_per_second is known (non_buff_casts/non_buff_total_hits are only
-# actually called further below, so this reassignment lands before any use).
-if fixed_duration_active:
+# Buff-Casting Startup Delay: in fixed-duration fights, the character casts every currently-unlocked, actively-cast buff sequentially at fight start (1/APS seconds
+# each) before their first damage-skill cast - the workbook's Summary!R_STARTUP_TIME (0 when the engine is on: buffs are cast when they pay).
+if fixed_duration_active and not status_on:
     buff_cast_startup_time = (
         (1 if unlocked("NIMBLE_FEET") else 0)
         + (1 if unlocked("CROSSBONES_FD") else 0)
         + (1 if unlocked("TIME_LEAP_FD") else 0)
         + (1 if unlocked("SPEED_INFUSION") else 0)
     ) / actions_per_second
+else:
+    buff_cast_startup_time = 0.0
+_t0_pl = 0.0 if status_on else buff_cast_startup_time
+PST = [dict(id=e["id"], typ=e["typ"], cd=eff_cooldown(e["cd"], True), dur=e["dur"],
+            p=e["p"], on=unlocked(e["key"]), t0=_t0_pl, tick=1.0, win=0.0) for e in PLAYER_STUN]
+_stub["pst"] = PST
+stun_info = cpm.run(_stub, _companion_choice0 if (_companion_choice0 != "None" and c_level0 >= 1) else "None", c_level0, _in("companion_summon_time_increase_pct"))
+stf_b = stun_info["stunfracB"]
+stf_n = stun_info["stunfracN"]
+_stun_vec = None
+if status_on:
+    _stun_vec = [min(1.0, a + b) for a, b in zip(stun_info["stun_vector"](stl.NB_MAX), stl.pl_stun_vector([dict(e, t0=0.0) for e in PST], fight_duration, stl.NB_MAX))]
+
+# ---- Cast rate (subtracted from Hook Bomber) — action-costing skills and buffs ----
+OCTOPUNCH_COOLDOWN = (16 * 0.7) if level >= 134 else 16
+SKILL_CAST_ROWS = [("CORKSCREW_BLOW", CORKSCREW_COOLDOWN), ("OCTOPUNCH", OCTOPUNCH_COOLDOWN), ("NAUTILUS_STRIKE", 33)]
+BUFF_CAST_ROWS = [("NIMBLE_FEET", 60), ("CROSSBONES_FD", 28), ("TIME_LEAP_FD", 65), ("SPEED_INFUSION", 35)]
+
+
+def cast_rate_with(counts):
+    """Skill + buff cast rate; `counts` maps row key -> engine cast count (the engine's schedule), other rows use the averaged formulas."""
+    if fixed_duration_active:
+        tot = 0.0
+        for k, cd in SKILL_CAST_ROWS:
+            if unlocked(k):
+                tot += counts[k] if k in counts else non_buff_casts(eff_cooldown(cd, True))
+        for k, cd in BUFF_CAST_ROWS:
+            if unlocked(k):
+                tot += counts[k] if k in counts else exact_casts(eff_cooldown(cd, True))
+        return tot / fight_duration
+    return sum(1 / eff_cooldown(cd, True) for k, cd in SKILL_CAST_ROWS + BUFF_CAST_ROWS if unlocked(k))
+
+
+# The AVERAGED model's cast rate / Hook Bomber rate (pre-engine cast counts = Calc!Z): the Assault Mode interval and uptime read this one (no dependence on the engine's casts).
+cast_rate_avg = cast_rate_with({})
+hook_bomber_per_second_avg = max(0, actions_per_second - cast_rate_avg)
+
+# ---- Assault Mode economy: activations every T = SSB cooldown + half a basic-attack period ----
+ssb_cooldown = 7 - (2 if level >= 78 else 0) - (2 if level >= 118 else 0)
+serpent_T = eff_cooldown(ssb_cooldown, True) + (0.5 / hook_bomber_per_second_avg if hook_bomber_per_second_avg > 0 else 0.0)
 
 
 def assault_duration():
     return 10 + (5 if level >= 94 else 0)
 
 
-# ---- Cast rate (subtracted from Hook Bomber) — action-costing skills only ----
-OCTOPUNCH_COOLDOWN = (16 * 0.7) if level >= 134 else 16
-COST_ACTION_ROWS = [
-    ("CORKSCREW_BLOW", 21, True, 1),
-    ("OCTOPUNCH", OCTOPUNCH_COOLDOWN, True, 1),
-    ("NAUTILUS_STRIKE", 33, True, 1),
-]
-if fixed_duration_active:
-    cast_rate = sum(non_buff_casts(eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k)) / fight_duration
-    cast_rate += (exact_casts(eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0) / fight_duration
-    cast_rate += (exact_casts(eff_cooldown(28, True)) if unlocked("CROSSBONES_FD") else 0) / fight_duration
-    cast_rate += (exact_casts(eff_cooldown(65, True)) if unlocked("TIME_LEAP_FD") else 0) / fight_duration
-    cast_rate += (exact_casts(eff_cooldown(35, True)) if unlocked("SPEED_INFUSION") else 0) / fight_duration
-else:
-    cast_rate = sum((1 / eff_cooldown(cd, ca)) * aps for k, cd, ca, aps in COST_ACTION_ROWS if ca and unlocked(k))
-    cast_rate += (1 / eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0
-    cast_rate += (1 / eff_cooldown(28, True)) if unlocked("CROSSBONES_FD") else 0
-    cast_rate += (1 / eff_cooldown(65, True)) if unlocked("TIME_LEAP_FD") else 0
-    cast_rate += (1 / eff_cooldown(35, True)) if unlocked("SPEED_INFUSION") else 0
-hook_bomber_per_second = max(0, actions_per_second - cast_rate)
-
-# ---- Assault Mode economy: activations every T = SSB cooldown + half a basic-attack period ----
-ssb_cooldown = 7 - (2 if level >= 78 else 0) - (2 if level >= 118 else 0)
-serpent_T = eff_cooldown(ssb_cooldown, True) + (0.5 / hook_bomber_per_second if hook_bomber_per_second > 0 else 0.0)
 activations_to_assault = 3 if level >= 104 else 5
 uptime = (
     assault_duration() / (assault_duration() + activations_to_assault * serpent_T)
     if unlocked("SERPENT_SCALE_FD") else 0.0
 )
 
-# ---- Global Final Damage bucket: Serpent Scale (Assault-Mode-gated) + Crossbones + Time Leap +
-#      Speed Infusion (live AS-linked formula) ----
+# ---- Global Final Damage bucket: Serpent Scale (Assault-Mode-gated) + Crossbones + Time Leap + Speed Infusion (live AS-linked formula) ----
 serpent_scale_pct = coeff_pct(250, 21, True, 3) if unlocked("SERPENT_SCALE_FD") else 0.0
 # +25% FD while in Assault Mode (uptime u) + average 2 held scales x 2% = 4% while rebuilding (1-u)
 serpent_scale_avg = (serpent_scale_pct * uptime + 4 * (1 - uptime)) if unlocked("SERPENT_SCALE_FD") else 0.0
-crossbones_pct = coeff_pct(100, 21, True, 4) * duty_cycle_uptime(28, 12) if unlocked("CROSSBONES_FD") else 0.0
-time_leap_pct = (
-    (coeff_pct(150, 21, True, 4) + level_gated_sum({138: 10})) * duty_cycle_uptime(65, 40)
-    if unlocked("TIME_LEAP_FD") else 0.0
-)
+crossbones_full = coeff_pct(100, 21, True, 4) if unlocked("CROSSBONES_FD") else 0.0
+time_leap_full = (coeff_pct(150, 21, True, 4) + level_gated_sum({138: 10})) if unlocked("TIME_LEAP_FD") else 0.0
 # Speed Infusion FD = 20% of Attack Speed WHILE the buff is up (APS incl. its own +AS), over its uptime.
-speed_infusion_avg = (
-    20 * (_aps_with_extra_as(_nimble_feet_as_avg() + speed_infusion_pct) - 1) * duty_cycle_uptime(35, 15)
-    if unlocked("SPEED_INFUSION") else 0.0
-)
-final_damage_extra = serpent_scale_avg + crossbones_pct + time_leap_pct + speed_infusion_avg
+speed_infusion_full = 20 * (_aps_with_extra_as(_nimble_feet_as_avg() + speed_infusion_pct) - 1) if unlocked("SPEED_INFUSION") else 0.0
+speed_infusion_avg = speed_infusion_full * duty_cycle_uptime(35, 15) if unlocked("SPEED_INFUSION") else 0.0
+final_damage_rest = serpent_scale_avg + speed_infusion_avg                     # the Final Damage the engine does not time
+crossbones_pct = crossbones_full * duty_cycle_uptime(28, 12) if unlocked("CROSSBONES_FD") else 0.0
+time_leap_pct = time_leap_full * duty_cycle_uptime(65, 40) if unlocked("TIME_LEAP_FD") else 0.0
+final_damage_extra = final_damage_rest + crossbones_pct + time_leap_pct        # averaged model (engine off)
 
 # ---- Attack% bucket: Roll of the Dice's dice component only (real 5s/7s duty cycle) ----
 roll_of_dice_pct = coeff_pct(25, 22, True, 3) * 5 / 7 if unlocked("ROLL_OF_THE_DICE_DICE") else 0.0
@@ -460,6 +500,43 @@ crit_damage_bonus = 0.0
 ssr_weaken_pct = coeff_pct(150, 21, True, 4) if unlocked("SSR_WEAKEN") else 0.0
 monster_dmg_bonus = ssr_weaken_pct * min(1.0, 5 * (1 + buff_duration_increase_pct / 100) / eff_cooldown(OCTOPUNCH_COOLDOWN, True))
 
+# ---- Engine pass 1: the buff schedule (independent of the skill weights) ----
+BUFF_SPEC = {   # engine id -> (row key, base cooldown, base duration)
+    "CB": ("CROSSBONES_FD", 28, 12), "TL": ("TIME_LEAP_FD", 65, 40),
+}
+ENGINE_N = {}
+E_ENGINE = None
+E_FS = {}
+PHI_ROWS = {}
+PHI_UNIF = 1.0
+_eng_base = dict(T=fight_duration, S=status_effect_damage, ko=KO_WINDOWS.get(content_type, []), hex_v=0.0, hex_period=20, hex_max=3,
+                 hex_avg=0.0, charm_v=0.0, c_slot=0.0, stun=_stun_vec, groups=[])
+
+
+def _engine_buff(bid, F):
+    key, cd0, dur0 = BUFF_SPEC[bid]
+    cd, dur = eff_cooldown(cd0, True), eff_duration(dur0)
+    return dict(id=bid, kind="ramp", F=F, dur=min(dur, cd), cd=cd, on=unlocked(key), p0=1, p1=1, ramp_t=1, dur0=1)
+
+
+if status_on:
+    fd_scale = 100 / (100 + final_damage + final_damage_rest)
+    _buffs = [_engine_buff("CB", crossbones_full * fd_scale), _engine_buff("TL", time_leap_full * fd_scale)]
+    _eng_host = dict(_eng_base, A0=roll_of_dice_pct, buffs=_buffs)
+    _e1 = stl.solve(_eng_host)
+    attack_bucket_mult = _e1["Bbuff_mean"]
+    final_damage_extra = final_damage_rest
+    for _bid, (_key, _cd0, _dur0) in BUFF_SPEC.items():
+        ENGINE_N[_key] = _e1["buffs"][_bid]["n"]
+
+
+def _avg_at(key, full, cd0, dur0):
+    if not unlocked(key):
+        return 0.0
+    if key in ENGINE_N:
+        return full * exact_uptime_at(ENGINE_N[key], eff_cooldown(cd0, True), eff_duration(dur0))
+    return full * duty_cycle_uptime(cd0, dur0)
+
 
 def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0, extra_fd_pct=0.0):
     base_damage = attack * (coeff_pct_val / 100)
@@ -470,7 +547,7 @@ def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0, extra_fd_pct=0.0):
     final_mult = (1 + (final_damage + final_damage_extra) / 100) * maple_mult
     source_pct = basic_attack_damage if is_basic else skill_damage
     # Boss/Normal Monster Damage% is deliberately NOT applied here — it's blended per-branch
-    # (its own multiplier * its own target count) in boss_normal_multiplier, applied by the
+    # (its own multiplier * its own target count) in blend_branches, applied by the
     # caller, rather than summed into base_hit before a single shared multiplication.
     base_hit = (
         base_damage * (1 + stat_damage / 100) * (1 + damage / 100)
@@ -485,11 +562,10 @@ def hit_damage(coeff_pct_val, is_basic, maple_ratio=0.0, extra_fd_pct=0.0):
     return non_crit_avg * (1 - cr) + crit_avg * cr
 
 
-# ---- Hook Bomber (basic attack) ----
+# ---- Hook Bomber (basic attack) hit (needed by the engine weights) ----
 hook_bomber_hit = hit_damage(hook_bomber_pct, True)
-hook_bomber_dps = HOOK_BOMBER_HITS * hook_bomber_hit * hook_bomber_per_second * boss_normal_multiplier(hook_bomber_targets, hook_bomber_mastery_boss_damage, 0) if unlocked("HOOK_BOMBER") else 0.0
 
-# ---- Sea Serpent Burst / Serpent Assault: one activation every T seconds, split (1-u)/u ----
+# ---- Sea Serpent Burst / Serpent Assault pieces ----
 gss1 = level >= 72
 sea_serpent_burst_pct = (
     coeff_pct(4300 if gss1 else 1300, 12, True, 3 if gss1 else 2) * (1 + level_gated_sum({39: 50}) / 100)
@@ -499,24 +575,14 @@ gss2_fd_pct = coeff_pct(1000, 22, True, 4) if unlocked("GSS_II_FD") else 0.0
 sea_serpent_burst_hit = hit_damage(sea_serpent_burst_pct, False, extra_fd_pct=gss2_fd_pct)
 ssb_hits = 2 + (1 if level >= 118 else 0)
 ssb_targets = 5 + (2 if gss1 else 0) + (2 if level >= 110 else 0)
-sea_serpent_burst_dps = (
-    ssb_hits * sea_serpent_burst_hit * ((1 - uptime) if unlocked("SERPENT_ASSAULT") else 1.0) / serpent_T
-    * boss_normal_multiplier(ssb_targets, 0, 0)
-    if unlocked("SEA_SERPENT_BURST") else 0.0
-)
-
 serpent_assault_pct = (coeff_pct(4800, 12, True, 3) * (1 + level_gated_sum({82: 50}) / 100)) if unlocked("SERPENT_ASSAULT") else 0.0
 serpent_assault_hit = hit_damage(serpent_assault_pct, False, maple_ratio=MAPLE_HERO_RATIOS.get("SERPENT_ASSAULT", 0))
-serpent_assault_dps = (
-    3 * serpent_assault_hit * uptime / serpent_T * boss_normal_multiplier(12, 0, 0)
-    if unlocked("SERPENT_ASSAULT") else 0.0
-)
 
 # ---- Other damage skills ----
 DAMAGE_SKILLS = {
-    "CORKSCREW_BLOW": dict(job_step=3, cooldown=21, hits=2, base=3400, fidx=12, scales=True,
+    "CORKSCREW_BLOW": dict(job_step=3, cooldown=CORKSCREW_COOLDOWN, hits=2, base=3400, fidx=12, scales=True,
                             mastery=level_gated_sum({73: 80}), mastery_boss=0, mastery_normal=0,
-                            costs_action=True, targets=7),
+                            costs_action=True, targets=7, maple_ratio=MAPLE_HERO_RATIOS.get("CORKSCREW_BLOW", 0)),
     "OCTOPUNCH": dict(job_step=4, cooldown=OCTOPUNCH_COOLDOWN,
                        hits=(5 if monster_type in ("boss", "pvp") else 3),
                        base=9000, fidx=12, scales=True,
@@ -535,21 +601,92 @@ DAMAGE_SKILLS = {
 }
 NORMAL_MONSTER_TARGETS = {k: v["targets"] for k, v in DAMAGE_SKILLS.items()}
 
+
+def skill_hit(key, s):
+    """Expected damage of one hit of a damage skill (before the boss/normal branch multipliers)."""
+    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) * (1 + s.get("mastery", 0) / 100) + s.get("fold", 0)  # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03); fold-ins stay additive
+    return hit_damage(pct, False, maple_ratio=s.get("maple_ratio", MAPLE_HERO_RATIOS.get(key, 0)))
+
+
+# ---- Status/KO engine pass 2: the damage skills' casts (weight of one cast = its boss damage before any timing factor) ----
+if status_on:
+    def _percast(key):
+        if not unlocked(key):
+            return 0.0
+        sk = DAMAGE_SKILLS[key]
+        hits = sk["hits"] * (ticks(capped_window(sk["window"]), sk["icd"]) if sk.get("icd") else 1)
+        return sk.get("proc_chance", 1.0) * hits * skill_hit(key, sk) * branch_multipliers(sk["targets"], sk.get("mastery_boss", 0), sk.get("mastery_normal", 0))[0]
+    _c_slot = HOOK_BOMBER_HITS * hook_bomber_hit * branch_multipliers(hook_bomber_targets, hook_bomber_mastery_boss_damage, 0)[0]
+    _groups = []
+    for _gid, _cast, _ents in STATUS_GROUPS:
+        _entries = []
+        for _row, _typ, _win, _gate, _wk in _ents:
+            _w = _percast(_wk)
+            if _gate and not unlocked(_gate):
+                _w = 0.0
+            _entries.append(dict(row=_row, typ=_typ, w=_w, L=(capped_window(DAMAGE_SKILLS[_win]["window"]) if _win else 1),
+                                 on=(1 if (not _gate or unlocked(_gate)) else 0)))
+        _groups.append(dict(id=_gid, cd=eff_cooldown(DAMAGE_SKILLS[_cast]["cooldown"], True),
+                            on=unlocked(_cast), slot=True, entries=_entries, fixed=_cast in {e["key"] for e in PLAYER_STUN}, t0=0.0))
+    E_ENGINE = stl.solve(dict(_eng_host, groups=_groups, c_slot=_c_slot))
+    for _row, _pfx in STATUS_CAST_PREFIX.items():
+        if _pfx.startswith("grp."):
+            ENGINE_N[_row] = E_ENGINE["groups"][_pfx[4:]]["n"]
+    PHI_ROWS = E_ENGINE["rows"]
+    PHI_UNIF = E_ENGINE["phi_unif"]
+    E_FS = E_ENGINE["fs"]
+    print(f"Status/KO engine ON: casts {{ {', '.join(f'{k}: {v}' for k, v in ENGINE_N.items())} }}, phi_unif {PHI_UNIF:.4f}")
+
+
+def timing_factors(key):
+    """(boss-branch, normal-branch) timing factor of a damage row: the engine's phi (rows it casts), phi_unif (uniformly spread rows)
+    or, with the engine off, the uniform 1 + Status Effect Damage x stunned share.  Normal branch: always the uniform stun factor."""
+    fn = 1 + status_effect_damage / 100 * stf_n
+    if status_on:
+        if key in STATUS_PHI_ROWS:
+            return PHI_ROWS.get(key, 1.0), fn
+        if key in STATUS_UNIFORM_ROWS:
+            return PHI_UNIF, fn
+        return 1.0, fn
+    return 1 + status_effect_damage / 100 * stf_b, fn
+
+
+# ---- Cast rate with the engine's cast counts ----
+cast_rate = cast_rate_with({k: v for k, v in ENGINE_N.items() if k in dict(SKILL_CAST_ROWS + BUFF_CAST_ROWS)})
+hook_bomber_per_second = max(0, actions_per_second - cast_rate)
+
+# ---- Hook Bomber (basic attack) DPS ----
+hook_bomber_dps = (blend_branches("HOOK_BOMBER", HOOK_BOMBER_HITS * hook_bomber_hit * hook_bomber_per_second, hook_bomber_targets, hook_bomber_mastery_boss_damage, 0)
+                   if unlocked("HOOK_BOMBER") else 0.0)
+
+# ---- Sea Serpent Burst / Serpent Assault: one activation every T seconds, split (1-u)/u ----
+sea_serpent_burst_dps = (
+    blend_branches("SEA_SERPENT_BURST", ssb_hits * sea_serpent_burst_hit * ((1 - uptime) if unlocked("SERPENT_ASSAULT") else 1.0) / serpent_T, ssb_targets)
+    if unlocked("SEA_SERPENT_BURST") else 0.0
+)
+serpent_assault_dps = (
+    blend_branches("SERPENT_ASSAULT", 3 * serpent_assault_hit * uptime / serpent_T, 12)
+    if unlocked("SERPENT_ASSAULT") else 0.0
+)
+
 skill_dps = {}
 for key, s in DAMAGE_SKILLS.items():
     if not unlocked(key):
         skill_dps[key] = 0.0
         continue
-    pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"]) * (1 + s.get("mastery", 0) / 100) + s.get("fold", 0)  # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03); fold-ins stay additive
-    hd = hit_damage(pct, False, maple_ratio=MAPLE_HERO_RATIOS.get(key, 0))
+    hd = skill_hit(key, s)
     proc_prob = s.get("proc_chance", 1.0)
     eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
-    if fixed_duration_active:
+    if status_on and key in ENGINE_N:
+        # engine casts: a DoT row's hits = hits per full window x effective casts (last window truncated at the fight end)
+        _per_cast = s["hits"] * (ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
+        rate = _per_cast * (E_FS[key] if key in STATUS_FS_KEYS else ENGINE_N[key]) / fight_duration
+    elif fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
         hits = s["hits"] * (ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
-    skill_dps[key] = proc_prob * rate * hd * boss_normal_multiplier(s["targets"], s.get("mastery_boss", 0), s.get("mastery_normal", 0))
+    skill_dps[key] = blend_branches(key, proc_prob * rate * hd, s["targets"], s.get("mastery_boss", 0), s.get("mastery_normal", 0))
 
 # ---- Nautilus Strike - Final Attack: any attack, 30% chance per attack per enemy hit, 1s ICD => X/(1+ICD*X),
 #      X = sum over Hook Bomber + the action-costing damage skills of rate*(1-(1-c)^N) (N=1 on boss/PvP) ----
@@ -558,14 +695,63 @@ if unlocked("NAUTILUS_FINAL_ATTACK"):
     for _k in ("CORKSCREW_BLOW", "OCTOPUNCH", "NAUTILUS_STRIKE"):
         if unlocked(_k):
             _cd = eff_cooldown(DAMAGE_SKILLS[_k]["cooldown"], DAMAGE_SKILLS[_k]["costs_action"])
-            _sources.append((((non_buff_casts(_cd) / fight_duration) if fixed_duration_active else (1 / _cd)),
-                             DAMAGE_SKILLS[_k]["targets"]))
-    skill_dps["NAUTILUS_FINAL_ATTACK"] = proc_branch_dps(
-        0.30, 1.0, _sources, hit_damage(coeff_pct(8500, 21, True, 4), False), 1)
+            _casts = ENGINE_N[_k] if (status_on and _k in ENGINE_N) else non_buff_casts(_cd)
+            _sources.append((((_casts / fight_duration) if fixed_duration_active else (1 / _cd)), DAMAGE_SKILLS[_k]["targets"]))
+    _hit = hit_damage(coeff_pct(8500, 21, True, 4), False)
+    _chance, _icd = 0.30, 1.0
+    _x_boss = _chance * sum(r for r, _ in _sources)
+    _x_norm = sum(r * roll_prob(_chance, t) for r, t in _sources)
+    _b, _n = branch_multipliers(1)
+    _fb, _fn = timing_factors("NAUTILUS_FINAL_ATTACK")
+    _bp, _np = _x_boss / (1 + _icd * _x_boss) * _hit * _b * _fb, _x_norm / (1 + _icd * _x_norm) * _hit * _n * _fn
+    _BRANCH_PAIRS["NAUTILUS_FINAL_ATTACK"] = (_bp, _np)
+    skill_dps["NAUTILUS_FINAL_ATTACK"] = (1 - normal_weight) * _bp + normal_weight * _np
 else:
     skill_dps["NAUTILUS_FINAL_ATTACK"] = 0.0
 
 total_dps = hook_bomber_dps + sea_serpent_burst_dps + serpent_assault_dps + sum(skill_dps.values())
+
+# ---------------------------------------------------------------------------------------------------------------
+# Companion: plain-Python port (src/companion_python_model.py) of src/companion_model.py's rules, fed with this script's own numbers for the
+# player's pipeline.  The verify run clears the artifact slots, so the artifact snapshot terms (Hexagon, Charm, Chalice) are zero here; they are
+# covered by the dedicated hand checks instead.
+# ---------------------------------------------------------------------------------------------------------------
+companion_choice = _in("companion_choice")
+c_level = c_level0
+companion_dps = 0.0
+companion_result = None
+if (companion_choice != "None" and c_level >= 1) or _pl_on:
+    pb_total = sum(v[0] for v in _BRANCH_PAIRS.values())
+    pn_total = sum(v[1] for v in _BRANCH_PAIRS.values())
+    pu_total = sum(_BRANCH_PAIRS[k][0] for k in STATUS_UNIFORM_ROWS if k in _BRANCH_PAIRS)
+    basic_b, basic_n = _BRANCH_PAIRS.get("HOOK_BOMBER", (0.0, 0.0))
+    _fdpart = 1 + (final_damage + serpent_scale_avg + crossbones_full + time_leap_full + speed_infusion_full) / 100
+    _boss_pct = boss_damage + monster_dmg_bonus
+    _norm_pct = normal_damage + monster_dmg_bonus
+    comp_host = dict(
+        mt=monster_type, T=fight_duration, content=content_type, pvp_len=PVP_FIGHT_DURATION, cap=max_enemies_hit, w=normal_weight,
+        unit=hit_damage(100.0, True) / 100,
+        bad=basic_attack_damage, sd=skill_damage, aps=actions_per_second,
+        avgbuff=attack_bucket_mult * (1 + (final_damage + final_damage_extra) / 100), attack_bucket_avg=roll_of_dice_pct,
+        charm_val=0.0, agg_damage_avg=0.0, hex_avg=0.0, hex_snap=lambda st: 0.0,
+        avgbuff_snap=lambda charm, extra: (1 + (roll_of_dice_pct + charm + extra) / 100) * _fdpart,
+        agg_fd_boss_only=0.0, agg_fd_norm_only=0.0, chalice_avg_boss=0.0, chalice_avg_norm=0.0, chalice_full=0.0, horn_avg=0.0, horn_full=0.0,
+        boss_pct=_boss_pct, norm_pct=_norm_pct, extra_boss=1.0, extra_norm=1.0,
+        player_boss=pb_total, player_norm=pn_total,
+        player_uniform_boss=pu_total, player_basic_boss=basic_b, player_basic_norm=basic_n,
+        cr_total=crit_rate + crit_rate_bonus, cd_total=crit_damage + crit_damage_bonus, min_dmg=min_damage, max_dmg=max_damage, defense=monster_defense,
+        def_pen=def_pen, taken_bucket=0.0 if monster_type == "pvp" else ((1 - normal_weight) * _boss_pct + normal_weight * _norm_pct),
+        pst=PST,
+        st=dict(on=status_on, S=status_effect_damage,
+                mult=(list(E_ENGINE["mult"]) + [1.0] * (stl.NB_MAX - E_ENGINE["nb"])) if status_on else None,
+                act=(list(E_ENGINE["act"]) + [0.0] * (stl.NB_MAX - E_ENGINE["nb"])) if status_on else None),
+    )
+    companion_result = cpm.run(comp_host, companion_choice if (companion_choice != "None" and c_level >= 1) else "None", c_level, _in("companion_summon_time_increase_pct"))
+    companion_dps = companion_result["comp_blend_dps"]
+    print(f"Companion ({companion_choice} Lv{c_level}) DPS = {companion_dps:.4f}  (best candidate {companion_result['best']}, s={companion_result['s']}, "
+          f"W={companion_result['W']:.2f}; damage {(1 - normal_weight) * companion_result['dmg_b'] + normal_weight * companion_result['dmg_n']:.4f}, "
+          f"uplift {(1 - normal_weight) * companion_result['upl_b'] + normal_weight * companion_result['upl_n']:.4f})")
+total_dps += companion_dps
 
 print(f"Attack%% bucket multiplier = {attack_bucket_mult:.6f}")
 print(f"Global Final Damage Bonus % = {final_damage_extra:.6f}")
@@ -583,25 +769,8 @@ print(f"TOTAL DPS = {total_dps:.4f}")
 # ---------------------------------------------------------------------------
 # Cross-check against the actual live workbook
 # ---------------------------------------------------------------------------
-import formulas  # noqa: E402
-
 print()
-print(f"Loading live workbook: {XLSX_PATH}")
-xl_model = formulas.ExcelModel().loads(str(XLSX_PATH)).finish()
-solution = xl_model.calculate()
-
-
-def scalar(value):
-    return float(np.asarray(value).reshape(-1)[0])
-
-
-def read_cell(sheet, cell):
-    suffix = f"{sheet.upper()}'!{cell.upper()}"
-    for k, v in solution.items():
-        if k.upper().endswith(suffix):
-            return scalar(v.value)
-    raise KeyError(f"cell not found in workbook: {sheet}!{cell}")
-
+solution = _get_solution()
 
 py_skill_dps = dict(skill_dps)
 py_skill_dps["HOOK_BOMBER"] = hook_bomber_dps
@@ -627,6 +796,24 @@ total_ok = np.isclose(total_dps, xl_total, rtol=1e-6, atol=1e-3)
 print(f"{'TOTAL DPS':32s} {total_dps:16.4f} {xl_total:16.4f}  {'OK' if total_ok else 'MISMATCH'}")
 if not total_ok:
     mismatches.append(("TOTAL DPS", total_dps, xl_total))
+
+if status_on:
+    # the engine strip itself: cast counts and timing factors against the Python reference
+    for _row, _pfx in STATUS_CAST_PREFIX.items():
+        if _row not in ENGINE_N:
+            continue
+        _addr = STATUS_MAIN_LAYOUT.s(_pfx + ".n").split("!")[1].replace("$", "")
+        _xl, _py = read_cell("TIMELINE", _addr), ENGINE_N[_row]
+        _ok = np.isclose(_xl, _py)
+        print(f"  engine casts {_row:22s} python {_py:4.0f} workbook {_xl:4.0f}  {'OK' if _ok else 'MISMATCH'}")
+        if not _ok:
+            mismatches.append(("engine casts " + _row, _py, _xl))
+    for _row, _py in PHI_ROWS.items():
+        _addr = STATUS_MAIN_LAYOUT.s("phi." + _row).split("!")[1].replace("$", "")
+        _xl = read_cell("TIMELINE", _addr)
+        if not np.isclose(_xl, _py, rtol=1e-6):
+            print(f"  engine phi {_row:22s} python {_py:.6f} workbook {_xl:.6f}  MISMATCH")
+            mismatches.append(("engine phi " + _row, _py, _xl))
 
 if mismatches:
     print(f"\n{len(mismatches)} mismatch(es) between the independent model and the live workbook.")

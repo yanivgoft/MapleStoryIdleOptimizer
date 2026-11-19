@@ -26,10 +26,13 @@ Skill Mastery model (per-row, in the Skills sheet — no separate Inputs fields)
 """
 import ast
 import json
+import os
 import re
 from pathlib import Path
 
 import openpyxl
+import companion_model as cm   # shared companion model (src/companion_model.py)
+import status_timeline as stl  # shared status-effect / KO timeline engine (src/status_timeline.py)
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
@@ -307,14 +310,15 @@ IN = {
     "def_pen": 19,
     "boss_damage": 20,
     "normal_damage": 21,
-    "min_damage": 22,
-    "max_damage": 23,
-    "final_damage": 24,
-    "skill_lvl_1st": 25,
-    "skill_lvl_2nd": 26,
-    "skill_lvl_3rd": 27,
-    "skill_lvl_4th": 28,
-    "skill_lvl_all": 29,
+    "status_effect_damage": 22,
+    "min_damage": 23,
+    "max_damage": 24,
+    "final_damage": 25,
+    "skill_lvl_1st": 26,
+    "skill_lvl_2nd": 27,
+    "skill_lvl_3rd": 28,
+    "skill_lvl_4th": 29,
+    "skill_lvl_all": 30,
     "skill_cooldown_decrease": 32,
     "basic_attack_target_increase": 33,
     "buff_duration_increase_pct": 34,
@@ -330,6 +334,8 @@ IN = {
     "breakthrough_normal_weight_pct": 44,
     # PvP fight length (seconds), PvP content only — rows 54-55 sit below every class's artifact-slot rows.
     "pvp_fight_length": 55,
+    # Companion (rows 51-53 sit between the artifact-slot rows 46-50 and the PvP section row 54)
+    "companion_choice": 51,
 }
 INPUT_PVP_SECTION_ROW = 54
 
@@ -522,6 +528,17 @@ INPUT_ARTIFACT_SLOT_ROWS = [47, 48, 49, 50]
 # hold each artifact's resolved Equipped?/Star Level (computed from the 4 slot pickers + column
 # B's own Star Level cell) — IB() resolves every "{art_key}_equipped"/"{art_key}_star" key straight
 # to these cells, so the Inputs sheet no longer needs to show them at all (removed per the user).
+# Companion levels live on the CompanionsInput sheet (one row per companion, "Not unlocked" or 1-18); IB() resolves them.
+COMPANIONS_INPUT_FIRST_ROW = 5
+COMPANION_INPUT_ROW = {name: COMPANIONS_INPUT_FIRST_ROW + i for i, name in enumerate(cm.COMPANIONS)}
+COMPANIONS_INPUT_LAST_ROW = COMPANIONS_INPUT_FIRST_ROW + len(cm.COMPANIONS) - 1
+
+
+def companion_slug(name):
+    return name.lower().replace(" ", "_")
+
+
+COMPANION_INPUT_CELL = {f"companion_level_{companion_slug(n)}": f"CompanionsInput!$C${r}" for n, r in COMPANION_INPUT_ROW.items()}
 ARTIFACT_INPUT_CELL = {}
 for _art_key in ARTIFACT_LABELS:
     _row = ARTIFACTS_INPUT_ROW[_art_key]
@@ -816,17 +833,18 @@ def artifact_cursed_doll_reference_expr(eq_expr, star_expr):
     return f'IF({eq_expr},{star_lookup_expr(star_expr, "cursed_doll_final_damage")},0)'
 
 
-def artifact_horn_flute_expr(eq_expr, monster_type_expr, content_type_expr, fight_duration_expr, star_expr):
-    """Real, live Final Damage source — only the character's own portion (the Companion's own
-    damage isn't modeled at all, per the user). Companion summoned at t=7s, active 30s (window
-    [7,37], per the user); doubled in Chapter Boss. 0 in PvP/Chapter Hunt (fight_duration=0) — no
-    discrete battle-start event exists in either, same convention as Candle/Rainbow Snail Shell."""
-    uptime = f'MIN(30,MAX(0,{fight_duration_expr}-7))/{fight_duration_expr}'
-    mult = f'IF({content_type_expr}="Chapter Boss",2,1)'
-    return (
-        f'IF(AND({eq_expr},{monster_type_expr}<>"pvp",{fight_duration_expr}>0),'
-        f'{star_lookup_expr(star_expr, "horn_flute_final_damage")}*({uptime})*{mult},0)'
-    )
+def artifact_horn_flute_full_expr(eq_expr, content_type_expr, star_expr):
+    """Horn Flute's Final Damage while its companion is out (doubled in Chapter Boss)."""
+    return (f'IF({eq_expr},{star_lookup_expr(star_expr, "horn_flute_final_damage")}'
+            f'*IF({content_type_expr}="Chapter Boss",2,1),0)')
+
+
+def artifact_horn_flute_expr(eq_expr, content_type_expr, star_expr, uptime_expr):
+    """Real, live Final Damage source - the character's own portion; the companion's own portion is the Companion sheet's `rhoH` snapshot
+    ratio.  The flute is on while a companion is summoned, so its fight-average value is the full value x the share of the fight the
+    companion is out (`Companion!horn_uptime`: summon time and duration from the companion model; Chapter Hunt = D/90; PvP included).
+    With no companion chosen the same timing is assumed (a companion is imagined to be summoned), so the artifact keeps a value."""
+    return f'{artifact_horn_flute_full_expr(eq_expr, content_type_expr, star_expr)}*({uptime_expr})'
 
 
 def artifact_bottle_of_emotion_attack_pct_expr(eq_expr, star_expr):
@@ -885,6 +903,11 @@ def artifact_star_rock_reference_expr(eq_expr, star_expr):
     return f'IF({eq_expr},{star_lookup_expr(star_expr, "star_rock_boss_damage")},0)'
 
 
+# Chalice (Chapter Hunt steady state): proc chance per kill and assumed kill rate (user, 2026-11-07)
+CHALICE_PROC_CHANCE = 0.02
+CHALICE_KILLS_PER_MINUTE = 100
+
+
 def artifact_chalice_exprs(eq_expr, monster_type_expr, content_type_expr, fight_duration_expr, star_expr):
     """Returns (normal_branch_final_damage_bonus, boss_branch_final_damage_bonus). Real, live,
     active during the LAST 30 SECONDS of the fight (simplified per the user from the real 2%-
@@ -899,6 +922,13 @@ def artifact_chalice_exprs(eq_expr, monster_type_expr, content_type_expr, fight_
         f'IF(OR({fight_duration_expr}=0,{normal_phase_end}=0),0,'
         f'MAX(0,{normal_phase_end}-{activation_start})/{normal_phase_end})'
     )
+    # Steady-state pure-normal content (Chapter Hunt: no fixed fight length): every kill has a CHALICE_PROC_CHANCE
+    # chance to (re)start the 30s buff, at CHALICE_KILLS_PER_MINUTE kills/min (user, 2026-11-07). The timer resets on
+    # a new proc, so the buff is on iff at least one of the last (kills/min * 30/60) kills procced:
+    # uptime = 1-(1-p)^(kills in 30s) (=63.6% for 100/min and 2%) - the expected on-time including the variance of
+    # the proc, instead of the 'on for exactly 1 of every 30s' point estimate.
+    chalice_steady_uptime = f'(1-(1-{CHALICE_PROC_CHANCE})^({CHALICE_KILLS_PER_MINUTE}*30/60))'
+    normal_uptime = f'IF(AND({monster_type_expr}="normal",{fight_duration_expr}=0),{chalice_steady_uptime},{normal_uptime})'
     boss_window = f'({fight_duration_expr}-{normal_phase_end})'
     boss_uptime = (
         f'IF({boss_window}=0,0,'
@@ -968,6 +998,8 @@ def IB(key):
         return f"Summary!$B${DERIVED_ROW[key]}"
     if key in ARTIFACT_INPUT_CELL:
         return ARTIFACT_INPUT_CELL[key]
+    if key in COMPANION_INPUT_CELL:
+        return COMPANION_INPUT_CELL[key]
     return f"Inputs!$B${IN[key]}"
 
 
@@ -998,6 +1030,8 @@ def build_readme_sheet(wb):
         "cube-reroll expected-value decisions. For the full standalone Potential Cube EV "
         "calculator (exact optimal-stopping math, works from this workbook alone), see "
         "tools/potential_cubes_ev.py in the project repo.",
+        "STATUS_EFFECT_DAMAGE % (Inputs) is extra damage while the enemy is frozen/stunned; World Boss and Enhancement Dungeon also have KO phases (x2). "
+        "The Timeline sheet shows when the optimal player casts buffs and cooldown skills around those windows and what the windows are worth.",
     ]:
         line(r, text); r += 1
     r += 1
@@ -1201,6 +1235,7 @@ def build_inputs_sheet(wb, existing=None):
         ("def_pen", "DEF_PEN %", 0),
         ("boss_damage", "BOSS_DAMAGE %", 0),
         ("normal_damage", "NORMAL_DAMAGE %", 0),
+        ("status_effect_damage", "STATUS_EFFECT_DAMAGE % (extra damage while the enemy is frozen/stunned/KO'd; 0 = no bonus - KO still doubles damage)", 0),
         ("min_damage", "MIN_DAMAGE %", 100),
         ("max_damage", "MAX_DAMAGE %", 100),
         ("final_damage", "FINAL_DAMAGE % (base, excludes Infinity)", 0),
@@ -1276,12 +1311,19 @@ def build_inputs_sheet(wb, existing=None):
         ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target normal-monster base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
-        ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companions not modeled — always 0 DPS impact)", 0),
+        ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companion duration = 30s x (1 + this/100); summon cooldown is always 90s; see Companion sheet)", 0),
         ("boss_normal_weight_choice", "Boss/Normal Emphasis (Breakthrough/Hero Dungeon only)", "A Little More Normal"),
         ("max_enemies_hit", "Max Enemies Actually In Range (normal-monster content only; default 999 = uncapped)", 999),
     ]
     for key, label, default in bonus_rows:
         _write_input_row(key, label, default)
+
+    # Companion — which companion is summoned in each content type (see the Companion sheet and src/companion_model.py).
+    _write_input_row("companion_choice", "Companion (None / Wind Archer) — the companion summoned in this content type (levels: CompanionsInput sheet)", "None")
+    dv_companion_choice = DataValidation(type="list", formula1='"' + ",".join(cm.COMPANION_CHOICES) + '"', allow_blank=False)
+    ws.add_data_validation(dv_companion_choice)
+    for _i in range(len(CONTENT_TYPES)):
+        dv_companion_choice.add(ws.cell(row=IN["companion_choice"], column=3 + _i))
 
     # PvP fight length — every PvP duration-dependent quantity (DoT/summon windows, buff uptimes, the one-cast-per-
     # fight cast rate, the time-based artifacts) reads this through PVP_FIGHT_DURATION. PvP content only.
@@ -1750,9 +1792,9 @@ def build_artifacts_sheet(wb):
 
     # Horn Flute — real, live Final Damage source; only the character's own portion, companion
     # summon-window uptime + Chapter Boss doubling (see artifact_horn_flute_expr, KNOWN_GAPS.md).
-    ws.cell(row=r["horn_flute"], column=1, value="Horn Flute — Final Damage (character's own portion only)")
+    ws.cell(row=r["horn_flute"], column=1, value="Horn Flute — Final Damage (character, fight-average over the companion window)")
     ws.cell(row=r["horn_flute"], column=2, value="=" + artifact_horn_flute_expr(
-        eq["horn_flute"], IB("monster_type"), IB("content_type"), IB("fight_duration"), star["horn_flute"],
+        eq["horn_flute"], IB("content_type"), star["horn_flute"], companion_main_ref("horn_uptime"),
     ))
 
     # Bottle of Emotion — Attack% is real/live (same shared bucket as skills/other artifacts);
@@ -2579,6 +2621,146 @@ def ignite_hits_per_second_expr(monster_type_ref, fight_duration_ref, startup_re
     return f'IF({steady},{IGNITE_MAX_WALLS}/{tick_ref},({ticks})/{total})'
 
 
+# ---------------------------------------------------------------------------
+# Status Effect Damage / KO timeline engine wiring (src/status_timeline.py).  Spec = which rows are buffs / cooldown casts and which
+# damage rows hang off each cast; the engine decides WHEN to cast (see that module's docstring) and hands back timing factors.
+# ---------------------------------------------------------------------------
+TIMELINE_SHEET = "Timeline"
+STATUS_BUFFS = [("MED", "MEDITATION", "atk"), ("MG", "MAGIC_GUARD", "atk"), ("INF", "INFINITY", "ramp")]
+INFINITY_RAMP = dict(p0=15, p1=25, ramp_t=10, dur0=15)     # Infinity: +15% -> +25% Final Damage over 10 s of its 15 s
+# (group id, row key whose Calc!C/Q give availability/cooldown, [(row key, type, window row key or None, unlock-gate row key or None, weight row key)])
+STATUS_GROUPS = [
+    ("BREATH", "POISON_BREATH", [("POISON_BREATH", "burst", None, None, "POISON_BREATH")]),
+    ("MIST", "POISON_MIST_BURST", [
+        ("POISON_MIST_BURST", "burst", None, None, "POISON_MIST_BURST"),
+        ("POISON_MIST_DOT", "dot", "POISON_MIST_DOT", None, "POISON_MIST_DOT"),
+        ("MIST_ERUPTION", "end", "POISON_MIST_DOT", None, "MIST_ERUPTION")]),
+    ("HAZE", "FLAME_HAZE_BURST", [
+        ("FLAME_HAZE_BURST", "burst", None, None, "FLAME_HAZE_BURST"),
+        ("FLAME_HAZE_DOT", "dot", "FLAME_HAZE_DOT", None, "FLAME_HAZE_DOT"),
+        ("FLAME_HAZE_FOG", "dot", "FLAME_HAZE_FOG", "FLAME_HAZE_FOG", "FLAME_HAZE_FOG"),
+        ("MIST_ERUPTION", "end", "FLAME_HAZE_FOG", "FLAME_HAZE_FOG", "MIST_ERUPTION")]),
+    ("TOXIN", "CREEPING_TOXIN", [("CREEPING_TOXIN", "dot", "CREEPING_TOXIN", None, "CREEPING_TOXIN")]),
+    ("METEOR", "METEOR_SHOWER_BURST", [("METEOR_SHOWER_BURST", "burst", None, None, "METEOR_SHOWER_BURST")]),
+    ("IFRIT", "IFRIT", [("IFRIT", "dot", "IFRIT", None, "IFRIT")]),
+]
+STATUS_UNIFORM_ROWS = ["BASIC_ATTACK", "METEOR_PROC", "IGNITE", "ELEMENTAL_DRAIN"]
+STATUS_CAST_PREFIX = {key: f"buff.{bid}" for bid, key, _k in STATUS_BUFFS}
+for _gid, _cast, _ents in STATUS_GROUPS:
+    for _e in _ents:
+        STATUS_CAST_PREFIX.setdefault(_e[0], f"grp.{_gid}")
+    STATUS_CAST_PREFIX[_cast] = f"grp.{_gid}"
+# rows whose hits/s come from the engine's effective cast count (last DoT window / eruption truncated by the fight end)
+STATUS_FS_KEYS = [e[0] for _g, _c, ents in STATUS_GROUPS for e in ents if e[1] in ("dot", "end")]
+STATUS_PHI_ROWS = sorted({e[0] for _g, _c, ents in STATUS_GROUPS for e in ents})
+STATUS_PERCAST_KEYS = sorted({e[4] for _g, _c, ents in STATUS_GROUPS for e in ents})
+# stat sweeps whose block must re-run the engine (they move cast times / buff windows / the Status Effect Damage input / Hexagon stacks)
+STATUS_REBUILD_KEYS = ["skill_cooldown_decrease", "buff_duration_increase_pct", "shamaness_marble_equipped", "status_effect_damage",
+                       "companion_summon_time_increase_pct", "hexagon_necklace_equipped",
+                       # artifacts that change the strip's own Attack% bucket / Charm profile (found by the Hero port: reusing the main strip read Charm's equip gain ~-1.8k vs +78k)
+                       "charm_of_the_undead_equipped", "old_music_box_equipped", "secret_map_equipped", "reindeer_spear_equipped",
+                       "alliance_badge_equipped", "bottle_of_emotion_equipped"]
+# Blocks that run the full 3-candidate companion summon-time search themselves (everything else reuses the main sheet's choice): guide "Gap found by the Buccaneer port", items 1-4
+COMPANION_FULL_SEARCH_KEYS = ("companion_summon_time_increase_pct", "hexagon_necklace_equipped", "horn_flute_equipped", "skill_cooldown_decrease")
+STATUS_KO_FIRST_BIN_NOTE = "World Boss: KO 24-34 s and 59-69 s; Enhancement Dungeon: KO for the last 4.5 s (user, 2026-11-14)"
+
+
+def status_ko_exprs(ct, T):
+    wb_, en = f'{ct}="World Boss"', f'{ct}="Enhancement Dungeon"'
+    return [
+        (f'IF({wb_},24,IF({en},{T}-4.5,0))', f'IF({wb_},34,IF({en},{T},0))'),
+        (f'IF({wb_},59,0)', f'IF({wb_},69,0)'),
+    ]
+
+
+def status_engine_host(ib, cell, win, bdi, a0, charm_v, hex_v, hex_avg, c_slot, hasstun="0", stun=None):
+    """Excel host expressions for the engine.  `cell(letter, key)` = that Calc(-twin) cell; `win(key)` = the row's ActiveWindow expression.
+    Per-cast damage weights are read from column Y of the Calc(-twin) rows (PerCastBossDamage)."""
+    ct, T = ib("content_type"), ib("fight_duration")
+    fda = fixed_duration_active_expr(ib("monster_type"), T)
+    on = f'IF(AND({fda},{ib("normal_weight_frac")}=0,OR({ct}="World Boss",{ct}="Enhancement Dungeon",{hasstun}=1)),1,0)'
+    buffs = []
+    for bid, key, kind in STATUS_BUFFS:
+        b = dict(id=bid, kind=kind, F=cell("F", key), dur=f'({S("BuffDuration(s)", ROW[key])}*(1+{bdi}/100))',
+                 cd=f'IFERROR(1/{cell("Q", key)},1000000)', on=cell("C", key))
+        if kind == "ramp":
+            b.update(INFINITY_RAMP)
+        buffs.append(b)
+    groups = []
+    for gid, cast, ents in STATUS_GROUPS:
+        entries = []
+        for row_key, typ, win_key, gate_key, w_key in ents:
+            w = cell("Y", w_key)
+            if gate_key:
+                w = f'IF({cell("C", gate_key)}=TRUE,{w},0)'
+            entries.append(dict(row=row_key, typ=typ, w=w, L=(win(win_key) if win_key else 1),
+                                on=(f'{cell("C", gate_key)}=TRUE' if gate_key else "TRUE")))
+        groups.append(dict(id=gid, cd=f'IFERROR(1/{cell("Q", cast)},1000000)', on=cell("C", cast), slot=True, entries=entries))
+    return dict(on=on, T=T, S=ib("status_effect_damage"), ko=status_ko_exprs(ct, T), hex_v=hex_v, hex_period=20, hex_max=3,
+                A0=a0, charm_v=charm_v, hex_avg=hex_avg, c_slot=c_slot, stun=stun, buffs=buffs, groups=groups)
+
+
+_STATUS_DUMMY_HOST = status_engine_host(
+    lambda k: "0", lambda letter, key: "0", lambda key: "1", "0", "0", "0", "0", "0", "0",
+)
+STATUS_STRIP_ROW0 = 3
+STATUS_STRIP_HEIGHT = stl.Layout(stl.cells(_STATUS_DUMMY_HOST), 0, 1).height
+STATUS_MAIN_LAYOUT = stl.Layout(stl.cells(_STATUS_DUMMY_HOST), STATUS_STRIP_ROW0, 1, sheet=TIMELINE_SHEET)
+
+
+def phase_state_ratios(ct, T, hex_v, hex_avg, bucket_avg, charm_v, charm_avg):
+    """(boss-phase factor, normal-phase factor) for contents whose normal-monster phase comes first (Chapter Breakthrough: boss at 20 s; Hero Dungeon: 30 s).
+    The averaged model uses fight-average Hexagon Necklace stacks and Charm of the Undead duty; each phase has its own: Hexagon adds a stack every 20 s,
+    Charm is up 5 s of every 10 s from second 10.  factor = (state of that phase)/(fight average), applied to every damage row of that branch.
+    Both are 1 in contents without phases."""
+    tb0 = f'IF({ct}="Breakthrough",20,IF({ct}="Hero Dungeon",30,0))'
+
+    def stacks(a, b):
+        return f'((MAX(0,{b}-MAX({a},20))+MAX(0,{b}-MAX({a},40))+MAX(0,{b}-MAX({a},60)))/({b}-{a}))'
+
+    def charm_on(t):   # seconds of Charm up in [0, t]
+        x = f'MAX(0,{t}-10)'
+        return f'(5*INT({x}/10)+MIN(5,{x}-10*INT({x}/10)))'
+
+    def ratio(a, b):
+        hex_ratio = f'((1+{hex_v}*{stacks(a, b)}/100)/(1+{hex_avg}/100))'
+        duty = f'(({charm_on(b)}-{charm_on(a)})/({b}-{a}))'
+        atk_ratio = f'((1+({bucket_avg}-{charm_avg}+{charm_v}*{duty})/100)/(1+{bucket_avg}/100))'
+        return f'{hex_ratio}*{atk_ratio}'
+    boss = f'IF({tb0}>0,{ratio(tb0, T)},1)'
+    norm = f'IF({tb0}>0,{ratio("0", tb0)},1)'
+    return boss, norm
+
+
+def apply_status_columns(ws, row_of, strip, phi_gate, uni_b="1", uni_n="1"):
+    """Post-pass over the finished Calc (or block) rows: add the timing-factor columns and fold them in.
+    W (23) = timing factor boss branch, X (24) = normal branch (1 for now), R (18) = engine cast counts, S/U x factors.
+    `strip` = layout the strip cells are read from, `phi_gate` = its engine-on cell reference."""
+    ws.cell(row=min(row_of.values()) - 1, column=23, value="TimingFactorBoss")
+    ws.cell(row=min(row_of.values()) - 1, column=24, value="TimingFactorNormal")
+    ws.cell(row=min(row_of.values()) - 1, column=25, value="PerCastBossDamage")
+    for key, row in row_of.items():
+        if key in STATUS_PHI_ROWS:
+            phi = strip.s(f"phi.{key}")
+        elif key in STATUS_UNIFORM_ROWS:
+            phi = strip.s("phi_unif")
+        else:
+            phi = "1"
+        if key in DAMAGE_DEALING_KEYS:
+            ws.cell(row=row, column=23, value=f'=IF({phi_gate}=1,{phi},{uni_b})')
+            ws.cell(row=row, column=24, value=f'={uni_n}')
+        else:
+            ws.cell(row=row, column=23, value=1)
+            ws.cell(row=row, column=24, value=1)
+        for col, fcol in ((19, "W"), (21, "X")):
+            old = ws.cell(row=row, column=col).value
+            if isinstance(old, str) and old.startswith("="):
+                ws.cell(row=row, column=col, value=f"=({old[1:]})*{fcol}{row}")
+        if key in STATUS_CAST_PREFIX and ROW_HAS_COOLDOWN[key]:
+            old = ws.cell(row=row, column=18).value
+            ws.cell(row=row, column=18, value=f'=IF({phi_gate}=1,{strip.s(STATUS_CAST_PREFIX[key] + ".n")},{old[1:] if isinstance(old, str) else old})')
+
+
 def build_calc_sheet(wb):
     ws = wb.create_sheet("Calc")
     for i, name in enumerate(CALC_HEADERS):
@@ -2653,6 +2835,10 @@ def build_calc_sheet(wb):
             fixed_duration_active_main, f"R{r}", S("HitsPerCast", r), S("ICD(s)", r),
             S("ActiveWindow(s)", r), eff_cd_r, available_duration_r, IB("fight_duration"), f"G{r}*Q{r}",
         )
+        # Status/KO timeline engine on: hits per second of a DoT / eruption row = its per-cast hits x the engine's effective cast count
+        # (the last window / eruption truncated by the fight end, at the engine's own cast times) / fight length.
+        if key in STATUS_FS_KEYS:
+            rate_r = (f'IF({STATUS_MAIN_LAYOUT.s("on")}=1,G{r}*{STATUS_MAIN_LAYOUT.s("fs." + key)}/{IB("fight_duration")},{rate_r})')
 
         if key == "BASIC_ATTACK":
             ws.cell(row=r, column=4, value="")  # input level shown on Inputs sheet instead
@@ -2774,6 +2960,15 @@ def build_calc_sheet(wb):
         # normal-monster branch, never boss/PvP (see each's own formula-builder function).
         extra_normal_mult_r = f'(1+{art_ref("AGG_FINAL_DAMAGE_NORMAL_ONLY")}/100)'
 
+        # Per-cast boss damage before any timing factor (engine weights; deliberately free of cast counts so the engine can pick them)
+        if key == "BASIC_ATTACK":
+            ws.cell(row=r, column=25, value="=" + boss_normal_dps_split_exprs(
+                f"{S('HitsPerCast', r)}*N{r}", IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                S("NormalMonsterTargets", r), IB("max_enemies_hit"), extra_boss_mult_r, extra_normal_mult_r)[0])
+        elif key in STATUS_PERCAST_KEYS:
+            ws.cell(row=r, column=25, value=f"=IF(C{r}," + boss_normal_dps_split_exprs(
+                f"H{r}*N{r}*G{r}", IB("monster_type"), boss_dmg_pct_r, normal_dmg_pct_r,
+                S("NormalMonsterTargets", r), IB("max_enemies_hit"), extra_boss_mult_r, extra_normal_mult_r)[0] + ",0)")
         if key == "BASIC_ATTACK":
             prefix = f"{S('HitsPerCast', r)}*N{r}*Summary!$B${R_BAPS}"
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
@@ -2837,7 +3032,7 @@ def build_calc_sheet(wb):
             # (its Poison Mist fog — the FLAME_HAZE_FOG row's cast rate; G = hits per cast, no ICD on this row).
             _fog_r = ROW["FLAME_HAZE_FOG"]
             extra_fog_rate_r = (
-                f'IF(C{_fog_r}=TRUE,G{r}*IF({fixed_duration_active_main},R{_fog_r}/{IB("fight_duration")},Q{_fog_r}),0)'
+                f'IF({STATUS_MAIN_LAYOUT.s("on")}=1,0,IF(C{_fog_r}=TRUE,G{r}*IF({fixed_duration_active_main},R{_fog_r}/{IB("fight_duration")},Q{_fog_r}),0))'
             )
             prefix = f'H{r}*N{r}*({rate_r}+{extra_fog_rate_r})'
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
@@ -2894,6 +3089,16 @@ def build_calc_sheet(wb):
         else:
             ws.cell(row=r, column=18, value=0)
 
+    _chm = companion_host_main()
+    _ph_main = phase_state_ratios(
+        IB("content_type"), IB("fight_duration"), _chm["hex_phase_v"], art_ref("hexagon_damage"), _chm["attack_bucket_avg"],
+        _chm["charm_val"], art_ref("charm_of_the_undead"),
+    )
+    apply_status_columns(
+        ws, {k: v for k, v in ROW.items()}, STATUS_MAIN_LAYOUT, STATUS_MAIN_LAYOUT.s("on"),
+        f'(1+{IB("status_effect_damage")}/100*{companion_main_ref("stunfracB")})*({_ph_main[0]})',
+        f'(1+{IB("status_effect_damage")}/100*{companion_main_ref("stunfracN")})*({_ph_main[1]})',
+    )
     ws.cell(row=1, column=17, value="InvCooldown")
     ws.cell(row=1, column=18, value="CastsInFight")
     ws.cell(row=1, column=19, value="BossOnlyDPS")
@@ -2981,8 +3186,9 @@ def build_summary_sheet(wb):
         # against the other. Old Music Box/Secret Map/Reindeer's Spear's Attack% bonuses join this
         # same bucket (confirmed by the user). Infinity is Final Damage, a different (and
         # deliberately still multiplicative) bucket, so it stays its own separate factor.
-        f'=(1+(Calc!F{med}*{buff_uptime(med)}+Calc!F{mg}*{buff_uptime(mg)}+{art_ref("AGG_ATTACK_PCT")})/100)'
-        f'*IF(Calc!C{inf}=TRUE,(1+Calc!F{inf}*{buff_uptime(inf)}/100),1)'
+        f'=IF({STATUS_MAIN_LAYOUT.s("on")}=1,{STATUS_MAIN_LAYOUT.s("Bbuff_mean")},'
+        f'(1+(Calc!F{med}*{buff_uptime(med)}+Calc!F{mg}*{buff_uptime(mg)}+{art_ref("AGG_ATTACK_PCT")})/100)'
+        f'*IF(Calc!C{inf}=TRUE,(1+Calc!F{inf}*{buff_uptime(inf)}/100),1))'
     ))
 
     ws.cell(row=r_asbonus, column=1, value="Attack Speed Buff Bonus % (Nimble Feet, averaged)")
@@ -3026,13 +3232,16 @@ def build_summary_sheet(wb):
     ws.cell(row=R_STARTUP_TIME, column=1, value=(
         "Buff-Casting Startup Delay (s, before first damage-skill cast; fixed-duration only)"
     ))
-    ws.cell(row=R_STARTUP_TIME, column=2, value="=" + buff_cast_startup_time_expr(
+    ws.cell(row=R_STARTUP_TIME, column=2, value=f'=IF({STATUS_MAIN_LAYOUT.s("on")}=1,0,' + buff_cast_startup_time_expr(
         fda_main, SC["BuffDuration(s)"], SC["CostsActionSlot"], f"Calc!C2:C{LAST_ROW}",
         f"B{r_aps}", LAST_ROW,
-    ))
+    ) + ")")
 
     ws.cell(row=r_total, column=1, value="TOTAL DPS").font = Font(bold=True, size=13)
-    ws.cell(row=r_total, column=2, value=f"=SUM(Calc!O2:O{LAST_ROW})").font = Font(bold=True, size=13)
+    ws.cell(row=r_total, column=2, value=(
+        f'=SUM(Calc!O2:O{LAST_ROW})+(1-{IB("normal_weight_frac")})*{companion_main_ref("comp_boss_dps")}'
+        f'+{IB("normal_weight_frac")}*{companion_main_ref("comp_norm_dps")}'
+    )).font = Font(bold=True, size=13)
 
     # Boss-only/Normal-only Total DPS — the baseline denominators for Sensitivity's time-weighted
     # (not dollar-weighted) marginal-value blend, see build_sensitivity_sheet. Not shown as "the"
@@ -3040,9 +3249,9 @@ def build_summary_sheet(wb):
     # point so a swept stat's relative growth in each branch can be measured independently of how
     # many targets that branch happens to hit.
     ws.cell(row=R_BOSS_ONLY_TOTAL, column=1, value="Boss-Only Total DPS (Sensitivity baseline)")
-    ws.cell(row=R_BOSS_ONLY_TOTAL, column=2, value=f"=SUM(Calc!S2:S{LAST_ROW})")
+    ws.cell(row=R_BOSS_ONLY_TOTAL, column=2, value=f'=SUM(Calc!S2:S{LAST_ROW})+{companion_main_ref("comp_boss_dps")}')
     ws.cell(row=R_NORMAL_ONLY_TOTAL, column=1, value="Normal-Only Total DPS (Sensitivity baseline)")
-    ws.cell(row=R_NORMAL_ONLY_TOTAL, column=2, value=f"=SUM(Calc!U2:U{LAST_ROW})")
+    ws.cell(row=R_NORMAL_ONLY_TOTAL, column=2, value=f'=SUM(Calc!U2:U{LAST_ROW})+{companion_main_ref("comp_norm_dps")}')
 
     ignite_label = (
         "Ignite — wall-creating rolls that succeed per second, {branch} (fire attacks: Basic, Flame Haze, "
@@ -3079,6 +3288,13 @@ def build_summary_sheet(wb):
         ws.cell(row=row_cursor, column=2, value=f"=Calc!O{r}")
         ws.cell(row=row_cursor, column=3, value=f"=Calc!P{r}*100")
         row_cursor += 1
+    ws.cell(row=row_cursor, column=1, value="Companion (its damage + the player uplift it grants)")
+    ws.cell(row=row_cursor, column=2, value=(
+        f'=(1-{IB("normal_weight_frac")})*{companion_main_ref("comp_boss_dps")}'
+        f'+{IB("normal_weight_frac")}*{companion_main_ref("comp_norm_dps")}'
+    ))
+    ws.cell(row=row_cursor, column=3, value=f"=IF(B{r_total}=0,0,B{row_cursor}/B{r_total}*100)")
+    row_cursor += 1
 
     row_cursor += 1
     ws.cell(row=row_cursor - 1, column=1, value="Marginal DPS & Stat Value (see Sensitivity for full detail)").font = SECTION_FONT
@@ -3119,6 +3335,330 @@ def build_summary_sheet(wb):
 
 
 # ---------------------------------------------------------------------------
+# Companion sheet (see src/companion_model.py for the rules and the cell definitions)
+# ---------------------------------------------------------------------------
+COMPANION_CELL_NAMES = cm.cell_names()
+COMPANION_POTENTIAL_STAT = "Companion Summoning Time Increase %"
+COMPANION_FIRST_ROW = 5
+COMPANION_ROW_OF = {name: COMPANION_FIRST_ROW + i for i, name in enumerate(COMPANION_CELL_NAMES)}
+COMPANION_B0_ROW = COMPANION_FIRST_ROW + len(COMPANION_CELL_NAMES) + 1     # b0 cell (column B)
+COMPANION_CMP_COL = {name: 3 + i for i, name in enumerate(cm.COMPANIONS)}  # comparison columns: one per companion (C..)
+# 'Summoning Time Increase = b0 + X' columns: X = 0 and every total the boots potential lines can add up to
+COMPANION_POT_TOTALS = [0] + list(cm.potential_line_totals().keys())
+COMPANION_POT_FIRST_COL = 3 + len(cm.COMPANIONS) + 1                       # after a blank column
+COMPANION_POT_COL = {x: COMPANION_POT_FIRST_COL + i for i, x in enumerate(COMPANION_POT_TOTALS)}
+COMPANION_HOST_FIRST_ROW = COMPANION_B0_ROW + 2                            # exported host values (read by the cube EV script)
+
+
+def companion_main_ref(name):
+    """Cross-sheet reference to a Companion-sheet cell, e.g. 'Companion!$B$12'."""
+    return f"Companion!$B${COMPANION_ROW_OF[name]}"
+
+
+def companion_extra_mults_main(basic_row):
+    """(extra_boss_mult, extra_normal_mult) of the Basic Attack row, as cross-sheet (Calc!) expressions - the same
+    Reindeer's Spear / Contract of Darkness / boss-only Final Damage composition build_calc_sheet uses per row."""
+    crit_rate_total = f'({IB("crit_rate")}+{art_ref("AGG_CRIT_RATE")})'
+    def_pen_base = IB("def_pen")
+    reindeer_s = art_ref("reindeer_spear_base_def_pen_reference")
+    def_pen_boss = f'(100*(1-(1-{def_pen_base}/100)*(1-{reindeer_s}/100)^{artifact_reindeer_spear_extra_mult_expr(IB("monster_type"))}))'
+    spear_ratio = (
+        f'((5000/(6000+{IB("monster_defense")}*(1-{def_pen_boss}/100)))'
+        f'/(5000/(6000+{IB("monster_defense")}*(1-{def_pen_base}/100))))'
+    )
+    cr_base = f'MIN(100,{crit_rate_total})'
+    cr_boss = f'MIN(100,{crit_rate_total}+{art_ref("contract_of_darkness_crit_rate_bonus")})'
+    L, M = f"Calc!L{basic_row}", f"Calc!M{basic_row}"
+    cod_ratio = f'(({L}*(1-{cr_boss}/100)+{M}*({cr_boss}/100))/({L}*(1-{cr_base}/100)+{M}*({cr_base}/100)))'
+    extra_boss = f'({spear_ratio}*{cod_ratio}*(1+{art_ref("AGG_FINAL_DAMAGE_BOSS_ONLY")}/100))'
+    extra_norm = f'(1+{art_ref("AGG_FINAL_DAMAGE_NORMAL_ONLY")}/100)'
+    return extra_boss, extra_norm
+
+
+def companion_host_main():
+    """Host expressions for the Companion sheet (references into Calc / Summary / Artifacts, main-sheet state)."""
+    b = ROW["BASIC_ATTACK"]
+    med, mg, inf = ROW["MEDITATION"], ROW["MAGIC_GUARD"], ROW["INFINITY"]
+    fda = fixed_duration_active_expr(IB("monster_type"), IB("fight_duration"))
+    bdi = bdi_with_buff_mastery_expr(IB("buff_duration_increase_pct"), IB("level"), f'Calc!F{ROW["BUFF_MASTERY"]}')
+
+    def u(row):
+        return uptime_fraction_or_exact_expr(
+            fda, f'Calc!R{row}', IB("monster_type"), S("BuffDuration(s)", row), f'(1/Calc!Q{row})', bdi, IB("fight_duration"),
+        )
+    extra_boss, extra_norm = companion_extra_mults_main(b)
+    eq, st = IB, IB
+    return {
+        "choice": IB("companion_choice"), "inc": IB("companion_summon_time_increase_pct"),
+        "lvl": companion_level_lookup_expr(IB("companion_choice")),
+        "mt": IB("monster_type"), "T": IB("fight_duration"), "content": IB("content_type"),
+        "pvp_len": PVP_FIGHT_DURATION, "cap": IB("max_enemies_hit"), "w": IB("normal_weight_frac"),
+        "unit": f'IFERROR(Calc!N{b}/Calc!F{b},0)',
+        "bad": f'({IB("basic_attack_damage")}+{art_ref("AGG_BASIC_ATTACK_DAMAGE")})',
+        "sd": f'({IB("skill_damage")}+{art_ref("AGG_SKILL_DAMAGE")}+IF({IB("level")}>=125,Calc!F{ROW["FERVENT_DRAIN"]}*5,0))',
+        "aps": f"Summary!$B${R_APS}", "avgbuff": f"Summary!$B${R_AVGBUFF}",
+        "attack_bucket_avg": f'(Calc!F{med}*{u(med)}+Calc!F{mg}*{u(mg)}+{art_ref("AGG_ATTACK_PCT")})',
+        "avgbuff_snap": lambda charm_expr, extra: (
+            f'((1+(Calc!F{med}+Calc!F{mg}+{art_ref("AGG_ATTACK_PCT")}-{art_ref("charm_of_the_undead")}+{charm_expr}+{extra})/100)'
+            f'*IF(Calc!C{inf}=TRUE,(1+Calc!F{inf}/100),1))'
+        ),
+        "charm_val": f'IF({IB("charm_of_the_undead_equipped")},{star_lookup_expr(IB("charm_of_the_undead_star"), "charm_of_the_undead_attack_pct")},0)',
+        "agg_damage_avg": art_ref("AGG_DAMAGE"), "hex_avg": art_ref("hexagon_damage"),
+        "hex_snap": lambda stacks: f'IF({IB("hexagon_necklace_equipped")},{star_lookup_expr(IB("hexagon_necklace_star"), "hexagon_necklace_damage")}*{stacks},0)',
+        "agg_fd_boss_only": art_ref("AGG_FINAL_DAMAGE_BOSS_ONLY"), "agg_fd_norm_only": art_ref("AGG_FINAL_DAMAGE_NORMAL_ONLY"),
+        "chalice_avg_boss": art_ref("chalice_boss"), "chalice_avg_norm": art_ref("chalice_normal"),
+        "chalice_full": (
+            f'IF(AND({IB("chalice_equipped")},OR({IB("monster_type")}="normal",{IB("monster_type")}="breakthrough")),'
+            f'{star_lookup_expr(IB("chalice_star"), "chalice_final_damage")},0)'
+        ),
+        "horn_avg": art_ref("horn_flute"),
+        "hex_phase_v": f'IF({IB("hexagon_necklace_equipped")},{star_lookup_expr(IB("hexagon_necklace_star"), "hexagon_necklace_damage")},0)',
+        "horn_full": artifact_horn_flute_full_expr(IB("horn_flute_equipped"), IB("content_type"), IB("horn_flute_star")),
+        "boss_pct": f'({IB("boss_damage")}+{art_ref("AGG_BOSS_DAMAGE")})',
+        "norm_pct": f'({IB("normal_damage")}+{art_ref("AGG_NORMAL_DAMAGE")})',
+        "extra_boss": extra_boss, "extra_norm": extra_norm,
+        "player_boss": f"SUM(Calc!S2:S{LAST_ROW})", "player_norm": f"SUM(Calc!U2:U{LAST_ROW})",
+        "player_uniform_boss": "(" + "+".join(f"Calc!S{ROW[k]}" for k in STATUS_UNIFORM_ROWS) + ")",
+        "player_basic_boss": f"Calc!S{b}", "player_basic_norm": f"Calc!U{b}",
+        "cr_total": f'({IB("crit_rate")}+{art_ref("AGG_CRIT_RATE")})', "cd_total": f'({IB("crit_damage")}+{art_ref("AGG_CRIT_DAMAGE")})',
+        "min_dmg": IB("min_damage"), "max_dmg": IB("max_damage"),
+        "defense": IB("monster_defense"), "def_pen": IB("def_pen"),
+        "taken_bucket": f"((Summary!$B${R_ED_MULT}-1)*100)",
+        "st_on": STATUS_MAIN_LAYOUT.s("on"), "st_S": IB("status_effect_damage"), "st_idx": STATUS_MAIN_LAYOUT.rng("idx"),
+        "st_mult": STATUS_MAIN_LAYOUT.rng("mult"), "st_act": STATUS_MAIN_LAYOUT.rng("act"), "st_dw": STATUS_MAIN_LAYOUT.rng("dw"),
+    }
+
+
+def companion_host_export():
+    """Ordered (key, expression) pairs of every numeric host value the Python mirror (src/companion_python_model.py) needs; written
+    to the Companion sheet so potential_cubes_ev.py can re-run the companion model at any Summoning Time Increase."""
+    h = companion_host_main()
+    med, mg, inf = ROW["MEDITATION"], ROW["MAGIC_GUARD"], ROW["INFINITY"]
+    out = [(k, h[k]) for k in cm.HOST_KEYS if k not in ("charm_val",)]
+    out += [
+        ("charm_val", h["charm_val"]),
+        ("k1", f'(Calc!F{med}+Calc!F{mg}+{art_ref("AGG_ATTACK_PCT")}-{art_ref("charm_of_the_undead")})'),
+        ("fdpart", f'IF(Calc!C{inf}=TRUE,(1+Calc!F{inf}/100),1)'),
+        ("hex_per_stack", f'IF({IB("hexagon_necklace_equipped")},{star_lookup_expr(IB("hexagon_necklace_star"), "hexagon_necklace_damage")},0)'),
+        ("total_dps", f"Summary!$B${R_TOTAL}"),
+        ("comp_blend_current", companion_main_ref("comp_blend_dps")),
+        ("st_on", STATUS_MAIN_LAYOUT.s("on")),
+        ("st_S", IB("status_effect_damage")),
+    ]
+    return out
+
+
+def companion_level_lookup_expr(choice_expr):
+    """Level (0 = not unlocked / none) of the companion named by `choice_expr`, from the CompanionsInput sheet."""
+    return (
+        f'IFERROR(INDEX(CompanionsInput!$C${COMPANIONS_INPUT_FIRST_ROW}:$C${COMPANIONS_INPUT_LAST_ROW},'
+        f'MATCH({choice_expr},CompanionsInput!$A${COMPANIONS_INPUT_FIRST_ROW}:$A${COMPANIONS_INPUT_LAST_ROW},0)),0)'
+    )
+
+
+def companion_weighted_ratio(col, base=None):
+    """Relative DPS growth with the Companion-sheet column `col` vs `base` (None = no companion, else a Companion-sheet column letter), weighted by the
+    content's boss/normal emphasis w - each branch's own relative growth (new/baseline) blended by w, never the dollar totals (project rule, CLAUDE.md #9:
+    a weight is a weight on RELATIVE gains, so +18% against the boss is worth (1-w) x 18%)."""
+    rb, rn = COMPANION_ROW_OF["comp_boss_dps"], COMPANION_ROW_OF["comp_norm_dps"]
+    pb, pn = f"SUM(Calc!$S$2:$S${LAST_ROW})", f"SUM(Calc!$U$2:$U${LAST_ROW})"
+    w = IB("normal_weight_frac")
+    bb = f"Companion!${base}${rb}" if base else "0"
+    bn = f"Companion!${base}${rn}" if base else "0"
+    return (f"((1-{w})*IFERROR(({pb}+Companion!${col}${rb})/({pb}+{bb}),1)"
+            f"+{w}*IFERROR(({pn}+Companion!${col}${rn})/({pn}+{bn}),1))")
+
+
+def build_companions_input_sheet(wb, existing=None):
+    """One row per companion: the level you own it at ("Not unlocked" or 1-18), shared by every content type.  Which
+    companion is summoned in each content type is picked on the Inputs sheet; the Sensitivity sheet's Companion
+    Comparison table (mirrored in columns D/E here) shows the DPS each unlocked companion would add."""
+    existing = existing or {}
+    ws = wb.create_sheet("CompanionsInput")
+    ws["A1"] = "Companions - level of each companion you own"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["A2"] = (
+        "Set each companion's level (Not unlocked, or 1-18).  The companion summoned in each content type is chosen on the "
+        "Inputs sheet.  Damage multiplier by level: 60/64/68/72/75/78/81/84/87/90% (90% from Lv10 on); +25% Final Damage at "
+        "Lv5, Lv8 and Lv10 (every companion).  Columns D/E show the DPS this companion would add in the CURRENT content type."
+    )
+    headers = ["Companion", "Level (Not unlocked / 1-18)", "Level, resolved (computed)", "DPS gain vs no companion", "% of Total DPS (without a companion) gained"]
+    for i, name in enumerate(headers):
+        ws.cell(row=COMPANIONS_INPUT_FIRST_ROW - 1, column=i + 1, value=name)
+    style_header_row(ws, COMPANIONS_INPUT_FIRST_ROW - 1, len(headers))
+    dv = DataValidation(type="list", formula1='"' + ",".join(cm.COMPANION_LEVEL_CHOICES) + '"', allow_blank=False)
+    ws.add_data_validation(dv)
+    for name, row in COMPANION_INPUT_ROW.items():
+        ws.cell(row=row, column=1, value=name).font = LABEL_FONT
+        cell = ws.cell(row=row, column=2, value=existing.get(name, "Not unlocked"))
+        cell.fill = INPUT_FILL
+        dv.add(cell)
+        ws.cell(row=row, column=3, value=f'=IF(ISNUMBER(B{row}),B{row},IFERROR(VALUE(B{row}),0))')
+        _ratio = companion_weighted_ratio(get_column_letter(COMPANION_CMP_COL[name]))
+        _player_total = f"(Summary!$B${R_TOTAL}-Companion!$B${COMPANION_ROW_OF['comp_blend_dps']})"
+        ws.cell(row=row, column=4, value=f"={_player_total}*({_ratio}-1)")
+        ws.cell(row=row, column=5, value=f"=({_ratio}-1)*100")
+    # Companion Summoning Time Increase % potential lines (boots): DPS value of every TOTAL the lines can add up to.  Lines roll at
+    # the item's tier or the tier below, so 12%+5% can never share a potential (see companion_model.potential_line_totals).
+    t0 = COMPANIONS_INPUT_LAST_ROW + 3
+    ws.cell(row=t0 - 1, column=1, value=(
+        "Companion Summoning Time Increase % potential lines - value of each possible total (summoned companion = the one chosen "
+        "for the current content type; the cube script prices rolls of this stat from this curve)"
+    )).font = SECTION_FONT
+    t_headers = ["Total % from lines", "Possible line combinations", "Total DPS gain vs no such lines", "% DPS gain vs no such lines", "DPS vs your current setup",
+                 "Boss phase: average DPS change (over the longer phase)", "Boss phase: time factor", "Boss phase: total damage change (DPS x time)"]
+    for i, name in enumerate(t_headers):
+        ws.cell(row=t0, column=i + 1, value=name)
+    style_header_row(ws, t0, len(t_headers))
+    bl = COMPANION_ROW_OF["comp_blend_dps"]
+    base_col = get_column_letter(COMPANION_POT_COL[0])
+    for i, (total, combos) in enumerate(cm.potential_line_totals().items()):
+        r = t0 + 1 + i
+        col = get_column_letter(COMPANION_POT_COL[total])
+        ws.cell(row=r, column=1, value=total)
+        ws.cell(row=r, column=2, value="  |  ".join(combos))
+        _ratio = companion_weighted_ratio(col, base_col)
+        _base_total = f"(Summary!$B${R_TOTAL}-Companion!$B${bl}+Companion!${base_col}${bl})"
+        ws.cell(row=r, column=3, value=f"={_base_total}*({_ratio}-1)")
+        ws.cell(row=r, column=4, value=f"=({_ratio}-1)*100")
+        ws.cell(row=r, column=5, value=f"={_base_total}*{_ratio}-Summary!$B${R_TOTAL}")
+        # Boss-phase breakdown (contents with a normal-monster phase first: Breakthrough, Hero Dungeon): the boss part's total damage
+        # D = player boss DPS x base boss-phase length + the companion's boss-phase damage and uplift + the player's damage in the stun extension; average DPS = D / (phase + extension),
+        # so  (average-DPS change) x (time factor) = (total damage change).
+        _R = COMPANION_ROW_OF
+        _tb0, _tbp = f"Companion!$B${_R['tb0']}", f"Companion!$B${_R['Tbp']}"
+
+        def _D(c):
+            return (f"(Companion!${c}${_R['pb']}*{_tbp}+Companion!${c}${_R['best_dmg_b']}+Companion!${c}${_R['best_upl_b']}+Companion!${c}${_R['best_ext']})")
+
+        def _T(c):
+            return f"({_tbp}+Companion!${c}${_R['best_E']})"
+        ws.cell(row=r, column=6, value=f'=IF({_tb0}>0,IFERROR(({_D(col)}/{_T(col)})/({_D(base_col)}/{_T(base_col)})-1,0),"")')
+        ws.cell(row=r, column=7, value=f'=IF({_tb0}>0,{_T(col)}/{_T(base_col)},"")')
+        ws.cell(row=r, column=8, value=f'=IF({_tb0}>0,IFERROR({_D(col)}/{_D(base_col)}-1,0),"")')
+    for i, w in enumerate([26, 60, 30, 28, 24, 30, 22, 30]):
+        ws.column_dimensions[get_column_letter(i + 1)].width = w
+    return ws
+
+
+def build_timeline_sheet(wb):
+    """Status Effect Damage / KO timeline (main sheet): the engine strip src/status_timeline.py describes, run on this workbook's own numbers."""
+    ws = wb.create_sheet(TIMELINE_SHEET)
+    ws["A1"] = "Status Effect / KO timeline - when the player casts, and what the status windows are worth"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["A2"] = (
+        "Used in fixed-length single-target content with KO phases (World Boss, Enhancement Dungeon) and, once companions stun, wherever the enemy is stunned/frozen. "
+        "The player is assumed to play optimally: buffs and cooldown skills are cast when they pay most (cooldown spacing respected), Hexagon Necklace stacks and the "
+        "Charm of the Undead window are counted second by second. 'Timing factors' (Calc columns W/X) scale each row's averaged DPS. " + STATUS_KO_FIRST_BIN_NOTE + "."
+    )
+    ws["A2"].alignment = Alignment(wrap_text=True, vertical="top")
+    cell = lambda letter, key: f"Calc!{letter}{ROW[key]}"
+    host = status_engine_host(
+        IB, cell, lambda key: S("ActiveWindow(s)", ROW[key]),
+        bdi_with_buff_mastery_expr(IB("buff_duration_increase_pct"), IB("level"), f'Calc!F{ROW["BUFF_MASTERY"]}'),
+        f'({art_ref("AGG_ATTACK_PCT")}-{art_ref("charm_of_the_undead")})',
+        f'IF({IB("charm_of_the_undead_equipped")},{star_lookup_expr(IB("charm_of_the_undead_star"), "charm_of_the_undead_attack_pct")},0)',
+        f'IF({IB("hexagon_necklace_equipped")},{star_lookup_expr(IB("hexagon_necklace_star"), "hexagon_necklace_damage")},0)',
+        art_ref("hexagon_damage"), f'Calc!Y{ROW["BASIC_ATTACK"]}',
+        hasstun=companion_main_ref("hasstun"),
+        stun=lambda i: cm.resolve_tokens(cm.stun_bin_expr(i, companion_main_ref, None), companion_main_ref),
+    )
+    lay = stl.Layout(stl.cells(host), STATUS_STRIP_ROW0, 1)
+    lay.write(ws)
+    ws.column_dimensions["A"].width = 70
+    ws.column_dimensions["B"].width = 16
+    ws.freeze_panes = "A4"
+    return ws
+
+
+def build_companion_kits_sheet(wb):
+    """The kit table (one row per component of every companion) that the Companion sheet's formulas read; source of truth is
+    src/companion_kits.py (transcribed from the user's MS_IDLE_COMPS_STATS.xlsx).  Not meant for manual editing."""
+    ws = wb.create_sheet("CompanionKits")
+    for i, name in enumerate(cm.SHEET_COLUMNS):
+        ws.cell(row=1, column=i + 1, value=name)
+    style_header_row(ws, 1, len(cm.SHEET_COLUMNS))
+    for r, rec in enumerate(cm.KIT_ROWS):
+        for i, name in enumerate(cm.SHEET_COLUMNS):
+            ws.cell(row=cm.KIT_FIRST_ROW + r, column=i + 1, value=rec[name])
+    for i, name in enumerate(cm.SHEET_COLUMNS):
+        ws.column_dimensions[get_column_letter(i + 1)].width = 60 if name == "note" else (16 if name in ("comp", "idkey", "pkey") else 9)
+    ws.freeze_panes = "D2"
+    return ws
+
+
+def build_companion_sheet(wb):
+    ws = wb.create_sheet("Companion")
+    ws["A1"] = "Companion (summoned ally) - DPS contribution of the companion chosen on the Inputs sheet"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["A2"] = (
+        "The companion snapshots the player's stats when summoned, then deals damage for 30s x (1 + Companion Summoning Time "
+        "Increase %).  Column B = the companion chosen on the Inputs sheet; columns C.. = every companion evaluated the same way "
+        "(Sensitivity / CompanionsInput comparison tables); the far-right grid re-runs the chosen companion at Summoning Time "
+        "Increase = b0 + n.  See KNOWN_GAPS.md 'Companions' and the CompanionKits sheet for every rule and kit."
+    )
+    ws["A3"] = "Result cells 'Companion DPS' feed Summary Total DPS (boss-only and normal-only totals as well)."
+    ws.cell(row=COMPANION_FIRST_ROW - 1, column=1, value="Cell").font = LABEL_FONT
+    ws.cell(row=COMPANION_FIRST_ROW - 1, column=2, value="Chosen on Inputs").font = LABEL_FONT
+    host = companion_host_main()
+
+    def write(name, label, formula):
+        r = COMPANION_ROW_OF[name]
+        ws.cell(row=r, column=1, value=label)
+        ws.cell(row=r, column=2, value=formula)
+
+    cm.emit(cm.cells(host), lambda nm: f"$B${COMPANION_ROW_OF[nm]}", write)   # same-sheet references (shorter formulas: Excel's 8192-character cap)
+
+    # Comparison columns: the same chain with the companion forced to each one in the catalog (level from CompanionsInput)
+    for name, col_idx in ([] if os.environ.get('COMP_LIGHT') else COMPANION_CMP_COL.items()):
+        col = get_column_letter(col_idx)
+        ws.cell(row=COMPANION_FIRST_ROW - 1, column=col_idx, value=name).font = LABEL_FONT
+        host_c = dict(host)
+        host_c["choice"] = f'"{name}"'
+        host_c["lvl"] = companion_level_lookup_expr(f'"{name}"')
+
+        def write_c(nm, _label, formula, col=col):
+            ws[f"{col}{COMPANION_ROW_OF[nm]}"] = formula
+
+        cm.emit(cm.cells(host_c), lambda nm, col=col: f"{col}{COMPANION_ROW_OF[nm]}", write_c)
+
+    # 'b0 + X' columns: the chosen companion re-evaluated at Summoning Time Increase % = b0 + X (b0 = your Inputs value WITHOUT the
+    # boots potential lines currently listed on PotentialCubes) for X = 0 and every total those lines can add up to.  Feeds the
+    # potential-line table on CompanionsInput.  (The cube EV script re-runs the model in Python at any other value.)
+    r_b0 = COMPANION_B0_ROW
+    own_lines = "+".join(
+        f'SUMIF(PotentialCubes!${sc}${POTENTIAL_CUBES_FIRST_DATA_ROW}:${sc}${POTENTIAL_CUBES_LAST_DATA_ROW},"{COMPANION_POTENTIAL_STAT}",'
+        f'PotentialCubes!${vc}${POTENTIAL_CUBES_FIRST_DATA_ROW}:${vc}${POTENTIAL_CUBES_LAST_DATA_ROW})'
+        for sc, vc in (("E", "F"), ("G", "H"), ("I", "J"))
+    )
+    ws.cell(row=r_b0, column=1, value=(
+        "b0 = Companion Summoning Time Increase % WITHOUT the boots potential lines listed on PotentialCubes"
+    )).font = LABEL_FONT
+    ws.cell(row=r_b0, column=2, value=f'=MAX(0,{IB("companion_summon_time_increase_pct")}-({own_lines}))')
+    ws.cell(row=COMPANION_FIRST_ROW - 2, column=COMPANION_POT_FIRST_COL, value="Summoning Time Increase % = b0 + X, X (the header) =").font = LABEL_FONT
+    for x, col_idx in ([] if os.environ.get('COMP_LIGHT') else COMPANION_POT_COL.items()):
+        col = get_column_letter(col_idx)
+        ws.cell(row=COMPANION_FIRST_ROW - 1, column=col_idx, value=x).font = LABEL_FONT
+        host_x = dict(host)
+        host_x["inc"] = f"($B${r_b0}+{col}${COMPANION_FIRST_ROW - 1})"
+
+        def write_x(nm, _label, formula, col=col):
+            ws[f"{col}{COMPANION_ROW_OF[nm]}"] = formula
+
+        cm.emit(cm.cells(host_x), lambda nm, col=col: f"{col}{COMPANION_ROW_OF[nm]}", write_x)
+
+    # Exported host values for potential_cubes_ev.py's Python mirror of the companion model
+    ws.cell(row=COMPANION_HOST_FIRST_ROW - 1, column=1, value="Host values (read by potential_cubes_ev.py's Python mirror - do not edit)").font = LABEL_FONT
+    for i, (key, expr) in enumerate(companion_host_export()):
+        ws.cell(row=COMPANION_HOST_FIRST_ROW + i, column=1, value=key)
+        ws.cell(row=COMPANION_HOST_FIRST_ROW + i, column=2, value="=" + expr)
+    ws.column_dimensions["A"].width = 88
+    ws.column_dimensions["B"].width = 20
+    ws.freeze_panes = "C5"
+    return ws
+
+
+# ---------------------------------------------------------------------------
 # Sensitivity sheet: marginal DPS from bumping each Inputs stat by +1 (one
 # percentage point / one skill level / one flat point), with Attack Speed and
 # Def Pen combined via the diminishing-returns formula instead of a flat add
@@ -3138,6 +3678,7 @@ STAT_SWEEP = [
     ("damage_amp", "DAMAGE_AMP %", "pct"),
     ("boss_damage", "BOSS_DAMAGE %", "pct"),
     ("normal_damage", "NORMAL_DAMAGE %", "pct"),
+    ("status_effect_damage", "STATUS_EFFECT_DAMAGE %", "pct"),
     ("final_damage", "FINAL_DAMAGE % (multiplicative source)", "mult"),
     ("min_damage", "MIN_DAMAGE %", "pct"),
     ("max_damage", "MAX_DAMAGE %", "pct"),
@@ -3157,6 +3698,7 @@ STAT_SWEEP = [
     ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds)", "flat"),
     ("basic_attack_target_increase", "Basic Attack Target Increase (flat)", "flat"),
     ("buff_duration_increase_pct", "Buff Duration Increase %", "pct"),
+    ("companion_summon_time_increase_pct", "Companion Summoning Time Increase %", "pct"),
 ] + [
     (f"{art_key}_equipped", f"{art_label} (Equip)", "bool")
     for art_key, art_label in ARTIFACT_LABELS.items()
@@ -3194,7 +3736,12 @@ ARTIFACT_TABLE_TITLE_ROW = SENSITIVITY_HEADER_ROW + len(STAT_SWEEP_STAT_ENTRIES)
 ARTIFACT_TABLE_HEADER_ROW = ARTIFACT_TABLE_TITLE_ROW + 1
 ARTIFACT_TABLE_FIRST_DATA_ROW = ARTIFACT_TABLE_HEADER_ROW + 1
 ARTIFACT_TABLE_LAST_DATA_ROW = ARTIFACT_TABLE_HEADER_ROW + len(STAT_SWEEP_ARTIFACT_ENTRIES)
-
+# Companion comparison table (below the artifact table): one row per companion in the catalog.
+COMPANION_TABLE_TITLE_ROW = ARTIFACT_TABLE_LAST_DATA_ROW + 2
+COMPANION_TABLE_HEADER_ROW = COMPANION_TABLE_TITLE_ROW + 1
+COMPANION_TABLE_FIRST_DATA_ROW = COMPANION_TABLE_HEADER_ROW + 1
+COMPANION_TABLE_ROW = {name: COMPANION_TABLE_FIRST_DATA_ROW + i for i, name in enumerate(cm.COMPANIONS)}
+COMPANION_TABLE_LAST_ROW = COMPANION_TABLE_FIRST_DATA_ROW + len(cm.COMPANIONS) - 1
 # Maps every stat name that can appear on a potential line (both the generic 16-stat pool and
 # the 4 hand-added slot-specific stats, plus the 2 new rollable stats introduced this session)
 # to its Sensitivity-sheet sweep key. Stats not in this map (Str/Dex/Luk flat & %, Defense %,
@@ -3259,12 +3806,12 @@ def dps_per_unit_expr(stat_name):
             f'Sensitivity!H{SENSITIVITY_ROW_FOR["crit_rate"]})'
         )
     if stat_name == "Companion Summoning Time Increase %":
-        # Companions aren't modeled at all, so this stat's own DPS is genuinely zero — same
-        # "understates its real worth" reasoning as Crit Rate above: removing it means replacing
-        # it with something else, so value it as if it were an equal-sized Critical Damage %
-        # roll instead (confirmed by the user). Unconditional, unlike Crit Rate's cap check,
-        # since it's *never* modeled, not just past some threshold.
-        return f'=Sensitivity!H{SENSITIVITY_ROW_FOR["crit_damage"]}'
+        # Live now (src/companion_model.py).  If no companion is chosen for the content type the stat is genuinely worthless there (0).
+        # Real value is a step function of the TOTAL summoning time (the cube EV script re-runs the model in Python at b0 + total); this
+        # linear stand-in is the average DPS per 1% over a +20% roll (a mystic line), for the sheet's display columns only.
+        _bl = COMPANION_ROW_OF["comp_blend_dps"]
+        _c20, _c0 = get_column_letter(COMPANION_POT_COL[20]), get_column_letter(COMPANION_POT_COL[0])
+        return (f'=(Summary!$B${R_TOTAL}-Companion!$B${_bl}+Companion!${_c0}${_bl})*({companion_weighted_ratio(_c20, _c0)}-1)/20')
     if stat_name in POTENTIAL_SUB_STAT_PCT_LINES:
         sweep_key, inputs_key = POTENTIAL_SUB_STAT_PCT_LINES[stat_name]
         return f'=Sensitivity!H{SENSITIVITY_ROW_FOR[sweep_key]}*{IB(inputs_key)}/100'
@@ -3280,6 +3827,17 @@ def dps_per_unit_expr(stat_name):
 # Derived from LAST_ROW so it can't silently drift out of sync if more Skills rows are ever added
 # (as happened once already).
 BLOCK_HEIGHT = LAST_ROW + 18
+# Companion cells inside a Sensitivity block: a column-major grid of single cells starting at column AD, rows = the block's
+# own row span (base_row .. base_row + BLOCK_HEIGHT - 2).  Absolute, same-sheet refs.
+COMPANION_BLOCK_COL0 = 30
+COMPANION_NAME_INDEX = {name: i for i, name in enumerate(COMPANION_CELL_NAMES)}
+
+
+def companion_block_ref(base_row, name):
+    idx = COMPANION_NAME_INDEX[name]
+    per = BLOCK_HEIGHT - 1
+    return f"${get_column_letter(COMPANION_BLOCK_COL0 + idx // per)}${base_row + idx % per}"
+
 # Derived from the two Results tables' own combined size (SENSITIVITY_HEADER_ROW + 1 row per
 # STAT_SWEEP entry, split across the "Stat" and "Artifact Equip-Toggle" tables with
 # SENSITIVITY_ARTIFACT_TABLE_HEADER_ROWS of structure between them) plus a small buffer, rather
@@ -3287,7 +3845,24 @@ BLOCK_HEIGHT = LAST_ROW + 18
 # session's 3 new STAT_SWEEP entries grew the Results table past row 26, silently corrupting the
 # first block (Flat INT)'s calc rows with the *last* 3 stats' results-row writes, since both
 # landed on rows 27-29.
-BLOCK_START = SENSITIVITY_HEADER_ROW + len(STAT_SWEEP) + SENSITIVITY_ARTIFACT_TABLE_HEADER_ROWS + 3
+# Summoning-time breakdown table (Breakthrough / Hero Dungeon boss phase), one row per total the boots lines can add up to
+COMPANION_BREAKDOWN_TITLE_ROW = COMPANION_TABLE_LAST_ROW + 2
+COMPANION_BREAKDOWN_HEADER_ROW = COMPANION_BREAKDOWN_TITLE_ROW + 1
+COMPANION_BREAKDOWN_FIRST_ROW = COMPANION_BREAKDOWN_HEADER_ROW + 1
+COMPANION_BREAKDOWN_LAST_ROW = COMPANION_BREAKDOWN_FIRST_ROW + len(COMPANION_POT_TOTALS) - 1
+BLOCK_START = COMPANION_BREAKDOWN_LAST_ROW + 3
+# Status/KO engine strips of the re-running blocks live below the last block (stat blocks, then the CDR milestone blocks)
+STATUS_STRIPS_START = (BLOCK_START + len(STAT_SWEEP) * BLOCK_HEIGHT + 1 + len(CDR_SWEEP_VALUES) + 3
+                       + len(CDR_SWEEP_VALUES) * BLOCK_HEIGHT + 5)
+_status_strip_counter = [0]
+
+
+def alloc_status_strip_row0(stat_key):
+    if stat_key not in STATUS_REBUILD_KEYS:
+        return None
+    row0 = STATUS_STRIPS_START + _status_strip_counter[0] * (STATUS_STRIP_HEIGHT + 3)
+    _status_strip_counter[0] += 1
+    return row0
 
 
 def override_expr_for(kind, key):
@@ -3328,7 +3903,7 @@ def make_ib(override_key, override_expr):
     return ib
 
 
-def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
+def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, strip_row0=None):
     """
     Writes one full local Calc+Summary DPS pipeline into `ws` starting at
     `base_row` (same layout/formulas as build_calc_sheet + the Total-DPS part
@@ -3405,6 +3980,14 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     # Fixed fight-duration mode — block-local mirror of the same computation in build_calc_sheet.
     fda_block = fixed_duration_active_expr(ib("monster_type"), ib("fight_duration"))
+
+    # Status/KO timeline engine: a block that moves cast times / buff windows / Hexagon stacks / the Status Effect Damage input re-runs its
+    # own strip (placed below every block on this sheet, local refs); every other block reads the main sheet's strip.
+    if strip_row0 is not None and stat_key in STATUS_REBUILD_KEYS:
+        lay = stl.Layout(stl.cells(_STATUS_DUMMY_HOST), strip_row0, 1)
+    else:
+        lay = STATUS_MAIN_LAYOUT
+    st_on = lay.s("on")
 
     # Artifacts — block-local mirror of build_artifacts_sheet, so a swept stat correctly
     # propagates through whichever artifact depends on it (Book of Ancient/Ring of Cycles via
@@ -3545,7 +4128,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         f'*{star_lookup_expr(ib("cursed_doll_star"), "cursed_doll_final_damage")}'
     )
     horn_flute_block = artifact_horn_flute_expr(
-        ib("horn_flute_equipped"), ib("monster_type"), ib("content_type"), ib("fight_duration"), ib("horn_flute_star"),
+        ib("horn_flute_equipped"), ib("content_type"), ib("horn_flute_star"), companion_block_ref(base_row, "horn_uptime"),
     )
     bottle_of_emotion_attack_pct_block = artifact_bottle_of_emotion_attack_pct_expr(
         ib("bottle_of_emotion_equipped"), ib("bottle_of_emotion_star"),
@@ -3686,6 +4269,8 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             fda_block, f"R{row}", S("HitsPerCast", r), S("ICD(s)", r), S("ActiveWindow(s)", r),
             eff_cd_row, available_duration_row, ib("fight_duration"), f"G{row}*Q{row}",
         )
+        if key in STATUS_FS_KEYS:
+            rate_row = f'IF({st_on}=1,G{row}*{lay.s("fs." + key)}/{ib("fight_duration")},{rate_row})'
 
         if key == "BASIC_ATTACK":
             ws.cell(row=row, column=4, value="")
@@ -3771,6 +4356,16 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         )
 
         if key == "BASIC_ATTACK":
+            ws.cell(row=row, column=25, value="=" + boss_normal_dps_split_exprs(
+                f"{S('HitsPerCast', r)}*N{row}", ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                f'(6+{ib("basic_attack_target_increase")}+IF({ib("level")}>=136,1,0))', ib("max_enemies_hit"),
+                extra_boss_mult_block, extra_normal_mult_block)[0])
+        elif key in STATUS_PERCAST_KEYS:
+            ws.cell(row=row, column=25, value=f"=IF(C{row}," + boss_normal_dps_split_exprs(
+                f"H{row}*N{row}*G{row}", ib("monster_type"), boss_dmg_pct_row, normal_dmg_pct_row,
+                S("NormalMonsterTargets", r), ib("max_enemies_hit"), extra_boss_mult_block, extra_normal_mult_block)[0] + ",0)")
+        if key == "BASIC_ATTACK":
+            basic_extra_boss_block = extra_boss_mult_block   # the Companion cells reuse the Basic Attack row's boss composition
             # Local override-aware target count (6 + Inputs, not Skills!NormalMonsterTargets'
             # own formula, which always reads the global Inputs cell and wouldn't reflect this
             # block's override when "basic_attack_target_increase" itself is the swept stat).
@@ -3825,7 +4420,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
         elif key == "MIST_ERUPTION":
             _fog_row = row_of["FLAME_HAZE_FOG"]
             extra_fog_rate_row = (
-                f'IF(C{_fog_row}=TRUE,G{row}*IF({fda_block},R{_fog_row}/{ib("fight_duration")},Q{_fog_row}),0)'
+                f'IF({st_on}=1,0,IF(C{_fog_row}=TRUE,G{row}*IF({fda_block},R{_fog_row}/{ib("fight_duration")},Q{_fog_row}),0))'
             )
             prefix = f'H{row}*N{row}*({rate_row}+{extra_fog_rate_row})'
             boss_expr, normal_expr = boss_normal_dps_split_exprs(
@@ -3887,14 +4482,29 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
 
     ws.cell(row=s_avgbuff, column=1, value="Average Buff Multiplier (Magic Guard + Meditation + Artifact Attack%, summed; then Infinity)")
     ws.cell(row=s_avgbuff, column=2, value=(
-        f'=(1+(F{med}*{buff_uptime_block(med, ROW["MEDITATION"])}+F{mg}*{buff_uptime_block(mg, ROW["MAGIC_GUARD"])}+{agg_attack_pct_block})/100)'
-        f'*IF(C{inf}=TRUE,(1+F{inf}*{buff_uptime_block(inf, ROW["INFINITY"])}/100),1)'
+        f'=IF({st_on}=1,{lay.s("Bbuff_mean")},'
+        f'(1+(F{med}*{buff_uptime_block(med, ROW["MEDITATION"])}+F{mg}*{buff_uptime_block(mg, ROW["MAGIC_GUARD"])}+{agg_attack_pct_block})/100)'
+        f'*IF(C{inf}=TRUE,(1+F{inf}*{buff_uptime_block(inf, ROW["INFINITY"])}/100),1))'
     ))
 
     ws.cell(row=s_asbonus, column=1, value="Attack Speed Buff Bonus % (Nimble Feet, averaged)")
     ws.cell(row=s_asbonus, column=2, value=(
         f'=F{nf}*{buff_uptime_block(nf, ROW["NIMBLE_FEET"])}'
     ))
+
+    _bucket_avg_block = f'(F{med}*{buff_uptime_block(med, ROW["MEDITATION"])}+F{mg}*{buff_uptime_block(mg, ROW["MAGIC_GUARD"])}+{agg_attack_pct_block})'
+    _ph_block = phase_state_ratios(
+        ib("content_type"), ib("fight_duration"),
+        f'IF({ib("hexagon_necklace_equipped")},{star_lookup_expr(ib("hexagon_necklace_star"), "hexagon_necklace_damage")},0)',
+        hexagon_dmg_block, _bucket_avg_block,
+        f'IF({ib("charm_of_the_undead_equipped")},{star_lookup_expr(ib("charm_of_the_undead_star"), "charm_of_the_undead_attack_pct")},0)',
+        charm_of_the_undead_block,
+    )
+    apply_status_columns(
+        ws, row_of, lay, st_on,
+        f'(1+{ib("status_effect_damage")}/100*{companion_block_ref(base_row, "stunfracB")})*({_ph_block[0]})',
+        f'(1+{ib("status_effect_damage")}/100*{companion_block_ref(base_row, "stunfracN")})*({_ph_block[1]})',
+    )
 
     ws.cell(row=s_aps, column=1, value="Actions Per Second")
     ws.cell(row=s_aps, column=2, value=f'=1+MIN(150,150*(1-(1-{attack_speed_total_block}/150)*(1-{asbonus_ref}/150)))/100')
@@ -3922,18 +4532,22 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
     ws.cell(row=s_meteor_normal, column=2, value=meteor_normal_x_block)
 
     ws.cell(row=s_startup, column=1, value="Buff-Casting Startup Delay (s, fixed-duration only)")
-    ws.cell(row=s_startup, column=2, value="=" + buff_cast_startup_time_expr(
+    ws.cell(row=s_startup, column=2, value=f'=IF({st_on}=1,0,' + buff_cast_startup_time_expr(
         fda_block, SC["BuffDuration(s)"], SC["CostsActionSlot"], f"C{calc_start}:C{calc_end}",
         aps_ref, LAST_ROW,
-    ))
+    ) + ")")
 
     ws.cell(row=s_boss_total, column=1, value="Boss-Only Total DPS (this block's swept value)")
-    ws.cell(row=s_boss_total, column=2, value=f"=SUM(S{calc_start}:S{calc_end})")
+    comp_ref = lambda name: companion_block_ref(base_row, name)
+    ws.cell(row=s_boss_total, column=2, value=f"=SUM(S{calc_start}:S{calc_end})+{comp_ref('comp_boss_dps')}")
     ws.cell(row=s_normal_total, column=1, value="Normal-Only Total DPS (this block's swept value)")
-    ws.cell(row=s_normal_total, column=2, value=f"=SUM(U{calc_start}:U{calc_end})")
+    ws.cell(row=s_normal_total, column=2, value=f"=SUM(U{calc_start}:U{calc_end})+{comp_ref('comp_norm_dps')}")
 
     ws.cell(row=s_total, column=1, value="TOTAL DPS").font = LABEL_FONT
-    ws.cell(row=s_total, column=2, value=f"=SUM(O{calc_start}:O{calc_end})").font = LABEL_FONT
+    ws.cell(row=s_total, column=2, value=(
+        f'=SUM(O{calc_start}:O{calc_end})+(1-{ib("normal_weight_frac")})*{comp_ref("comp_boss_dps")}'
+        f'+{ib("normal_weight_frac")}*{comp_ref("comp_norm_dps")}'
+    )).font = LABEL_FONT
 
     for fire_row, n_ref, branch, mp_rate in (
         (s_ignite_fire, None, "boss/PvP", meteor_proc_rate_block[0]),
@@ -3948,6 +4562,85 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr):
             mp_rate,
             n_ref,
         ))
+
+    # Companion: block-local copy of the Companion sheet's cells (every reference resolves inside this block, bugs #6/#19)
+    b_row = row_of["BASIC_ATTACK"]
+    block_host = {
+        "choice": ib("companion_choice"), "inc": ib("companion_summon_time_increase_pct"),
+        "lvl": companion_level_lookup_expr(ib("companion_choice")),
+        "mt": ib("monster_type"), "T": ib("fight_duration"), "content": ib("content_type"),
+        "pvp_len": PVP_FIGHT_DURATION, "cap": ib("max_enemies_hit"), "w": ib("normal_weight_frac"),
+        "unit": f'IFERROR(N{b_row}/F{b_row},0)',
+        "bad": f'({ib("basic_attack_damage")}+{agg_basic_attack_damage_block})',
+        "sd": f'({ib("skill_damage")}+{agg_skill_damage_block}+IF({ib("level")}>=125,F{row_of["FERVENT_DRAIN"]}*5,0))',
+        "aps": aps_ref, "avgbuff": avgbuff_ref,
+        "attack_bucket_avg": (
+            f'(F{med}*{buff_uptime_block(med, ROW["MEDITATION"])}+F{mg}*{buff_uptime_block(mg, ROW["MAGIC_GUARD"])}+{agg_attack_pct_block})'
+        ),
+        "avgbuff_snap": lambda charm_expr, extra: (
+            f'((1+(F{med}+F{mg}+{agg_attack_pct_block}-{charm_of_the_undead_block}+{charm_expr}+{extra})/100)'
+            f'*IF(C{inf}=TRUE,(1+F{inf}/100),1))'
+        ),
+        "charm_val": f'IF({ib("charm_of_the_undead_equipped")},{star_lookup_expr(ib("charm_of_the_undead_star"), "charm_of_the_undead_attack_pct")},0)',
+        "agg_damage_avg": agg_damage_block, "hex_avg": hexagon_dmg_block,
+        "hex_snap": lambda stacks: f'IF({ib("hexagon_necklace_equipped")},{star_lookup_expr(ib("hexagon_necklace_star"), "hexagon_necklace_damage")}*{stacks},0)',
+        "agg_fd_boss_only": agg_final_damage_boss_only_block, "agg_fd_norm_only": agg_final_damage_normal_only_block,
+        "chalice_avg_boss": chalice_boss_block, "chalice_avg_norm": chalice_normal_block,
+        "chalice_full": (
+            f'IF(AND({ib("chalice_equipped")},OR({ib("monster_type")}="normal",{ib("monster_type")}="breakthrough")),'
+            f'{star_lookup_expr(ib("chalice_star"), "chalice_final_damage")},0)'
+        ),
+        "horn_avg": horn_flute_block,
+        "horn_full": artifact_horn_flute_full_expr(ib("horn_flute_equipped"), ib("content_type"), ib("horn_flute_star")),
+        "boss_pct": f'({ib("boss_damage")}+{agg_boss_damage_block})',
+        "norm_pct": f'({ib("normal_damage")}+{agg_normal_damage_block})',
+        "extra_boss": basic_extra_boss_block, "extra_norm": extra_normal_mult_block,
+        "player_boss": f"SUM(S{calc_start}:S{calc_end})", "player_norm": f"SUM(U{calc_start}:U{calc_end})",
+        "player_uniform_boss": "(" + "+".join(f"S{row_of[k]}" for k in STATUS_UNIFORM_ROWS) + ")",
+        "player_basic_boss": f"S{b_row}", "player_basic_norm": f"U{b_row}",
+        "cr_total": f'({ib("crit_rate")}+{crit_rate_delta}+{boa_direct_delta}+{agg_crit_rate_block})',
+        "cd_total": f'({ib("crit_damage")}+{crit_dmg_delta}+{agg_crit_damage_block})',
+        "min_dmg": f'({ib("min_damage")}+{min_dmg_delta})', "max_dmg": f'({ib("max_damage")}+{agg_max_damage_block})',
+        "defense": ib("monster_defense"), "def_pen": def_pen_total_block,
+        "taken_bucket": f"(({ed_ref}-1)*100)",
+        "st_on": lay.s("on"), "st_S": ib("status_effect_damage"), "st_idx": lay.rng("idx"),
+        "st_mult": lay.rng("mult"), "st_act": lay.rng("act"), "st_dw": lay.rng("dw"),
+    }
+
+    def _write_block_companion(name, _label, formula):
+        idx = COMPANION_NAME_INDEX[name]
+        per = BLOCK_HEIGHT - 1
+        ws.cell(row=base_row + idx % per, column=COMPANION_BLOCK_COL0 + idx // per, value=formula)
+
+    # Blocks reuse the summon time the main sheet chose (one candidate) - except the block sweeping Summoning Time Increase itself,
+    # which must search again.  Hexagon Necklace / Horn Flute equip toggles change what the candidate summon times are worth (stack times, the flute's own
+    # Final Damage), and Skill Cooldown Decrease re-times every cooldown cast, so those blocks search the candidates themselves too
+    # (guide "Gap found by the Buccaneer port", items 1-4).
+    if stat_key in COMPANION_FULL_SEARCH_KEYS:
+        _block_cells = cm.cells(block_host)
+    else:
+        _block_cells = cm.cells(block_host, ncand=1, fixed_s=companion_main_ref("best_s"),
+                               fixed_tend=companion_main_ref("best_Tend"), fixed_e=companion_main_ref("best_E"))
+    cm.emit(_block_cells, comp_ref, _write_block_companion)
+
+    if lay is not STATUS_MAIN_LAYOUT:
+        # The strip's stun vector uses CANDIDATE-0 timing (summon time s_0 / window W_0, see cm.stun_bin_expr).  A block's own chain pins its candidate 0 to the
+        # summon time the main sheet CHOSE (which can be another candidate), so read the main sheet's s_0 / W_0 here - exactly what the main strip (and a full
+        # re-evaluation at the swept value) uses.  Only the Summoning-Time block, which sweeps the duration itself, keeps its own s_0 / W_0.
+        def _stun_ref(name):
+            if name in ("s_0", "W_0") and stat_key != "companion_summon_time_increase_pct":
+                return companion_main_ref(name)
+            return comp_ref(name)
+        _bhost = status_engine_host(
+            ib, lambda letter, key: f"{letter}{row_of[key]}", lambda key: S("ActiveWindow(s)", ROW[key]), bdi_block,
+            f'({agg_attack_pct_block}-{charm_of_the_undead_block})',
+            f'IF({ib("charm_of_the_undead_equipped")},{star_lookup_expr(ib("charm_of_the_undead_star"), "charm_of_the_undead_attack_pct")},0)',
+            f'IF({ib("hexagon_necklace_equipped")},{star_lookup_expr(ib("hexagon_necklace_star"), "hexagon_necklace_damage")},0)',
+            hexagon_dmg_block, f'Y{row_of["BASIC_ATTACK"]}',
+            hasstun=comp_ref("hasstun"),
+            stun=lambda i: cm.resolve_tokens(cm.stun_bin_expr(i, _stun_ref, None), _stun_ref),
+        )
+        stl.Layout(stl.cells(_bhost), strip_row0, 1).write(ws)
 
     return total_ref, boss_total_ref, normal_total_ref
 
@@ -4007,7 +4700,8 @@ def build_sensitivity_sheet(wb):
         base_row = BLOCK_START + idx * BLOCK_HEIGHT
         override_expr = override_expr_for(kind, key)
         ib = make_ib(key, override_expr)
-        total_ref, boss_total_ref, normal_total_ref = build_stat_block(ws, base_row, ib, key, label, override_expr)
+        total_ref, boss_total_ref, normal_total_ref = build_stat_block(
+            ws, base_row, ib, key, label, override_expr, strip_row0=alloc_status_strip_row0(key))
 
         # DPS Gain/% Gain are time-weighted (not dollar-weighted) across the boss/normal branches:
         # each branch's own RELATIVE growth (new/baseline) is measured independently, then blended
@@ -4108,6 +4802,71 @@ def build_sensitivity_sheet(wb):
                 f'=IF({_blank_if_past_count},"",INDEX({_stg["pct_gain"]},MATCH({display_rank},{_stg["rank"]},0)))'
             ))
 
+    # Companion comparison: DPS gained by summoning each companion (at its CompanionsInput level) instead of none, from the
+    # Companion sheet's comparison columns (the player's own damage is unchanged, so Total with = Total without + the companion's
+    # damage and the uplift it grants).  % Gain = (Total without + gain) / Total without.  Shown best-to-worst among the UNLOCKED
+    # companions only (same staging + rank + INDEX/MATCH technique as the artifact table above; staging in hidden columns AG-AL).
+    ws.cell(row=COMPANION_TABLE_TITLE_ROW, column=1, value="Companion Comparison (DPS gain of summoning each unlocked companion vs. none, current content type)").font = SECTION_FONT
+    for i, name in enumerate(["Companion", "Level", "DPS Gain", "% Gain"]):
+        ws.cell(row=COMPANION_TABLE_HEADER_ROW, column=i + 1, value=name)
+    style_header_row(ws, COMPANION_TABLE_HEADER_ROW, 4)
+    cur = f"Companion!$B${COMPANION_ROW_OF['comp_blend_dps']}"
+    stg = {"label": 33, "level": 34, "gain": 35, "pct": 36, "unlocked": 37, "rank": 38}   # AG-AL
+    first_r, last_r = COMPANION_TABLE_FIRST_DATA_ROW, COMPANION_TABLE_LAST_ROW
+    rng = {k: f"${get_column_letter(c)}${first_r}:${get_column_letter(c)}${last_r}" for k, c in stg.items()}
+    n_unlocked = f"COUNTIF({rng['unlocked']},TRUE)"
+    gcol, ucol = get_column_letter(stg["gain"]), get_column_letter(stg["unlocked"])
+    for k_idx, (name, crow) in enumerate(COMPANION_TABLE_ROW.items(), start=1):
+        col = get_column_letter(COMPANION_CMP_COL[name])
+        gain = f"Companion!${col}${COMPANION_ROW_OF['comp_blend_dps']}"
+        ws.cell(row=crow, column=stg["label"], value=name)
+        ws.cell(row=crow, column=stg["level"], value=f"=CompanionsInput!$C${COMPANION_INPUT_ROW[name]}")
+        _ratio = companion_weighted_ratio(col)
+        ws.cell(row=crow, column=stg["gain"], value=f"=(Summary!$B${R_TOTAL}-{cur})*({_ratio}-1)")
+        ws.cell(row=crow, column=stg["pct"], value=f"=({_ratio}-1)*100+100")
+        ws.cell(row=crow, column=stg["unlocked"], value=f"={get_column_letter(stg['level'])}{crow}>=1")
+        ws.cell(row=crow, column=stg["rank"], value=(
+            f'=IF({ucol}{crow},SUMPRODUCT(({rng["unlocked"]})*({rng["gain"]}>{gcol}{crow}))'
+            f'+COUNTIFS(${ucol}${first_r}:{ucol}{crow},TRUE,${gcol}${first_r}:{gcol}{crow},{gcol}{crow}),"")'
+        ))
+        for disp_col, key in ((1, "label"), (2, "level"), (3, "gain"), (4, "pct")):
+            ws.cell(row=crow, column=disp_col, value=(
+                f'=IF({k_idx}>{n_unlocked},"",INDEX({rng[key]},MATCH({k_idx},{rng["rank"]},0)))'
+            ))
+    for c in stg.values():
+        ws.column_dimensions[get_column_letter(c)].hidden = True
+
+    # Companion Summoning Time Increase: what each total is worth, split the way the boss phase works (contents with a normal-monster phase first:
+    # Breakthrough, Hero Dungeon).  average boss DPS change x boss-time factor = boss damage change; the content's emphasis w weights boss and normal.
+    ws.cell(row=COMPANION_BREAKDOWN_TITLE_ROW, column=1, value=(
+        "Companion Summoning Time Increase % - value of each total from the boots lines (Breakthrough / Hero Dungeon: boss phase = average DPS x time)"
+    )).font = SECTION_FONT
+    for i, name in enumerate(["Total % from lines", "Average boss DPS change", "Boss-phase time factor", "Boss damage change (DPS x time)",
+                              "Normal-monster DPS change", "Weighted DPS change (boss/normal emphasis)"]):
+        ws.cell(row=COMPANION_BREAKDOWN_HEADER_ROW, column=i + 1, value=name)
+    style_header_row(ws, COMPANION_BREAKDOWN_HEADER_ROW, 6)
+    _Rr = COMPANION_ROW_OF
+    _tb0, _tbp = f"Companion!$B${_Rr['tb0']}", f"Companion!$B${_Rr['Tbp']}"
+    _base = get_column_letter(COMPANION_POT_COL[0])
+    _pn = f"SUM(Calc!$U$2:$U${LAST_ROW})"
+
+    def _Dm(c):
+        return (f"(Companion!${c}${_Rr['pb']}*{_tbp}+Companion!${c}${_Rr['best_dmg_b']}+Companion!${c}${_Rr['best_upl_b']}+Companion!${c}${_Rr['best_ext']})")
+
+    def _Tm(c):
+        return f"({_tbp}+Companion!${c}${_Rr['best_E']})"
+    for i, x in enumerate(COMPANION_POT_TOTALS):
+        r = COMPANION_BREAKDOWN_FIRST_ROW + i
+        c = get_column_letter(COMPANION_POT_COL[x])
+        ws.cell(row=r, column=1, value=x)
+        ws.cell(row=r, column=2, value=f'=IF({_tb0}>0,IFERROR(({_Dm(c)}/{_Tm(c)})/({_Dm(_base)}/{_Tm(_base)})-1,0),"")')
+        ws.cell(row=r, column=3, value=f'=IF({_tb0}>0,{_Tm(c)}/{_Tm(_base)},"")')
+        ws.cell(row=r, column=4, value=f'=IF({_tb0}>0,IFERROR({_Dm(c)}/{_Dm(_base)}-1,0),"")')
+        ws.cell(row=r, column=5, value=(
+            f"=IFERROR(({_pn}+Companion!${c}${_Rr['comp_norm_dps']})/({_pn}+Companion!${_base}${_Rr['comp_norm_dps']})-1,0)"
+        ))
+        ws.cell(row=r, column=6, value=f"=({companion_weighted_ratio(c, _base)}-1)")
+
     # Cooldown Reduction Milestone Sweep — CDR's DPS impact is a step function in fixed-duration
     # content (CastsInFight floors via INT()), unlike every other stat's smooth marginal delta
     # above, so a single "+1" test can't show where the jumps are. This sweeps a fixed set of
@@ -4132,6 +4891,7 @@ def build_sensitivity_sheet(wb):
         ib = make_ib("skill_cooldown_decrease", override_expr)
         total_ref, _boss_total_ref, _normal_total_ref = build_stat_block(
             ws, base_row, ib, "skill_cooldown_decrease", f"CDR = {cdr_value}s", override_expr,
+            strip_row0=alloc_status_strip_row0("skill_cooldown_decrease"),
         )
 
         row = milestone_header_row + 1 + i
@@ -4509,9 +5269,17 @@ def load_existing_workbook_state(path):
                 return None
             return value
 
+        # One-time layout migration (self-detecting: only fires on a workbook whose row 22 is still MIN_DAMAGE %): Status Effect Damage % was
+        # inserted at row 22, pushing Min Damage .. Skill Level All down by one row.
+        _old_layout = str(ws.cell(row=IN["status_effect_damage"], column=1).value or "").startswith("MIN_DAMAGE")
+        _shifted = {"min_damage", "max_damage", "final_damage", "skill_lvl_1st", "skill_lvl_2nd", "skill_lvl_3rd", "skill_lvl_4th", "skill_lvl_all"}
         for key, row in IN.items():
             if row in COMPUTED_INPUT_ROWS:
                 continue
+            if key == "status_effect_damage" and _old_layout:
+                continue
+            if _old_layout and key in _shifted:
+                row -= 1
             if key not in PER_CONTENT_TYPE_INPUT_KEYS:
                 value = _clean(ws.cell(row=row, column=2).value)
                 if value is not None:
@@ -4546,6 +5314,16 @@ def load_existing_workbook_state(path):
                 for ct, col in col_for_ct.items()
             }
             existing_inputs["artifact_slots"] = artifact_slots
+
+    if "CompanionsInput" in wb.sheetnames:
+        cws = wb["CompanionsInput"]
+        levels = {}
+        for r in range(COMPANIONS_INPUT_FIRST_ROW, cws.max_row + 1):
+            nm, lv = cws.cell(row=r, column=1).value, cws.cell(row=r, column=2).value
+            if nm in cm.COMPANIONS and lv is not None and not (isinstance(lv, str) and lv.startswith("=")):
+                levels[nm] = lv
+        if levels:
+            existing_inputs["companion_levels"] = levels
 
     existing_artifacts_input = {}
     if "ArtifactsInput" in wb.sheetnames:
@@ -4679,10 +5457,14 @@ def main():
     build_artifacts_sheet(wb)
     build_calc_sheet(wb)
     build_summary_sheet(wb)
+    build_timeline_sheet(wb)
+    build_companion_kits_sheet(wb)
+    build_companion_sheet(wb)
     build_sensitivity_sheet(wb)
     build_equipment_compare_sheet(wb, existing=existing_equipment_compare)
     build_cube_data_sheet(wb)
     build_artifacts_input_sheet(wb, existing=existing_artifacts_input)
+    build_companions_input_sheet(wb, existing=existing_inputs.get("companion_levels"))
     build_potential_cubes_sheet(wb, existing=existing_potential_cubes)
     wb.active = 0
     wb.save(OUT_PATH)

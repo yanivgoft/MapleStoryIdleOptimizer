@@ -10,9 +10,10 @@ decisions and the raw source snapshots live in `data/ref_maplestoryidle_info/`, 
 `VERIFICATION_FINDINGS_2026-10-20.md`); see "Ground truth sourcing → game tables" below for what
 changed in the method. Bishop's own remaining gap (Divine Protection's growth curve) is the last
 significant per-skill data hole in the four historically weakest classes — Paladin, Buccaneer, and
-Corsair were substantially closed out via `maplestoryidle.info`. MP consumption and Companions are
-planned after that, project-wide, though MP consumption specifically has no scaling data on either
-source (see that section) and may stay permanently out of scope. Artifacts (Equip Effects
+Corsair were substantially closed out via `maplestoryidle.info`. Companions (all 16 kits) and the Status Effect Damage / KO timeline engine are modelled in ALL 12 classes
+(FP-Mage 2026-11-11..14, the other 11 ported 2026-11-14..17 incl. each class's own stun skills; shared modules
+`src/companion_model.py`, `src/status_timeline.py`; see KNOWN_GAPS "Companions"); MP
+consumption has no scaling data on either source (see that section) and may stay permanently out of scope. Artifacts (Equip Effects
 for all 36 artifacts, plus a reference-only Artifact Potentials calculator) has already shipped for
 all 12 classes — see the "Artifacts (\<Class\>)" sections in `KNOWN_GAPS.md` for each class's own
 wiring decisions.
@@ -97,6 +98,28 @@ Patterns introduced by that audit (reuse them, don't reinvent):
   Surplus) use `Calc!S` = attacks/s x target-count blend (damage-line rate / HitsPerCast; never `O/N`, which carries Boss/Normal Damage%).
   ICD-gated procs use q = 1-(1-c)^N per attack and X/(1+ICD*X), separately for the boss/PvP branch (N=1) and the normal branch - two
   Summary rates, boss-only column vs normal-only column (see KNOWN_GAPS "Proc chances roll per attack per enemy hit").
+- **Companions are DATA + one shared engine** (2026-11-13): every companion's kit is rows in `src/companion_kits.py` (transcribed from the user's
+  `data/companions/MS_IDLE_COMPS_STATS.xlsx`; `data/companions/KITS_ENCODED.md` is the readable dump).  `src/companion_model.py` generates the Excel cell chain
+  (SUMPRODUCT masks over the chosen companion's rows through `INDEX():INDEX()` ranges; never use `MIN()`/`MAX()` on arrays inside SUMPRODUCT - use `minel`/`maxel`),
+  `src/companion_python_model.py` is the independent plain-Python port (verify scripts + `potential_cubes_ev.py`).  A new companion/effect = new rows (+ a new row
+  kind only if an effect type is missing); a new host class = a `companion_host_main()`/block host like FP-Mage's.  Sensitivity blocks use the 1-candidate chain
+  (summon time taken from the main sheet) except the Summoning-Time block.  Excel formulas are capped at 8192 characters (the longest generated cell is ~6000).
+- **Status Effect Damage / KO timeline** (2026-11-14, FP-Mage): `src/status_timeline.py` is a second shared engine (plain-Python `solve` + Excel strip generator `cells`
+  + `Layout`).  It is the ONLY place the model is time-resolved (1-second bins): the player casts buffs/cooldown skills where they pay most (dynamic programme with the
+  cooldown as spacing), KO / stun windows scale damage, Hexagon/Charm are counted per second.  Its outputs are per-row TIMING FACTORS (Calc column W) and cast counts that
+  replace the averaged ones while the engine is on; see KNOWN_GAPS "Status Effect Damage, KO phases and the timeline engine".  Rules learned building it: (1) a formula
+  that INDEXes a range containing its own cell is a circular reference even if it only picks other cells (the `formulas` package silently drops it) - use ranges that end on
+  the previous row; (2) per-cast damage weights must not depend on cast counts (Calc column Y) or the engine feeds itself; (3) every Sensitivity block either re-runs its
+  own strip (stats that move timing, `STATUS_REBUILD_KEYS`) or reads the main strip.
+- **Companion cast timing** (2026-11-18, user-measured on Blaze Wizard at 55.5% attack speed): a companion starts 0.3 s after the summon, its cooldown
+  skills cast in kit order (k-th action skill first at 0.3 + 0.8k s) and the cooldown counts from the END of the cast, period = cd + 0.5 s. Constants and the single
+  rule (`schedule(rows)`) live in `src/companion_kits.py`; the CompanionKits sheet carries `cast_of`/`per`/`t0`/`skey` columns. Change the constants there (then rebuild all
+  12 workbooks), never inline. Blaze's 3rd stun cast needs +13.667% summoning time.
+- **Sensitivity blocks and the companion search** (2026-11-17, found by the Buccaneer port): blocks that re-run the strip read the MAIN sheet's `s_0`/`W_0` for the stun vector;
+  the Summoning Time, Hexagon, Horn Flute and Skill Cooldown Decrease blocks (and the 10 CDR milestone blocks) run the FULL 3-candidate summon search
+  (`COMPANION_FULL_SEARCH_KEYS`), every other block pins the main sheet's choice (documented limitation if the choice flips). See `data/porting/COMPANION_STATUS_PORT_GUIDE.md`.
+- **Rebuilt workbooks have no cached values** (openpyxl writes formulas only): `potential_cubes_ev.py` takes minutes (slow `formulas` path) until the workbook is opened and saved
+  in Excel once.
 - **Temporary skill-level buffs (Paladin's Combat Orders)** are modeled by time-averaging the
   FactorTable lookup: `(1-u)*F(D) + u*F(D+bonus)`, u = the buff's uptime (a Summary cell).
 - **Resource loops (Buccaneer's Serpent Scales/Assault Mode)** use a smoothed steady-state cycle
@@ -153,7 +176,7 @@ you're building a new class, check for all of these *before* your first build, n
    `SkillFoldBonus%` column. Buff/debuff rows (`BuffTargetStat` set; "+X percentage points") and the
    `ADVANCED_FINAL_ATTACK_HELPER` rows stay additive. Verify scripts must mirror this
    (`coeff * (1 + mastery/100) + fold`) — hand-written rows that add `level_gated_sum(...)` inline are the
-   usual place a port is missed. Only FP-Mage was measured in game; other classes assume the same mechanic.
+   usual place a port is missed. Only FP-Mage skills were measured in game; other classes assume the same mechanic. The Basic Attack chain (raw tier sum, then one multiplier) was user-confirmed in game 2026-11-07.
 3. **Any "helper row"** (used when one skill's effect folds into another's coefficient, e.g. Final
    Attack folding into a basic attack) **must have its `SkillMasteryBonus%` actually wired into
    the Calc-sheet F-column formula** — in *both* the main Calc sheet and the Sensitivity sheet's

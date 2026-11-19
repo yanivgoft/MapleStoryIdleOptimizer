@@ -14,6 +14,7 @@ and this independent Python model, not correctness against the game itself for t
 """
 import json
 import math
+import os
 import re
 import sys
 from pathlib import Path
@@ -24,6 +25,11 @@ REPO = Path(__file__).resolve().parent.parent
 XLSX_PATH = REPO / "Bishop" / "Bishop-DPS-Calculator.xlsx"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_bishop_workbook import ROW, IN, UNLOCK_LEVEL, SUMMARY_ROW, CONTENT_TYPES  # noqa: E402
+from build_bishop_workbook import (  # noqa: E402
+    STATUS_CAST_PREFIX, STATUS_GROUPS, STATUS_BUFFS, STATUS_UNIFORM_ROWS, STATUS_PHI_ROWS, STATUS_FS_KEYS, STATUS_MAIN_LAYOUT, INFINITY_RAMP,
+)
+import status_timeline as stl  # noqa: E402
+import companion_python_model as cpm  # noqa: E402
 
 FACTOR_TABLE = json.loads((REPO / "data/factor_table.json").read_text())
 FACTOR_TABLE = {int(k): v for k, v in FACTOR_TABLE.items()}
@@ -155,6 +161,7 @@ damage = _in("damage")
 damage_amp = _in("damage_amp")
 boss_damage = _in("boss_damage")
 normal_damage = _in("normal_damage")
+status_effect_damage = _in("status_effect_damage")
 final_damage = _in("final_damage")
 min_damage = _in("min_damage")
 max_damage = _in("max_damage")
@@ -167,6 +174,7 @@ skill_damage = _in("skill_damage")
 skill_cooldown_decrease = _in("skill_cooldown_decrease")
 basic_attack_target_increase = _in("basic_attack_target_increase")
 buff_duration_increase_pct = _in("buff_duration_increase_pct")
+companion_summon_time_increase_pct = _in("companion_summon_time_increase_pct")
 fight_duration = _compute_fight_duration(content_type)
 max_enemies_hit = _in("max_enemies_hit") or 0  # blank for content types where it's not applicable (Excel treats blank as 0 in MIN(); doesn't affect result since normal_weight is 0 there)
 
@@ -232,21 +240,40 @@ PASSIVES = {
 NORMAL_MONSTER_TARGETS = {k: v["targets"] for k, v in SKILLS.items()}
 
 
-def boss_normal_multiplier(key, s):
-    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
-    full (1+damage%/100)*targets treatment. `s` is the skill's own mastery dict."""
+def enemies_hit(key):
+    """How many enemies one attack of this skill hits: 1 vs boss/PvP, the skill's own target count (capped by Inputs max_enemies_hit)
+    vs normal monsters."""
     if monster_type == "pvp":
         return 1
-    if key == "BIG_BANG":
-        targets = 6 + basic_attack_target_increase
-    else:
-        targets = NORMAL_MONSTER_TARGETS.get(key, 1)
-    targets = min(targets, max_enemies_hit)
+    targets = 6 + basic_attack_target_increase if key == "BIG_BANG" else NORMAL_MONSTER_TARGETS.get(key, 1)
+    return min(targets, max_enemies_hit)
+
+
+def branch_multipliers(key, s):
+    """(boss-branch, normal-branch) multiplier: Boss/Normal Monster Damage% and target count, each branch with its own full
+    (1+damage%/100)*targets treatment (PvP: single target, neither bonus)."""
+    if monster_type == "pvp":
+        return 1.0, 1.0
     boss_term = boss_damage + s.get("mastery_boss", 0) + monster_dmg_bonus
     normal_term = normal_damage + s.get("mastery_normal", 0) + normal_dmg_bonus
-    boss_branch = 1 + boss_term / 100
-    normal_branch = (1 + normal_term / 100) * targets
-    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
+    return 1 + boss_term / 100, (1 + normal_term / 100) * enemies_hit(key)
+
+
+_BRANCH_PAIRS = {}   # key -> (boss DPS, normal DPS, explicit units?, boss mult, normal mult) of the last blend_branches call
+
+
+def blend_branches(key, s, boss_unit, normal_unit=None):
+    """Time-weighted DPS of one skill: (1-w)*boss_unit*boss_branch + w*normal_unit*normal_branch, where the units are
+    the per-branch rate x damage (they differ only for the per-enemy proc rows, whose rate depends on the branch).
+    The Status/KO timing factor of the row is folded into each branch."""
+    explicit = normal_unit is not None
+    if normal_unit is None:
+        normal_unit = boss_unit
+    b, n = branch_multipliers(key, s)
+    fb, fn = timing_factors(key)
+    b, n = b * fb, n * fn
+    _BRANCH_PAIRS[key] = (boss_unit * b, normal_unit * n, explicit, b, n)
+    return (1 - normal_weight) * boss_unit * b + normal_weight * normal_unit * n
 
 
 def unlocked(key):
@@ -401,12 +428,87 @@ as_bonus = (mp_eater_as_pct if unlocked("MP_EATER_MP_BOOST") else 0.0) + (15 if 
 
 actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - as_bonus / 150))) / 100
 
+# ---------------------------------------------------------------------------------------------------------------
+# Status Effect Damage / KO timeline engine (src/status_timeline.py `solve`, the plain-Python reference): fixed-length single-target content with KO phases
+# (World Boss, Enhancement Dungeon) or any stun/freeze (companion, or the player's own Angel Ray from Lv.103).  The player casts Magic Guard, Heal, Bless, Holy
+# Magic Shell, Advanced Blessing, Infinity and the cooldown skills when they pay most; Nimble Feet / Holy Fountain / Holy Symbol / Divine Protection / Triumph
+# Feather keep their averaged formulas.
+# ---------------------------------------------------------------------------------------------------------------
+_companion_choice0 = _in("companion_choice")
+_ci0 = openpyxl.load_workbook(XLSX_PATH)["CompanionsInput"]
+_lv0 = next((_ci0.cell(row=r, column=2).value for r in range(1, _ci0.max_row + 1) if _ci0.cell(row=r, column=1).value == _companion_choice0), None)
+try:
+    c_level0 = int(float(_lv0))
+except (TypeError, ValueError):
+    c_level0 = 0
+_stub = dict(mt=monster_type, T=fight_duration, content=content_type, pvp_len=PVP_FIGHT_DURATION, cap=max_enemies_hit, w=normal_weight, unit=1.0,
+             bad=0.0, sd=0.0, aps=1.5, avgbuff=1.0, attack_bucket_avg=0.0, charm_val=0.0, agg_damage_avg=0.0, hex_avg=0.0, hex_snap=lambda st: 0.0,
+             avgbuff_snap=lambda charm, extra: 1.0, agg_fd_boss_only=0.0, agg_fd_norm_only=0.0, chalice_avg_boss=0.0, chalice_avg_norm=0.0,
+             chalice_full=0.0, horn_avg=0.0, horn_full=0.0, boss_pct=0.0, norm_pct=0.0, extra_boss=1.0, extra_norm=1.0, player_boss=1.0, player_norm=1.0, player_uniform_boss=1.0,
+             player_basic_boss=0.5, player_basic_norm=0.5, cr_total=0.0, cd_total=0.0, min_dmg=100.0, max_dmg=100.0, defense=0.0, def_pen=0.0, taken_bucket=0.0)
+# The player's own stunning skill (game table): Angel Ray stuns for 1 s (cooldown 17 s, no Reuse mastery, unlock Lv.103), cast on cooldown from the start.
+PLAYER_STUN = [
+    dict(id="RAY", key="ANGEL_RAY", typ="cast", dur=1.0, p=1.0, cd=17, min_level=0, tick=1.0, win=0.0),
+]
+_pl_on = any(unlocked(e["key"]) and level >= e["min_level"] for e in PLAYER_STUN)
+_stun_in0 = _companion_choice0 != "None" and c_level0 >= 1
+hasstun = (_stun_in0 and bool(cpm.run(_stub, _companion_choice0, c_level0, companion_summon_time_increase_pct).get("hasstun"))) or _pl_on
+KO_WINDOWS = {"World Boss": [(24, 34), (59, 69)], "Enhancement Dungeon": [(fight_duration - 4.5, fight_duration)]}
+status_on = fixed_duration_active and normal_weight == 0 and (content_type in KO_WINDOWS or hasstun)
+# the stun skill's first cast: t=0 with the engine on, otherwise after the buff-casting startup (Summary's startup cell: every unlocked action-costing buff incl. Nimble Feet)
+_startup_plain = (
+    (sum(1 for _k, b in BUFFS.items() if b["costs_action"] and unlocked(_k)) + (1 if unlocked("NIMBLE_FEET") else 0)) / actions_per_second
+    if fixed_duration_active else 0.0)
+_t0_pl = 0.0 if status_on else _startup_plain
+PST = [dict(id=e["id"], typ=e["typ"], cd=eff_cooldown(e["cd"], True), dur=e["dur"], p=e["p"], on=unlocked(e["key"]) and level >= e["min_level"],
+            t0=_t0_pl, tick=e["tick"], win=e["win"]) for e in PLAYER_STUN]
+_stub["pst"] = PST
+stun_info = cpm.run(_stub, _companion_choice0 if _stun_in0 else "None", c_level0, companion_summon_time_increase_pct)
+stf_b = stun_info["stunfracB"]
+stf_n = stun_info["stunfracN"]
+
+
+def buff_pct_py(key):
+    """Calc!F of a buff row: the factor-curve value (Infinity: x64/45, the time-average of its ramp) + the row's own mastery (percentage points)."""
+    b = BUFFS[key]
+    pct = coeff_pct(b["base"], b["fidx"], b["scales"], b["job_step"])
+    if "ramp_mult" in b:
+        pct *= b["ramp_mult"]
+    return pct + b.get("mastery", 0)
+
+
+E_ENGINE = None
+ENGINE_N = {}
+engine_bbuff_mean = None
+if status_on:
+    # companion stun windows (none when no companion stuns and no player stun exists: the mirror then returns no stun_vector) + the player's own
+    _comp_stun = stun_info["stun_vector"](stl.NB_MAX) if "stun_vector" in stun_info else [0.0] * stl.NB_MAX
+    _stun_vec = [min(1.0, a + b) for a, b in zip(_comp_stun, stl.pl_stun_vector([dict(e, t0=0.0) for e in PST], fight_duration, stl.NB_MAX))]
+    _inf_dur, _inf_cd = eff_duration(BUFFS["INFINITY"]["duration"]), eff_cooldown(BUFFS["INFINITY"]["cooldown"], True)
+    # Advanced Blessing's strip effect carries Infinity's steady-state average (mean-field cross term, see fd_cross_scale in the builder)
+    _cross = 1 + (buff_pct_py("INFINITY") * min(1.0, _inf_dur / _inf_cd) / 100 if unlocked("INFINITY") else 0.0)
+    _buffs = []
+    for _bid, _key, _kind in STATUS_BUFFS:
+        _b = BUFFS[_key]
+        _dur, _cd = eff_duration(_b["duration"]), eff_cooldown(_b["cooldown"], _b["costs_action"])
+        _bd = dict(id=_bid, kind=_kind, F=buff_pct_py(_key), dur=_dur, cd=_cd, on=unlocked(_key))
+        if _bid == "AB":
+            _bd.update(F=buff_pct_py(_key) * _cross, dur=min(_dur, _cd), p0=1, p1=1, ramp_t=1, dur0=1)
+        elif _kind == "ramp":
+            _bd.update(INFINITY_RAMP)
+        _buffs.append(_bd)
+    _eng_host = dict(T=fight_duration, S=status_effect_damage, ko=KO_WINDOWS.get(content_type, []), hex_v=0.0, hex_period=20, hex_max=3, A0=0.0,
+                     charm_v=0.0, hex_avg=0.0, c_slot=0.0, stun=_stun_vec, buffs=_buffs, groups=[])
+    _e1 = stl.solve(_eng_host)               # pass 1: the buff schedule (independent of the skill weights)
+    engine_bbuff_mean = _e1["Bbuff_mean"]
+    for _bid, _key, _kind in STATUS_BUFFS:
+        ENGINE_N[_key] = _e1["buffs"][_bid]["n"]
+
 # Buff-Casting Startup Delay: in fixed-duration fights, the character casts every currently-
 # unlocked, actively-cast buff sequentially at fight start (1/APS seconds each, same cadence as
 # every other action-costing skill) before their first damage-skill cast — so damage skills'
-# usable window is reduced by this amount. Buffs themselves keep their own t=0 uptime math
-# unchanged (they're what causes the delay, not affected further by it).
-if fixed_duration_active:
+# usable window is reduced by this amount.  With the engine on the buffs are cast when they pay: no start-up delay.
+if fixed_duration_active and not status_on:
     buff_cast_startup_time = (
         sum(1 for key, b in BUFFS.items() if b["costs_action"] and unlocked(key))
         + (1 if unlocked("NIMBLE_FEET") else 0)
@@ -429,35 +531,25 @@ def non_buff_total_hits(cooldown, hits_per_cast, icd, window):
     return exact_total_hits(cooldown, hits_per_cast, icd, window, max(0.0, fight_duration - buff_cast_startup_time))
 
 
-if fixed_duration_active:
-    cast_rate = sum(non_buff_casts(eff_cooldown(SKILLS[k]["cooldown"], SKILLS[k]["costs_action"])) for k, s in SKILLS.items() if s["costs_action"] and unlocked(k))
-    cast_rate += sum(exact_casts(eff_cooldown(b["cooldown"], b["costs_action"])) for key, b in BUFFS.items() if b["costs_action"] and unlocked(key))
-    cast_rate += non_buff_casts(eff_cooldown(holy_fountain_cooldown, True)) if unlocked("HOLY_FOUNTAIN") else 0
-    cast_rate += exact_casts(nimble_feet_eff_cd) if unlocked("NIMBLE_FEET") else 0
-    cast_rate /= fight_duration
-else:
-    cast_rate = sum(1 / eff_cooldown(SKILLS[k]["cooldown"], s["costs_action"]) for k, s in SKILLS.items() if s["costs_action"] and unlocked(k))
-    cast_rate += sum(1 / eff_cooldown(b["cooldown"], b["costs_action"]) for key, b in BUFFS.items() if b["costs_action"] and unlocked(key))
-    cast_rate += (1 / eff_cooldown(holy_fountain_cooldown, True)) if unlocked("HOLY_FOUNTAIN") else 0
-    cast_rate += (1 / nimble_feet_eff_cd) if unlocked("NIMBLE_FEET") else 0
-big_bang_per_second = max(0, actions_per_second - cast_rate)
-
 # Average buff multiplier. Magic Guard, Heal, Bless, and Holy Magic Shell are all "+X% Attack"
 # sources — same bucket, so they sum into one combined percentage before a single
 # multiplication; Advanced Blessing and Infinity are both Final Damage, a different (and
 # deliberately still multiplicative) bucket, so they stay their own separate factors.
+# With the engine on, every buff's uptime comes from the engine's cast count (Calc!R) and Summary's factor IS the strip's mean buff bucket.
 attack_bucket_sum = 0.0
 final_damage_mult = 1.0
 for key, b in BUFFS.items():
     if not unlocked(key):
         continue
-    pct = coeff_pct(b["base"], b["fidx"], b["scales"], b["job_step"])
-    if "ramp_mult" in b:
-        pct *= b["ramp_mult"]
-    pct += b.get("mastery", 0)
+    pct = buff_pct_py(key)
     eff_cd = eff_cooldown(b["cooldown"], b["costs_action"])
     if fixed_duration_active:
-        uptime_fraction = exact_buff_uptime(eff_cd, eff_duration(b["duration"])) / fight_duration
+        casts_b = ENGINE_N.get(key)
+        if casts_b is None:
+            uptime_fraction = exact_buff_uptime(eff_cd, eff_duration(b["duration"])) / fight_duration
+        else:   # the workbook's exact-uptime formula at the engine's cast count
+            _dur_b = eff_duration(b["duration"])
+            uptime_fraction = ((casts_b - 1) * min(_dur_b, eff_cd) + min(_dur_b, max(0.0, fight_duration - (casts_b - 1) * eff_cd))) / fight_duration
     elif monster_type == "pvp":
         uptime_fraction = min(eff_duration(b["duration"]), PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     else:
@@ -467,7 +559,7 @@ for key, b in BUFFS.items():
         attack_bucket_sum += avg_pct
     else:
         final_damage_mult *= 1 + avg_pct / 100
-avg_buff_mult = (1 + attack_bucket_sum / 100) * final_damage_mult
+avg_buff_mult = engine_bbuff_mean if status_on else (1 + attack_bucket_sum / 100) * final_damage_mult
 
 
 def hit_damage(coeff_pct_val, is_basic, s, key):
@@ -485,7 +577,7 @@ def hit_damage(coeff_pct_val, is_basic, s, key):
     source_pct = basic_attack_damage if is_basic else skill_damage
     extra_mult = avg_buff_mult
     # Boss/Normal Monster Damage% is deliberately NOT applied here — it's blended per-branch in
-    # boss_normal_multiplier, applied by the caller.
+    # branch_multipliers, applied by the caller.
     base_hit = (
         base_damage * (1 + stat_damage / 100) * (1 + (damage + damage_bonus) / 100)
         * (1 + damage_amp / 100) * dmg_reduction * final_mult * (1 + source_pct / 100) * extra_mult
@@ -498,8 +590,83 @@ def hit_damage(coeff_pct_val, is_basic, s, key):
     return non_crit_avg * (1 - cr) + crit_avg * cr
 
 
-big_bang_hit = hit_damage(skill_coefficient_base, True, dict(mastery=big_bang_mastery, mastery_boss=big_bang_boss_mastery), "BIG_BANG")
-big_bang_dps = big_bang_hits * big_bang_hit * big_bang_per_second * boss_normal_multiplier("BIG_BANG", dict(mastery_boss=big_bang_boss_mastery, mastery_normal=0)) if unlocked("BIG_BANG") else 0.0
+# ---- Status/KO engine pass 2: the skills' casts.  Weight of one cast = its boss damage before any timing factor (hits x expected hit x boss multiplier).
+PHI_ROWS = {}
+PHI_UNIF = 1.0
+E_FS = {}
+if status_on:
+    def _percast(key):
+        if not unlocked(key):
+            return 0.0
+        sk = SKILLS[key]
+        pct = coeff_pct(sk["base"], sk["fidx"], sk["scales"], sk["job_step"])
+        hd = hit_damage(pct, False, sk, key)
+        hits = sk["hits"] * (ticks(capped_window(sk["window"]), sk["icd"]) if sk.get("icd") else 1)
+        return hits * hd * branch_multipliers(key, sk)[0]
+    _bb_s = dict(mastery=big_bang_mastery, mastery_boss=big_bang_boss_mastery)
+    _c_slot = (big_bang_hits * hit_damage(skill_coefficient_base, True, _bb_s, "BIG_BANG") * branch_multipliers("BIG_BANG", _bb_s)[0]
+               if unlocked("BIG_BANG") else 0.0)
+    _groups = []
+    for _gid, _cast, _ents in STATUS_GROUPS:
+        _entries = []
+        for _row, _typ, _win, _gate, _wk in _ents:
+            _w = _percast(_wk)
+            if _gate and not unlocked(_gate):
+                _w = 0.0
+            _entries.append(dict(row=_row, typ=_typ, w=_w, L=(capped_window(SKILLS[_win]["window"]) if _win else 1),
+                                 on=(1 if (not _gate or unlocked(_gate)) else 0)))
+        _groups.append(dict(id=_gid, cd=eff_cooldown(SKILLS[_cast]["cooldown"], SKILLS[_cast]["costs_action"]),
+                            on=unlocked(_cast), slot=True, entries=_entries,
+                            fixed=_cast in {e["key"] for e in PLAYER_STUN}, t0=0.0))
+    E_ENGINE = stl.solve(dict(_eng_host, groups=_groups, c_slot=_c_slot))
+    for _row, _pfx in STATUS_CAST_PREFIX.items():
+        if _pfx.startswith("grp."):
+            ENGINE_N[_row] = E_ENGINE["groups"][_pfx[4:]]["n"]
+    PHI_ROWS = E_ENGINE["rows"]
+    PHI_UNIF = E_ENGINE["phi_unif"]
+    E_FS = E_ENGINE["fs"]
+    print(f"Status/KO engine ON: casts {{ {', '.join(f'{k}: {v}' for k, v in ENGINE_N.items() if k in SKILLS or k in BUFFS)} }}, phi_unif {PHI_UNIF:.4f}")
+
+
+def timing_factors(key):
+    """(boss-branch, normal-branch) timing factor of a damage row: the engine's phi (rows it casts), phi_unif (uniformly spread rows)
+    or, with the engine off, the uniform 1 + Status Effect Damage x stunned share.  Normal branch: always the uniform stun factor."""
+    fn = 1 + status_effect_damage / 100 * stf_n
+    if status_on:
+        if key in STATUS_PHI_ROWS:
+            return PHI_ROWS.get(key, 1.0), fn
+        if key in STATUS_UNIFORM_ROWS:
+            return PHI_UNIF, fn
+        return 1.0, fn
+    return 1 + status_effect_damage / 100 * stf_b, fn
+
+
+def cast_rate_py(key):
+    """Casts per second of an action-costing skill: the engine's count with the engine on, else the exact / steady-state count."""
+    if key in ENGINE_N and fixed_duration_active:
+        return ENGINE_N[key] / fight_duration
+    eff = eff_cooldown(SKILLS[key]["cooldown"], SKILLS[key]["costs_action"])
+    return non_buff_casts(eff) / fight_duration if fixed_duration_active else 1 / eff
+
+
+if fixed_duration_active:
+    cast_rate = sum(ENGINE_N[k] if k in ENGINE_N else non_buff_casts(eff_cooldown(SKILLS[k]["cooldown"], SKILLS[k]["costs_action"]))
+                    for k, s in SKILLS.items() if s["costs_action"] and unlocked(k))
+    cast_rate += sum(ENGINE_N[key] if key in ENGINE_N else exact_casts(eff_cooldown(b["cooldown"], b["costs_action"]))
+                     for key, b in BUFFS.items() if b["costs_action"] and unlocked(key))
+    cast_rate += non_buff_casts(eff_cooldown(holy_fountain_cooldown, True)) if unlocked("HOLY_FOUNTAIN") else 0
+    cast_rate += exact_casts(nimble_feet_eff_cd) if unlocked("NIMBLE_FEET") else 0
+    cast_rate /= fight_duration
+else:
+    cast_rate = sum(1 / eff_cooldown(SKILLS[k]["cooldown"], s["costs_action"]) for k, s in SKILLS.items() if s["costs_action"] and unlocked(k))
+    cast_rate += sum(1 / eff_cooldown(b["cooldown"], b["costs_action"]) for key, b in BUFFS.items() if b["costs_action"] and unlocked(key))
+    cast_rate += (1 / eff_cooldown(holy_fountain_cooldown, True)) if unlocked("HOLY_FOUNTAIN") else 0
+    cast_rate += (1 / nimble_feet_eff_cd) if unlocked("NIMBLE_FEET") else 0
+big_bang_per_second = max(0, actions_per_second - cast_rate)
+
+_bb_s = dict(mastery=big_bang_mastery, mastery_boss=big_bang_boss_mastery)
+big_bang_hit = hit_damage(skill_coefficient_base, True, _bb_s, "BIG_BANG")
+big_bang_dps = blend_branches("BIG_BANG", _bb_s, big_bang_hits * big_bang_hit * big_bang_per_second) if unlocked("BIG_BANG") else 0.0
 
 skill_dps = {}
 for key, s in SKILLS.items():
@@ -509,34 +676,36 @@ for key, s in SKILLS.items():
     pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"])
     hd = hit_damage(pct, False, s, key)
     if key == "ANGEL_RAY_BOSS_PROC":
-        eff_cd = eff_cooldown(SKILLS["ANGEL_RAY"]["cooldown"], SKILLS["ANGEL_RAY"]["costs_action"])
-        if fixed_duration_active:
-            rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
+        if status_on and key in ENGINE_N:
+            rate = s["hits"] * ENGINE_N[key] / fight_duration
         else:
-            hits = s["hits"] * (ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
-            rate = hits / eff_cd
+            eff_cd = eff_cooldown(SKILLS["ANGEL_RAY"]["cooldown"], SKILLS["ANGEL_RAY"]["costs_action"])
+            if fixed_duration_active:
+                rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
+            else:
+                hits = s["hits"] * (ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
+                rate = hits / eff_cd
         # Boss-only effect (per its own name/Note) — scales with boss_dmg_pct alone, zero
-        # contribution from the normal branch; (1-normal_weight) already reduces this to 0 in
-        # pure-normal content. PvP keeps boss/normal damage% out entirely, matching every other
-        # skill's pvp branch.
-        boss_term = boss_damage + s.get("mastery_boss", 0) + monster_dmg_bonus
-        boss_mult = 1 if monster_type == "pvp" else 1 + boss_term / 100
-        skill_dps[key] = (1 - normal_weight) * rate * hd * boss_mult
+        # contribution from the normal branch (U = 0); PvP keeps boss/normal damage% out entirely, matching every other skill's pvp branch.
+        skill_dps[key] = blend_branches(key, s, rate * hd, 0.0)
         continue
     eff_cd = eff_cooldown(s["cooldown"], s["costs_action"])
-    if fixed_duration_active:
+    if status_on and key in ENGINE_N:
+        # engine casts: a summon / DoT row's hits = hits per full window x effective casts (last window truncated at the fight end)
+        _per_cast = s["hits"] * (ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
+        rate = _per_cast * (E_FS[key] if key in STATUS_FS_KEYS else ENGINE_N[key]) / fight_duration
+    elif fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
         hits = s["hits"] * (ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
-    skill_dps[key] = rate * hd * boss_normal_multiplier(key, s)
+    skill_dps[key] = blend_branches(key, s, rate * hd)
 
 # Triumph Feather: bespoke 2-stage steady-state proc (see build_bishop_workbook.py's own Note on
 # this row for the full derivation). R = the character's total attack rate (Actions Per Second).
 if unlocked("TRIUMPH_FEATHER"):
     tf_base = 1500
     tf_fidx = 21
-    tf_pct = coeff_pct(tf_base, tf_fidx, True, 3) * (1 + level_gated_sum({73: 50}) / 100)
     tf_hd = hit_damage(coeff_pct(tf_base, tf_fidx, True, 3), False, dict(mastery=level_gated_sum({73: 50})), "TRIUMPH_FEATHER")
     p1 = 25 if level >= 78 else 15
     d1 = 10
@@ -551,8 +720,7 @@ if unlocked("TRIUMPH_FEATHER"):
     def tf_hit_rate(k):
         if not (SKILLS[k]["costs_action"] and unlocked(k)):
             return 0.0
-        cd = eff_cooldown(SKILLS[k]["cooldown"], SKILLS[k]["costs_action"])
-        return non_buff_casts(cd) / fight_duration if fixed_duration_active else 1 / cd
+        return cast_rate_py(k)
 
     def tf_x(chance, normal_branch):
         def q(targets):
@@ -569,20 +737,103 @@ if unlocked("TRIUMPH_FEATHER"):
         return (x1 * d1) / (1 + x1 * tf_cd) * x2 / (1 + icd2 * x2)
 
     tf_targets = triumph_feather_targets
-    tf_targets_capped = min(tf_targets, max_enemies_hit)
     tf_hits = 3 if level >= 104 else 2
-    if monster_type == "pvp":
-        tf_dps_mult = tf_branch_rate(False)
-    else:
-        tf_boss_term = boss_damage + monster_dmg_bonus
-        tf_normal_term = normal_damage + normal_dmg_bonus
-        tf_dps_mult = ((1 - normal_weight) * tf_branch_rate(False) * (1 + tf_boss_term / 100)
-                       + normal_weight * tf_branch_rate(True) * (1 + tf_normal_term / 100) * tf_targets_capped)
-    skill_dps["TRIUMPH_FEATHER"] = tf_hits * tf_hd * tf_dps_mult
+    # the branch multipliers use the row's own target count (1, or 7 from Lv.94), capped by Max Enemies
+    _tf_s = dict(mastery=level_gated_sum({73: 50}))
+    NORMAL_MONSTER_TARGETS["TRIUMPH_FEATHER"] = tf_targets
+    skill_dps["TRIUMPH_FEATHER"] = blend_branches("TRIUMPH_FEATHER", _tf_s, tf_hits * tf_hd * tf_branch_rate(False), tf_hits * tf_hd * tf_branch_rate(True))
 else:
     skill_dps["TRIUMPH_FEATHER"] = 0.0
 
 total_dps = big_bang_dps + sum(skill_dps.values())
+
+# ---------------------------------------------------------------------------------------------------------------
+# Companion: plain-Python port (src/companion_python_model.py) of src/companion_model.py's rules, fed with this script's own numbers for the player's
+# pipeline.  The verify run clears the artifact slots, so the artifact snapshot terms (Hexagon, Charm, Chalice) are zero here; they are covered by the
+# dedicated hand checks instead.
+# ---------------------------------------------------------------------------------------------------------------
+companion_choice = _in("companion_choice")
+_ci_ws = openpyxl.load_workbook(XLSX_PATH)["CompanionsInput"]
+_lv = next((_ci_ws.cell(row=r, column=2).value for r in range(1, _ci_ws.max_row + 1)
+            if _ci_ws.cell(row=r, column=1).value == companion_choice), None)
+try:
+    c_level = int(float(_lv))
+except (TypeError, ValueError):
+    c_level = 0          # "Not unlocked" / no companion
+companion_dps = 0.0
+companion_result = None
+if (companion_choice != "None" and c_level >= 1) or _pl_on:
+    # boss-only / normal-only DPS of the player's rows (for the damage-share-weighted uplift)
+    pb_total = pn_total = pu_total = 0.0
+    for key, val in list(skill_dps.items()) + [("BIG_BANG", big_bang_dps)]:
+        pair = _BRANCH_PAIRS.get(key)
+        if pair is None:
+            continue
+        bd, nd, explicit, bm_, nm_ = pair
+        if explicit:
+            pb_total += bd
+            pn_total += nd
+            _bd_row = bd
+        else:  # multiplier-style rows: DPS = K x ((1-w) b + w n)  ->  boss DPS = K b
+            denom = (1 - normal_weight) * bm_ + normal_weight * nm_
+            pb_total += val * bm_ / denom
+            pn_total += val * nm_ / denom
+            _bd_row = val * bm_ / denom
+        if key in STATUS_UNIFORM_ROWS:
+            pu_total += _bd_row
+    basic_pair = _BRANCH_PAIRS.get("BIG_BANG")
+    if basic_pair is None:
+        basic_b = basic_n = 0.0
+    else:
+        _den = (1 - normal_weight) * basic_pair[3] + normal_weight * basic_pair[4]
+        basic_b = big_bang_dps * basic_pair[3] / _den
+        basic_n = big_bang_dps * basic_pair[4] / _den
+    att_full, fd_full = 0.0, 1.0
+    for key, b in BUFFS.items():
+        if not unlocked(key):
+            continue
+        if b["target"] == "ATTACK":
+            att_full += buff_pct_py(key)
+        elif b["target"] != "ATTACK_SPEED":
+            fd_full *= 1 + buff_pct_py(key) / 100
+    # the engine's mean Attack% bucket for the companion's `attack_bucket_avg` (Excel: F x exact uptime at the engine's cast count; the averaged formula otherwise)
+    _atk_bucket_avg = attack_bucket_sum
+    # Bishop's Damage% bucket is one additive sum (Inputs Damage% + Holy Symbol's Damage Boost + artifacts): the companion's debuffs and the Hexagon snapshot ratio use it
+    _joint = damage + damage_bonus
+    _boss_pct_c, _norm_pct_c = boss_damage + monster_dmg_bonus, normal_damage + normal_dmg_bonus
+    comp_host = dict(
+        mt=monster_type, T=fight_duration, content=content_type, pvp_len=PVP_FIGHT_DURATION, cap=max_enemies_hit, w=normal_weight,
+        unit=hit_damage(100.0, True, dict(mastery=0), "BIG_BANG") / 100,
+        bad=basic_attack_damage, sd=skill_damage, aps=actions_per_second,
+        avgbuff=avg_buff_mult, attack_bucket_avg=_atk_bucket_avg,
+        charm_val=0.0, agg_damage_avg=_joint, hex_avg=0.0, hex_snap=lambda st: 0.0,
+        avgbuff_snap=lambda charm, extra: (1 + (att_full + charm + extra) / 100) * fd_full,
+        agg_fd_boss_only=0.0, agg_fd_norm_only=0.0, chalice_avg_boss=0.0, chalice_avg_norm=0.0, chalice_full=0.0, horn_avg=0.0, horn_full=0.0,
+        boss_pct=_boss_pct_c, norm_pct=_norm_pct_c, extra_boss=1.0, extra_norm=1.0,
+        player_boss=pb_total, player_norm=pn_total,
+        player_uniform_boss=pu_total, player_basic_boss=basic_b, player_basic_norm=basic_n,
+        cr_total=crit_rate, cd_total=crit_damage + crit_damage_bonus, min_dmg=min_damage, max_dmg=max_damage, defense=monster_defense,
+        def_pen=def_pen, pst=PST,
+        taken_bucket=_joint,
+        st=dict(on=status_on, S=status_effect_damage,
+                mult=(list(E_ENGINE["mult"]) + [1.0] * (stl.NB_MAX - E_ENGINE["nb"])) if status_on else None,
+                act=(list(E_ENGINE["act"]) + [0.0] * (stl.NB_MAX - E_ENGINE["nb"])) if status_on else None),
+    )
+    companion_result = cpm.run(comp_host, companion_choice if (companion_choice != "None" and c_level >= 1) else "None", c_level,
+                               companion_summon_time_increase_pct)
+    companion_dps = companion_result["comp_blend_dps"]
+    print(f"Companion ({companion_choice} Lv{c_level}) DPS = {companion_dps:.4f}  (best candidate {companion_result['best']}, s={companion_result['s']}, "
+          f"W={companion_result['W']:.2f}; damage {(1 - normal_weight) * companion_result['dmg_b'] + normal_weight * companion_result['dmg_n']:.4f}, "
+          f"uplift {(1 - normal_weight) * companion_result['upl_b'] + normal_weight * companion_result['upl_n']:.4f})")
+if os.environ.get("COMPARE_COMPANIONS"):
+    _hb = locals().get("comp_host")
+    if _hb is None:
+        raise SystemExit("set companion_choice to any companion to build the host values first")
+    _base = total_dps
+    for _name in cpm.ck.COMPANIONS_ORDER:
+        _r = cpm.run(_hb, _name, 10, companion_summon_time_increase_pct)
+        print(f"  [compare Lv10] {_name:14s} blend DPS {_r['comp_blend_dps']:.4e}  = +{_r['comp_blend_dps'] / _base * 100:6.2f}% of player total (s={_r['s']:.1f}, W={_r['W']:.1f})")
+total_dps += companion_dps
 
 print(f"Monster Damage Taken bonus % (Holy Fountain) = {monster_dmg_bonus:.6f}")
 print(f"Normal Monster Damage bonus % (Holy Symbol) = {normal_dmg_bonus:.6f}")
@@ -641,6 +892,23 @@ total_ok = np.isclose(total_dps, xl_total, rtol=1e-6, atol=1e-3)
 print(f"{'TOTAL DPS':28s} {total_dps:16.4f} {xl_total:16.4f}  {'OK' if total_ok else 'MISMATCH'}")
 if not total_ok:
     mismatches.append(("TOTAL DPS", total_dps, xl_total))
+
+if status_on:
+    # the engine strip itself: cast counts and timing factors against the Python reference
+    for _row, _pfx in STATUS_CAST_PREFIX.items():
+        if _row in ENGINE_N and _row in ROW:
+            _addr = STATUS_MAIN_LAYOUT.s(_pfx + ".n").split("!")[1].replace("$", "")
+            _xl, _py = read_cell("TIMELINE", _addr), ENGINE_N[_row]
+            _ok = np.isclose(_xl, _py)
+            print(f"  engine casts {_row:22s} python {_py:4.0f} workbook {_xl:4.0f}  {'OK' if _ok else 'MISMATCH'}")
+            if not _ok:
+                mismatches.append(("engine casts " + _row, _py, _xl))
+    for _row, _py in PHI_ROWS.items():
+        _addr = STATUS_MAIN_LAYOUT.s("phi." + _row).split("!")[1].replace("$", "")
+        _xl = read_cell("TIMELINE", _addr)
+        if not np.isclose(_xl, _py, rtol=1e-6):
+            print(f"  engine phi {_row:22s} python {_py:.6f} workbook {_xl:.6f}  MISMATCH")
+            mismatches.append(("engine phi " + _row, _py, _xl))
 
 if mismatches:
     print(f"\n{len(mismatches)} mismatch(es) between the independent model and the live workbook.")

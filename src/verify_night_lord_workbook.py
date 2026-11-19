@@ -9,6 +9,7 @@ against this script's independent numbers. Mirrors verify_fp_mage_workbook.py's 
 """
 import json
 import math
+import os
 import re
 import sys
 from pathlib import Path
@@ -19,6 +20,9 @@ REPO = Path(__file__).resolve().parent.parent
 XLSX_PATH = REPO / "Night-Lord" / "Night-Lord-DPS-Calculator.xlsx"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_night_lord_workbook import ROW, IN, UNLOCK_LEVEL, R_TOTAL, CONTENT_TYPES  # noqa: E402
+from build_night_lord_workbook import STATUS_CAST_PREFIX, STATUS_GROUPS, STATUS_BUFFS, STATUS_UNIFORM_ROWS, STATUS_PHI_ROWS, STATUS_FS_KEYS, STATUS_MAIN_LAYOUT  # noqa: E402
+import status_timeline as stl  # noqa: E402
+import companion_python_model as cpm  # noqa: E402
 
 FACTOR_TABLE = json.loads((REPO / "data/factor_table.json").read_text())
 FACTOR_TABLE = {int(k): v for k, v in FACTOR_TABLE.items()}
@@ -149,6 +153,7 @@ damage = _in("damage")
 damage_amp = _in("damage_amp")
 boss_damage = _in("boss_damage")
 normal_damage = _in("normal_damage")
+status_effect_damage = _in("status_effect_damage")
 final_damage = _in("final_damage")
 min_damage = _in("min_damage")
 max_damage = _in("max_damage")
@@ -225,8 +230,8 @@ def exact_total_hits(cooldown, hits_per_cast, icd, window, duration=None):
     return hits_per_cast * ((casts - 1) * full_window_ticks + last_cast_ticks)
 
 
-def exact_buff_uptime(cooldown, buff_duration):
-    casts = exact_casts(cooldown)
+def exact_buff_uptime(cooldown, buff_duration, casts=None):
+    casts = exact_casts(cooldown) if casts is None else casts
     remaining_after_last = max(0.0, fight_duration - (casts - 1) * cooldown)
     last_uptime = min(buff_duration, remaining_after_last)
     return (casts - 1) * min(buff_duration, cooldown) + last_uptime
@@ -337,73 +342,50 @@ PASSIVE_MULT = {
 }
 
 
-def boss_normal_multiplier(targets, mastery_boss, mastery_normal):
-    """Correctly blends Boss/Normal Monster Damage% and target count: each branch gets its own
-    full (1+damage%/100)*targets treatment. The two branches are combined here as a plain dollar
-    blend for the real Total DPS (correct — this IS what actual DPS output looks like when
-    time-averaged across both target types); Sensitivity's marginal-value ranking uses a separate,
-    ratio-based blend instead (Excel-side only, not modeled in this Python script), since a dollar
-    blend would let a stat's reported "value" be dominated by whichever branch hits more targets."""
+_BRANCH_PAIRS = {}   # key -> (boss DPS, normal DPS) of the last branch_pair call (companion host: player boss / normal DPS of every row)
+
+
+def branch_pair(key, rate_boss, rate_normal, hd_, mastery_boss, mastery_normal, targets):
+    """Boss and normal DPS of one row (before weighting): rate x hit x its own branch multiplier x the row's timing factor (Status Effect Damage / KO
+    engine).  Each branch gets its own full (1+damage%/100)*target_count treatment; the two are blended into the real Total DPS by the time weight w
+    (a plain dollar blend - correct for the real Total DPS), while Sensitivity's marginal-value ranking uses a separate ratio-based blend (Excel side
+    only), since a dollar blend would let a stat's reported value be dominated by whichever branch hits more targets.  PvP is single-enemy with neither bonus."""
+    fb, fn = timing_factors(key)
     if monster_type == "pvp":
-        return 1
-    targets = min(targets, max_enemies_hit)
-    boss_term = boss_damage + mastery_boss + monster_dmg_bonus
-    normal_term = normal_damage + mastery_normal + monster_dmg_bonus
-    boss_branch = 1 + boss_term / 100
-    normal_branch = (1 + normal_term / 100) * targets
-    return (1 - normal_weight) * boss_branch + normal_weight * normal_branch
+        b, n = 1.0, 1.0
+    else:
+        b = 1 + (boss_damage + mastery_boss + monster_dmg_bonus) / 100
+        n = (1 + (normal_damage + mastery_normal + monster_dmg_bonus) / 100) * min(targets, max_enemies_hit)
+    pair = (rate_boss * hd_ * b * fb, rate_normal * hd_ * n * fn)
+    _BRANCH_PAIRS[key] = pair
+    return pair
 
 
-def buff_uptime(cooldown, duration, bdi_extra=0.0):
+def blended(pair):
+    return (1 - normal_weight) * pair[0] + normal_weight * pair[1]
+
+
+def buff_uptime(cooldown, duration, bdi_extra=0.0, casts=None):
+    """Uptime of a cast buff.  `casts` = the Status/KO engine's cast count of that buff (Calc!R is overridden by it with the engine on); None = the averaged model's own count."""
     cooldown = eff_cooldown(cooldown, True)   # CDR applies to every cooldown
     bdi = buff_duration_increase_pct + bdi_extra
     scaled_duration = duration * (1 + bdi / 100)
     if fixed_duration_active:
-        return exact_buff_uptime(cooldown, scaled_duration) / fight_duration
+        return exact_buff_uptime(cooldown, scaled_duration, casts) / fight_duration
     if monster_type == "pvp":
         return min(scaled_duration, PVP_FIGHT_DURATION) / PVP_FIGHT_DURATION
     return min(1.0, scaled_duration / cooldown)
 
 
-# ---------------------------------------------------------------------------
-# Global helper bonuses (mirrors Summary!R_CRIT_RATE_BONUS / R_MONSTER_DMG_BONUS / R_AVGBUFF /
-# R_SHADOW_PARTNER_MULT).
-# ---------------------------------------------------------------------------
 def passive_row_pct(key, table):
     p = table[key]
     return coeff_pct(p["base"], p["fidx"], p["scales"], p["job_step"]) if unlocked(key) else 0.0
 
 
-dark_sight_crit_pct = passive_row_pct("DARK_SIGHT_CRIT", BUFFS) if unlocked("DARK_SIGHT_CRIT") else 0.0
-dark_sight_crit_uptime = buff_uptime(BUFFS["DARK_SIGHT_CRIT"]["cooldown"], BUFFS["DARK_SIGHT_CRIT"]["duration"])
-dark_sight_crit_avg = dark_sight_crit_pct * dark_sight_crit_uptime if unlocked("DARK_SIGHT_CRIT") else 0.0
-
-frailty_debuff_pct = coeff_pct(BUFFS["FRAILTY_CURSE_DEBUFF"]["base"], BUFFS["FRAILTY_CURSE_DEBUFF"]["fidx"], True, 4) if unlocked("FRAILTY_CURSE_DEBUFF") else 0.0
-frailty_debuff_uptime = buff_uptime(BUFFS["FRAILTY_CURSE_DEBUFF"]["cooldown"], BUFFS["FRAILTY_CURSE_DEBUFF"]["duration"])
-frailty_debuff_avg = frailty_debuff_pct * frailty_debuff_uptime if unlocked("FRAILTY_CURSE_DEBUFF") else 0.0
-# Mastery Lv.111 ("Frailty Curse - Critical"): +30% Critical Damage Taken to enemies in the same
-# zone, duty-cycle-averaged over the same uptime as the enemy debuff row above (per the user's
-# direction, only the Critical Damage half is modeled — the Critical Resistance half has no
-# matching mechanic anywhere in this calculator).
-crit_damage_bonus = (30.0 * frailty_debuff_uptime) if level >= 111 else 0.0
-
-critical_throw_lv47 = 8.0 if level >= 47 else 0.0
-venom_lv82 = 15.0 if level >= 82 else 0.0
-
-crit_rate_bonus = critical_throw_lv47 + dark_sight_crit_avg
-monster_dmg_bonus = venom_lv82 + frailty_debuff_avg
-
-dark_sight_atk_pct = coeff_pct(BUFFS["DARK_SIGHT_ATK"]["base"], BUFFS["DARK_SIGHT_ATK"]["fidx"], True, 1) if unlocked("DARK_SIGHT_ATK") else 0.0
-dark_sight_atk_uptime = buff_uptime(BUFFS["DARK_SIGHT_ATK"]["cooldown"], BUFFS["DARK_SIGHT_ATK"]["duration"])
-dark_sight_atk_avg = dark_sight_atk_pct * dark_sight_atk_uptime if unlocked("DARK_SIGHT_ATK") else 0.0
-
-frailty_self_pct = coeff_pct(BUFFS["FRAILTY_CURSE_SELF_FD"]["base"], BUFFS["FRAILTY_CURSE_SELF_FD"]["fidx"], True, 4) if unlocked("FRAILTY_CURSE_SELF_FD") else 0.0
-frailty_self_uptime = buff_uptime(BUFFS["FRAILTY_CURSE_SELF_FD"]["cooldown"], BUFFS["FRAILTY_CURSE_SELF_FD"]["duration"])
-frailty_self_avg = frailty_self_pct * frailty_self_uptime if unlocked("FRAILTY_CURSE_SELF_FD") else 0.0
-
-# --- Actions per second / Alchemic Adrenaline (bespoke, breaks the circular dependency by using
-# a "pre-Adrenalin" actions/sec for the accumulation phase — see build_night_lord_workbook.py's
-# build_summary_sheet docstring). ---
+# ---------------------------------------------------------------------------------------------------------------
+# Nimble Feet / Alchemic Adrenaline / Actions per second (none of them is engine-timed: Nimble Feet keeps its averaged cast count, Adrenalin is action-rate driven).
+# Alchemic Adrenaline's uptime comes from the *pre-Adrenalin* Actions/sec (breaks the Adrenalin <-> Actions/sec cycle), see build_summary_sheet.
+# ---------------------------------------------------------------------------------------------------------------
 nimble_feet_pct = coeff_pct(BUFFS["NIMBLE_FEET"]["base"], BUFFS["NIMBLE_FEET"]["fidx"], False, 1)
 nimble_feet_uptime = buff_uptime(BUFFS["NIMBLE_FEET"]["cooldown"], BUFFS["NIMBLE_FEET"]["duration"])
 nimble_feet_avg = nimble_feet_pct * nimble_feet_uptime
@@ -423,11 +405,97 @@ adrenalin_fd_avg = adrenalin_fd_pct * adrenalin_uptime
 as_bonus = nimble_feet_avg + adrenalin_as_avg
 actions_per_second = 1 + min(150, 150 * (1 - (1 - attack_speed_base / 150) * (1 - as_bonus / 150))) / 100
 
+# ---------------------------------------------------------------------------------------------------------------
+# Status Effect Damage / KO timeline engine (src/status_timeline.py `solve`, the plain-Python reference): fixed-length single-target content with KO phases
+# (World Boss, Enhancement Dungeon) or any stun/freeze (companion or the player's own Gust Charm).  The player casts Dark Sight (Attack) and Frailty Curse
+# (self Final Damage) and the cooldown skills when they pay most; Alchemic Adrenaline / Nimble Feet / Shadow Partner / the Frailty Curse enemy debuff keep their
+# averaged formulas.
+# ---------------------------------------------------------------------------------------------------------------
+_companion_choice0 = _in("companion_choice")
+_ci0 = openpyxl.load_workbook(XLSX_PATH)["CompanionsInput"]
+_lv0 = next((_ci0.cell(row=r, column=2).value for r in range(1, _ci0.max_row + 1) if _ci0.cell(row=r, column=1).value == _companion_choice0), None)
+try:
+    c_level0 = int(float(_lv0))
+except (TypeError, ValueError):
+    c_level0 = 0
+_stub = dict(mt=monster_type, T=fight_duration, content=content_type, pvp_len=PVP_FIGHT_DURATION, cap=max_enemies_hit, w=normal_weight, unit=1.0,
+             bad=0.0, sd=0.0, aps=1.5, avgbuff=1.0, attack_bucket_avg=0.0, charm_val=0.0, agg_damage_avg=0.0, hex_avg=0.0, hex_snap=lambda st: 0.0,
+             avgbuff_snap=lambda charm, extra: 1.0, agg_fd_boss_only=0.0, agg_fd_norm_only=0.0, chalice_avg_boss=0.0, chalice_avg_norm=0.0,
+             chalice_full=0.0, horn_avg=0.0, horn_full=0.0, boss_pct=0.0, norm_pct=0.0, extra_boss=1.0, extra_norm=1.0, player_boss=1.0, player_norm=1.0, player_uniform_boss=1.0,
+             player_basic_boss=0.5, player_basic_norm=0.5, cr_total=0.0, cd_total=0.0, min_dmg=100.0, max_dmg=100.0, defense=0.0, def_pen=0.0, taken_bucket=0.0)
+# The player's own stunning skill (game table): Gust Charm stuns 8 targets for 2 s (cooldown 24 s, no Reuse mastery), cast on cooldown from the start.
+PLAYER_STUN = [
+    dict(id="GUST", key="GUST_CHARM", typ="cast", dur=2.0, p=1.0, cd=24, min_level=0, tick=1.0, win=0.0),
+]
+_pl_on = any(unlocked(e["key"]) and level >= e["min_level"] for e in PLAYER_STUN)
+_stun_in0 = _companion_choice0 != "None" and c_level0 >= 1
+hasstun = (_stun_in0 and bool(cpm.run(_stub, _companion_choice0, c_level0, _in("companion_summon_time_increase_pct")).get("hasstun"))) or _pl_on
+KO_WINDOWS = {"World Boss": [(24, 34), (59, 69)], "Enhancement Dungeon": [(fight_duration - 4.5, fight_duration)]}
+status_on = fixed_duration_active and normal_weight == 0 and (content_type in KO_WINDOWS or hasstun)
+# the stun skill's first cast: t=0 with the engine on, otherwise after the buff-casting startup (Nimble Feet + Dark Sight + Frailty Curse), like Summary's startup cell
+_startup_plain = (sum(1 for k in BUFFS if BUFFS[k]["costs_action"] and unlocked(k)) / actions_per_second) if fixed_duration_active else 0.0
+_t0_pl = 0.0 if status_on else _startup_plain
+PST = [dict(id=e["id"], typ=e["typ"], cd=eff_cooldown(e["cd"], True), dur=e["dur"], p=e["p"], on=unlocked(e["key"]) and level >= e["min_level"],
+            t0=_t0_pl, tick=e["tick"], win=e["win"]) for e in PLAYER_STUN]
+_stub["pst"] = PST
+stun_info = cpm.run(_stub, _companion_choice0 if _stun_in0 else "None", c_level0, _in("companion_summon_time_increase_pct"))
+stf_b = stun_info["stunfracB"]
+stf_n = stun_info["stunfracN"]
+E_ENGINE = None
+ENGINE_N = {}
+dark_sight_atk_pct = passive_row_pct("DARK_SIGHT_ATK", BUFFS)
+frailty_self_pct = passive_row_pct("FRAILTY_CURSE_SELF_FD", BUFFS)
+engine_bbuff_mean = None
+if status_on:
+    _stun_vec = [min(1.0, a + b) for a, b in zip(stun_info["stun_vector"](stl.NB_MAX), stl.pl_stun_vector([dict(e, t0=0.0) for e in PST], fight_duration, stl.NB_MAX))]
+    _ds_dur = BUFFS["DARK_SIGHT_ATK"]["duration"] * (1 + buff_duration_increase_pct / 100)
+    _ds_cd = eff_cooldown(BUFFS["DARK_SIGHT_ATK"]["cooldown"], True)
+    _fc_dur = BUFFS["FRAILTY_CURSE_SELF_FD"]["duration"] * (1 + buff_duration_increase_pct / 100)
+    _fc_cd = eff_cooldown(BUFFS["FRAILTY_CURSE_SELF_FD"]["cooldown"], True)
+    _buffs = [dict(id="DS", kind="atk", F=dark_sight_atk_pct, dur=_ds_dur, cd=_ds_cd, on=unlocked("DARK_SIGHT_ATK")),
+              dict(id="FC", kind="ramp", F=frailty_self_pct, dur=min(_fc_dur, _fc_cd), cd=_fc_cd, on=unlocked("FRAILTY_CURSE_SELF_FD"), p0=1, p1=1, ramp_t=1, dur0=1)]
+    _eng_host = dict(T=fight_duration, S=status_effect_damage, ko=KO_WINDOWS.get(content_type, []), hex_v=0.0, hex_period=20, hex_max=3,
+                     A0=0.0, charm_v=0.0, hex_avg=0.0, c_slot=0.0, stun=_stun_vec, buffs=_buffs, groups=[])
+    _e1 = stl.solve(_eng_host)               # pass 1: the buff schedule (independent of the skill weights)
+    engine_bbuff_mean = _e1["Bbuff_mean"]
+    for _row, _pfx in STATUS_CAST_PREFIX.items():
+        if _pfx.startswith("buff."):
+            ENGINE_N[_row] = _e1["buffs"][_pfx[5:]]["n"]
+
+# ---------------------------------------------------------------------------
+# Global helper bonuses (mirrors Summary!R_CRIT_RATE_BONUS / R_MONSTER_DMG_BONUS / R_AVGBUFF /
+# R_SHADOW_PARTNER_MULT).  With the engine on, the buff rows' uptimes use the engine's cast counts (Calc!R).
+# ---------------------------------------------------------------------------
+dark_sight_crit_pct = passive_row_pct("DARK_SIGHT_CRIT", BUFFS) if unlocked("DARK_SIGHT_CRIT") else 0.0
+dark_sight_crit_uptime = buff_uptime(BUFFS["DARK_SIGHT_CRIT"]["cooldown"], BUFFS["DARK_SIGHT_CRIT"]["duration"], casts=ENGINE_N.get("DARK_SIGHT_CRIT"))
+dark_sight_crit_avg = dark_sight_crit_pct * dark_sight_crit_uptime if unlocked("DARK_SIGHT_CRIT") else 0.0
+
+frailty_debuff_pct = coeff_pct(BUFFS["FRAILTY_CURSE_DEBUFF"]["base"], BUFFS["FRAILTY_CURSE_DEBUFF"]["fidx"], True, 4) if unlocked("FRAILTY_CURSE_DEBUFF") else 0.0
+frailty_debuff_uptime = buff_uptime(BUFFS["FRAILTY_CURSE_DEBUFF"]["cooldown"], BUFFS["FRAILTY_CURSE_DEBUFF"]["duration"], casts=ENGINE_N.get("FRAILTY_CURSE_DEBUFF"))
+frailty_debuff_avg = frailty_debuff_pct * frailty_debuff_uptime if unlocked("FRAILTY_CURSE_DEBUFF") else 0.0
+# Mastery Lv.111 ("Frailty Curse - Critical"): +30% Critical Damage Taken to enemies in the same
+# zone, duty-cycle-averaged over the same uptime as the enemy debuff row above (per the user's
+# direction, only the Critical Damage half is modeled — the Critical Resistance half has no
+# matching mechanic anywhere in this calculator).
+crit_damage_bonus = (30.0 * frailty_debuff_uptime) if level >= 111 else 0.0
+
+critical_throw_lv47 = 8.0 if level >= 47 else 0.0
+venom_lv82 = 15.0 if level >= 82 else 0.0
+
+crit_rate_bonus = critical_throw_lv47 + dark_sight_crit_avg
+monster_dmg_bonus = venom_lv82 + frailty_debuff_avg
+
+dark_sight_atk_uptime = buff_uptime(BUFFS["DARK_SIGHT_ATK"]["cooldown"], BUFFS["DARK_SIGHT_ATK"]["duration"], casts=ENGINE_N.get("DARK_SIGHT_ATK"))
+dark_sight_atk_avg = dark_sight_atk_pct * dark_sight_atk_uptime if unlocked("DARK_SIGHT_ATK") else 0.0
+
+frailty_self_uptime = buff_uptime(BUFFS["FRAILTY_CURSE_SELF_FD"]["cooldown"], BUFFS["FRAILTY_CURSE_SELF_FD"]["duration"], casts=ENGINE_N.get("FRAILTY_CURSE_SELF_FD"))
+frailty_self_avg = frailty_self_pct * frailty_self_uptime if unlocked("FRAILTY_CURSE_SELF_FD") else 0.0
+
 # Buff-Casting Startup Delay: in fixed-duration fights, the character casts every currently-
 # unlocked, actively-cast buff sequentially at fight start (1/APS seconds each) before their
 # first damage-skill cast — so damage skills' usable window is reduced by this amount. Buffs
-# themselves keep their own t=0 uptime math unchanged.
-if fixed_duration_active:
+# themselves keep their own t=0 uptime math unchanged.  With the engine on the buffs are cast when they pay: no start-up delay.
+if fixed_duration_active and not status_on:
     buff_cast_startup_time = sum(1 for k in BUFFS if BUFFS[k]["costs_action"] and unlocked(k)) / actions_per_second
 else:
     buff_cast_startup_time = 0.0
@@ -447,28 +515,12 @@ def non_buff_total_hits(cooldown, hits_per_cast, icd, window):
     return exact_total_hits(cooldown, hits_per_cast, icd, window, max(0.0, fight_duration - buff_cast_startup_time))
 
 
-if fixed_duration_active:
-    cast_rate = sum(
-        BUFFS[k]["actions_per_cast"] * exact_casts(eff_cooldown(BUFFS[k]["cooldown"], BUFFS[k]["costs_action"]))
-        for k in BUFFS if BUFFS[k]["costs_action"] and unlocked(k)
-    )
-    cast_rate += sum(
-        non_buff_casts(eff_cooldown(DAMAGE_SKILLS[k]["cooldown"], DAMAGE_SKILLS[k]["costs_action"]))
-        for k in DAMAGE_SKILLS if k != "SHOWDOWN" and DAMAGE_SKILLS[k]["costs_action"] and unlocked(k)
-    )
-    cast_rate /= fight_duration
+# Average Buff Multiplier: Dark Sight's Attack% (additive bucket with the artifacts), Frailty Curse's and Adrenalin's Final Damage as their own factors.
+# Engine on: its mean buff bucket (Dark Sight + Frailty Curse at the engine's cast times) x Adrenalin.
+if status_on:
+    avg_buff_mult = engine_bbuff_mean * (1 + adrenalin_fd_avg / 100)
 else:
-    cast_rate = sum(
-        BUFFS[k]["actions_per_cast"] / eff_cooldown(BUFFS[k]["cooldown"], BUFFS[k]["costs_action"])
-        for k in BUFFS if BUFFS[k]["costs_action"] and unlocked(k)
-    )
-    cast_rate += sum(
-        1 / eff_cooldown(DAMAGE_SKILLS[k]["cooldown"], DAMAGE_SKILLS[k]["costs_action"])
-        for k in DAMAGE_SKILLS if k != "SHOWDOWN" and DAMAGE_SKILLS[k]["costs_action"] and unlocked(k)
-    )
-showdown_per_second = max(0, actions_per_second - cast_rate)
-
-avg_buff_mult = (1 + dark_sight_atk_avg / 100) * (1 + frailty_self_avg / 100) * (1 + adrenalin_fd_avg / 100)
+    avg_buff_mult = (1 + dark_sight_atk_avg / 100) * (1 + frailty_self_avg / 100) * (1 + adrenalin_fd_avg / 100)
 
 shadow_partner_mastery = level_gated_sum({68: 100})
 shadow_partner_pct = (coeff_pct(SHADOW_PARTNER["base"], SHADOW_PARTNER["fidx"], True, SHADOW_PARTNER["job_step"]) * (1 + shadow_partner_mastery / 100)) if unlocked("SHADOW_PARTNER") else 0.0
@@ -485,16 +537,6 @@ def maple_mult(key):
 shadow_partner_maple = maple_mult("SHADOW_PARTNER") if unlocked("SHADOW_PARTNER") else 1.0
 shadow_partner_mult = 1 + (shadow_partner_pct * shadow_partner_maple * 25 / 100) / 100 if unlocked("SHADOW_PARTNER") else 1.0
 
-print(f"Avg Buff Multiplier        = {avg_buff_mult:.6f}")
-print(f"Crit Rate Bonus %          = {crit_rate_bonus:.6f}")
-print(f"Monster Dmg-Taken Bonus %  = {monster_dmg_bonus:.6f}")
-print(f"Shadow Partner Mult        = {shadow_partner_mult:.6f}")
-print(f"Actions/sec (pre-Adrenalin)= {aps_pre_adrenalin:.6f}")
-print(f"Adrenalin Uptime           = {adrenalin_uptime:.6f}")
-print(f"Actions/sec (final)        = {actions_per_second:.6f}")
-print(f"Cast rate                  = {cast_rate:.6f}")
-print(f"Showdown/sec                = {showdown_per_second:.6f}")
-
 
 def target_count_mult(targets):
     """Damage%-FREE target-count blend for hit-count / proc-trigger rates (Toxic Venom rolls once per target hit)."""
@@ -504,8 +546,8 @@ def target_count_mult(targets):
 
 
 def hit_damage(coeff_pct_val, is_basic, maple_mult_val, mastery, mastery_boss, mastery_normal, mastery_final):
-    # mastery_boss/mastery_normal are unused here now (Boss/Normal Monster Damage% is applied by
-    # the caller via boss_normal_multiplier, not blended into base_hit) — kept in the signature so
+    # mastery_boss/mastery_normal are unused here (Boss/Normal Monster Damage% is applied by
+    # the caller via branch_pair, not blended into base_hit) — kept in the signature so
     # every existing call site (which passes each skill's own mastery values) doesn't need editing.
     effective_coeff = coeff_pct_val * (1 + mastery / 100)  # a skill mastery MULTIPLIES the skill's damage (game-confirmed 2026-11-03); fold-ins stay additive
     base_damage = attack * (effective_coeff / 100)
@@ -525,13 +567,98 @@ def hit_damage(coeff_pct_val, is_basic, maple_mult_val, mastery, mastery_boss, m
     return non_crit_avg * (1 - cr) + crit_avg * cr
 
 
-skill_dps = {}
-hit_rate = {}  # per-skill hits/sec landing damage (target-multiplied), feeds Toxic Venom
-
+# ---- Status/KO engine pass 2: the skills' casts.  Weight of one cast = its boss damage before any timing factor (hits x expected hit x boss multiplier).
+PHI_ROWS = {}
+PHI_UNIF = 1.0
+E_FS = {}
 showdown_s = DAMAGE_SKILLS["SHOWDOWN"]
 showdown_hit = hit_damage(skill_coefficient_base, True, 1.0, showdown_mastery, showdown_mastery_boss, 0.0, 0.0)
-showdown_target_mult = boss_normal_multiplier(showdown_s["targets"], showdown_mastery_boss, 0.0)
-showdown_dps = showdown_hits * showdown_hit * showdown_per_second * showdown_target_mult
+if status_on:
+    def _percast(key):
+        if not unlocked(key):
+            return 0.0
+        sk = DAMAGE_SKILLS[key]
+        pct = coeff_pct(sk["base"], sk["fidx"], sk["scales"], sk["job_step"])
+        hd = hit_damage(pct, False, maple_mult(key), sk["mastery"], sk["mastery_boss"], sk["mastery_normal"], sk["mastery_final"])
+        hits = sk["hits"] * (ticks(capped_window(sk["window"]), sk["icd"]) if sk.get("icd") else 1)
+        b_mult = 1.0 if monster_type == "pvp" else 1 + (boss_damage + sk["mastery_boss"] + monster_dmg_bonus) / 100
+        return hits * hd * b_mult
+    _c_slot = (showdown_hits * showdown_hit * (1.0 if monster_type == "pvp" else 1 + (boss_damage + showdown_mastery_boss + monster_dmg_bonus) / 100)
+               if unlocked("SHOWDOWN") else 0.0)
+    _groups = []
+    for _gid, _cast, _ents in STATUS_GROUPS:
+        _entries = []
+        for _row, _typ, _win, _gate, _wk in _ents:
+            _w = _percast(_wk)
+            if _gate and not unlocked(_gate):
+                _w = 0.0
+            _entries.append(dict(row=_row, typ=_typ, w=_w, L=(capped_window(DAMAGE_SKILLS[_win]["window"]) if _win else 1),
+                                 on=(1 if (not _gate or unlocked(_gate)) else 0)))
+        _groups.append(dict(id=_gid, cd=eff_cooldown(DAMAGE_SKILLS[_cast]["cooldown"], DAMAGE_SKILLS[_cast]["costs_action"]),
+                            on=unlocked(_cast), slot=True, entries=_entries,
+                            fixed=_cast in {e["key"] for e in PLAYER_STUN}, t0=0.0))
+    E_ENGINE = stl.solve(dict(_eng_host, groups=_groups, c_slot=_c_slot))
+    for _row, _pfx in STATUS_CAST_PREFIX.items():
+        if _pfx.startswith("grp."):
+            ENGINE_N[_row] = E_ENGINE["groups"][_pfx[4:]]["n"]
+    PHI_ROWS = E_ENGINE["rows"]
+    PHI_UNIF = E_ENGINE["phi_unif"]
+    E_FS = E_ENGINE["fs"]
+    print(f"Status/KO engine ON: casts {{ {', '.join(f'{k}: {v}' for k, v in ENGINE_N.items())} }}, phi_unif {PHI_UNIF:.4f}")
+
+
+def timing_factors(key):
+    """(boss-branch, normal-branch) timing factor of a damage row: the engine's phi (rows it casts), phi_unif (uniformly spread rows)
+    or, with the engine off, the uniform 1 + Status Effect Damage x stunned share.  Normal branch: always the uniform stun factor."""
+    fn = 1 + status_effect_damage / 100 * stf_n
+    if status_on:
+        if key in STATUS_PHI_ROWS:
+            return PHI_ROWS.get(key, 1.0), fn
+        if key in STATUS_UNIFORM_ROWS:
+            return PHI_UNIF, fn
+        return 1.0, fn
+    return 1 + status_effect_damage / 100 * stf_b, fn
+
+
+# ---- Cast rate (subtracted from Showdown): every action-costing row, weighted by ActionsPerCast; engine on: the engine's cast counts ----
+if fixed_duration_active:
+    cast_rate = sum(
+        BUFFS[k]["actions_per_cast"] * (ENGINE_N[k] if k in ENGINE_N else exact_casts(eff_cooldown(BUFFS[k]["cooldown"], BUFFS[k]["costs_action"])))
+        for k in BUFFS if BUFFS[k]["costs_action"] and unlocked(k)
+    )
+    cast_rate += sum(
+        (ENGINE_N[k] if k in ENGINE_N else non_buff_casts(eff_cooldown(DAMAGE_SKILLS[k]["cooldown"], DAMAGE_SKILLS[k]["costs_action"])))
+        for k in DAMAGE_SKILLS if k != "SHOWDOWN" and DAMAGE_SKILLS[k]["costs_action"] and unlocked(k)
+    )
+    cast_rate /= fight_duration
+else:
+    cast_rate = sum(
+        BUFFS[k]["actions_per_cast"] / eff_cooldown(BUFFS[k]["cooldown"], BUFFS[k]["costs_action"])
+        for k in BUFFS if BUFFS[k]["costs_action"] and unlocked(k)
+    )
+    cast_rate += sum(
+        1 / eff_cooldown(DAMAGE_SKILLS[k]["cooldown"], DAMAGE_SKILLS[k]["costs_action"])
+        for k in DAMAGE_SKILLS if k != "SHOWDOWN" and DAMAGE_SKILLS[k]["costs_action"] and unlocked(k)
+    )
+showdown_per_second = max(0, actions_per_second - cast_rate)
+
+print(f"Avg Buff Multiplier        = {avg_buff_mult:.6f}")
+print(f"Crit Rate Bonus %          = {crit_rate_bonus:.6f}")
+print(f"Monster Dmg-Taken Bonus %  = {monster_dmg_bonus:.6f}")
+print(f"Shadow Partner Mult        = {shadow_partner_mult:.6f}")
+print(f"Actions/sec (pre-Adrenalin)= {aps_pre_adrenalin:.6f}")
+print(f"Adrenalin Uptime           = {adrenalin_uptime:.6f}")
+print(f"Actions/sec (final)        = {actions_per_second:.6f}")
+print(f"Cast rate                  = {cast_rate:.6f}")
+print(f"Showdown/sec                = {showdown_per_second:.6f}")
+
+skill_dps = {}
+hit_rate = {}  # per-skill attacks/sec landing damage (target-multiplied), feeds Toxic Venom
+
+showdown_pair = branch_pair("SHOWDOWN", showdown_per_second, showdown_per_second, showdown_hits * showdown_hit, showdown_mastery_boss, 0.0, showdown_s["targets"])
+if not unlocked("SHOWDOWN"):
+    _BRANCH_PAIRS["SHOWDOWN"] = (0.0, 0.0)
+showdown_dps = blended(_BRANCH_PAIRS["SHOWDOWN"])
 hit_rate["SHOWDOWN"] = showdown_per_second * target_count_mult(showdown_s["targets"]) if unlocked("SHOWDOWN") else 0.0
 skill_dps["SHOWDOWN"] = showdown_dps if unlocked("SHOWDOWN") else 0.0
 
@@ -541,17 +668,22 @@ for key, s in DAMAGE_SKILLS.items():
     if not unlocked(key):
         skill_dps[key] = 0.0
         hit_rate[key] = 0.0
+        _BRANCH_PAIRS[key] = (0.0, 0.0)
         continue
     pct = coeff_pct(s["base"], s["fidx"], s["scales"], s["job_step"])
     hd = hit_damage(pct, False, maple_mult(key), s["mastery"], s["mastery_boss"], s["mastery_normal"], s["mastery_final"])
     eff_cd = eff_cooldown(s["cooldown"], s["costs_action"], exempt=key in CDR_EXEMPT)
-    if fixed_duration_active:
+    if status_on and key in ENGINE_N:
+        # engine casts: a summon / DoT row's hits = hits per full window x effective casts (last window truncated at the fight end)
+        _per_cast = s["hits"] * (ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
+        rate = _per_cast * (E_FS[key] if key in STATUS_FS_KEYS else ENGINE_N[key]) / fight_duration
+    elif fixed_duration_active:
         rate = non_buff_total_hits(eff_cd, s["hits"], s.get("icd"), s.get("window")) / fight_duration
     else:
         hits = s["hits"] * (ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
         rate = hits / eff_cd
-    tm = boss_normal_multiplier(s["targets"], s["mastery_boss"], s["mastery_normal"])
-    skill_dps[key] = rate * hd * tm
+    pb_, pn_ = branch_pair(key, rate, rate, hd, s["mastery_boss"], s["mastery_normal"], s["targets"])
+    skill_dps[key] = blended((pb_, pn_))
     hit_rate[key] = rate / s["hits"] * target_count_mult(s["targets"])   # proc rolls: once per attack per enemy hit, not per damage line
 
 # Toxic Venom — no ICD; trigger rate = combined per-second hit rate (already target-multiplied)
@@ -560,17 +692,21 @@ if unlocked("TOXIC_VENOM"):
     total_hit_rate = sum(hit_rate[k] for k in TRIGGERS_TOXIC_VENOM)
     toxic_pct = coeff_pct(TOXIC_VENOM["base"], TOXIC_VENOM["fidx"], True, TOXIC_VENOM["job_step"])
     toxic_hd = hit_damage(toxic_pct, False, 1.0, toxic_venom_mastery, 0.0, 0.0, 0.0)
-    skill_dps["TOXIC_VENOM"] = 0.2 * total_hit_rate * toxic_hd * boss_normal_multiplier(1, 0.0, 0.0)
+    _tv = branch_pair("TOXIC_VENOM", 0.2 * total_hit_rate, 0.2 * total_hit_rate, toxic_hd, 0.0, 0.0, 1)
+    skill_dps["TOXIC_VENOM"] = blended(_tv)
 else:
     skill_dps["TOXIC_VENOM"] = 0.0
+    _BRANCH_PAIRS["TOXIC_VENOM"] = (0.0, 0.0)
 
 # Shadow Shifter counterattack — driven by incoming_hit_rate, not the character's own cast rate.
 if unlocked("SHADOW_SHIFTER"):
     shifter_pct = coeff_pct(SHADOW_SHIFTER["base"], SHADOW_SHIFTER["fidx"], True, SHADOW_SHIFTER["job_step"])
     shifter_hd = hit_damage(shifter_pct, False, 1.0, 0.0, 0.0, 0.0, 0.0)
-    skill_dps["SHADOW_SHIFTER"] = incoming_hit_rate * 0.2 * shifter_hd * boss_normal_multiplier(1, 0.0, 0.0)
+    _ss = branch_pair("SHADOW_SHIFTER", incoming_hit_rate * 0.2, incoming_hit_rate * 0.2, shifter_hd, 0.0, 0.0, 1)
+    skill_dps["SHADOW_SHIFTER"] = blended(_ss)
 else:
     skill_dps["SHADOW_SHIFTER"] = 0.0
+    _BRANCH_PAIRS["SHADOW_SHIFTER"] = (0.0, 0.0)
 
 # Shadow Partner (hybrid) and every passive-mult / buff / Night Lord's Mark row contribute 0 DPS
 # directly — their contributions are already folded into avg_buff_mult / crit_rate_bonus /
@@ -578,7 +714,66 @@ else:
 for key in ["SHADOW_PARTNER", "NIGHT_LORDS_MARK"] + list(BUFFS) + list(ADRENALIN) + list(PASSIVE_MULT):
     skill_dps[key] = 0.0
 
-total_dps = sum(skill_dps.values())
+# ---------------------------------------------------------------------------------------------------------------
+# Companion: plain-Python port (src/companion_python_model.py) of src/companion_model.py's rules, fed with this script's own
+# numbers for the player's pipeline.  The verify run clears the artifact slots, so the artifact snapshot terms (Hexagon, Charm,
+# Chalice) are zero here; they are covered by the dedicated hand checks instead.
+# ---------------------------------------------------------------------------------------------------------------
+companion_choice = _in("companion_choice")
+_ci_ws = openpyxl.load_workbook(XLSX_PATH)["CompanionsInput"]
+_lv = next((_ci_ws.cell(row=r, column=2).value for r in range(1, _ci_ws.max_row + 1)
+            if _ci_ws.cell(row=r, column=1).value == companion_choice), None)
+try:
+    c_level = int(float(_lv))
+except (TypeError, ValueError):
+    c_level = 0          # "Not unlocked" / no companion
+companion_dps = 0.0
+companion_result = None
+if (companion_choice != "None" and c_level >= 1) or _pl_on:
+    # boss-only / normal-only DPS of the player's rows (for the damage-share-weighted uplift)
+    pb_total = sum(p[0] for p in _BRANCH_PAIRS.values())
+    pn_total = sum(p[1] for p in _BRANCH_PAIRS.values())
+    pu_total = sum(_BRANCH_PAIRS[k][0] for k in STATUS_UNIFORM_ROWS)
+    basic_b, basic_n = _BRANCH_PAIRS["SHOWDOWN"]
+    boss_pct_c = boss_damage + monster_dmg_bonus
+    norm_pct_c = normal_damage + monster_dmg_bonus
+    _fdpart = (1 + (frailty_self_pct if unlocked("FRAILTY_CURSE_SELF_FD") else 0.0) / 100) * (1 + adrenalin_fd_avg / 100)
+    _ds_full = dark_sight_atk_pct if unlocked("DARK_SIGHT_ATK") else 0.0
+    comp_host = dict(
+        mt=monster_type, T=fight_duration, content=content_type, pvp_len=PVP_FIGHT_DURATION, cap=max_enemies_hit, w=normal_weight,
+        unit=hit_damage(100.0, True, 1.0, 0.0, 0.0, 0.0, 0.0) / 100 / shadow_partner_mult,
+        bad=basic_attack_damage, sd=skill_damage, aps=actions_per_second,
+        avgbuff=avg_buff_mult, attack_bucket_avg=dark_sight_atk_avg,
+        charm_val=0.0, agg_damage_avg=0.0, hex_avg=0.0, hex_snap=lambda st: 0.0,
+        avgbuff_snap=lambda charm, extra: (1 + (_ds_full + charm + extra) / 100) * _fdpart,
+        agg_fd_boss_only=0.0, agg_fd_norm_only=0.0, chalice_avg_boss=0.0, chalice_avg_norm=0.0, chalice_full=0.0, horn_avg=0.0, horn_full=0.0,
+        boss_pct=boss_pct_c, norm_pct=norm_pct_c, extra_boss=1.0, extra_norm=1.0,
+        player_boss=pb_total, player_norm=pn_total,
+        player_uniform_boss=pu_total, player_basic_boss=basic_b, player_basic_norm=basic_n,
+        cr_total=crit_rate + crit_rate_bonus, cd_total=crit_damage + crit_damage_bonus, min_dmg=min_damage, max_dmg=max_damage,
+        defense=monster_defense, def_pen=def_pen,
+        taken_bucket=0.0 if monster_type == "pvp" else (1 - normal_weight) * boss_pct_c + normal_weight * norm_pct_c,
+        pst=PST,
+        st=dict(on=status_on, S=status_effect_damage,
+                mult=(list(E_ENGINE["mult"]) + [1.0] * (stl.NB_MAX - E_ENGINE["nb"])) if status_on else None,
+                act=(list(E_ENGINE["act"]) + [0.0] * (stl.NB_MAX - E_ENGINE["nb"])) if status_on else None),
+    )
+    companion_result = cpm.run(comp_host, companion_choice if (companion_choice != "None" and c_level >= 1) else "None", c_level,
+                               _in("companion_summon_time_increase_pct"))
+    companion_dps = companion_result["comp_blend_dps"]
+    print(f"Companion ({companion_choice} Lv{c_level}) DPS = {companion_dps:.4f}  (best candidate {companion_result['best']}, s={companion_result['s']}, "
+          f"W={companion_result['W']:.2f}; damage {(1 - normal_weight) * companion_result['dmg_b'] + normal_weight * companion_result['dmg_n']:.4f}, "
+          f"uplift {(1 - normal_weight) * companion_result['upl_b'] + normal_weight * companion_result['upl_n']:.4f})")
+if os.environ.get("COMPARE_COMPANIONS"):
+    _hb = locals().get("comp_host")
+    if _hb is None:
+        raise SystemExit("set companion_choice to any companion to build the host values first")
+    _base = sum(skill_dps.values())
+    for _name in cpm.ck.COMPANIONS_ORDER:
+        _r = cpm.run(_hb, _name, 10, _in("companion_summon_time_increase_pct"))
+        print(f"  [compare Lv10] {_name:14s} blend DPS {_r['comp_blend_dps']:.4e}  = +{_r['comp_blend_dps'] / _base * 100:6.2f}% of player total (s={_r['s']:.1f}, W={_r['W']:.1f})")
+
+total_dps = sum(skill_dps.values()) + companion_dps
 
 print(f"Showdown DPS                = {showdown_dps:.4f}")
 for k, v in skill_dps.items():
@@ -628,6 +823,23 @@ total_ok = np.isclose(total_dps, xl_total, rtol=1e-6, atol=1e-3)
 print(f"{'TOTAL DPS':28s} {total_dps:16.4f} {xl_total:16.4f}  {'OK' if total_ok else 'MISMATCH'}")
 if not total_ok:
     mismatches.append(("TOTAL DPS", total_dps, xl_total))
+
+if status_on:
+    # the engine strip itself: cast counts and timing factors against the Python reference
+    for _row, _pfx in STATUS_CAST_PREFIX.items():
+        if _row in ENGINE_N and _row in ROW:
+            _addr = STATUS_MAIN_LAYOUT.s(_pfx + ".n").split("!")[1].replace("$", "")
+            _xl, _py = read_cell("TIMELINE", _addr), ENGINE_N[_row]
+            _ok = np.isclose(_xl, _py)
+            print(f"  engine casts {_row:22s} python {_py:4.0f} workbook {_xl:4.0f}  {'OK' if _ok else 'MISMATCH'}")
+            if not _ok:
+                mismatches.append(("engine casts " + _row, _py, _xl))
+    for _row, _py in PHI_ROWS.items():
+        _addr = STATUS_MAIN_LAYOUT.s("phi." + _row).split("!")[1].replace("$", "")
+        _xl = read_cell("TIMELINE", _addr)
+        if not np.isclose(_xl, _py, rtol=1e-6):
+            print(f"  engine phi {_row:22s} python {_py:.6f} workbook {_xl:.6f}  MISMATCH")
+            mismatches.append(("engine phi " + _row, _py, _xl))
 
 if mismatches:
     print(f"\n{len(mismatches)} mismatch(es) between the independent model and the live workbook.")
