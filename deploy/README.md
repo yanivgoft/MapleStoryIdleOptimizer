@@ -19,13 +19,15 @@ Files in this directory:
 |---|---|
 | `deploy_api.sh` | stage a minimal build context, build with Cloud Build, deploy to Cloud Run with the safe flags, print the URL |
 | `deploy_web.sh` | build the front end with `VITE_API_URL`, publish to Cloudflare / Firebase (or build for GitHub Pages) |
-| `smoke_test.sh` | curl-based check of a running API (health, all 12 classes, errors, CORS) - exit code 1 on any failure |
+| `smoke_test.sh` | curl-based check of a running API (health, every class the API lists, errors, CORS) - exit code 1 on any failure |
 | `.env.example` | every setting of the three scripts (copy to `deploy/.env`, git-ignored) |
 | `firebase/firebase.json` | Firebase Hosting + Firestore rules config (only used if you pick Firebase); `firebase/firestore.rules`, `firebase/firestore.indexes.json` (empty) belong to the optional accounts feature, section 17 |
 | `firebase/rules-test/` | emulator tests + an offline lint of `firestore.rules` (`npm run test:emulator`, needs Java; section 17) |
 | `../.github/workflows/deploy.yml` | manual (`workflow_dispatch`) deploy from GitHub Actions, section 12 |
 
 ---------------------------------------------------------------------------------------------------------------------------------------
+
+> **Shortcut (this project):** `deploy/redeploy.sh` does the whole redeploy in one command and verifies every step: preflight (tools, gcloud + Firebase logins, git state), the local regression run, the API deploy + Cloud Run revision check, the API smoke test (all classes, CORS), the web build + Firebase Hosting + Firestore rules, and live-site checks (the page serves the new build, its bundle points at the API, the API lists as many classes as this checkout). It stops at the first failing step. Options: `--yes`, `--skip-tests`, `--api-only`, `--web-only`, `--no-rules`, `--dry-run` (stages and builds, sends nothing). The numbered sections below describe each step it runs.
 
 ## 1. What you need on your machine
 
@@ -229,7 +231,7 @@ and not needed; a load balancer adds a standing monthly charge - skip it.
 ## 9. Smoke test
 
 ```bash
-deploy/smoke_test.sh https://msi-api-xxxx-uc.a.run.app          # SMOKE_ORIGIN=... adds the CORS checks; EXPECT_CLASSES=12
+deploy/smoke_test.sh https://msi-api-xxxx-uc.a.run.app          # SMOKE_ORIGIN=... adds the CORS checks; EXPECT_CLASSES=<n> pins the class count (default: every class listed, at least 12)
 ```
 
 ~35 requests (health, class list, per class `defaults` -> `compute` and `sensitivity` where modelled, the `{}` minimal body, a 422, a 404).  Exit code 0 only if everything passed.
@@ -260,7 +262,7 @@ It retries the first requests, so a cold start does not fail it.  Also usable lo
   `id` (also returned as the `x-request-id` header), `method`, `path`, `status`, `ms`, `ip` - Cloud Logging shows them as `jsonPayload.*`.  Useful filters:
   `jsonPayload.event="request" AND jsonPayload.status=429` (rate limiting working or too strict), `jsonPayload.ms>1000`, `jsonPayload.event="compute_failed"`.
   Cloud Run additionally writes its own request log (`httpRequest.*`, latency, remote IP) - the two correlate by time.
-* **Uptime:** `GET /api/health` returns `{"status":"ok","version":...,"classes":12}` and is exempt from the rate limiter.  Create an uptime check (Monitoring -> Uptime checks, HTTPS,
+* **Uptime:** `GET /api/health` returns `{"status":"ok","version":...,"classes":<n>}` and is exempt from the rate limiter.  Create an uptime check (Monitoring -> Uptime checks, HTTPS,
   path `/api/health`, period **5 minutes or longer**, one or a few regions; verify the free quota) or use any external free pinger.  Note that a frequent checker keeps an instance alive
   (little cost under request-based billing, but it defeats scale-to-zero's cold starts - which may be what you want).
 * **Alerts:** Monitoring -> Alerting -> policy on "Cloud Run request count" or "5xx ratio" and on the uptime check, e-mail channel.

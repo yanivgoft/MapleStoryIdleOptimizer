@@ -56,7 +56,7 @@ npm install
 npm run dev            # http://localhost:5173, talks to VITE_API_URL (default http://localhost:8000)
 npm run dev:mock       # same UI, no backend: VITE_MOCK=1 serves the fixtures (result numbers scale with Flat ATTACK)
 npm run build          # tsc --noEmit + vite build -> dist/
-npm test               # vitest: formatter, schema->form logic (iterates all 12 class fixtures), class picker, profiles, render smoke tests, mock API
+npm test               # vitest: formatter, schema->form logic (iterates every class fixture; a class without a map entry in xlsx_map.json is an engine-native one with no Excel calculator), class picker, profiles, render smoke tests, mock API
 ```
 
 `.env.example` lists the env variables (`VITE_API_URL`, `VITE_MOCK` and the four optional `VITE_FIREBASE_*` of the accounts feature).  The API must allow the dev origin (its default CORS list already has
@@ -76,8 +76,8 @@ npm test               # vitest: formatter, schema->form logic (iterates all 12 
 
 ## Classes, hints and the companion section
 
-* The picker lists all 12 classes grouped by job family (Warrior / Mage / Archer / Thief / Pirate) with the stat identity, and a Status line for the
-  selected class: Companions (yes), Artifacts (yes for the classes whose schema says `artifacts_modelled`: today all 12), Stat values (yes for every class with `status.stat_values`: today all 12; a class without it reads "coming soon").  The data comes from
+* The picker lists every class of `GET /api/classes` (the first 12 workbook-verified, the Cygnus classes engine-native) grouped by job family (Warrior / Mage / Archer / Thief / Pirate) with the stat identity, and a Status line for the
+  selected class: Companions (yes), Artifacts (yes for the classes whose schema says `artifacts_modelled`: today every class), Stat values (yes for every class with `status.stat_values`: today every class; a class without it reads "coming soon").  The data comes from
   `GET /api/classes` (`family`, `status`); the form itself needs nothing class-specific, it is generated from each class's schema (Flat STR / DEX / LUK / INT,
   Defense %, Incoming Hit Rate ... appear when the schema has them).
 * Numeric fields carry the schema's `min` / `max`: HTML `min` / `max` attributes (the inputs are `type=text` so "1,209,199" and "1e6" can be typed, which
@@ -183,7 +183,7 @@ are in), and `companions` / `summon_time` / `cdr` only once their collapsible se
 ## Cubes, Equipment compare and artifact potentials
 
 Three views over `GET .../cubes/meta` + `POST .../cubes | equipment-compare | artifact-potentials` (see `api/README.md`).  They exist for the classes whose `status.stat_values` is true (the stat prices come from
-the stat-values engine (all 12 classes today); for a class without it each shows "... is not available for this class yet" without calling the API (and a 501 from the API gives the same text).  The static tables
+the stat-values engine (every class today); for a class without it each shows "... is not available for this class yet" without calling the API (and a 501 from the API gives the same text).  The static tables
 (`useCubesMeta`) are fetched once per class, the first time one of the three is opened.  All three keep their data in the profile (`FormState.cubes / equipment`, and the artifact potential lines inside `FormState.artifacts`; saved with localStorage profiles and the
 JSON export/import, repaired on load, absent in older profiles).
 
@@ -305,7 +305,7 @@ From the repository root (engine output changes -> refresh these so mock mode an
 
 ```bash
 .venv/bin/python web/scripts/gen_fixtures.py --sensitivity-only   # only <id>.sensitivity(.meta).json (classes whose status.stat_values is true) + that flag in classes.json
-.venv/bin/python web/scripts/gen_fixtures.py     # all 12 classes: schema, defaults, sample inputs, result (through the real API app, TestClient)
+.venv/bin/python web/scripts/gen_fixtures.py     # every class: schema, defaults, sample inputs, result (through the real API app, TestClient); a class without a workbook golden uses tests/golden/snapshot_common.py::sample_inputs; --out DIR / --class ID for a dry run
 .venv/bin/python web/scripts/gen_fixtures.py --artifacts   # only the Artifacts tab data: <id>.artifacts_case.json (classes marked artifacts_modelled in classes.json) + lib/artifact_values.json + lib/artifact_potential_tables.json
 .venv/bin/python web/scripts/gen_fixtures.py --cubes-only  # only the cube tabs' fixtures: <id>.cubes_meta / cubes_case / equipment_case / potentials_case .json (classes whose status.stat_values is true; ~7 s)
 ```

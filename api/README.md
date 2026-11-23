@@ -4,7 +4,7 @@ Pure HTTP wrapper: no database, no sessions.  Everything a request needs is in t
 
 ```
 GET  /api/health
-GET  /api/classes                                  [{id, name, family, stat_identity, artifacts_modelled, status}]  (all 12 classes, discovered from engine/classes/*.py;
+GET  /api/classes                                  [{id, name, family, stat_identity, artifacts_modelled, status}]  (every class, discovered from engine/classes/*.py - the first 12 are workbook-verified, the Cygnus classes engine-native;
                                                    status = {companions, artifacts, stat_values}: what is modelled)
 GET  /api/classes/{id}/schema                      engine schema(): fields (label/group/type/unit/default/applicable/options/computed), dps_rows, artifacts
 GET  /api/classes/{id}/defaults?content_type=...   workbook defaults resolved for a content type
@@ -116,7 +116,7 @@ The code is `api/features.py` (validation, meta, pricing caches, the three compu
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r api/requirements-dev.txt
 .venv/bin/uvicorn api.main:app --reload --port 8000          # from the REPOSITORY ROOT
-.venv/bin/python -m pytest api/tests -q                      # FP-Mage golden + validation/limits/CORS (test_api.py); all 12 classes: list, schema, defaults x10 content types,
+.venv/bin/python -m pytest api/tests -q                      # FP-Mage golden + validation/limits/CORS (test_api.py); every class the API lists: list, schema, defaults x10 content types,
                                                              # compute, companions, artifacts 422, golden totals (test_all_classes.py); stat values (test_sensitivity.py): golden vs the engine,
                                                              # which / options, 501, meta, cache hit + expiry, own rate limit, validation, 500 / 504;
                                                              # cube features (test_cubes.py): golden vs engine.cubes / equipment / potentials, meta, 501, validation, row cache, own limits, 500 / 504, worker cap

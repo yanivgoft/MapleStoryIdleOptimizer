@@ -117,10 +117,10 @@ describe("render smoke, every class", () => {
 });
 
 describe("class picker", () => {
-  it("renders 12 classes in family groups with the stat identity and a status line", () => {
+  it("renders every class of the fixtures in family groups with the stat identity and a status line", () => {
     const html = strip(renderToString(<ClassPicker classes={classList} value="night_lord" onChange={() => undefined} />));
     expect((html.match(/<optgroup/g) ?? []).length).toBe(5);
-    expect((html.match(/<option/g) ?? []).length).toBe(12);
+    expect((html.match(/<option/g) ?? []).length).toBe(classList.length);
     expect(html).toContain("Night Lord (LUK / DEX)");
     expect(html).toContain("Corsair (DEX / STR)");
     expect(html).toContain("Status");

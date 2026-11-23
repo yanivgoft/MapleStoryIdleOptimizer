@@ -79,7 +79,8 @@ class SensTest:
         assert rows["pigs_ribbon"]["no_dps_effect"] and rows["pigs_ribbon"]["dps_gain"] == 0.0 and rows["pigs_ribbon"]["pct_gain"] == 100.0
         assert rows["hexagon_necklace"]["equipped"] and rows["hexagon_necklace"]["dps_gain"] > 0
         gain = rows["shamaness_marble"]["dps_gain"]
-        assert (gain > 0 if api["shamaness"] == "positive" else gain != 0.0) and not rows["shamaness_marble"]["no_dps_effect"]
+        mode = api["shamaness"]           # "positive": gain > 0, "nonzero": gain != 0, "inert": gain == 0 (the class's blocks do not wire the Buff Duration what-if: SensSpec.bdi_toggle_wired False)
+        assert (gain > 0 if mode == "positive" else gain == 0.0 if mode == "inert" else gain != 0.0) and not rows["shamaness_marble"]["no_dps_effect"]
         out2 = sensitivity.run(self.module, dict(inp, artifact_potential_gain={"pigs_ribbon": 1.0e9}), which="artifacts")
         assert {r["key"]: r for r in out2["artifacts"]["rows"]}["pigs_ribbon"]["dps_gain"] == 1.0e9
         naive = sensitivity.run(self.module, inp, which="stats", naive=True)

@@ -66,18 +66,10 @@ jobs:
           python-version: "3.11"
       - name: Install API dependencies
         run: python -m pip install -r api/requirements-dev.txt
-      - name: Engine golden tests (12 classes)
+      - name: Engine goldens (all registry golden jobs, workbook and engine-native classes) and API tests
         env:
           PYTHONHASHSEED: "0"
-        run: |
-          for t in fp_mage hero ice_lightning_mage paladin bowmaster bishop dark_knight marksman buccaneer corsair night_lord shadower; do
-            python tests/golden/test_$t.py
-          done
-          python tests/golden/test_artifacts.py --class fp_mage
-      - name: API tests
-        env:
-          PYTHONHASHSEED: "0"
-        run: python -m pytest api/tests -q
+        run: python tests/run_all.py --only golden --only api -v
 
   test-web:
     if: github.event_name == 'workflow_dispatch' || vars.DEPLOY_ON_RELEASE == 'true'
@@ -152,7 +144,7 @@ jobs:
         env:
           API_URL: ${{ steps.deploy.outputs.api_url }}
         run: |
-          # CORS is checked for the first allowed origin; EXPECT_CLASSES defaults to 12
+          # CORS is checked for the first allowed origin; the class count is every class the API lists (at least 12; EXPECT_CLASSES pins it)
           SMOKE_ORIGIN="${CORS_ORIGINS%%,*}" deploy/smoke_test.sh "$API_URL"
 
       - name: Summary

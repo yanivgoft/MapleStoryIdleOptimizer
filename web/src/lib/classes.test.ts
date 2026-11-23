@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { defaultClassId, FAMILY_ORDER, groupClasses, optionLabel, statLabel, statusItems, statusLine } from "./classes";
 import { classList } from "../test/fixtures";
 
-describe("class picker logic (all 12 classes from the API fixture)", () => {
-  it("lists 12 classes with a family, a stat identity and a status", () => {
-    expect(classList).toHaveLength(12);
+describe("class picker logic (every class of the API fixture)", () => {
+  it("lists the classes with a family, a stat identity and a status", () => {
+    expect(classList.length).toBeGreaterThanOrEqual(12);
     for (const c of classList) {
       expect(c.family, c.id).toBeTruthy();
       expect(c.stat_identity, c.id).toBeTruthy();
@@ -14,7 +14,7 @@ describe("class picker logic (all 12 classes from the API fixture)", () => {
   it("groups by job family in game order, each group sorted by name", () => {
     const g = groupClasses(classList);
     expect(g.map((x) => x.family)).toEqual(FAMILY_ORDER);
-    expect(g.flatMap((x) => x.classes)).toHaveLength(12);
+    expect(g.flatMap((x) => x.classes)).toHaveLength(classList.length);
     for (const grp of g) {
       const names = grp.classes.map((c) => c.name);
       expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));

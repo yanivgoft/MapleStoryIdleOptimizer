@@ -9,3 +9,4 @@ table is the only provenance.  `HEAD` is the git commit the engine was built on;
 
 | date | class | kind | HEAD | cases changed | values changed | max rel diff | reason |
 |---|---|---|---|---|---|---|---|
+| 2026-11-23 | dawn_warrior | snapshot | 40ab345+dirty | 320 | 320 | 0.000e+00 | engine-native snapshot: pins the engine, no independent source; CREATED; initial engine-native snapshot of Dawn Warrior (in-game numbers verified by the displayed-value test); pins the engine |

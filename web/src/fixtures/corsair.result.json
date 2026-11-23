@@ -270,7 +270,7 @@
   "buff_cast_startup_time": 0.0,
   "final_damage_extra": 13.965714285714284,
   "final_damage_rest": 13.965714285714284,
-  "crit_damage_bonus": 0,
+  "crit_damage_bonus": 0.0,
   "crit_rate_bonus": 0.0,
   "monster_dmg_bonus": 5.175529411764706,
   "maple_hero_pct": 176.0,

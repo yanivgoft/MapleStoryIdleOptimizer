@@ -16,7 +16,7 @@ export interface Cell {
   error?: string; // an Excel error value such as "#N/A" (value is null then)
 }
 
-export type XlsxErrorCode = "not_zip" | "legacy_xls" | "not_xlsx" | "macro" | "encrypted" | "corrupt" | "too_big" | "missing_part";
+export type XlsxErrorCode = "not_zip" | "legacy_xls" | "not_xlsx" | "macro" | "encrypted" | "corrupt" | "too_big" | "missing_part" | "no_layout";
 
 export class XlsxError extends Error {
   code: XlsxErrorCode;

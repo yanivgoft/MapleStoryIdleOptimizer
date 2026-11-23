@@ -9,6 +9,9 @@
     python3 tests/golden/update_goldens.py --class hero --golden-dir /tmp/g   # read / write the golden files of another directory (default: tests/golden)
     python3 tests/golden/update_goldens.py --class all --max-cases 3          # a quick sample: the first 3 cases of every file
     python3 tests/golden/update_goldens.py --class hero --exact               # also rewrite values that are within the test tolerance but not bit-equal
+    python3 tests/golden/update_goldens.py --create --class dawn_warrior --reason "first snapshot"    # ENGINE-NATIVE class (no workbook): create <id>_snapshot.json
+    python3 tests/golden/update_goldens.py --class dawn_warrior               # ... later: dry-run diff of the snapshot against the current engine, then --write --reason
+    python3 tests/golden/update_goldens.py --class native                     # every engine-native class
 
 WHEN: only after a model rule was changed ON PURPOSE in the engine and the failing golden tests are understood.  Never hand-edit a golden JSON, never "fix" a failing
 golden by loosening a tolerance: run the dry run, review the summary (which fields moved, by how much), then ``--write --reason "..."``.
@@ -28,6 +31,12 @@ every value that is not bit-equal.  The file is then dumped in the file's own JS
 Reported and left alone: golden values the comparer derives arithmetically or compares against a literal ("untracked" - fine while they agree, "unrefreshable" when they
 differ), golden leaves no check reads ("unchecked": inputs-like or workbook-only fields), a case the engine can no longer compute (error), two checks that want
 different engine values for the same leaf (conflict), differences the comparer reports that are not a leaf check (ranking, ...: "unexplained").
+
+ENGINE-NATIVE classes (``registry.NATIVE``: no workbook, no workbook golden; the Cygnus classes) have ONE file, ``<id>_snapshot.json`` (``snapshot_common.py`` / ``test_snapshots.py``):
+generic case matrix -> engine output, every numeric leaf compared.  ``--create`` writes it from the CURRENT engine (REQUIRES --reason; logged as "engine-native snapshot: pins
+the engine, no independent source" - there is NO independent source for such a file at all); afterwards the normal dry run / ``--write --reason`` work on it: the matrix and every
+output are regenerated, the diff is leaf by leaf (values outside rel 1e-9, cases added / removed), and a write replaces the file (a no-op write leaves it byte-identical:
+nothing is written when no value left the tolerance; ``--exact`` also rewrites bit-level drift).
 
 Exit code: 0 = ran (dry run: with or without changes; --write: written), 1 = unrefreshable / unexplained differences or errors remain, 2 = usage / environment.
 Needs Python 3.11 and PYTHONHASHSEED=0 (the goldens are bit-exact; the script re-executes itself with the seed set).
@@ -50,6 +59,7 @@ REPO = HERE.parents[1]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(HERE))
 import registry  # noqa: E402
+import snapshot_common as SN  # noqa: E402
 
 LOG_NAME = "golden_refresh_log.md"
 LOG_HEADER = """# Golden refresh log
@@ -65,9 +75,12 @@ table is the only provenance.  `HEAD` is the git commit the engine was built on;
 |---|---|---|---|---|---|---|---|
 """
 KINDS = registry.KINDS
+SNAPSHOT = "snapshot"                                                                            # the one "kind" of an engine-native class
 TRACKED_KEYS = {"class": ("out",), "artifacts": ("workbook",), "sensitivity": ("workbook",)}     # the compared part of a case (the rest is copied untouched)
-ROOT_PREFIX = {"class": (), "artifacts": ("cases",), "sensitivity": ("cases",)}                 # JSON path of the dict of cases
-DEFAULT_RTOL = {"class": 0.0, "artifacts": 1e-9, "sensitivity": 1e-9}
+ROOT_PREFIX = {"class": (), "artifacts": ("cases",), "sensitivity": ("cases",), SNAPSHOT: ("cases",)}   # JSON path of the dict of cases
+DEFAULT_RTOL = {"class": 0.0, "artifacts": 1e-9, "sensitivity": 1e-9, SNAPSHOT: 1e-9}
+NATIVE_LABEL = "engine-native snapshot: pins the engine, no independent source"
+MAX_SNAPSHOT_BYTES = 3_000_000
 
 
 # --------------------------------------------------------------------------- tracked leaves
@@ -250,6 +263,8 @@ def set_path(root, path, value):
 
 
 def refresh_one(entry, kind, gdir, only=None, exact=False, write=False, verify=True, max_cases=None):
+    if kind == SNAPSHOT:
+        return refresh_snapshot(entry, gdir, only, exact, write, verify, max_cases)
     runner = KindRunner(entry, kind)
     path = Path(gdir) / runner.filename
     res = Result(entry.id, kind, runner.filename)
@@ -330,6 +345,120 @@ def refresh_one(entry, kind, gdir, only=None, exact=False, write=False, verify=T
     return res
 
 
+# --------------------------------------------------------------------------- engine-native snapshots
+def refresh_snapshot(entry, gdir, only=None, exact=False, write=False, verify=True, max_cases=None):
+    """The snapshot of an engine-native class against the CURRENT engine: regenerate the case matrix + outputs, diff leaf by leaf (outside rel 1e-9; cases added / removed),
+    and with ``write`` replace the file (a partial run - ``only`` / ``max_cases`` - replaces just the selected cases).  Same Result / summary / log as the golden kinds."""
+    path = SN.snapshot_path(entry.id, gdir)
+    res = Result(entry.id, SNAPSHOT, path.name)
+    t0 = time.time()
+    if not path.exists():
+        res.errors.append(("-", f"no snapshot yet: python3 tests/golden/update_goldens.py --create --class {entry.id} --reason \"...\""))
+        res.seconds = time.time() - t0
+        return res
+    raw = path.read_bytes().decode("utf-8")
+    old = json.loads(raw)
+    res.n_cases = len(old["cases"])
+    rtol = DEFAULT_RTOL[SNAPSHOT]
+    now = SN.matrix(entry.id)
+    old_ids = [c for c in old["cases"] if not only or only in c]
+    if max_cases is not None:
+        old_ids = old_ids[:max_cases]
+    new_ids = [c for c in now if (not only or only in c) and (max_cases is None or c in old_ids)]
+    selected = list(dict.fromkeys(old_ids + new_ids))
+    res.n_selected = len(selected)
+    res.format = "default"
+    try:
+        new = SN.generate(entry.id, ids=set(new_ids))
+    except Exception as ex:                                   # the engine cannot build the matrix any more: the file is left as it is
+        res.errors.append(("-", f"{type(ex).__name__}: {ex}"))
+        res.seconds = time.time() - t0
+        return res
+    res.added = [c for c in new_ids if c not in old["cases"]]
+    res.removed = [c for c in old_ids if c not in now]
+    for c in selected:
+        a, b = old["cases"].get(c), new["cases"].get(c)
+        if a is None or b is None:
+            res.cases_changed.add(c)
+            res.changes[("cases", c)] = ("<case>" if a else None, "<case>" if b else None)
+            res.leaves += SN.count_leaves(a) if a else 0
+            continue
+        res.leaves += SN.count_leaves(a)
+        res.seen += SN.count_leaves(a)
+        res.checks += SN.count_leaves(a["out"])
+        diffs = SN.diff_leaves(a, b, rtol, ("cases", c))
+        changed = {p for p, _o, _n in diffs}
+        for p, o, n in diffs:
+            res.changes[p] = (None if o is SN.MISSING else o, None if n is SN.MISSING else n)
+            res.cases_changed.add(c)
+        for p, o, n in SN.diff_leaves(a, b, 0.0, ("cases", c)):       # bit-level drift inside the tolerance
+            if p not in changed:
+                res.drift_n += 1
+                r = rel_diff(o, n)
+                res.drift_max = max(res.drift_max, r if r is not None else 0.0)
+                if exact:
+                    res.changes[p] = (o, n)
+                    res.cases_changed.add(c)
+    res.nonnumeric_changes = sum(1 for o, n in res.changes.values() if rel_diff(o, n) is None)
+    if write and res.changes:
+        if SN.dumps(old) != raw:
+            raise SystemExit(f"{path.name}: its JSON formatting is not the one snapshot_common.dumps writes: refusing to write")
+        if only is None and max_cases is None:
+            data = new                                        # the whole file is regenerated
+        else:                                                 # a partial run replaces just the selected cases
+            cases = dict(old["cases"])
+            for c in selected:
+                if c in new["cases"]:
+                    cases[c] = new["cases"][c]
+                else:
+                    cases.pop(c, None)
+            data = dict(meta=SN.meta(entry.id, len(cases)), cases=cases)
+        text = SN.dumps(data)
+        if len(text.encode("utf-8")) > MAX_SNAPSHOT_BYTES:
+            raise SystemExit(f"{path.name} would be {len(text) / 1e6:.1f} MB (limit {MAX_SNAPSHOT_BYTES / 1e6:.0f} MB): trim the case matrix in snapshot_common.py")
+        path.write_bytes(text.encode("utf-8"))
+        res.written = True
+        if verify:
+            again = refresh_snapshot(entry, gdir, only, exact, write=False, verify=False, max_cases=max_cases)
+            res.remaining = len(again.changes)
+    res.seconds = time.time() - t0
+    return res
+
+
+def create_snapshot(entry, gdir, reason, head):
+    """``--create``: write ``<id>_snapshot.json`` from the CURRENT engine and log it; returns the process exit code."""
+    path = SN.snapshot_path(entry.id, gdir)
+    if path.exists():
+        print(f"{path.name} already exists: refresh it with  update_goldens.py --class {entry.id}  (dry run) and then  --write --reason \"...\"")
+        return 2
+    t0 = time.time()
+    data = SN.generate(entry.id)
+    text = SN.dumps(data)
+    size = len(text.encode("utf-8"))
+    if size > MAX_SNAPSHOT_BYTES:
+        print(f"{path.name} would be {size / 1e6:.1f} MB (limit {MAX_SNAPSHOT_BYTES / 1e6:.0f} MB): trim the case matrix in snapshot_common.py; nothing written")
+        return 1
+    path.write_bytes(text.encode("utf-8"))
+    kinds = {}
+    for cid_, c in data["cases"].items():
+        k = kinds.setdefault(cid_.split("/")[0], [0, 0])
+        k[0] += 1
+        k[1] += SN.count_leaves(c["out"])
+    leaves = sum(v[1] for v in kinds.values())
+    print(f"{entry.id}/snapshot  [{path.name}]  CREATED from the current engine | {len(data['cases'])} cases, {leaves} output leaves, {size / 1e6:.2f} MB | {time.time() - t0:.1f}s")
+    print("    " + ", ".join(f"{k}: {n} cases / {lv} leaves" for k, (n, lv) in kinds.items()))
+    print(f"    {NATIVE_LABEL}: the file is a regression pin of THIS engine, review the numbers against the game before trusting them")
+    res = Result(entry.id, SNAPSHOT, path.name)
+    res.cases_changed = set(data["cases"])
+    res.written = True
+    res.n_cases = res.n_selected = len(data["cases"])
+    res.changes = {("cases", c): (None, "<case>") for c in data["cases"]}
+    res.reason_prefix = "CREATED; "
+    log = append_log(gdir, res, reason, head)
+    print(f"log: {log}")
+    return 0
+
+
 # --------------------------------------------------------------------------- reporting
 def fmt(v, n=24):
     s = repr(v)
@@ -349,7 +478,7 @@ def summarize(res, top=10, verbose=False):
     fields = {}
     n_prefix = len(ROOT_PREFIX[res.kind]) + 1                 # (cases,) cid  -> field = the rest of the path
     for p, (old, new) in res.changes.items():
-        f = "/".join(str(x) for x in p[n_prefix:])
+        f = "/".join(str(x) for x in p[n_prefix:]) or "(whole case added / removed)"
         e = fields.setdefault(f, {"n": 0, "max": -1.0, "ex": None})
         e["n"] += 1
         r = rel_diff(old, new)
@@ -370,6 +499,12 @@ def summarize(res, top=10, verbose=False):
             lines.append(f"    {label}: [{cid}] {name}: golden {fmt(g)} engine {fmt(e)}")
         if len(items) > 5:
             lines.append(f"    ... {len(items) - 5} more {label.split(' ')[0].lower()}")
+    if getattr(res, "added", None):
+        lines.append(f"    cases ADDED to the matrix ({len(res.added)}): " + ", ".join(res.added[:6]) + (" ..." if len(res.added) > 6 else ""))
+    if getattr(res, "removed", None):
+        lines.append(f"    cases no longer generated ({len(res.removed)}): " + ", ".join(res.removed[:6]) + (" ..." if len(res.removed) > 6 else ""))
+    if res.kind == SNAPSHOT and (res.changes or res.written):
+        lines.append(f"    {NATIVE_LABEL}")
     for cid, msg in res.errors[:5]:
         lines.append(f"    ERROR [{cid}] {msg[:150]}")
     if len(res.errors) > 5:
@@ -410,6 +545,8 @@ def append_log(gdir, res, reason, head):
     if not log.exists():
         log.write_text(LOG_HEADER)
     reason = " ".join(reason.split()).replace("|", "/")
+    if res.kind == SNAPSHOT:
+        reason = f"{NATIVE_LABEL}; {getattr(res, 'reason_prefix', '')}{reason}"
     line = (f"| {datetime.date.today().isoformat()} | {res.cid} | {res.kind} | {head} | {len(res.cases_changed)} | {len(res.changes)} | {res.max_rel:.3e} | {reason} |\n")
     with log.open("a", encoding="utf-8") as fh:
         fh.write(line)
@@ -420,8 +557,11 @@ def append_log(gdir, res, reason, head):
 def build_parser():
     ap = argparse.ArgumentParser(prog="update_goldens.py", description=__doc__.split("\n\n")[0] + "  Dry run unless --write.", epilog=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--class", dest="cls", required=True, choices=list(registry.CLASSES) + ["all"], help="class id, or 'all'")
-    ap.add_argument("--kind", default="all", choices=list(KINDS) + ["all"], help="which golden file(s) of the class (default all three)")
+    ap.add_argument("--class", dest="cls", required=True, choices=list(registry.ALL) + ["all", "native"],
+                    help="class id, 'all' (every workbook class) or 'native' (every engine-native class: no workbook, one <id>_snapshot.json each)")
+    ap.add_argument("--kind", default="all", choices=list(KINDS) + [SNAPSHOT, "all"],
+                    help="which golden file(s) of the class (default all three; an engine-native class has only 'snapshot')")
+    ap.add_argument("--create", action="store_true", help="ENGINE-NATIVE class only: create <id>_snapshot.json from the current engine (needs --reason; refuses to overwrite)")
     ap.add_argument("--write", action="store_true", help="rewrite the golden JSON file(s) in place + append a line to golden_refresh_log.md (default: dry run)")
     ap.add_argument("--reason", help="REQUIRED with --write: one line for the log (why the model changed)")
     ap.add_argument("--case", help="only the golden cases whose id contains this substring")
@@ -437,9 +577,13 @@ def build_parser():
 def main(argv=None):
     ap = build_parser()
     a = ap.parse_args(argv)
-    if a.write and not (a.reason and a.reason.strip()):
-        ap.error("--write needs --reason \"why the model changed\" (it goes into golden_refresh_log.md)")
-    if a.reason and not a.write:
+    if (a.write or a.create) and not (a.reason and a.reason.strip()):
+        ap.error(f"--{'create' if a.create else 'write'} needs --reason \"why\" (it goes into golden_refresh_log.md)")
+    if a.create and a.write:
+        ap.error("--create writes a NEW snapshot; --write refreshes an existing one: use one of them")
+    if a.create and (a.cls in ("all", "native") or not registry.ALL[a.cls].engine_native):
+        ap.error("--create needs one ENGINE-NATIVE class id (--class <id>): the workbook classes' goldens come from their workbooks, not from the engine")
+    if a.reason and not (a.write or a.create):
         print("note: --reason is only used with --write (this is a dry run)")
     if sys.version_info[:2] != (3, 11) and not a.allow_any_python:
         print(f"ENV: need Python 3.11 (this is {sys.version_info.major}.{sys.version_info.minor}): the goldens depend on 3.11's sum() rounding (or --allow-any-python).")
@@ -448,16 +592,31 @@ def main(argv=None):
     if not gdir.is_dir():
         print(f"golden dir not found: {gdir}")
         return 2
-    classes = list(registry.CLASSES) if a.cls == "all" else [a.cls]
-    kinds = list(KINDS) if a.kind == "all" else [a.kind]
+    classes = list(registry.CLASSES) if a.cls == "all" else list(registry.NATIVE) if a.cls == "native" else [a.cls]
+    if a.create:
+        print(f"update_goldens: CREATE | golden dir {gdir} | {a.cls} (engine-native)")
+        return create_snapshot(registry.ALL[a.cls], gdir, a.reason, git_head())
+    if a.cls == "native" and not classes:
+        print("no engine-native class registered (every engine/classes/<id>.py that is not a workbook class is one)")
+        return 0
+
+    def kinds_of(cid):
+        native = registry.ALL[cid].engine_native
+        if a.kind == "all":
+            return [SNAPSHOT] if native else list(KINDS)
+        if (a.kind == SNAPSHOT) != native:
+            ap.error(f"--kind {a.kind} does not apply to {cid} ({'an engine-native class has only the snapshot' if native else 'a workbook class has no snapshot'})")
+        return [a.kind]
     mode = "WRITE" if a.write else "DRY RUN (nothing is touched; add --write --reason \"...\" to rewrite)"
-    print(f"update_goldens: {mode} | golden dir {gdir} | {len(classes)} class(es) x {len(kinds)} kind(s)" + (f" | cases containing {a.case!r}" if a.case else "") + (f" | first {a.max_cases} case(s)" if a.max_cases else "")
+    per_class = {len(kinds_of(c)) for c in classes}
+    n_kinds = f"{len(classes)} class(es) x {per_class.pop()} kind(s)" if len(per_class) == 1 else f"{len(classes)} class(es), {sum(len(kinds_of(c)) for c in classes)} file(s)"
+    print(f"update_goldens: {mode} | golden dir {gdir} | {n_kinds}" + (f" | cases containing {a.case!r}" if a.case else "") + (f" | first {a.max_cases} case(s)" if a.max_cases else "")
           + (" | --exact" if a.exact else ""))
     results = []
     head = git_head()
     for cid in classes:
-        for kind in kinds:
-            res = refresh_one(registry.CLASSES[cid], kind, gdir, a.case, a.exact, a.write, max_cases=a.max_cases)
+        for kind in kinds_of(cid):
+            res = refresh_one(registry.ALL[cid], kind, gdir, a.case, a.exact, a.write, max_cases=a.max_cases)
             results.append(res)
             print("\n".join(summarize(res, a.fields, a.verbose)), flush=True)
             if res.written:

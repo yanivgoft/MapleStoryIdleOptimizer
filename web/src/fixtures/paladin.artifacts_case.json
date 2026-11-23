@@ -291,7 +291,7 @@
    "attack_bucket_sum": 81.07285380571429,
    "skill_coefficient_base": 638.0,
    "buff_cast_startup_time": 0.0,
-   "crit_damage_bonus": 0,
+   "crit_damage_bonus": 0.0,
    "final_damage_extra": 65.40682161632652,
    "monster_dmg_bonus": 29.04674603174603,
    "def_pen_effective": 50,

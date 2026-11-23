@@ -20,6 +20,13 @@ gear), ``<id>.equipment_case.json`` ({request, result}: POST /equipment-compare)
 rate_by_stat = DPS per unit of every artifact-potential stat, so mock mode can recompute edits).  The full cube call takes ~6 s without numpy.
 
     .venv/bin/python web/scripts/gen_fixtures.py --cubes-only          # only those four files
+
+The sample inputs come from the class's workbook golden (``tests/golden/<id>_golden.json``, case ``A140/Chapter Boss/blaze``) when it has one.  An ENGINE-NATIVE class (no workbook,
+no golden; ``tests/golden/registry.py`` NATIVE) gets the generic sample character of ``tests/golden/snapshot_common.py::sample_inputs`` instead: its schema defaults + a
+late-game stat set (level 140) in Chapter Boss with a Blaze Wizard Lv10 companion - the same case as ``M/Chapter Boss/late/comp`` of the class's snapshot.
+
+Options (any order):  ``--out DIR`` writes the fixtures to DIR (and the two web/src/lib JSON files to DIR/lib) instead of web/src/fixtures (a dry run into a temp directory);
+``--class ID`` (repeatable) restricts the per-class files to those classes (classes.json always lists every class the API serves).
 """
 import json
 import logging
@@ -36,7 +43,23 @@ from api.main import create_app  # noqa: E402
 from api.settings import Settings  # noqa: E402
 
 OUT = ROOT / "web" / "src" / "fixtures"
+LIB = ROOT / "web" / "src" / "lib"
 CASE = "A140/Chapter Boss/blaze"
+ONLY = None                              # --class: the class ids whose per-class files are written (None = all)
+
+
+def sample_inputs(cid):
+    """The sample character of a class: its workbook golden's case ``CASE`` when the class has a golden, else the generic one of ``snapshot_common`` (engine-native classes)."""
+    golden = ROOT / "tests" / "golden" / f"{cid}_golden.json"
+    if golden.exists():
+        return json.loads(golden.read_text())[CASE]["inputs"]
+    sys.path.insert(0, str(ROOT / "tests" / "golden"))
+    import snapshot_common
+    return snapshot_common.sample_inputs(cid)
+
+
+def selected(cid):
+    return ONLY is None or cid in ONLY
 
 
 def dump(name, obj):
@@ -57,16 +80,16 @@ def potential_tables():
 
     tables = {"rarities": list(potentials.RARITIES), "stats": list(potentials.POTENTIAL_STATS), "values": {s: dict(v) for s, v in potentials.VALUES.items()},
               "line_min_star": list(potentials.LINE_MIN_STAR), "default_rarity": potentials.DEFAULT_RARITY, "none_stat": potentials.NONE_STAT}
-    (ROOT / "web" / "src" / "lib" / "artifact_potential_tables.json").write_text(json.dumps(tables, indent=1) + "\n")
+    (LIB / "artifact_potential_tables.json").write_text(json.dumps(tables, indent=1) + "\n")
 
 
 def artifacts_fixtures(client):
     from engine.data import artifacts as AD
 
-    (ROOT / "web" / "src" / "lib" / "artifact_values.json").write_text(json.dumps(AD.ARTIFACT_STAR_VALUES, indent=1) + "\n")
+    (LIB / "artifact_values.json").write_text(json.dumps(AD.ARTIFACT_STAR_VALUES, indent=1) + "\n")
     potential_tables()
     for c in json.loads((OUT / "classes.json").read_text())["classes"]:       # the fixture list (what mock mode shows), not the live API
-        if not c.get("artifacts_modelled"):
+        if not c.get("artifacts_modelled") or not selected(c["id"]):
             continue
         cid = c["id"]
         inputs = json.loads((OUT / f"{cid}.sample_inputs.json").read_text())
@@ -77,8 +100,7 @@ def artifacts_fixtures(client):
 
 
 def dump_sensitivity(client, cid):
-    golden = json.loads((ROOT / "tests" / "golden" / f"{cid}_golden.json").read_text())
-    r = client.post(f"/api/classes/{cid}/sensitivity", json=golden[CASE]["inputs"])
+    r = client.post(f"/api/classes/{cid}/sensitivity", json=sample_inputs(cid))
     assert r.status_code == 200, (cid, r.text)
     dump(f"{cid}.sensitivity.json", r.json())
     m = client.get(f"/api/classes/{cid}/sensitivity/meta")
@@ -103,8 +125,7 @@ POTENTIALS_CASE = {"potentials": {"book_of_ancient": {"star": 5, "lines": [{"rar
 
 def dump_cubes(client, cid):
     from engine import cubes, potentials, sensitivity
-    golden = json.loads((ROOT / "tests" / "golden" / f"{cid}_golden.json").read_text())
-    inputs = golden[CASE]["inputs"]
+    inputs = sample_inputs(cid)
     meta = client.get(f"/api/classes/{cid}/cubes/meta")
     assert meta.status_code == 200, (cid, meta.text)
     dump(f"{cid}.cubes_meta.json", meta.json())
@@ -126,6 +147,13 @@ def dump_cubes(client, cid):
 
 
 def main():
+    global OUT, LIB, ONLY
+    args = sys.argv[1:]
+    if "--out" in args:
+        OUT = Path(args[args.index("--out") + 1]).resolve()
+        LIB = OUT / "lib"
+        LIB.mkdir(parents=True, exist_ok=True)
+    ONLY = {args[i + 1] for i, a in enumerate(args) if a == "--class"} or None
     client = TestClient(create_app(Settings(rate_limit_per_minute=0, rate_limit_sens_per_minute=0, rate_limit_cubes_per_minute=0, rate_limit_compare_per_minute=0)))
     OUT.mkdir(parents=True, exist_ok=True)
     if "--sensitivity-only" in sys.argv:    # keep every other fixture; refresh only the stat_values flags and the sensitivity dumps
@@ -136,12 +164,12 @@ def main():
             c.setdefault("status", {})["stat_values"] = flags.get(c["id"], False)
         dump("classes.json", saved)
         for cid, on in flags.items():
-            if on:
+            if on and selected(cid):
                 dump_sensitivity(client, cid)
         return
     if "--cubes-only" in sys.argv:       # only the cube tabs' fixtures of the classes with stat values
         for c in client.get("/api/classes").json()["classes"]:
-            if c["status"]["stat_values"]:
+            if c["status"]["stat_values"] and selected(c["id"]):
                 dump_cubes(client, c["id"])
         return
     if "--artifacts" in sys.argv:        # only the Artifacts tab fixtures (needs the class fixtures already generated)
@@ -151,12 +179,13 @@ def main():
     dump("classes.json", classes)
     for c in classes["classes"]:
         cid = c["id"]
+        if not selected(cid):
+            continue
         schema = client.get(f"/api/classes/{cid}/schema").json()
         dump(f"{cid}.schema.json", schema)
         dump(f"{cid}.defaults.json", {ct: client.get(f"/api/classes/{cid}/defaults", params={"content_type": ct}).json()
                                       for ct in schema["content_types"]})
-        golden = json.loads((ROOT / "tests" / "golden" / f"{cid}_golden.json").read_text())
-        inputs = golden[CASE]["inputs"]
+        inputs = sample_inputs(cid)
         dump(f"{cid}.sample_inputs.json", inputs)
         r = client.post(f"/api/classes/{cid}/compute", json=inputs)
         assert r.status_code == 200, (cid, r.text)

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
 import { xlsxBytes } from "../test/xlsxFiles";
-import { classList, fixtureFor } from "../test/fixtures";
+import { classList, fixtureFor, withoutStatValues } from "../test/fixtures";
 import { XlsxBook, XlsxError } from "../lib/xlsx_read";
-import { groupNotes, importWorkbook, uniqueProfileName } from "../lib/importXlsx";
+import { groupNotes, hasLayout, importWorkbook, noLayoutMessage, uniqueProfileName } from "../lib/importXlsx";
 import { listProfiles, saveProfile } from "../lib/profiles";
 import { ImportDialog, ImportXlsx, describeLoadError, filesOfDrop } from "./ImportXlsx";
 import { ProfilesPanel } from "./ProfilesPanel";
@@ -11,6 +11,7 @@ import { initialState } from "../lib/schemaForm";
 
 const strip = (h: string) => h.replace(/<!-- -->/g, "");
 const lib = { groupNotes, uniqueProfileName };
+const libWithLayouts = { ...lib, hasLayout };
 
 // a tiny in-memory localStorage (the vitest environment is node)
 function stubStorage() {
@@ -96,9 +97,10 @@ describe("preview dialog", () => {
     expect(fp).not.toContain("Cubes tab is not available");
   });
   it("says so when the class has no Cubes tab yet (the gear is still kept in the profile)", () => {
-    const id = classList.find((c) => c.status?.stat_values === false)!.id;
-    const r = importOf(id);
-    const h = dialog({ classId: id, result: r });
+    // a synthetic class without stat values (status.stat_values === false), importing a real workbook's result
+    const synth = withoutStatValues().info;
+    const r = importOf("shadower");
+    const h = dialog({ classId: synth.id, classes: [...classList, synth], result: r });
     expect(r.state.cubes && Object.keys(r.state.cubes).length).toBeGreaterThan(0);
     expect(h).toContain("the Cubes tab is not available for this class yet");
   });
@@ -118,6 +120,21 @@ describe("preview dialog", () => {
     saveProfile("Shadower (Excel import)", initialState(schema, defaults["Chapter Boss"]));
     const h = dialog();
     expect(h).toContain('already exists; it will be saved as &quot;Shadower (Excel import) (2)&quot;');
+  });
+  it("a class without an Excel calculator (engine-native) is not offered, and the dialog says so", () => {
+    const native = { id: "engine_native_stand_in", name: "Stand-in Class", family: "Warrior", status: { companions: true, artifacts: true, stat_values: true } } as (typeof classList)[number];
+    const h = dialog({ lib: libWithLayouts, classes: [...classList, native] });
+    expect(h).not.toContain("Stand-in Class</option>");
+    expect(h).toMatch(/No Excel layout is known for [^<]*Stand-in Class/);
+    for (const c of classList.filter((x) => !hasLayout(x.id))) expect(h, c.id).not.toContain(`${c.name}</option>`);       // every real engine-native class of the fixtures is left out too
+    expect(h).toContain("no Excel calculator");
+    expect(h).toContain(">Shadower</option>");
+    const none = dialog({ lib: libWithLayouts });                                      // every class of the fixtures that has a layout: no note at all unless one lacks it
+    expect(none.includes("No Excel layout is known for")).toBe(classList.some((c) => !hasLayout(c.id)));
+    expect(dialog({ lib, classes: [...classList, native] })).toContain("Stand-in Class</option>");   // (a lib without hasLayout keeps the old behaviour: every class listed)
+  });
+  it("the import section tells people that the newer, engine-native classes have no Excel calculator", () => {
+    expect(strip(renderToString(<ImportXlsx classes={classList} onSaved={() => undefined} />))).toMatch(/Only classes that have an Excel calculator can be imported/);
   });
   it("an unrecognised workbook asks for the class and cannot be applied yet", () => {
     const h = dialog({ classId: null, detected: false, result: null, fileTitle: "Something — else" });
@@ -160,6 +177,7 @@ describe("friendly errors", () => {
     expect(describeLoadError(xe("corrupt", "The file looks corrupted"))).toMatch(/corrupted/);
     expect(describeLoadError(Object.assign(new Error("HTTP 503"), { name: "ApiError", status: 503 }))).toMatch(/not uploaded/);
     expect(describeLoadError(new Error("boom"))).toMatch(/could not be read: boom/);
+    expect(describeLoadError(xe("no_layout", noLayoutMessage("Stand-in Class")))).toMatch(/^No Excel layout is known for this class \(Stand-in Class\)/);
   });
   it("end to end: real error cases from the reader give readable messages", () => {
     const msgs = [new Uint8Array(0), new TextEncoder().encode("PK"), new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0, 0, 0, 0])].map((b) => {

@@ -35,7 +35,7 @@ export function classCapabilities(c: ClassInfo): Record<Capability, boolean> {
 
 export const INTRO = (
   <p>
-    This app estimates your damage per second (DPS) from the character stats you type in, for the 12 classes it supports, and tells you which stat, artifact, companion or potential line
+    This app estimates your damage per second (DPS) from the character stats you type in, for every class in the class picker, and tells you which stat, artifact, companion or potential line
     would raise it the most.  It is a model of the game, not the game itself: read the conventions and the known limitations below before trusting a small difference.
   </p>
 );
@@ -118,6 +118,10 @@ export const HOW_TO_USE: HelpSection = {
         </li>
         <li>
           <strong>Not supported</strong>: macro-enabled (.xlsm) or binary (.xlsb) files, old .xls files and password-protected workbooks.  Open them in Excel and use Save As .xlsx first.
+        </li>
+        <li>
+          <strong>Classes without an Excel calculator</strong>: only the classes that have a <code>&lt;Class&gt;-DPS-Calculator.xlsx</code> can be imported.  The newer classes (the Cygnus Knights) were built straight into the app and
+          have none: the importer says &quot;No Excel layout is known for this class&quot; and does not list them; type their stats in directly.
         </li>
       </ul>
     </>

@@ -44,7 +44,7 @@ tests/golden/
     make_golden.py   regenerates fp_mage_golden.json (one subprocess, PYTHONHASHSEED=0)
     fp_mage_golden.json   frozen numbers of the verify script
     test_fp_mage.py  engine vs golden, exact ==
-    registry.py      ONE list of the 12 classes: engine module, golden files, sens spec, per-class options; run_all.py / pytest / --class all read it (`python3 tests/golden/registry.py` checks the files)
+    registry.py      ONE list of the 12 workbook classes (+ the engine-native ones, discovered from engine/classes/*.py): engine module, golden files, sens spec, per-class options; run_all.py / pytest / --class all read it (`python3 tests/golden/registry.py` checks the files)
     update_goldens.py  refresh a golden from the CURRENT ENGINE after an on-purpose model change (dry run by default, --write --reason; logs to golden_refresh_log.md); test_update_goldens.py
     test_artifacts.py     ONE parametrised test for all classes (`--class <id>`, `-v`, `--rtol`; pytest id `test_artifacts_match_workbook[<id>]`); per-class options in registry.py + artifacts_extras.py
     test_sensitivity.py   ONE parametrised test for all classes (`--class <id>`, `-v`, `--rtol`, `--case`); shared tests in sens_test_common.py, class-specific ones in sens_extras/<id>.py
@@ -138,7 +138,7 @@ in its `compare`), `artifacts_harness.py` (`test_artifacts.py --class <class>`: 
 (`<class>_artifact_reference.py`: `ArtifactReference(...)`), `reference_fake.py` (the workbook-free stand-in of `run_reference_<class>.py`: `Reference(verify_script, builder).run_case(...)`),
 `make_golden_common.py`, `check_fake_common.py` (`Check(...).main(pre_check=..., post_check=...)`), `sens_test_common.py` (`test_sensitivity.py --class <class>`), `case_common.py` (content types,
 `make_inputs`), `artifact_cases_common.py` (the artifact matrix every class shares; a class adds its own shapes between `common_cases` and `arwen_cases`) and `sens_cases.case_builder`.
-A new class is one `registry.py` entry + a ~10-line wrapper around each of the others (`sens_extras/<id>.py` holds its sensitivity-specific tests).  The command lines (`python3 tests/golden/test_<class>.py [--rtol ...]`, `--list / --case / --run-all / --assemble` of the reference scripts,
+A new workbook class is one `registry.py` entry + a ~10-line wrapper around each of the others (`sens_extras/<id>.py` holds its sensitivity-specific tests); an engine-native class needs no registry entry (see the next section).  The command lines (`python3 tests/golden/test_<class>.py [--rtol ...]`, `--list / --case / --run-all / --assemble` of the reference scripts,
 `make_golden_<class>.py`, `check_<class>_fake.py [--write]`) are unchanged.  The API side is one parametrized `api/tests/test_sensitivity_classes.py` (a row of `CLASSES` per class).
 
 ## How to add a class (the recipe used for FP-Mage)
@@ -156,6 +156,22 @@ python3 tests/golden/test_artifacts.py --class fp_mage -v     # engine == workbo
 python3 tests/golden/gen_artifact_data.py --check      # engine/data/artifacts.py == the builder's tables
 python3 tests/golden/artifact_reference.py --run-all   # (re)evaluate the workbook for every missing case, then --assemble
 ```
+
+## Adding an ENGINE-NATIVE class (no Excel workbook: the Cygnus classes, Dawn Warrior first)
+
+The first 12 classes were ported from workbooks and are checked against them.  A class WITHOUT a workbook / builder / verify script (engine-native; its numbers are validated
+against the user's in-game text) has the same engine layout and a different test set:
+
+1. `engine/data/<id>.py` (`UNLOCK_LEVEL`, skill / mastery data), `engine/classes/<id>.py` (`CLASS_ID`, `CLASS_NAME`, `compute / defaults / schema` through `classapi.make`), `engine/sens_specs/<id>.py` (required:
+   stat values and the cube / equipment / potential tabs read it) + the registrations in `engine/__init__.py` CLASSES, `engine/sens_specs/__init__.py` CLASS_IDS, `api/registry.py` FAMILIES.
+2. `tests/golden/registry.py` discovers it (`registry.NATIVE`: every `engine/classes/<id>.py` that is not a workbook class).  Its golden jobs: `test_snapshots.py --class <id>` (the engine against
+   `tests/golden/<id>_snapshot.json`, every numeric leaf of a generic case matrix, `snapshot_common.py`), `test_engine_native.py --class <id>` (engine-only invariants + content sweep + level sweep, reusing
+   `sens_test_common.SensTest`) and the class's own `test_<id>_*.py` scripts (the in-game displayed-value test).
+3. `python3 tests/golden/update_goldens.py --create --class <id> --reason "..."` writes the snapshot from the CURRENT engine (it pins the engine, there is no independent source; logged in
+   `golden_refresh_log.md`); later `update_goldens.py --class <id>` is the dry-run diff and `--write --reason` the refresh.
+4. Level-sweep decreases that are understood go into `tests/golden/native_level_allowlist.json` (level, optional content type / companion, mandatory reason; stale entries fail).
+5. `web/scripts/gen_fixtures.py` takes the sample inputs from `snapshot_common.sample_inputs(<id>)` when there is no `<id>_golden.json`; `web/scripts/gen_xlsx_map.py` skips a class without
+   `src/build_<id>_workbook.py`; the Excel import says "No Excel layout is known for this class" and does not list it.
 
 ## Hero (second class; artifacts ported 2026-11-19)
 

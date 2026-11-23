@@ -8,6 +8,7 @@ Inputs the cases use, the shape of the stat sweep); the checks are the same.
 Run from the repo root:  python -m pytest api/tests -q
 """
 import math
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -83,6 +84,7 @@ CLASSES = {
                      {"flat_luk", "luk_pct", "dex", "incoming_hit_rate"}, _NOT_INT_DEF, "final_damage", _H_STR, _ring("Luk %"), sub=("Dex %", "dex")),
 }
 IDS = list(CLASSES)
+GOLDEN_DIR = Path(__file__).resolve().parents[2] / "tests" / "golden"
 
 
 def make_client(**kw):
@@ -125,6 +127,16 @@ def engine_inputs(cid, body):
     clean, errors = validate_inputs(entry.schema, entry.defaults, body)
     assert not errors, errors
     return clean
+
+
+def test_every_served_class_is_covered():
+    """Derived from the API's own class list: a class that has a workbook golden (``tests/golden/<id>_golden.json``) needs its ``CLASSES`` config above (checked against the
+    workbook); every other served class is ENGINE-NATIVE and is covered by the generic contract of ``test_all_classes.py::test_engine_native_*`` (stat values, meta, cube /
+    equipment / artifact-potential tabs) - FP-Mage is the one class with its own ``test_sensitivity.py``."""
+    served = set(registry.discover())
+    assert set(IDS) | {"fp_mage"} <= served
+    workbook_backed = {c for c in served if (GOLDEN_DIR / f"{c}_golden.json").exists()}
+    assert workbook_backed <= set(IDS) | {"fp_mage"}, f"add a CLASSES config for {sorted(workbook_backed - set(IDS) - {'fp_mage'})}"
 
 
 def test_capability_flags(client, monkeypatch, cid):

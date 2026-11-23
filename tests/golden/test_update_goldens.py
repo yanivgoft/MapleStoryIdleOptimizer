@@ -7,6 +7,9 @@ Never writes into the real tests/golden: every write goes to a temporary copy (`
   (b) a golden value changed by 1e-6 (relative) in a copy -> the dry run reports exactly that field; ``--write`` fixes it (class golden: byte-identical to the
       original again), logs it, and the golden's own test entry point against the copy passes again
   (c) ``--write`` without ``--reason`` is refused; the help / the log header carry the "pins the ENGINE's behaviour" label
+  (d) ENGINE-NATIVE classes (no workbook; one ``<id>_snapshot.json``): ``--create`` (needs --reason, refuses to overwrite, logs the "no independent source" label), a no-op
+      refresh is byte-identical, a changed engine (a tampered stored value / a removed / an extra case) shows in the dry run and ``--write`` restores the file byte for byte,
+      ``test_snapshots`` agrees.  Hero stands in for a native class (registry override), always in a temporary directory.
 """
 import contextlib
 import io
@@ -20,6 +23,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 import registry  # noqa: E402
+import snapshot_common as SN  # noqa: E402
 import update_goldens as U  # noqa: E402
 
 TAMPER = 1e-6
@@ -147,10 +151,102 @@ def test_write_requires_reason():
     assert "pins the engine" in U.build_parser().format_help().lower() and "pins the ENGINE" in U.LOG_HEADER
 
 
+@contextlib.contextmanager
+def hero_as_native():
+    """Hero registered as an engine-native class (the registry's own ``MSI_NATIVE_CLASSES`` mechanism, applied in-process and undone afterwards)."""
+    entry = registry.native_entry("hero", "Hero")
+    saved = dict(registry.NATIVE), dict(registry.ALL)
+    registry.NATIVE["hero"] = registry.ALL["hero"] = entry
+    try:
+        yield entry
+    finally:
+        registry.NATIVE.clear()
+        registry.NATIVE.update(saved[0])
+        registry.ALL.clear()
+        registry.ALL.update(saved[1])
+
+
+def test_engine_native_snapshot_create_refresh_and_noop():
+    import test_snapshots as TS
+    with tempfile.TemporaryDirectory(prefix="snap_") as tmp, hero_as_native() as entry:
+        gdir = Path(tmp)
+        jobs = dict(registry.all_jobs("hero"))
+        assert jobs == {"hero:snapshot": ["test_snapshots.py", "--class", "hero"], "hero:engine": ["test_engine_native.py", "--class", "hero"]}, jobs
+        path = gdir / entry.snapshot
+        # --create needs a reason, one engine-native class, and refuses to overwrite
+        for argv in (["--create", "--class", "hero"], ["--create", "--class", "native", "--reason", "x"], ["--create", "--write", "--class", "hero", "--reason", "x"]):
+            try:
+                run_main(*argv, "--golden-dir", str(gdir))
+            except SystemExit as ex:
+                assert ex.code == 2, argv
+            else:
+                raise AssertionError(f"{argv} must be refused")
+        rc, text = run_main("--class", "hero", "--golden-dir", str(gdir))                      # a dry run before --create: a problem, nothing created
+        assert rc == 1 and "no snapshot yet" in text and not path.exists(), text
+        rc, text = run_main("--create", "--class", "hero", "--reason", "unit test: create", "--golden-dir", str(gdir))
+        assert rc == 0 and path.exists() and "CREATED" in text and "no independent source" in text, text
+        pristine = path.read_bytes()
+        assert 0 < len(pristine) < 3_000_000 and SN.dumps(json.loads(pristine)).encode("utf-8") == pristine
+        log = (gdir / U.LOG_NAME).read_text()
+        assert "pins the ENGINE" in log and "engine-native snapshot: pins the engine, no independent source; CREATED; unit test: create" in log and "| hero | snapshot |" in log, log
+        rc, text = run_main("--create", "--class", "hero", "--reason", "again", "--golden-dir", str(gdir))
+        assert rc == 2 and "already exists" in text and path.read_bytes() == pristine
+        # the snapshot test passes on the fresh file and the case matrix is current
+        n, leaves, bad = TS.compare_snapshot("hero", gdir=gdir)
+        assert n == len(json.loads(pristine)["cases"]) > 300 and leaves > 10_000 and not bad
+        assert TS.matrix_problems("hero", gdir) == ([], [])
+        # no-op: dry run and --write leave the file byte-identical and log nothing
+        rc, text = run_main("--class", "hero", "--golden-dir", str(gdir))
+        assert rc == 0 and "VERDICT: no change" in text and path.read_bytes() == pristine, text
+        rc, text = run_main("--class", "hero", "--write", "--reason", "noop", "--golden-dir", str(gdir))
+        assert rc == 0 and "nothing written" in text and path.read_bytes() == pristine and log == (gdir / U.LOG_NAME).read_text(), text
+        # a changed engine = a stored file that differs: a tampered value, a case the engine no longer generates, a case missing from the file
+        data = json.loads(pristine)
+        data["cases"]["M/World Boss/late/comp"]["out"]["total_dps"] *= 1 + TAMPER
+        data["cases"]["L/World Boss/nocomp/100"]["out"]["skills"][0]["dps"] *= 2
+        data["cases"]["ZZ/obsolete"] = data["cases"]["A/candle"]
+        del data["cases"]["A/pigs_ribbon"]
+        path.write_bytes(SN.dumps(data).encode("utf-8"))
+        tampered = path.read_bytes()
+        n, leaves, bad = TS.compare_snapshot("hero", gdir=gdir)
+        assert set(bad) >= {"M/World Boss/late/comp", "L/World Boss/nocomp/100"} and TS.matrix_problems("hero", gdir) == (["A/pigs_ribbon"], ["ZZ/obsolete"])
+        rc, text = run_main("--class", "hero", "--golden-dir", str(gdir))
+        assert rc == 0 and "would change" in text and "total_dps" in text and "skills/0/dps" in text and "A/pigs_ribbon" in text and "ZZ/obsolete" in text, text
+        assert path.read_bytes() == tampered                                                    # a dry run touches nothing
+        rc, text = run_main("--class", "hero", "--case", "M/World Boss/late/comp", "--golden-dir", str(gdir))      # --case: only that case is looked at
+        assert "values changed 1 " in text and "skills/0/dps" not in text and "ZZ/obsolete" not in text, text
+        rc, text = run_main("--class", "hero", "--write", "--reason", "unit test: refresh", "--golden-dir", str(gdir))
+        assert rc == 0 and "WRITTEN" in text and "0 value(s) still differ" in text, text
+        assert path.read_bytes() == pristine                                                    # the engine reproduces the original: byte-identical again
+        log = (gdir / U.LOG_NAME).read_text()
+        assert log.count("| hero | snapshot |") == 2 and "unit test: refresh" in log and "engine-native snapshot" in log.splitlines()[-1], log
+        # a partial --write (one case) rewrites just that case
+        data = json.loads(pristine)
+        data["cases"]["M/World Boss/late/comp"]["out"]["total_dps"] *= 1 + TAMPER
+        data["cases"]["A/candle"]["out"]["total_dps"] *= 1 + TAMPER
+        path.write_bytes(SN.dumps(data).encode("utf-8"))
+        rc, text = run_main("--class", "hero", "--case", "M/World Boss/late/comp", "--write", "--reason", "partial", "--golden-dir", str(gdir))
+        assert rc == 0 and "WRITTEN" in text
+        again = json.loads(path.read_bytes())
+        assert again["cases"]["M/World Boss/late/comp"] == json.loads(pristine)["cases"]["M/World Boss/late/comp"] and again["cases"]["A/candle"] == data["cases"]["A/candle"]
+    # outside the stand-in hero is a workbook class: --create is refused for it
+    try:
+        run_main("--create", "--class", "hero", "--reason", "x")
+    except SystemExit as ex:
+        assert ex.code == 2
+    else:
+        raise AssertionError("--create must refuse a workbook class")
+
+
+def test_registry_has_no_native_entry_for_workbook_classes():
+    assert all(not e.engine_native for e in registry.CLASSES.values()) and all(e.engine_native for e in registry.NATIVE.values())
+    assert set(registry.ALL) == set(registry.CLASSES) | set(registry.NATIVE)
+
+
 if __name__ == "__main__":
     import time
     for name, fn in sorted((n, f) for n, f in globals().items() if n.startswith("test_") and callable(f)):
         t0 = time.time()
         fn()
         print(f"ok {name} ({time.time() - t0:.1f}s)")
-    print("OK: update_goldens no-op dry run / write, tampered value reported + fixed, --write needs --reason")
+    print("OK: update_goldens no-op dry run / write, tampered value reported + fixed, --write needs --reason, engine-native snapshot create / refresh / no-op")

@@ -24,6 +24,9 @@ and one top-level `cubeTables` entry: the class-independent cube tables the impo
 the stats each slot can roll, pity caps, limits).  It is a copy of the engine's `GET .../cubes/meta` (the fixtures of the 7 classes with cubes are identical in
 these keys; `--check` fails when one differs from the copy or from the builder's constants).
 
+A class WITHOUT ``src/build_<id>_workbook.py`` (an ENGINE-NATIVE class: no Excel calculator exists) is skipped: it has no map entry, the importer answers "No Excel layout is known
+for this class" and the report says so (``tests/golden/registry.py`` NATIVE lists these classes).
+
 The report lists keys that exist in the workbook but not in the engine schema and vice versa (expected: engine `companion_level` is derived from the
 CompanionsInput sheet; computed rows are never read).
 """
@@ -264,8 +267,12 @@ def main() -> int:
     out["cubeTables"] = cube_tables(table_problems)
     for p in table_problems:
         report.append(f"PROBLEM: {p}")
+    skipped = [cid for cid in classes if not (SRC / f"build_{cid}_workbook.py").exists()]
     for cid in classes:
-        out["classes"][cid] = build_class(cid, report, out["cubeTables"])
+        if cid not in skipped:
+            out["classes"][cid] = build_class(cid, report, out["cubeTables"])
+    if skipped:
+        report.append(f"skipped (no src/build_<id>_workbook.py: engine-native class, no Excel layout): {', '.join(skipped)}")
     print("\n".join(report))
     bad = [cid for cid, c in out["classes"].items() if c["problems"]] + (["cubeTables"] if table_problems else [])
     text = json.dumps(out, indent=1, ensure_ascii=False) + "\n"
@@ -274,7 +281,7 @@ def main() -> int:
         print("map up to date" if same else "map WOULD CHANGE")
         return 0 if same and not bad else 1
     OUT.write_text(text, encoding="utf-8")
-    print(f"wrote {OUT.relative_to(ROOT)} ({len(classes)} classes, {len(text)} bytes)" + (f"; classes with problems: {bad}" if bad else ""))
+    print(f"wrote {OUT.relative_to(ROOT)} ({len(out['classes'])} classes, {len(text)} bytes)" + (f"; classes with problems: {bad}" if bad else ""))
     return 0
 
 

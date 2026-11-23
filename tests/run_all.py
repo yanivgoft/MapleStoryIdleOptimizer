@@ -13,7 +13,9 @@ Exit code 0 = everything green, 1 = a failure, 2 = environment problem (wrong Py
 
 Golden jobs come from ``tests/golden/registry.py``: per class its class golden (``test_<id>.py``), ``test_artifacts.py --class <id>`` and
 ``test_sensitivity.py --class <id>`` (three jobs, run in parallel like the old per-class scripts), plus every global ``test_*.py`` (cubes, equipment, potentials,
-artifact five-slots).  ``--class <id>`` selects that class's three jobs.
+artifact five-slots).  ``--class <id>`` selects that class's three jobs.  An ENGINE-NATIVE class (every ``engine/classes/<id>.py`` without a workbook, e.g. dawn_warrior) has
+``test_snapshots.py --class <id>`` + ``test_engine_native.py --class <id>`` instead (plus its own ``test_<id>_*.py`` scripts, run once in a full run and under ``--class <id>``);
+``--class <id>`` also selects the API tests whose name contains the id.
 
 The golden scripts compare the engine to the workbooks' verify scripts bit-exactly and need Python 3.11 with PYTHONHASHSEED=0 (3.12 changes sum() rounding);
 this runner sets the seed itself and refuses to run on another Python minor version (override: --allow-any-python).  Golden scripts read only JSON files, so they
@@ -34,7 +36,7 @@ GOLDEN_DIR = os.path.join(ROOT, "tests", "golden")
 sys.path.insert(0, GOLDEN_DIR)
 import registry  # noqa: E402  (tests/golden/registry.py: the one list of classes + their golden jobs)
 
-CLASSES = list(registry.CLASSES)
+CLASSES = list(registry.ALL)             # the 12 workbook classes + the engine-native ones (every other engine/classes/<id>.py)
 SLOW_FIRST = ("test_cubes.py",)          # start the longest script first so the pool finishes sooner
 
 

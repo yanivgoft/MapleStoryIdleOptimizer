@@ -315,7 +315,7 @@
    "alchemic_adrenaline_as_avg": 10.908392552725678,
    "nimble_feet_avg": 6.070714285714286,
    "actions_per_second_pre_adrenalin": 1.5932455,
-   "artifact_attack_pct": 18,
+   "artifact_attack_pct": 18.0,
    "toxic_venom_trigger_rate": 2.6891112302250284,
    "attack_rates": {
     "SHOWDOWN": 1.233396944510743,

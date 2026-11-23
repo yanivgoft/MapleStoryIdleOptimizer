@@ -5,7 +5,7 @@
 #   API_URL=http://localhost:8000 SMOKE_ORIGIN=http://localhost:5173 deploy/smoke_test.sh
 #
 # Needs: bash, curl, python3 (only to read JSON).  Makes ~35 requests (well under the default 120/min rate limit; a 429 is reported as a failure).
-# Checks: /api/health; /api/classes (count = EXPECT_CLASSES, default 12); per class: GET defaults -> POST compute with that body (200, finite
+# Checks: /api/health; /api/classes (count = EXPECT_CLASSES when set, else at least 12: the classes the API serves are discovered, not listed here); per class: GET defaults -> POST compute with that body (200, finite
 # total_dps > 0) and, for classes whose status says stat_values, POST sensitivity; POST compute with the minimal body {}; the error paths
 # (422 unknown key, 404 unknown class); and, if SMOKE_ORIGIN is set, the CORS preflight for that origin (allowed) and for a foreign origin (refused).
 set -uo pipefail
@@ -16,7 +16,7 @@ load_env_file
 API_URL="${1:-${API_URL:-}}"
 [ -n "$API_URL" ] || die "usage: smoke_test.sh <api-url>   (or set API_URL)"
 API_URL="${API_URL%/}"
-EXPECT_CLASSES="${EXPECT_CLASSES:-12}"
+EXPECT_CLASSES="${EXPECT_CLASSES:-}"          # empty = "every class the API lists, at least 12"
 require_cmd curl; require_cmd python3
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/msi-smoke.XXXXXX")"
@@ -65,7 +65,11 @@ echo "classes"
 call GET /api/classes
 if expect "GET /api/classes" 200; then
   N="$(jget "$BODY" 'len(d["classes"])')"
-  [ "$N" = "$EXPECT_CLASSES" ] && pass "$N classes" || fail "got $N classes, expected $EXPECT_CLASSES (set EXPECT_CLASSES if that is intended)"
+  if [ -n "$EXPECT_CLASSES" ]; then
+    [ "$N" = "$EXPECT_CLASSES" ] && pass "$N classes" || fail "got $N classes, expected $EXPECT_CLASSES (EXPECT_CLASSES is set)"
+  else
+    [ "$N" -ge 12 ] && pass "$N classes" || fail "got $N classes, expected at least 12 (set EXPECT_CLASSES to pin an exact count)"
+  fi
   # one line per class: id <tab> has-stat-values (1/0)
   python3 -c 'import json,sys
 for c in json.load(open(sys.argv[1]))["classes"]:

@@ -1,18 +1,31 @@
-"""Multi-class API tests (all 12 classes through FastAPI's TestClient).  Run from the repo root:  python -m pytest api/tests -q"""
+"""Multi-class API tests (every class the API serves, through FastAPI's TestClient).  Run from the repo root:  python -m pytest api/tests -q
+
+The class list is the API's own (``api.registry.discover()``: every ``engine/classes/<id>.py``), not a hand-kept one.  The 12 workbook-verified classes
+(``WORKBOOK_CLASSES``: their expectations below were checked against the workbooks) get the golden-backed cases (only a class with ``tests/golden/<id>_golden.json``);
+every other class is ENGINE-NATIVE (the Cygnus classes: no workbook, validated against the user's in-game numbers) and gets the generic checks - list, schema,
+defaults, compute, companions, artifacts, sensitivity shape (``test_engine_native_*``)."""
 import json
 import math
+import os
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from api import registry as api_registry
 from api.main import create_app
 from api.settings import Settings
+from engine import sens_specs
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_DIR = ROOT / "tests" / "golden"
-CLASS_IDS = ["fp_mage", "hero", "ice_lightning_mage", "paladin", "bowmaster", "bishop", "dark_knight", "marksman", "buccaneer", "corsair",
-             "night_lord", "shadower"]
+WORKBOOK_CLASSES = ["fp_mage", "hero", "ice_lightning_mage", "paladin", "bowmaster", "bishop", "dark_knight", "marksman", "buccaneer", "corsair",
+                    "night_lord", "shadower"]
+_DISCOVERED = api_registry.discover()
+CLASS_IDS = list(_DISCOVERED)                                                   # everything the API serves
+GOLDEN_IDS = [c for c in CLASS_IDS if (GOLDEN_DIR / f"{c}_golden.json").exists()]              # golden-backed (workbook) classes
+# engine-native = served without a workbook golden; MSI_NATIVE_CLASSES (the tests/golden/registry.py test hook) additionally treats a workbook class as one
+NATIVE_IDS = [c for c in CLASS_IDS if c not in GOLDEN_IDS] + [c for c in os.environ.get("MSI_NATIVE_CLASSES", "").split(",") if c in CLASS_IDS and c in GOLDEN_IDS]
 CONTENT_TYPES = ["Chapter Boss", "Breakthrough", "PvP", "EXP Dungeon", "Equipment Dungeon", "Weapon Dungeon", "Enhancement Dungeon",
                  "Hero Dungeon", "World Boss", "Chapter Hunt"]
 MAIN_STAT_FIELDS = {          # class -> (flat main stat, main stat %, sub stat) keys of its schema
@@ -25,14 +38,24 @@ MAIN_STAT_FIELDS = {          # class -> (flat main stat, main stat %, sub stat)
 EXTRA_FIELDS = {"bishop": {"defense_pct"}, "dark_knight": {"defense_pct"}, "night_lord": {"incoming_hit_rate"}, "shadower": {"incoming_hit_rate"}}
 
 
+def main_fields(cid, schema):
+    """(flat main stat, main stat %, sub stat) keys of a class: the table of the workbook classes, else derived from the schema's stat identity (flat_<main>, <main>_pct, <sub>)."""
+    if cid in MAIN_STAT_FIELDS:
+        return MAIN_STAT_FIELDS[cid]
+    main, sub = schema["stat_identity"]["main"].lower(), schema["stat_identity"]["sub"].lower()
+    return (f"flat_{main}", f"{main}_pct", sub)
+
+
 @pytest.fixture(scope="module")
 def client():
     return TestClient(create_app(Settings(rate_limit_per_minute=0)))
 
 
-def test_all_twelve_classes_listed(client):
+def test_every_class_listed(client):
     classes = client.get("/api/classes").json()["classes"]
     assert sorted(c["id"] for c in classes) == sorted(CLASS_IDS)
+    assert set(WORKBOOK_CLASSES) <= set(CLASS_IDS), "a workbook-verified class disappeared from the API"
+    assert not set(GOLDEN_IDS) - set(WORKBOOK_CLASSES), "a class has a workbook golden but is not in WORKBOOK_CLASSES"
     by_id = {c["id"]: c for c in classes}
     for cid in CLASS_IDS:
         c = by_id[cid]
@@ -40,6 +63,8 @@ def test_all_twelve_classes_listed(client):
         assert set(c["stat_identity"]) == {"main", "sub"}
         assert c["family"] in {"Warrior", "Mage", "Archer", "Thief", "Pirate"}
         assert set(c["status"]) >= {"companions", "artifacts"} and c["status"]["artifacts"] == c["artifacts_modelled"]
+    for cid in NATIVE_IDS:
+        assert by_id[cid]["status"]["stat_values"] is True, f"{cid}: an engine-native class needs its Sensitivity spec (engine/sens_specs/{cid}.py): stat values and the cube tab depend on it"
     assert by_id["fp_mage"]["artifacts_modelled"] is True
     assert by_id["night_lord"]["stat_identity"] == {"main": "LUK", "sub": "DEX"}
     assert by_id["corsair"]["stat_identity"] == {"main": "DEX", "sub": "STR"}
@@ -50,7 +75,7 @@ def test_schema(client, cid):
     s = client.get(f"/api/classes/{cid}/schema").json()
     assert s["class_id"] == cid and s["content_types"] == CONTENT_TYPES
     keys = {f["key"] for f in s["fields"]}
-    flat, pct, sub = MAIN_STAT_FIELDS[cid]
+    flat, pct, sub = main_fields(cid, s)
     assert {flat, pct, sub} <= keys
     assert EXTRA_FIELDS.get(cid, set()) <= keys
     main = s["stat_identity"]["main"].lower()
@@ -103,7 +128,7 @@ def test_compute_defaults_every_content_type(client, cid):
 
 @pytest.mark.parametrize("cid", CLASS_IDS)
 def test_compute_edited_values(client, cid):
-    flat, pct, sub = MAIN_STAT_FIELDS[cid]
+    flat, pct, sub = main_fields(cid, client.get(f"/api/classes/{cid}/schema").json())
     base = {"content_type": "World Boss", "level": 140, "flat_attack": 1_000_000, flat: 50000, pct: 300, sub: 800, "crit_rate": 80, "crit_damage": 120,
             "def_pen": 50, "boss_damage": 100, "final_damage": 30}
     t0 = client.post(f"/api/classes/{cid}/compute", json=base).json()["total_dps"]
@@ -139,7 +164,12 @@ def test_companion_choice_none_and_chosen(client, cid):
     assert client.post(f"/api/classes/{cid}/compute", json=dict(base, companion_level=19)).status_code == 422
 
 
-ARTIFACT_CLASSES = ("bishop", "bowmaster", "buccaneer", "corsair", "dark_knight", "fp_mage", "hero", "ice_lightning_mage", "marksman", "night_lord", "paladin", "shadower")      # classes whose engine models artifacts
+# classes whose engine models artifacts: read from the schema each class reports (the 12 workbook classes all do: asserted by test_every_workbook_class_models_artifacts)
+ARTIFACT_CLASSES = tuple(c for c in CLASS_IDS if _DISCOVERED[c].schema.get("artifacts_modelled"))
+
+
+def test_every_workbook_class_models_artifacts():
+    assert set(WORKBOOK_CLASSES) <= set(ARTIFACT_CLASSES)
 
 
 @pytest.mark.parametrize("cid", ARTIFACT_CLASSES)
@@ -182,7 +212,7 @@ def _golden_ids(golden):
 
 
 GOLDEN_CASES = []
-for _cid in CLASS_IDS:
+for _cid in GOLDEN_IDS:
     _g = json.loads((GOLDEN_DIR / f"{_cid}_golden.json").read_text())
     GOLDEN_CASES += [(_cid, k, _g[k]) for k in _golden_ids(_g)]
 SKIPPED = []                                                              # (class, case, reason) filled while the tests run
@@ -208,7 +238,48 @@ def test_compute_matches_golden(client, cid, case_id, case):
 
 
 def test_first_three_golden_cases_per_class_are_not_skipped():
-    for cid in CLASS_IDS:
+    for cid in GOLDEN_IDS:
         g = json.loads((GOLDEN_DIR / f"{cid}_golden.json").read_text())
         for k in list(g)[:3]:
             assert "reference_error" not in g[k]["out"], (cid, k)
+
+
+# ---- engine-native classes (no workbook, no golden): the generic API contract ----
+
+@pytest.mark.parametrize("cid", NATIVE_IDS)
+def test_engine_native_result_rows_match_the_schema(client, cid):
+    """The schema's ``dps_rows`` are exactly the rows of a compute result, in the same order; shares are a partition of the player's damage."""
+    schema = client.get(f"/api/classes/{cid}/schema").json()
+    rows = [tuple(r) for r in schema["dps_rows"]]
+    assert rows and len({k for k, _n in rows}) == len(rows) and all(n for _k, n in rows)
+    for ct in ("World Boss", "Chapter Hunt", "Breakthrough"):
+        b = client.post(f"/api/classes/{cid}/compute", json={"content_type": ct, "level": 140, "flat_attack": 250000}).json()
+        assert [(s["key"], s["name"]) for s in b["skills"]] == rows, ct
+        assert all(math.isfinite(s["dps"]) and s["dps"] >= 0 for s in b["skills"])
+        assert math.isclose(sum(s["dps"] for s in b["skills"]), b["player_dps"], rel_tol=1e-9), (cid, ct)
+
+
+@pytest.mark.parametrize("cid", NATIVE_IDS)
+def test_engine_native_sensitivity_and_cube_tabs(client, cid):
+    """Stat values, the sensitivity meta and the three cube-tab endpoints answer for the class (its spec maps its stats): shape + the engine called directly."""
+    entry = _DISCOVERED[cid]
+    body = {"content_type": "World Boss", "level": 140, "flat_attack": 250000, "companion_choice": "Blaze Wizard", "companion_level": 10}
+    r = client.post(f"/api/classes/{cid}/sensitivity", json=body)
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["class_id"] == cid and out["baseline_total"] > 0 and {"stats", "artifacts", "companions", "summon_time", "cdr"} <= set(out)
+    meta = client.get(f"/api/classes/{cid}/sensitivity/meta").json()
+    assert [x["key"] for x in out["stats"]["rows"]] == [x["key"] for x in meta["stats"]] and len(out["artifacts"]["rows"]) == 36 and len(out["companions"]["rows"]) == 16
+    assert "NaN" not in r.text
+    assert client.get(f"/api/classes/{cid}/cubes/meta").status_code == 200
+    gear = [{"slot": "head", "potential_type": "Potential", "rarity": "epic", "pity": 12, "lines": [{"stat": "Damage %", "value": 12}, {"stat": "Critical Rate %", "value": 3}]}]
+    c = client.post(f"/api/classes/{cid}/cubes", json={**body, "gear": gear, "only": ["head"]})
+    assert c.status_code == 200 and c.json()["baseline_total"] == pytest.approx(out["baseline_total"], rel=1e-12), c.text
+    e = client.post(f"/api/classes/{cid}/equipment-compare", json={**body, "current": {"attack": 1000, "lines": []}, "new": {"attack": 1500, "lines": [{"stat": "Main Stat (flat)", "value": 300}]}})
+    assert e.status_code == 200, e.text
+    spec = sens_specs.get(cid)
+    assert e.json()["rate_by_stat"]["Main Stat (flat)"] > 0 and e.json()["rate_by_stat"]["Main Stat (flat)"] == pytest.approx(
+        next(x["dps_gain"] for x in out["stats"]["rows"] if x["key"] == spec.mainstat.flat), rel=1e-12)
+    p = client.post(f"/api/classes/{cid}/artifact-potentials", json={**body, "potentials": {"hexagon_necklace": {"star": 5, "lines": [{"rarity": "Legendary", "stat": "Damage %"}]}}})
+    assert p.status_code == 200 and next(x for x in p.json()["rows"] if x["key"] == "hexagon_necklace")["total"] > 0, p.text
+    assert entry.supports_sensitivity

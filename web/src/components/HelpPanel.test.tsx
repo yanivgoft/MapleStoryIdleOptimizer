@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
 import { HELP_SECTIONS, HelpPanel, hintGroups } from "./HelpPanel";
 import { CONTACT_URL, classCapabilities, KNOWN_GAPS_URL, LIMITATIONS } from "../content/help";
-import { ALL, classList, fixtureFor } from "../test/fixtures";
+import { ALL, classList, fixtureFor, withoutStatValues } from "../test/fixtures";
 
 const strip = (h: string) => h.replace(/<!-- -->/g, "").replace(/&#x27;/g, "'");
 const fp = fixtureFor("fp_mage");
@@ -45,7 +45,6 @@ describe("Help tab render", () => {
   });
   it("per-class table has one row per fixture class, driven by status", () => {
     const rows = html.match(/<tr data-class="[a-z_]+"/g) ?? [];
-    expect(rows.length).toBe(12);
     expect(rows.length).toBe(classList.length);
     for (const c of ALL) {
       const cap = classCapabilities(c.info);
@@ -53,9 +52,21 @@ describe("Help tab render", () => {
       expect(cap.Cubes).toBe(cap["Equipment compare"]);
       expect(html).toContain(`data-class="${c.info.id}"`);
     }
-    const row = (id: string) => html.split(`data-class="${id}"`)[1].split("</tr>")[0];
-    expect(row("bowmaster")).toContain("coming soon"); // no stat values yet
-    expect(row("hero")).not.toContain("coming soon");
+    const rowIn = (h: string, id: string) => h.split(`data-class="${id}"`)[1].split("</tr>")[0];
+    // every real class: "coming soon" exactly when its status has no stat values (whichever classes that is today)
+    for (const c of ALL) {
+      const r = rowIn(html, c.info.id);
+      expect(r.includes("coming soon"), c.info.id).toBe(!c.info.status?.stat_values);
+      expect(r.includes("yes"), c.info.id).toBe(true); // (the Calculator column)
+    }
+    // a synthetic class without stat values: its Stat values / Cubes / Equipment compare cells say "coming soon", the others still say "yes"
+    const synth = withoutStatValues();
+    const withSynth = strip(renderToString(<HelpPanel classes={[...classList, synth.info]} schema={fp.schema} />));
+    expect((withSynth.match(/<tr data-class="[a-z_]+"/g) ?? []).length).toBe(classList.length + 1);
+    const sr = rowIn(withSynth, synth.info.id);
+    expect(sr.match(/coming soon/g)).toHaveLength(3);
+    expect(sr).toContain("yes");
+    expect(rowIn(withSynth, "fp_mage")).not.toContain("coming soon"); // a class with stat values is unaffected
   });
   it("limitations: at most 12 bullets and a link to KNOWN_GAPS.md", () => {
     expect(LIMITATIONS.length).toBeGreaterThan(0);

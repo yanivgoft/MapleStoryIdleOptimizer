@@ -10,13 +10,14 @@ async function mockApi() {
 
 afterEach(() => vi.unstubAllEnvs());
 
-describe("mock mode serves all 12 classes", () => {
+describe("mock mode serves every class of the fixtures", () => {
   it("lists the classes, loads schema + defaults for every content type, computes", async () => {
     const { api, MOCK } = await mockApi();
     expect(MOCK).toBe(true);
     const classes = await api.classes();
     expect(classes.map((c) => c.id).sort()).toEqual([...CLASS_IDS].sort());
-    expect(classes).toHaveLength(12);
+    expect(classes).toHaveLength(CLASS_IDS.length);
+    expect(CLASS_IDS.length).toBeGreaterThanOrEqual(12);
     for (const id of CLASS_IDS) {
       const schema = await api.schema(id);
       expect(schema.class_id).toBe(id);

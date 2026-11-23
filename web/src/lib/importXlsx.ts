@@ -61,6 +61,14 @@ export interface CubeTables {
 }
 
 export const XLSX_MAP = (map as unknown as { classes: Record<string, ClassMap> }).classes;
+
+/** Does an Excel calculator exist for this class?  Only the classes that have a workbook (builder) have a layout in the map; an engine-native class (the newer ones, built
+ *  straight into the app) has none and cannot be imported. */
+export const hasLayout = (classId: string): boolean => classId in XLSX_MAP;
+
+/** The message for a class without a layout (friendly: says what to do instead). */
+export const noLayoutMessage = (name: string): string =>
+  `No Excel layout is known for this class (${name}): it has no Excel calculator, so there is no workbook to import. Type your character's stats into the calculator instead.`;
 export const CUBE_TABLES = (map as unknown as { cubeTables: CubeTables }).cubeTables;
 
 export interface ImportNote {
@@ -205,7 +213,7 @@ const GENERIC_STAR = (s: Scalar | undefined): number | string | null => {
  *  when the workbook has no Inputs sheet at all. */
 export function importWorkbook(book: XlsxBook, schema: ClassSchema, opts: ImportOptions = {}): ImportResult {
   const cm = XLSX_MAP[schema.class_id];
-  if (!cm) throw new XlsxError("not_xlsx", `No workbook layout is known for the class "${schema.class_id}".`);
+  if (!cm) throw new XlsxError("no_layout", noLayoutMessage(schema.name || schema.class_id));
   const inp = book.sheet(cm.inputs.sheet);
   if (!inp) throw new XlsxError("missing_part", `This workbook has no "${cm.inputs.sheet}" sheet, so it is not a ${cm.name} calculator.`);
   const ctx: Ctx = { warnings: [], ignored: [], formulaSkipped: 0 };

@@ -27,7 +27,7 @@
    "status": {
     "companions": true,
     "artifacts": true,
-    "stat_values": false
+    "stat_values": true
    }
   },
   {
@@ -57,12 +57,27 @@
    "status": {
     "companions": true,
     "artifacts": true,
-    "stat_values": false
+    "stat_values": true
    }
   },
   {
    "id": "dark_knight",
    "name": "Dark Knight",
+   "family": "Warrior",
+   "stat_identity": {
+    "main": "STR",
+    "sub": "DEX"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": true
+   }
+  },
+  {
+   "id": "dawn_warrior",
+   "name": "Dawn Warrior",
    "family": "Warrior",
    "stat_identity": {
     "main": "STR",
@@ -147,7 +162,7 @@
    "status": {
     "companions": true,
     "artifacts": true,
-    "stat_values": false
+    "stat_values": true
    }
   },
   {
@@ -162,7 +177,7 @@
    "status": {
     "companions": true,
     "artifacts": true,
-    "stat_values": false
+    "stat_values": true
    }
   },
   {
@@ -177,7 +192,7 @@
    "status": {
     "companions": true,
     "artifacts": true,
-    "stat_values": false
+    "stat_values": true
    }
   }
  ]

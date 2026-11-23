@@ -651,7 +651,7 @@
     "ratio": 1.0,
     "dps_gain": 0.0,
     "pct_gain": 100.0,
-    "rank_position": 6
+    "rank_position": 7
    },
    {
     "key": "shamaness_marble",
@@ -665,11 +665,11 @@
     "unlocked": true,
     "potential_gain": 0.0,
     "baked_into_inputs": true,
-    "new_total": 4.926808599463422e+16,
-    "ratio": 1.0,
-    "dps_gain": 0.0,
-    "pct_gain": 100.0,
-    "rank_position": 7
+    "new_total": 5.026284368507803e+16,
+    "ratio": 1.0201907110934278,
+    "dps_gain": 994757690443818.5,
+    "pct_gain": 102.01907110934279,
+    "rank_position": 5
    },
    {
     "key": "contract_of_darkness",
@@ -705,7 +705,7 @@
     "ratio": 1.0140066321403185,
     "dps_gain": 690079956784419.4,
     "pct_gain": 101.40066321403185,
-    "rank_position": 5
+    "rank_position": 6
    },
    {
     "key": "hexagon_necklace",
@@ -741,7 +741,7 @@
     "ratio": 1.0573025895828945,
     "dps_gain": 2823188911285276.0,
     "pct_gain": 105.73025895828945,
-    "rank_position": 2
+    "rank_position": 3
    },
    {
     "key": "mushmoms_cap",
@@ -791,11 +791,11 @@
     "unlocked": true,
     "potential_gain": 0.0,
     "baked_into_inputs": true,
-    "new_total": 5.153943953728256e+16,
-    "ratio": 1.0461019237259535,
-    "dps_gain": 2271353542648342.5,
-    "pct_gain": 104.61019237259535,
-    "rank_position": 3
+    "new_total": 5.386808972266519e+16,
+    "ratio": 1.0933668039901523,
+    "dps_gain": 4600003728030981.0,
+    "pct_gain": 109.33668039901522,
+    "rank_position": 2
    },
    {
     "key": "zakums_stone_piece",
@@ -1223,10 +1223,10 @@
     "unlocked": false,
     "potential_gain": 0.0,
     "baked_into_inputs": true,
-    "new_total": 5.099713046201691e+16,
-    "ratio": 1.035094614139689,
-    "dps_gain": 1729044467382707.0,
-    "pct_gain": 103.5094614139689,
+    "new_total": 5.1598842200133496e+16,
+    "ratio": 1.0473076263963883,
+    "dps_gain": 2330756205499287.0,
+    "pct_gain": 104.73076263963883,
     "rank_position": null
    },
    {
@@ -1268,12 +1268,12 @@
   ],
   "ranking": [
    "hexagon_necklace",
-   "arwens_glass_shoes",
    "athena_gloves",
+   "arwens_glass_shoes",
    "charm_of_the_undead",
+   "shamaness_marble",
    "rainbow_snail_shell",
    "pigs_ribbon",
-   "shamaness_marble",
    "contract_of_darkness",
    "mushmoms_cap",
    "clear_spring_water",

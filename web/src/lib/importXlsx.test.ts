@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { xlsxBytes, xlsxJson } from "../test/xlsxFiles";
 import { ALL, fixtureFor } from "../test/fixtures";
 import { XlsxBook, XlsxError } from "./xlsx_read";
-import { CUBE_TABLES, XLSX_MAP, cubeSlotKey, detectClass, importWorkbook, uniqueProfileName } from "./importXlsx";
+import { CUBE_TABLES, XLSX_MAP, cubeSlotKey, detectClass, hasLayout, importWorkbook, noLayoutMessage, uniqueProfileName } from "./importXlsx";
 import { cubesFixture } from "../test/cubesFixture";
 import { gearPayload, getRow, normalizeCubesState, rowsToCalculate, statChoices, statOptions, NOT_ROLLABLE_ON_SLOT } from "./cubes";
 import type { CubesState } from "./cubes";
@@ -37,8 +37,13 @@ interface Expected {
 
 const open = (name: string) => XlsxBook.open(xlsxBytes(name), name);
 
+// Classes with an Excel calculator have a map entry (generated from their builder); an ENGINE-NATIVE class (no workbook) has none and is expected to have none: both lists are
+// derived from the fixtures vs the map, never listed by hand.
+const WITH_LAYOUT = ALL.filter((c) => c.schema.class_id in XLSX_MAP);
+const WITHOUT_LAYOUT = ALL.filter((c) => !(c.schema.class_id in XLSX_MAP));
+
 describe("xlsx_map.json matches the engine schemas", () => {
-  it.each(ALL.map((c) => [c.schema.class_id, c] as const))("%s: every engine input has a workbook row and the layout fits the schema", (_id, c) => {
+  it.each(WITH_LAYOUT.map((c) => [c.schema.class_id, c] as const))("%s: every engine input has a workbook row and the layout fits the schema", (_id, c) => {
     const m = XLSX_MAP[c.schema.class_id];
     expect(m, "class in map").toBeTruthy();
     expect(m.inputs.contentTypes).toEqual(c.schema.content_types);
@@ -55,7 +60,7 @@ describe("xlsx_map.json matches the engine schemas", () => {
     expect(Object.values(m.inputs.perContent).some((r) => m.inputs.slotRows.includes(r))).toBe(false);
   });
   it("every class has the PotentialCubes layout of its builder (15 slots x 2 tracks = 30 rows, 3 lines)", () => {
-    for (const c of ALL) {
+    for (const c of WITH_LAYOUT) {
       const cc = XLSX_MAP[c.schema.class_id].cubes;
       expect(cc.sheet).toBe("PotentialCubes");
       expect([cc.headerRow, cc.firstRow, cc.lastRow]).toEqual([5, 6, 35]);
@@ -81,11 +86,41 @@ describe("xlsx_map.json matches the engine schemas", () => {
   it("every class has its own title", () => {
     const titles = Object.values(XLSX_MAP).map((m) => m.title);
     expect(new Set(titles).size).toBe(titles.length);
-    expect(Object.keys(XLSX_MAP).sort()).toEqual(ALL.map((c) => c.schema.class_id).sort());
+    const ids = ALL.map((c) => c.schema.class_id);
+    expect(Object.keys(XLSX_MAP).every((id) => ids.includes(id)), "a map entry for a class the fixtures do not have").toBe(true);     // (the map is generated from the builders: every workbook class is a fixture class)
+    expect(WITH_LAYOUT.length + WITHOUT_LAYOUT.length).toBe(ALL.length);
+    expect(WITH_LAYOUT.length).toBeGreaterThan(0);
   });
 });
 
-describe.each(ALL.map((c) => c.schema.class_id))("import of the generated %s workbook", (id) => {
+describe("classes without an Excel calculator (engine-native)", () => {
+  // a stand-in is always checked, so the test means something even while every fixture class has a workbook
+  const standIn = { ...fixtureFor("hero").schema, class_id: "engine_native_stand_in", name: "Stand-in Class" };
+  const schemas = [standIn, ...WITHOUT_LAYOUT.map((c) => c.schema)];
+  it.each(schemas.map((sc) => [sc.class_id, sc] as const))("%s: importing says that no Excel layout is known, in plain words", (_id, sc) => {
+    expect(hasLayout(sc.class_id)).toBe(false);
+    let err: unknown;
+    try {
+      importWorkbook(open("class_hero.xlsx"), sc);
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(XlsxError);
+    expect((err as XlsxError).code).toBe("no_layout");
+    expect((err as XlsxError).message).toBe(noLayoutMessage(sc.name));
+    expect((err as XlsxError).message).toContain("No Excel layout is known for this class");
+    expect((err as XlsxError).message).toContain(sc.name);
+    expect((err as XlsxError).message).not.toMatch(/undefined|null|\[object/);
+  });
+  it("a class with a calculator has a layout", () => {
+    for (const c of WITH_LAYOUT) expect(hasLayout(c.schema.class_id)).toBe(true);
+  });
+  it("no test workbook is generated for a class without a layout (the generator walks the map)", () => {
+    for (const c of WITHOUT_LAYOUT) expect(() => xlsxBytes(`class_${c.schema.class_id}.xlsx`), c.schema.class_id).toThrow();
+  });
+});
+
+describe.each(WITH_LAYOUT.map((c) => c.schema.class_id))("import of the generated %s workbook", (id) => {
   const { schema } = fixtureFor(id);
   const exp = xlsxJson<Expected>(`class_${id}.expected.json`);
   const book = open(`class_${id}.xlsx`);

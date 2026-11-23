@@ -1,0 +1,174 @@
+{
+ "request": {
+  "current": {
+   "attack": 1500,
+   "lines": [
+    {
+     "stat": "Damage %",
+     "value": 14
+    },
+    {
+     "stat": "Critical Rate %",
+     "value": 3
+    }
+   ]
+  },
+  "new": {
+   "attack": 2200,
+   "lines": [
+    {
+     "stat": "Final Damage %",
+     "value": 6
+    },
+    {
+     "stat": "Min Damage %",
+     "value": 15
+    },
+    {
+     "stat": "Damage %",
+     "value": 5
+    }
+   ]
+  }
+ },
+ "result": {
+  "current": {
+   "rows": [
+    {
+     "stat": "Attack (flat)",
+     "value": 1500.0,
+     "gain": 30687282441204.156,
+     "first": true,
+     "group": 30687282441204.156,
+     "factor": 1.0012404906059027
+    },
+    {
+     "stat": "Damage %",
+     "value": 14.0,
+     "gain": 321094281050037.75,
+     "first": true,
+     "group": 321094281050037.75,
+     "factor": 1.0129797886148704
+    },
+    {
+     "stat": "Critical Rate %",
+     "value": 3.0,
+     "gain": 157767989951084.53,
+     "first": true,
+     "group": 157767989951084.53,
+     "factor": 1.0063775510204087
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    }
+   ],
+   "total_gain": 512193913021438.8,
+   "pct": 2.0704724790179485
+  },
+  "new": {
+   "rows": [
+    {
+     "stat": "Attack (flat)",
+     "value": 2200.0,
+     "gain": 45008014247099.43,
+     "first": true,
+     "group": 45008014247099.43,
+     "factor": 1.0018193862219906
+    },
+    {
+     "stat": "Final Damage %",
+     "value": 6.0,
+     "gain": 1487773328335852.8,
+     "first": true,
+     "group": 1487773328335852.8,
+     "factor": 1.0601411624196202
+    },
+    {
+     "stat": "Min Damage %",
+     "value": 15.0,
+     "gain": 626173324949195.1,
+     "first": true,
+     "group": 626173324949195.1,
+     "factor": 1.0253121835977033
+    },
+    {
+     "stat": "Damage %",
+     "value": 5.0,
+     "gain": 114676528946442.05,
+     "first": true,
+     "group": 114676528946442.05,
+     "factor": 1.0046356387910251
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    }
+   ],
+   "total_gain": 2325405442656709.5,
+   "pct": 9.400127274409332
+  },
+  "delta_pct": 7.3296547953913835,
+  "delta_dps": 1813211529635270.8,
+  "better": "new",
+  "class_id": "corsair",
+  "baseline_total": 2.473802082432793e+16,
+  "crit_rate_total": 152.5,
+  "crit_priced_as_crit_damage": true,
+  "rate_by_stat": {
+   "Main Stat (flat)": 443020885856.48755,
+   "Main Stat %": 67797705386729.12,
+   "Attack (flat)": 20458188294.136105,
+   "Min Damage %": 41744888329946.34,
+   "Max Damage %": 41744888329946.34,
+   "Damage %": 22935305789288.41,
+   "Critical Rate %": 52589329983694.84,
+   "Critical Damage %": 52589329983694.84,
+   "Boss Monster Damage %": 59515617298101.92,
+   "Normal Monster Damage %": 0.0,
+   "Defense Penetration %": 57830579952473.98,
+   "Defense (flat)": 0.0,
+   "Skill Level Bonus \u2014 1st Job": 899479442754.1118,
+   "Skill Level Bonus \u2014 2nd Job": 17474898684837.316,
+   "Skill Level Bonus \u2014 3rd Job": 12105154125145.625,
+   "Skill Level Bonus \u2014 4th Job": 0.0,
+   "Skill Level Bonus \u2014 All Skills": 30486739305141.066,
+   "Final Damage %": 247962221389308.78,
+   "Basic Attack Damage %": 35226371679147.47,
+   "Skill Damage %": 88620937821281.27,
+   "Attack Speed %": 31477386898726.812
+  }
+ }
+}

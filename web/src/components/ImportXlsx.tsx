@@ -97,6 +97,7 @@ export function ImportXlsx({ classes, onSaved, loadSchema = api.schema }: Props)
       <h3 id={`${hintId}-h`}>Import from your Excel calculator</h3>
       <p className="note" id={hintId}>
         Already filled in a <code>&lt;Class&gt;-DPS-Calculator.xlsx</code>? Load its typed-in values instead of retyping them. The file is read in your browser only and is never uploaded.
+        Only classes that have an Excel calculator can be imported; the newer classes, built straight into the app, have none (type their stats in directly).
       </p>
       <div
         className={`xlsx-drop${over ? " over" : ""}`}
@@ -198,7 +199,7 @@ function ImportFlow({
 }
 
 export interface DialogProps {
-  lib: Pick<Lib, "groupNotes" | "uniqueProfileName">;
+  lib: Pick<Lib, "groupNotes" | "uniqueProfileName"> & Partial<Pick<Lib, "hasLayout">>;      // hasLayout: which classes have an Excel calculator (absent = all)
   fileName: string;
   fileTitle: string | null;
   classes: ClassInfo[];
@@ -216,6 +217,9 @@ export function ImportDialog(p: DialogProps) {
   const id = useId();
   const ref = useRef<HTMLDivElement>(null);
   const className = p.classes.find((c) => c.id === p.classId)?.name ?? p.result?.summary.className ?? "";
+  // engine-native classes have no Excel calculator: they are not offered here (and the note says so), never silently missing
+  const importable = p.classes.filter((c) => c.id === p.classId || (p.lib.hasLayout?.(c.id) ?? true));
+  const noWorkbook = p.classes.filter((c) => !importable.includes(c));
   const [typed, setTyped] = useState<string | null>(null); // null = still the suggested name
   const name = typed ?? `${className || "Workbook"} (Excel import)`.slice(0, 60);
   const [loadNow, setLoadNow] = useState(true);
@@ -275,7 +279,7 @@ export function ImportDialog(p: DialogProps) {
             <label htmlFor={`${id}-class`}>Class</label>
             <select id={`${id}-class`} value={p.classId ?? ""} onChange={(e) => e.target.value && p.onClass(e.target.value)}>
               {!p.classId && <option value="">Choose the class...</option>}
-              {p.classes.map((c) => (
+              {importable.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -288,6 +292,12 @@ export function ImportDialog(p: DialogProps) {
                   ? "Chosen by you."
                   : `The workbook title ${p.fileTitle ? `"${p.fileTitle}" ` : ""}is not one of the calculators' - pick the class it was made for.`}
             </span>
+            {noWorkbook.length > 0 && (
+              <span className="note">
+                {" "}
+                No Excel layout is known for {noWorkbook.map((c) => c.name).join(", ")}: {noWorkbook.length === 1 ? "this class has" : "these classes have"} no Excel calculator, so {noWorkbook.length === 1 ? "it is" : "they are"} not listed.
+              </span>
+            )}
           </div>
 
           {p.problem && (

@@ -34,7 +34,7 @@ assumption instead of a verified wiki value, and why.
 
 ## The web app (engine/, api/, web/) — the successor to the workbooks
 
-One app for all 12 classes (the user picks the class); `APP.md` is the overview, `deploy/README.md` the deployment guide, `APP_ACCOUNTS_DESIGN.md` the accounts design,
+One app for every class listed by `/api/classes` (the user picks the class; the first 12 classes are workbook-verified (the engine is checked against their Excel workbooks) and the Cygnus classes are engine-native (no workbook; validated against the user's in-game numbers)); `APP.md` is the overview, `deploy/README.md` the deployment guide, `APP_ACCOUNTS_DESIGN.md` the accounts design,
 `engine/README.md` the engine layout. The user intends to STOP using the Excel workbooks once the app is live, so the workbooks/builders/verify scripts are now the
 frozen reference (not extended: e.g. the 5th artifact slot exists only in the app); fix a workbook only when an app bug needs the reference corrected.
 - `engine/` — plain-Python (stdlib only) calculation package: `engine/classes/<id>.py` (`compute/defaults/fields`), `engine/common/*` (content/fight/schema/blend/...),
@@ -57,6 +57,19 @@ frozen reference (not extended: e.g. the 5th artifact slot exists only in the ap
   difference, the 10 most-changed fields, untracked / unrefreshable checks; `--kind class|artifacts|sensitivity`, `--case <substr>`, `--class all`); review it, then re-run with
   `--write --reason "<why the model changed>"` (refused without a reason; appends a line to `tests/golden/golden_refresh_log.md`; a no-op refresh is byte-identical). A refreshed golden PINS THE
   ENGINE's behaviour (it is no longer an independent workbook / verify-script value) - say so in `KNOWN_GAPS.md`, never hand-edit a golden, never loosen a tolerance. Tests: `tests/golden/test_update_goldens.py`.
+- **Adding an engine-native class** (no workbook / builder / verify script / workbook goldens: the Cygnus classes, `dawn_warrior` first; the first 12 classes are the workbook-verified ones):
+  1. Write `engine/data/<id>.py` (`UNLOCK_LEVEL`, skill and mastery tables - the level sweep reads its thresholds from them), `engine/classes/<id>.py` (`CLASS_ID`, `CLASS_NAME`, `compute/defaults/schema`
+     through `classapi.make`) and `engine/sens_specs/<id>.py` (without a spec the stat values AND the cube / equipment / potential tabs are off: `test_engine_native.py` and the API tests fail).
+  2. Register the class in `engine/__init__.py` CLASSES, `engine/sens_specs/__init__.py` CLASS_IDS and `api/registry.py` FAMILIES (+ the SENSITIVITY_CLASSES fallback). `tests/golden/registry.py` needs
+     NOTHING: every `engine/classes/<id>.py` that is not one of the 12 workbook classes is discovered as engine-native (`registry.NATIVE`; `MSI_NATIVE_CLASSES=hero` lets a workbook class stand in for a test).
+  3. The independent check is the user's in-game text: `tests/golden/test_<id>_displayed.py` (any `test_<id>_*.py` is a global script of the full run and one of the class's own jobs under `--class <id>`).
+  4. Pin it: `python3 tests/golden/update_goldens.py --create --class <id> --reason "..."` writes `tests/golden/<id>_snapshot.json` from the CURRENT engine (generic case matrix from the class's schema + data module:
+     10 content types x stat sets x companion on/off, level sweep at every unlock / mastery threshold, all 36 artifacts, 2-5 slots, sensitivity runs, cube / equipment / potential pricing; < 3 MB; logged as
+     "engine-native snapshot: pins the engine, no independent source"). After an ON-PURPOSE model change: `update_goldens.py --class <id>` (dry-run diff), review, `--write --reason "..."`.
+  5. `python3 tests/run_all.py --class <id>` runs `test_snapshots.py` + `test_engine_native.py` (equip-toggle direction invariance, Final Damage +1% exact, hooks are no-ops, API shape, no-DPS-effect artifacts, content sweep,
+     LEVEL SWEEP 1-200 that flags every DPS decrease; an understood one goes into `tests/golden/native_level_allowlist.json` with a reason, a stale entry fails) + its API tests. Then regenerate the web fixtures
+     (`.venv/bin/python web/scripts/gen_fixtures.py`; sample inputs come from `tests/golden/snapshot_common.py::sample_inputs`, no golden needed), check `python3 web/scripts/gen_xlsx_map.py --check` (it skips a class
+     without a builder; the Excel import says "No Excel layout is known for this class" and does not list it) and run the full `python3 tests/run_all.py`.
 - **Blank numeric inputs**: the engine reads a missing/None value as 0 (an empty Excel cell; the goldens pin this) - the one exception is typed by the user: "Max Enemies In Range" blank/0
   means uncapped (999), applied in `api/validation.py` (`validate_inputs`) only for content where the field applies. "0 enemies hit" was a bug (0 DPS in Chapter Hunt,
   ZeroDivisionError in Ice/Lightning Mage and Bishop). Do NOT put such a rule inside `engine/common/fight.py`: it changes the intermediate normal-branch numbers of boss content and
@@ -64,7 +77,7 @@ frozen reference (not extended: e.g. the 5th artifact slot exists only in the ap
 - **Cubes tab**: recommendations are grouped like the cubing script: regular Potential first, then Bonus Potential, each ranked on its own (`groupByPotentialType`
   in `web/src/lib/cubes.ts`); the two tracks have different pity caps (item 17 below). Boss/Normal Emphasis (Breakthrough / Hero Dungeon) scales the value of every
   normal-monster-only stat (Basic Attack Target Increase, Normal Damage, ...) because Sensitivity blends the two branches' growth ratios by that time weight (bug 9).
-- Deploy: `deploy/deploy_api.sh` (Cloud Run, Python 3.11 image) and `deploy/deploy_web.sh` (Firebase Hosting); keep `api/Dockerfile`'s COPY list in sync when the API or
+- Deploy: **`deploy/redeploy.sh`** (one command: tests -> API -> smoke test -> web + rules -> live checks, stops at the first failure; `--dry-run` to rehearse); it wraps `deploy/deploy_api.sh` (Cloud Run, Python 3.11 image) and `deploy/deploy_web.sh` (Firebase Hosting); keep `api/Dockerfile`'s COPY list in sync when the API or
   engine gains a new file/data dependency (a missing COPY only shows up in the container, not in the tests).
 - Web conventions: tests are data-driven (no hard-coded per-class lists); prettier is NOT configured for `web/` (do not run it with defaults — it reflows whole files).
 

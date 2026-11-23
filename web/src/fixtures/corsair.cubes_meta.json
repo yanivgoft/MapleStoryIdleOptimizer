@@ -1,0 +1,988 @@
+{
+ "slots": [
+  {
+   "key": "head",
+   "label": "Head"
+  },
+  {
+   "key": "cape",
+   "label": "Cape"
+  },
+  {
+   "key": "chest",
+   "label": "Chest"
+  },
+  {
+   "key": "shoulders",
+   "label": "Shoulders"
+  },
+  {
+   "key": "legs",
+   "label": "Legs"
+  },
+  {
+   "key": "belt",
+   "label": "Belt"
+  },
+  {
+   "key": "gloves",
+   "label": "Gloves"
+  },
+  {
+   "key": "boots",
+   "label": "Boots"
+  },
+  {
+   "key": "ring",
+   "label": "Ring"
+  },
+  {
+   "key": "neck",
+   "label": "Necklace"
+  },
+  {
+   "key": "eye-accessory",
+   "label": "Eye accessory"
+  },
+  {
+   "key": "ring2",
+   "label": "Ring 2"
+  },
+  {
+   "key": "face",
+   "label": "Face accessory"
+  },
+  {
+   "key": "earrings",
+   "label": "Earrings"
+  },
+  {
+   "key": "pocket",
+   "label": "Pocket"
+  }
+ ],
+ "potential_types": [
+  "Potential",
+  "Bonus Potential"
+ ],
+ "rarities": [
+  {
+   "key": "normal",
+   "label": "Normal"
+  },
+  {
+   "key": "rare",
+   "label": "Rare"
+  },
+  {
+   "key": "epic",
+   "label": "Epic"
+  },
+  {
+   "key": "unique",
+   "label": "Unique"
+  },
+  {
+   "key": "legendary",
+   "label": "Legendary"
+  },
+  {
+   "key": "mystic",
+   "label": "Mystic"
+  }
+ ],
+ "none_stat": "(none)",
+ "stats": [
+  "All Skill Level",
+  "Attack Speed %",
+  "Basic Attack Damage %",
+  "Basic Attack Target Increase",
+  "Buff Duration Increase %",
+  "Companion Summoning Time Increase %",
+  "Critical Damage %",
+  "Critical Rate %",
+  "Damage %",
+  "Defense %",
+  "Defense Penetration",
+  "Dex",
+  "Dex %",
+  "Final Damage %",
+  "Int",
+  "Int %",
+  "Luk",
+  "Luk %",
+  "Main Stat % per 4 Levels",
+  "Main Stat Per Level",
+  "Max Damage Multiplier %",
+  "Max HP %",
+  "Max MP %",
+  "Min Damage Multiplier %",
+  "Skill Cooldown Decrease (seconds)",
+  "Skill Damage %",
+  "Str",
+  "Str %"
+ ],
+ "stats_by_slot": {
+  "head": [
+   "Attack Speed %",
+   "Buff Duration Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ],
+  "cape": [
+   "Attack Speed %",
+   "Buff Duration Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Final Damage %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ],
+  "chest": [
+   "Attack Speed %",
+   "Basic Attack Target Increase",
+   "Buff Duration Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ],
+  "shoulders": [
+   "Attack Speed %",
+   "Buff Duration Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Defense Penetration",
+   "Dex",
+   "Dex %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ],
+  "legs": [
+   "Attack Speed %",
+   "Buff Duration Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Final Damage %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ],
+  "belt": [
+   "Attack Speed %",
+   "Buff Duration Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ],
+  "gloves": [
+   "Attack Speed %",
+   "Buff Duration Increase %",
+   "Critical Damage %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ],
+  "boots": [
+   "Attack Speed %",
+   "Buff Duration Increase %",
+   "Companion Summoning Time Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ],
+  "ring": [
+   "All Skill Level",
+   "Attack Speed %",
+   "Buff Duration Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ],
+  "neck": [
+   "All Skill Level",
+   "Attack Speed %",
+   "Buff Duration Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ],
+  "eye-accessory": [
+   "Attack Speed %",
+   "Buff Duration Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Main Stat Per Level",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ],
+  "ring2": [
+   "Attack Speed %",
+   "Basic Attack Damage %",
+   "Buff Duration Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ],
+  "face": [
+   "Attack Speed %",
+   "Buff Duration Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Final Damage %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ],
+  "earrings": [
+   "Attack Speed %",
+   "Buff Duration Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Skill Damage %",
+   "Str",
+   "Str %"
+  ],
+  "pocket": [
+   "Attack Speed %",
+   "Buff Duration Increase %",
+   "Critical Rate %",
+   "Damage %",
+   "Defense %",
+   "Dex",
+   "Dex %",
+   "Int",
+   "Int %",
+   "Luk",
+   "Luk %",
+   "Main Stat % per 4 Levels",
+   "Max Damage Multiplier %",
+   "Max HP %",
+   "Max MP %",
+   "Min Damage Multiplier %",
+   "Skill Cooldown Decrease (seconds)",
+   "Str",
+   "Str %"
+  ]
+ },
+ "pity_caps": {
+  "Potential": {
+   "normal": 30,
+   "rare": 60,
+   "epic": 120,
+   "unique": 333,
+   "legendary": 714,
+   "mystic": 0
+  },
+  "Bonus Potential": {
+   "normal": 42,
+   "rare": 75,
+   "epic": 150,
+   "unique": 417,
+   "legendary": 714,
+   "mystic": 0
+  }
+ },
+ "upgrade_rates": {
+  "Potential": {
+   "normal": 0.06,
+   "rare": 0.03333,
+   "epic": 0.0167,
+   "unique": 0.006,
+   "legendary": 0.0021,
+   "mystic": 0
+  },
+  "Bonus Potential": {
+   "normal": 0.06,
+   "rare": 0.03333,
+   "epic": 0.0167,
+   "unique": 0.006,
+   "legendary": 0.0021,
+   "mystic": 0
+  }
+ },
+ "milestones": [
+  5,
+  10,
+  15,
+  20,
+  25,
+  30,
+  35,
+  40,
+  45,
+  50,
+  60,
+  70,
+  80,
+  90,
+  100,
+  125,
+  150,
+  175,
+  200,
+  250,
+  300,
+  400,
+  500,
+  1000
+ ],
+ "max_cubes": 1000,
+ "csv_columns": [
+  "Slot",
+  "PotentialType",
+  "Rarity",
+  "Pity",
+  "CurrentValue",
+  "CurrentValue%",
+  "SmallestNPositive",
+  "NFor50PctChance",
+  "NFor75PctChance",
+  "EV@5",
+  "EV@10",
+  "EV@15",
+  "EV@20",
+  "EV@25",
+  "EV@30",
+  "EV@35",
+  "EV@40",
+  "EV@45",
+  "EV@50",
+  "EV@60",
+  "EV@70",
+  "EV@80",
+  "EV@90",
+  "EV@100",
+  "EV@125",
+  "EV@150",
+  "EV@175",
+  "EV@200",
+  "EV@250",
+  "EV@300",
+  "EV@400",
+  "EV@500",
+  "EV@1000",
+  "EV%@5",
+  "EV%@10",
+  "EV%@15",
+  "EV%@20",
+  "EV%@25",
+  "EV%@30",
+  "EV%@35",
+  "EV%@40",
+  "EV%@45",
+  "EV%@50",
+  "EV%@60",
+  "EV%@70",
+  "EV%@80",
+  "EV%@90",
+  "EV%@100",
+  "EV%@125",
+  "EV%@150",
+  "EV%@175",
+  "EV%@200",
+  "EV%@250",
+  "EV%@300",
+  "EV%@400",
+  "EV%@500",
+  "EV%@1000"
+ ],
+ "max_rows": 30,
+ "limits": {
+  "max_pity": 10000,
+  "max_line_value": 1000000.0
+ },
+ "equipment": {
+  "stats": [
+   "Main Stat (flat)",
+   "Main Stat %",
+   "Attack (flat)",
+   "Min Damage %",
+   "Max Damage %",
+   "Damage %",
+   "Critical Rate %",
+   "Critical Damage %",
+   "Boss Monster Damage %",
+   "Normal Monster Damage %",
+   "Defense Penetration %",
+   "Defense (flat)",
+   "Skill Level Bonus \u2014 1st Job",
+   "Skill Level Bonus \u2014 2nd Job",
+   "Skill Level Bonus \u2014 3rd Job",
+   "Skill Level Bonus \u2014 4th Job",
+   "Skill Level Bonus \u2014 All Skills",
+   "Final Damage %",
+   "Basic Attack Damage %",
+   "Skill Damage %",
+   "Attack Speed %"
+  ],
+  "lines": 5,
+  "attack_stat": "Attack (flat)",
+  "none_stat": "(none)"
+ },
+ "artifact_potentials": {
+  "rarities": [
+   "Rare",
+   "Epic",
+   "Unique",
+   "Legendary",
+   "Mystic",
+   "Mystic (Prime)"
+  ],
+  "stats": [
+   "Main Stat %",
+   "Damage Taken Decrease %",
+   "Defense %",
+   "Accuracy",
+   "Critical Rate %",
+   "Min Damage Multiplier %",
+   "Max Damage Multiplier %",
+   "Boss Monster Damage %",
+   "Normal Monster Damage %",
+   "Status Effect Damage %",
+   "Damage %",
+   "Defense Penetration %"
+  ],
+  "values": {
+   "Main Stat %": {
+    "Rare": 2,
+    "Epic": 3,
+    "Unique": 4.5,
+    "Legendary": 7,
+    "Mystic": 10,
+    "Mystic (Prime)": 12
+   },
+   "Damage Taken Decrease %": {
+    "Rare": 1,
+    "Epic": 1.5,
+    "Unique": 2.3,
+    "Legendary": 3.5,
+    "Mystic": 5,
+    "Mystic (Prime)": 6
+   },
+   "Defense %": {
+    "Rare": 2,
+    "Epic": 3,
+    "Unique": 4.5,
+    "Legendary": 7,
+    "Mystic": 10,
+    "Mystic (Prime)": 12
+   },
+   "Accuracy": {
+    "Rare": 2,
+    "Epic": 3,
+    "Unique": 4,
+    "Legendary": 7,
+    "Mystic": 10,
+    "Mystic (Prime)": 12
+   },
+   "Critical Rate %": {
+    "Rare": 2,
+    "Epic": 3,
+    "Unique": 4.5,
+    "Legendary": 7,
+    "Mystic": 10,
+    "Mystic (Prime)": 12
+   },
+   "Min Damage Multiplier %": {
+    "Rare": 2,
+    "Epic": 3,
+    "Unique": 4.5,
+    "Legendary": 7,
+    "Mystic": 10,
+    "Mystic (Prime)": 12
+   },
+   "Max Damage Multiplier %": {
+    "Rare": 2,
+    "Epic": 3,
+    "Unique": 4.5,
+    "Legendary": 7,
+    "Mystic": 10,
+    "Mystic (Prime)": 12
+   },
+   "Boss Monster Damage %": {
+    "Rare": 4,
+    "Epic": 6,
+    "Unique": 9,
+    "Legendary": 14,
+    "Mystic": 20,
+    "Mystic (Prime)": 24
+   },
+   "Normal Monster Damage %": {
+    "Rare": 4,
+    "Epic": 6,
+    "Unique": 9,
+    "Legendary": 14,
+    "Mystic": 20,
+    "Mystic (Prime)": 24
+   },
+   "Status Effect Damage %": {
+    "Rare": 4,
+    "Epic": 6,
+    "Unique": 9,
+    "Legendary": 14,
+    "Mystic": 20,
+    "Mystic (Prime)": 24
+   },
+   "Damage %": {
+    "Rare": 4,
+    "Epic": 6,
+    "Unique": 9,
+    "Legendary": 14,
+    "Mystic": 20,
+    "Mystic (Prime)": 24
+   },
+   "Defense Penetration %": {
+    "Rare": 2,
+    "Epic": 3,
+    "Unique": 4.5,
+    "Legendary": 7,
+    "Mystic": 10,
+    "Mystic (Prime)": 12
+   }
+  },
+  "line_min_star": [
+   1,
+   2,
+   5
+  ],
+  "default_rarity": "Rare",
+  "none_stat": "(none)",
+  "star_options": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   "Not Unlocked"
+  ],
+  "artifacts": [
+   {
+    "key": "charm_of_the_undead",
+    "label": "Charm of the Undead",
+    "rank": "Epic",
+    "lines": 2,
+    "default_star": 5
+   },
+   {
+    "key": "pigs_ribbon",
+    "label": "Pig's Ribbon",
+    "rank": "Epic",
+    "lines": 2,
+    "default_star": 5
+   },
+   {
+    "key": "shamaness_marble",
+    "label": "Shamaness Marble",
+    "rank": "Epic",
+    "lines": 2,
+    "default_star": 5
+   },
+   {
+    "key": "contract_of_darkness",
+    "label": "The Contract of Darkness",
+    "rank": "Epic",
+    "lines": 2,
+    "default_star": 5
+   },
+   {
+    "key": "rainbow_snail_shell",
+    "label": "Rainbow-colored Snail Shell",
+    "rank": "Unique",
+    "lines": 2,
+    "default_star": 3
+   },
+   {
+    "key": "hexagon_necklace",
+    "label": "Hexagon Necklace",
+    "rank": "Unique",
+    "lines": 2,
+    "default_star": 3
+   },
+   {
+    "key": "arwens_glass_shoes",
+    "label": "Arwen's Glass Shoes",
+    "rank": "Unique",
+    "lines": 2,
+    "default_star": 3
+   },
+   {
+    "key": "mushmoms_cap",
+    "label": "Mushmom's Cap",
+    "rank": "Unique",
+    "lines": 2,
+    "default_star": 3
+   },
+   {
+    "key": "clear_spring_water",
+    "label": "Clear Spring Water",
+    "rank": "Unique",
+    "lines": 2,
+    "default_star": 3
+   },
+   {
+    "key": "athena_gloves",
+    "label": "Athena Pierce's Old Gloves",
+    "rank": "Unique",
+    "lines": 2,
+    "default_star": 3
+   },
+   {
+    "key": "zakums_stone_piece",
+    "label": "Zakum's Stone Piece",
+    "rank": "Unique",
+    "lines": 2,
+    "default_star": 3
+   },
+   {
+    "key": "horntails_scale",
+    "label": "Horntail's Scale",
+    "rank": "Unique",
+    "lines": 2,
+    "default_star": 3
+   },
+   {
+    "key": "pink_beans_giant_rib",
+    "label": "Pink Bean's Giant Rib",
+    "rank": "Unique",
+    "lines": 2,
+    "default_star": 3
+   },
+   {
+    "key": "chalice",
+    "label": "Chalice",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "old_music_box",
+    "label": "Old Music Box",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "silver_pendant",
+    "label": "Silver Pendant",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "star_rock",
+    "label": "Star Rock",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "book_of_ancient",
+    "label": "Book of Ancient",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "lunar_dew",
+    "label": "Lunar Dew",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "fire_flower",
+    "label": "Fire Flower",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "soul_contract",
+    "label": "Soul Contract",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "lit_lamp",
+    "label": "Lit Lamp",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "soul_pouch",
+    "label": "Soul Pouch",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "ancient_text_piece",
+    "label": "Ancient Text Piece",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "icy_soul_rock",
+    "label": "Icy Soul Rock",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "flaming_lava",
+    "label": "Flaming Lava",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "sayrams_necklace",
+    "label": "Sayram's Necklace",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "bottle_of_emotion",
+    "label": "Bottle of Emotion",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "peach_tree",
+    "label": "Peach Tree Herb Pouch",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "candle",
+    "label": "Candle",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "alliance_badge",
+    "label": "Alliance Badge",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "horn_flute",
+    "label": "Horn Flute",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "cursed_doll",
+    "label": "Cursed Doll",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "reindeer_spear",
+    "label": "Reindeer's Spear",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "secret_map",
+    "label": "Secret Map",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   },
+   {
+    "key": "ring_of_cycles",
+    "label": "Ring of Cycles",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked"
+   }
+  ]
+ },
+ "class_id": "corsair"
+}

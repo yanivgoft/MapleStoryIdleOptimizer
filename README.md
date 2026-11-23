@@ -1,10 +1,13 @@
 # MapleStory Idle RPG — DPS Calculators
 
-> **The web app is the main product (2026-11).** One site for all 12 classes: pick your class, enter your stats, and get DPS, stat values, artifact and companion
+> **The web app is the main product (2026-11).** One site for every class (the 12 workbook-verified classes below plus the engine-native Cygnus classes): pick your class, enter your stats, and get DPS, stat values, artifact and companion
 > rankings, cube advice and equipment comparison, with profiles saved in your browser (and, optionally, to your Google account). Live at
 > <https://maplestoryidleoptimizer.web.app>. It runs on the same verified model as the workbooks: the plain-Python `engine/` is checked bit-exact against the
 > workbooks' independent Python re-derivation, `api/` serves it (FastAPI on Cloud Run) and `web/` is the React front end (Firebase Hosting).
 > Start with `APP.md` (run it locally, layout), `deploy/README.md` (publishing) and `CLAUDE.md` (contributor guide, testing: **`python3 tests/run_all.py`**, ~80 s).
+>
+> The first 12 classes are workbook-verified (the engine is checked against their Excel workbooks); the Cygnus classes (Dawn Warrior, Blaze Wizard, Wind Archer, Night Walker as they are
+> added) are engine-native: they have no workbook and are validated against the user's in-game numbers (see `CLAUDE.md` "Adding an engine-native class").
 >
 > **The Excel workbooks below are frozen: kept in the repository as the verified reference, but no longer extended or supported** (the web app has features they
 > lack, e.g. the 5th artifact slot). They may come back into use if running the site ever becomes too expensive. Everything below this note describes the workbooks.

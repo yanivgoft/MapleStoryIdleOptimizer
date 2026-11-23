@@ -1,0 +1,174 @@
+{
+ "request": {
+  "current": {
+   "attack": 1500,
+   "lines": [
+    {
+     "stat": "Damage %",
+     "value": 14
+    },
+    {
+     "stat": "Critical Rate %",
+     "value": 3
+    }
+   ]
+  },
+  "new": {
+   "attack": 2200,
+   "lines": [
+    {
+     "stat": "Final Damage %",
+     "value": 6
+    },
+    {
+     "stat": "Min Damage %",
+     "value": 15
+    },
+    {
+     "stat": "Damage %",
+     "value": 5
+    }
+   ]
+  }
+ },
+ "result": {
+  "current": {
+   "rows": [
+    {
+     "stat": "Attack (flat)",
+     "value": 1500.0,
+     "gain": 83155272.07764535,
+     "first": true,
+     "group": 83155272.07764535,
+     "factor": 1.0059999999998395
+    },
+    {
+     "stat": "Damage %",
+     "value": 14.0,
+     "gain": 1492530524.5104856,
+     "first": true,
+     "group": 1492530524.5104856,
+     "factor": 1.1076923076923073
+    },
+    {
+     "stat": "Critical Rate %",
+     "value": 3.0,
+     "gain": 332114501.38263,
+     "first": true,
+     "group": 332114501.38263,
+     "factor": 1.0239634476378336
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    }
+   ],
+   "total_gain": 1954728942.2602298,
+   "pct": 14.10418529121802
+  },
+  "new": {
+   "rows": [
+    {
+     "stat": "Attack (flat)",
+     "value": 2200.0,
+     "gain": 121961065.71387985,
+     "first": true,
+     "group": 121961065.71387985,
+     "factor": 1.0087999999997646
+    },
+    {
+     "stat": "Final Damage %",
+     "value": 6.0,
+     "gain": 831552720.7987028,
+     "first": true,
+     "group": 831552720.7987028,
+     "factor": 1.06
+    },
+    {
+     "stat": "Min Damage %",
+     "value": 15.0,
+     "gain": 989943715.2365005,
+     "first": true,
+     "group": 989943715.2365005,
+     "factor": 1.0714285714285678
+    },
+    {
+     "stat": "Damage %",
+     "value": 5.0,
+     "gain": 533046615.89660203,
+     "first": true,
+     "group": 533046615.89660203,
+     "factor": 1.0384615384615383
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    }
+   ],
+   "total_gain": 2630122060.3851705,
+   "pct": 18.977428571400388
+  },
+  "delta_pct": 4.873243280182368,
+  "delta_dps": 675393118.1249406,
+  "better": "new",
+  "class_id": "dawn_warrior",
+  "baseline_total": 13859212013.311703,
+  "crit_rate_total": 69.512,
+  "crit_priced_as_crit_damage": false,
+  "rate_by_stat": {
+   "Main Stat (flat)": 1205693.300926734,
+   "Main Stat %": 43068307.09950503,
+   "Attack (flat)": 55436.84805176357,
+   "Min Damage %": 65996247.68243337,
+   "Max Damage %": 65996247.68243337,
+   "Damage %": 106609323.17932041,
+   "Critical Rate %": 110704833.79421,
+   "Critical Damage %": 42846485.04305509,
+   "Boss Monster Damage %": 81046663.75729117,
+   "Normal Monster Damage %": 0.0,
+   "Defense Penetration %": 35769258.720083795,
+   "Defense (flat)": 0.0,
+   "Skill Level Bonus \u2014 1st Job": 4722289.886115255,
+   "Skill Level Bonus \u2014 2nd Job": 10186355.628660828,
+   "Skill Level Bonus \u2014 3rd Job": 20789912.876017176,
+   "Skill Level Bonus \u2014 4th Job": 42488907.68696357,
+   "Skill Level Bonus \u2014 All Skills": 78310298.92780325,
+   "Final Damage %": 138592120.13311714,
+   "Basic Attack Damage %": 42357789.26040686,
+   "Skill Damage %": 68265677.71142596,
+   "Attack Speed %": 68025347.81335735
+  }
+ }
+}

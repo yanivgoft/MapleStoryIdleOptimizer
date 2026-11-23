@@ -11,16 +11,16 @@ python3 -m venv .venv
 # http://localhost:8000/api/health   http://localhost:8000/api/docs
 ```
 
-All 12 classes are served (engine/__init__.py `CLASSES`).  Classes appear automatically: every `engine/classes/<id>.py` exposing `compute` / `defaults` / `schema` is served.  Config via `MSI_*`
+Every class listed by `/api/classes` is served (engine/__init__.py `CLASSES`; the first 12 are workbook-verified, the Cygnus classes are engine-native: no workbook, validated against the user's in-game numbers).  Classes appear automatically: every `engine/classes/<id>.py` exposing `compute` / `defaults` / `schema` is served.  Config via `MSI_*`
 environment variables (CORS origins, rate limits, body-size cap, stat-values cache / timeout): see `api/README.md`.
 
-Stat values: `POST /api/classes/{id}/sensitivity` (+ `GET .../sensitivity/meta`) is served for all 12 classes (`registry.SENSITIVITY_CLASSES`; a class outside that list would answer 501 and show `status.stat_values: false`).  It costs ~0.5-1 s, so it has its own per-IP limit (`MSI_RATE_LIMIT_SENS_PER_MIN`, 20), an in-memory LRU+TTL cache (`MSI_SENS_CACHE_ENTRIES` 128,
+Stat values: `POST /api/classes/{id}/sensitivity` (+ `GET .../sensitivity/meta`) is served for every class (`registry.SENSITIVITY_CLASSES`; a class outside that list would answer 501 and show `status.stat_values: false`).  It costs ~0.5-1 s, so it has its own per-IP limit (`MSI_RATE_LIMIT_SENS_PER_MIN`, 20), an in-memory LRU+TTL cache (`MSI_SENS_CACHE_ENTRIES` 128,
 `MSI_SENS_CACHE_TTL_S` 600; `X-Cache` header), `MSI_SENS_WORKERS` (2) parallel evaluations and a `MSI_SENS_TIMEOUT_S` (30) guard (504).
 
 Companions tab: `POST .../sensitivity` also accepts the extra keys `companion_levels` ({companion name: 0-18}, 0 = not unlocked) and `companion_potential_lines_pct` (summoning-time % of boots lines already
 inside the Inputs value); the web **Companions** tab owns the per-companion levels (the Calculator's companion dropdown lists only the companions you own there; see `web/README.md`).
 
-Cubes, Equipment compare and artifact potentials: `GET .../cubes/meta`, `POST .../cubes`, `POST .../equipment-compare`, `POST .../artifact-potentials` - same gate as stat values (all 12 classes; a class outside `SENSITIVITY_CLASSES` would answer 501; the
+Cubes, Equipment compare and artifact potentials: `GET .../cubes/meta`, `POST .../cubes`, `POST .../equipment-compare`, `POST .../artifact-potentials` - same gate as stat values (every class; a class outside `SENSITIVITY_CLASSES` would answer 501; the
 web tabs say "not available for this class yet").  `/cubes` (a full 30-row call is ~3-6 s; the UI asks 6 rows at a time) has its own per-IP limit (`MSI_RATE_LIMIT_CUBES_PER_MIN`, 20), worker pool (`MSI_CUBES_WORKERS`, 2),
 timeout (`MSI_CUBES_TIMEOUT_S`, 45 -> 504) and per-row LRU+TTL cache (`MSI_CUBES_CACHE_ENTRIES` 256, `MSI_CUBES_CACHE_TTL_S` 600; `X-Cache: HIT | PARTIAL | MISS`); the two live ones share `MSI_RATE_LIMIT_COMPARE_PER_MIN` (60).
 Details in `api/README.md`.
@@ -35,14 +35,14 @@ table of all 36 artifacts (star level, potential lines + gains; see `web/README.
 cd web
 npm install
 npm run dev            # http://localhost:5173, uses VITE_API_URL (default http://localhost:8000)
-# or, without the API:   npm run dev:mock   (all 12 classes from src/fixtures; numbers only scale with Flat ATTACK / companion choice;
+# or, without the API:   npm run dev:mock   (every class of src/fixtures; numbers only scale with Flat ATTACK / companion choice;
 #                         the Stat values tab shows each stat-values class's fixed fixture, the cube tabs serve real-engine fixtures, equipment / potential edits are recomputed)
 ```
 
 ## Tests
 
 ```bash
-.venv/bin/python -m pytest api/tests -q        # API: all 12 classes (list, schema, defaults, compute, companions, golden totals), validation, limits, CORS, stat values and cube features (golden vs engine, 501, cache, own rate limits, timeouts)
+.venv/bin/python -m pytest api/tests -q        # API: every class the API lists (list, schema, defaults, compute, companions, golden totals for the workbook classes), validation, limits, CORS, stat values and cube features (golden vs engine, 501, cache, own rate limits, timeouts)
 python3 tests/golden/test_fp_mage.py           # engine vs golden (engine's own tests)
 (cd web && npm test && npm run build)          # front end: formatter, form logic, profiles, render smoke, stat-values ranking / loader / tables, cube tabs (logic, runner, mock, render), type-check + production build
 ```

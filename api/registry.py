@@ -18,7 +18,7 @@ log = logging.getLogger("msi.registry")
 
 # job family per class id (presentation only; an unknown class falls under "Other")
 FAMILIES = {
-    "hero": "Warrior", "paladin": "Warrior", "dark_knight": "Warrior",
+    "hero": "Warrior", "paladin": "Warrior", "dark_knight": "Warrior", "dawn_warrior": "Warrior",
     "fp_mage": "Mage", "ice_lightning_mage": "Mage", "bishop": "Mage",
     "bowmaster": "Archer", "marksman": "Archer",
     "night_lord": "Thief", "shadower": "Thief",
@@ -28,7 +28,7 @@ FAMILIES = {
 
 # Classes with a stat-values (sensitivity) module.  THE single place to extend when another class gets one; if ``engine.sensitivity`` grows a
 # ``supports(class_module)`` function that is asked instead (this tuple is then only the fallback).
-SENSITIVITY_CLASSES = ("fp_mage", "dark_knight", "hero", "ice_lightning_mage", "buccaneer", "bishop", "marksman", "bowmaster", "corsair", "paladin", "night_lord", "shadower")
+SENSITIVITY_CLASSES = ("fp_mage", "dark_knight", "hero", "ice_lightning_mage", "buccaneer", "bishop", "marksman", "bowmaster", "corsair", "paladin", "night_lord", "shadower", "dawn_warrior")
 SENSITIVITY_PARTS = ("stats", "artifacts", "companions", "summon_time", "cdr")
 
 

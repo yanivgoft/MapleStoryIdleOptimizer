@@ -1,0 +1,347 @@
+{
+ "artifacts": [
+  {
+   "key": "alliance_badge",
+   "star": 4
+  },
+  {
+   "key": "arwens_glass_shoes",
+   "star": 2
+  },
+  {
+   "key": "book_of_ancient",
+   "star": 5
+  },
+  {
+   "key": "pigs_ribbon",
+   "star": "Not Unlocked"
+  }
+ ],
+ "result": {
+  "total_dps": 16757203046.927279,
+  "artifacts": {
+   "equipped": [
+    {
+     "key": "alliance_badge",
+     "name": "Alliance Badge",
+     "star": 4,
+     "rank": "Legendary",
+     "effect": "live",
+     "no_dps_effect": false,
+     "reason": null
+    },
+    {
+     "key": "arwens_glass_shoes",
+     "name": "Arwen's Glass Shoes",
+     "star": 2,
+     "rank": "Unique",
+     "effect": "live",
+     "no_dps_effect": false,
+     "reason": null
+    },
+    {
+     "key": "book_of_ancient",
+     "name": "Book of Ancient",
+     "star": 5,
+     "rank": "Legendary",
+     "effect": "reference_only",
+     "no_dps_effect": false,
+     "reason": null
+    },
+    {
+     "key": "pigs_ribbon",
+     "name": "Pig's Ribbon",
+     "star": 0,
+     "rank": "Epic",
+     "effect": "no_dps_effect",
+     "no_dps_effect": true,
+     "reason": "stat not used by the DPS model (no attacking effect)"
+    }
+   ],
+   "buckets": {
+    "attack_pct": 18,
+    "final_damage": 0.0,
+    "damage": 0,
+    "skill_damage": 0.0,
+    "basic_attack_damage": 0,
+    "crit_rate": 0.0,
+    "crit_damage": 0,
+    "boss_damage": 0,
+    "normal_damage": 0,
+    "enemy_damage_taken": 0,
+    "final_damage_normal_only": 0,
+    "final_damage_boss_only": 0,
+    "soul_contract_cooldown_decrease_pct": 0,
+    "contract_of_darkness_boss_crit_rate": 0,
+    "reindeer_spear_extra_def_pen_unit": 0,
+    "companion_summon_time_increase_pct": 28
+   },
+   "rows": {
+    "rainbow_crit_rate": 0,
+    "rainbow_crit_damage": 0,
+    "icy_soul_rock": 0,
+    "roc_threshold_cr": 69.512,
+    "roc_crit_rate": 0.0,
+    "roc_skill_damage": 0.0,
+    "roc_excess_points": 0,
+    "roc_basic_attack_damage": 0,
+    "candle_final_damage": 0,
+    "candle_boss_damage": 0,
+    "peach_enemy_dmg_taken": 0,
+    "silver_enemy_dmg_taken": 0,
+    "hexagon_avg_stacks": 1.2857142857142858,
+    "hexagon_damage": 0,
+    "charm_of_the_undead": 0,
+    "old_music_box_attack_pct": 0,
+    "secret_map_attack_pct": 0,
+    "reindeer_spear_attack_pct": 0,
+    "alliance_badge": 18,
+    "bottle_of_emotion_attack_pct": 0,
+    "secret_map_final_dmg_normal": 0,
+    "flaming_lava": 0,
+    "horn_flute": 0,
+    "fire_flower_normal": 0,
+    "fire_flower_boss": 0,
+    "chalice_normal": 0,
+    "chalice_boss": 0,
+    "sayrams_necklace_normal": 0,
+    "sayrams_necklace_boss": 0,
+    "contract_of_darkness_crit_rate_bonus": 0,
+    "reindeer_spear_base_def_pen_reference": 0,
+    "soul_contract_pct": 0,
+    "arwens_glass_shoes_summon_time_increase_pct": 28
+   },
+   "reference_only": {
+    "book_of_ancient_crit_damage": 41.7072,
+    "book_of_ancient_crit_rate": 20
+   },
+   "notes": [
+    "reference_only artifacts: their stat is entered by hand in Inputs (workbook convention); equipping changes nothing live"
+   ],
+   "horn_flute_uptime": 0.5561471108032341,
+   "extra_boss_multiplier": 1.0,
+   "extra_normal_multiplier": 1.0,
+   "hexagon_charm": {
+    "hex_per_stack": 0,
+    "hex_average": 0,
+    "charm_full": 0,
+    "charm_average": 0,
+    "phase_factor_boss": 1.0,
+    "phase_factor_normal": 1.0
+   }
+  },
+  "player_dps": 11652700243.968502,
+  "boss_dps": 16757203046.927279,
+  "normal_dps": 3989184565.9168983,
+  "player_boss_dps": 11652700243.968502,
+  "player_normal_dps": 0.0,
+  "skills": [
+   {
+    "key": "CELESTIAL_VISION",
+    "name": "Celestial Vision III (basic attack)",
+    "dps": 3270796515.311016,
+    "share": 0.1951874967529723,
+    "boss_dps": 3270796515.311016,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "LUNA_DIVIDE",
+    "name": "Luna Divide (Equinox Cycle basic-attack effect)",
+    "dps": 1030675616.4203767,
+    "share": 0.06150642285195493,
+    "boss_dps": 1030675616.4203767,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "COSMIC_MATTER",
+    "name": "Cosmic Matter (single-target hits)",
+    "dps": 276152239.5108086,
+    "share": 0.016479614094157907,
+    "boss_dps": 276152239.5108086,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "COSMIC_MATTER_BLAST",
+    "name": "Cosmic Matter (explosion)",
+    "dps": 538496867.0460767,
+    "share": 0.03213524748360791,
+    "boss_dps": 538496867.0460767,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "SOL_RUSH",
+    "name": "Sol Rush",
+    "dps": 69581180.44545709,
+    "share": 0.004152314694200474,
+    "boss_dps": 69581180.44545709,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "SOL_RUSH_ENHANCED",
+    "name": "Sol Rush (enhanced, during Equinox Cycle)",
+    "dps": 442441904.00859,
+    "share": 0.02640308784046866,
+    "boss_dps": 442441904.00859,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "TRUE_SIGHT",
+    "name": "True Sight",
+    "dps": 174773353.09638107,
+    "share": 0.010429744904739862,
+    "boss_dps": 174773353.09638107,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "COSMIC_SHOWER",
+    "name": "Cosmic Shower",
+    "dps": 1630330163.098884,
+    "share": 0.09729130562739306,
+    "boss_dps": 1630330163.098884,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "EQUINOX_SLASH",
+    "name": "Equinox Slash",
+    "dps": 1574036838.4929416,
+    "share": 0.09393195475909498,
+    "boss_dps": 1574036838.4929416,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "IMPALING_RAYS",
+    "name": "Impaling Rays",
+    "dps": 1090893017.1290596,
+    "share": 0.06509994621859604,
+    "boss_dps": 1090893017.1290596,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "IMPALING_RAYS_PIERCE",
+    "name": "Impaling Rays (delayed pierce on stun-immune enemies)",
+    "dps": 531810345.85041684,
+    "share": 0.03173622378156559,
+    "boss_dps": 531810345.85041684,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "COSMIC_BURST",
+    "name": "Cosmic Burst",
+    "dps": 1022712203.5584937,
+    "share": 0.06103119957993381,
+    "boss_dps": 1022712203.5584937,
+    "normal_dps": 0.0,
+    "unlocked": true
+   }
+  ],
+  "companion": {
+   "choice": "Blaze Wizard",
+   "level": 10,
+   "dps": 5104502802.958776,
+   "boss_dps": 5104502802.958776,
+   "normal_dps": 3989184565.9168983,
+   "share": 0.30461544141131447,
+   "damage": 299529513584.0459,
+   "uplift": 57785682623.06849,
+   "best_candidate": 1,
+   "summon_time_s": 31.6,
+   "window_s": 38.4,
+   "details": {
+    "comp_boss_dps": 5104502802.958776,
+    "comp_norm_dps": 3989184565.9168983,
+    "comp_blend_dps": 5104502802.958776,
+    "best": 1,
+    "s": 31.6,
+    "W": 38.4,
+    "E": 0.0,
+    "ext": 0.0,
+    "horn_uptime": 0.5485714285714286,
+    "s0": 31.6,
+    "W0": 38.4,
+    "stunfracB": 0.2504336734693878,
+    "stunfracN": 0.2504336734693878,
+    "hasstun": 1,
+    "dmg_b": 299529513584.0459,
+    "dmg_n": 279242919614.18286,
+    "upl_b": 57785682623.06849,
+    "upl_n": 0.0
+   }
+  },
+  "engine_on": true,
+  "engine": {
+   "casts": {
+    "COSMIC_MATTER": 6,
+    "COSMIC_MATTER_BLAST": 6,
+    "SOL_RUSH": 5,
+    "SOL_RUSH_ENHANCED": 5,
+    "TRUE_SIGHT": 4,
+    "COSMIC_SHOWER": 4,
+    "IMPALING_RAYS": 4,
+    "IMPALING_RAYS_PIERCE": 4,
+    "COSMIC_BURST": 4
+   },
+   "phi_unif": 1.0635326530612248,
+   "phi_rows": {
+    "COSMIC_MATTER": 1.1500000000000012,
+    "COSMIC_MATTER_BLAST": 1.1500000000000012,
+    "SOL_RUSH": 1.1920000000000022,
+    "SOL_RUSH_ENHANCED": 1.192000000000002,
+    "TRUE_SIGHT": 1.3000000000000016,
+    "COSMIC_SHOWER": 1.0774127747252757,
+    "IMPALING_RAYS": 1.3000000000000012,
+    "IMPALING_RAYS_PIERCE": 1.0400000000000016,
+    "COSMIC_BURST": 1.3000000000000014
+   }
+  },
+  "derived": {
+   "attack": 4750000.0,
+   "stat_damage": 72.0,
+   "actions_per_second": 1.2524642857142858,
+   "cast_rate": 0.6428571428571429,
+   "basic_attacks_per_second": 0.6096071428571429,
+   "avg_buff_mult": 1.57732757142857,
+   "as_bonus": 6.053571428571429,
+   "attack_bucket_mult": 1.57732757142857,
+   "attack_bucket_sum": 39.73275714285714,
+   "skill_coefficient_base": 469.8,
+   "buff_cast_startup_time": 0.0,
+   "crit_rate_bonus": 9.511999999999999,
+   "crit_damage_bonus": 29.601999999999993,
+   "final_damage_extra": 38.723142857142854,
+   "monster_dmg_bonus": 14.628571428571428,
+   "weaken_boss": 7.607142857142857,
+   "def_pen_effective": 35,
+   "soul_elemental_uptime": 0.82,
+   "equinox_cycle_uptime": 0.812142857142857,
+   "soul_elemental_attack": 26.705,
+   "equinox_cycle_attack": 21.96,
+   "luna_divide_targets": 10,
+   "luna_divide_final_damage_pct": 554.0400000000001,
+   "shower_decay_boss": 0.2266666666666663,
+   "shower_decay_normal": 0.2266666666666663,
+   "equinox_window": 22.424999999999997,
+   "stunned_share_boss": 0.2504336734693878,
+   "stunned_share_normal": 0.2504336734693878,
+   "monster_type": "boss",
+   "chapter": 28.0,
+   "stage": 28.0,
+   "breakthrough_normal_weight_pct": 60,
+   "breakthrough_stage_index": 19.0,
+   "monster_defense": 3200.0,
+   "fight_duration": 70,
+   "normal_weight": 0.0,
+   "fixed_duration_active": true
+  }
+ }
+}
