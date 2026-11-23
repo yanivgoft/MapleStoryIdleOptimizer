@@ -122,7 +122,7 @@ describe("dialogs", () => {
     expect(html).toContain('role="dialog"');
     expect(html).toContain('aria-modal="true"');
     expect(html).toMatch(/aria-labelledby="[^"]+"/);
-    for (const t of ["What:", "Where:", "Firestore", "Google account id and e-mail", "Save to account", "Download all my data", "Delete my account and data", "Help tab (Accounts)", "Continue with Google"]) expect(html, t).toContain(t);
+    for (const t of ["What:", "Where:", "Firestore", "Google account id and e-mail", "Save to account", "Download all my data", "Delete my account and data", "Full privacy policy", "Continue with Google"]) expect(html, t).toContain(t);
     expect(html).toContain('id="acct-privacy-continue"');
   });
   const cands = [

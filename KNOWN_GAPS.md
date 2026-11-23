@@ -1,5 +1,10 @@
 # Known Gaps & Assumptions
 
+> **Status (2026-11-24):** these gaps are properties of the MODEL, so they apply equally to the web app (`engine/`, which reproduces each workbook's model bit-exact for
+> up to 4 equipped artifacts) and to the frozen Excel workbooks. Wording below often says "workbook"; read it as "the model". Where the app differs from the workbooks it is
+> noted in `engine/README.md` and `APP.md` (5 artifact slots, blank "Max Enemies In Range" = uncapped, equipped artifacts per content type). Test file names mentioned in
+> older entries (`test_<class>_artifacts.py`, `test_<class>_sensitivity.py`) are now `tests/golden/test_artifacts.py` / `test_sensitivity.py --class <class>`.
+
 This file catalogs every place where a class's DPS workbook relies on an assumption, an
 approximation, or an unmodeled mechanic — as opposed to a value directly confirmed from the
 live wiki (`idle.maplestorywiki.net`), a second independent source (`maplestoryidle.info` — see

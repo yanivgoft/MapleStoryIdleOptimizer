@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { ClassInfo, ClassSchema, Field } from "../types";
 import { groupClasses, optionLabel } from "../lib/classes";
-import { ACCOUNTS, CAPABILITY_COLUMNS, CONVENTIONS, HOW_TO_USE, INTRO, KNOWN_GAPS_URL, LIMITATIONS, NO_SCHEMA_HINTS, WHICH_STATS_INTRO, classCapabilities } from "../content/help";
+import { ACCOUNTS, CAPABILITY_COLUMNS, PRIVACY, CONVENTIONS, HOW_TO_USE, INTRO, KNOWN_GAPS_URL, LIMITATIONS, NO_SCHEMA_HINTS, WHICH_STATS_INTRO, classCapabilities } from "../content/help";
 
 import { CLOUD_ENABLED } from "../lib/cloud/config";
 
@@ -11,6 +11,7 @@ export const HELP_SECTIONS = [
   { id: CONVENTIONS.id, title: CONVENTIONS.title },
   { id: "help-modelled", title: "What is modelled per class" },
   { id: "help-limitations", title: "Known limitations" },
+  { id: PRIVACY.id, title: PRIVACY.title },
 ] as const;
 
 /** Fields worth explaining: the typed stats, grouped like the form (computed rows, the content-type picker and the read-only companion level are left out). */
@@ -144,6 +145,11 @@ export function HelpPanel({ classes, schema }: { classes: ClassInfo[]; schema: C
           </a>
           .
         </p>
+      </section>
+
+      <section id={PRIVACY.id} aria-labelledby={`${PRIVACY.id}-h`} className="card">
+        <h3 id={`${PRIVACY.id}-h`}>{PRIVACY.title}</h3>
+        {PRIVACY.body}
       </section>
 
       {CLOUD_ENABLED && (

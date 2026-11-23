@@ -31,7 +31,7 @@ export function PrivacyDialog({ onContinue, onCancel, onOpenHelp }: { onContinue
         Signed-out use is unchanged: without an account everything stays in this browser.{" "}
         {onOpenHelp && (
           <button type="button" className="linklike" onClick={onOpenHelp}>
-            More in the Help tab (Accounts)
+            Full privacy policy: Help tab (Accounts and Privacy sections)
           </button>
         )}
       </p>

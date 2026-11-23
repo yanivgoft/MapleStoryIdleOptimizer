@@ -24,3 +24,6 @@ web/node_modules/
 # accounts: Firestore rules tests
 deploy/firebase/rules-test/node_modules/
 web/.env.local
+
+# Claude Code local project files (settings, allowlists, locks)
+.claude/

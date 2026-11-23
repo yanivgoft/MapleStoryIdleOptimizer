@@ -167,3 +167,6 @@ tr.dim { opacity: 0.6; }
 .cloud-status.cloud-cloud-only { color: var(--accent); }
 .plist .cloud-msg { display: block; color: var(--danger); font-size: 0.8rem; }
 .cloud-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+
+.site-footer { margin: 24px 0 8px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 0.8rem; color: var(--muted); }
+.site-footer a { color: inherit; }

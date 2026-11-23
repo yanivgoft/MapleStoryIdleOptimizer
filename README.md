@@ -1,5 +1,14 @@
 # MapleStory Idle RPG — DPS Calculators
 
+> **The web app is the main product (2026-11).** One site for all 12 classes: pick your class, enter your stats, and get DPS, stat values, artifact and companion
+> rankings, cube advice and equipment comparison, with profiles saved in your browser (and, optionally, to your Google account). Live at
+> <https://maplestoryidleoptimizer.web.app>. It runs on the same verified model as the workbooks: the plain-Python `engine/` is checked bit-exact against the
+> workbooks' independent Python re-derivation, `api/` serves it (FastAPI on Cloud Run) and `web/` is the React front end (Firebase Hosting).
+> Start with `APP.md` (run it locally, layout), `deploy/README.md` (publishing) and `CLAUDE.md` (contributor guide, testing: **`python3 tests/run_all.py`**, ~80 s).
+>
+> **The Excel workbooks below are frozen: kept in the repository as the verified reference, but no longer extended or supported** (the web app has features they
+> lack, e.g. the 5th artifact slot). They may come back into use if running the site ever becomes too expensive. Everything below this note describes the workbooks.
+
 A set of per-class Excel DPS calculators for [MapleStory Idle RPG], built from live wiki data and
 official patch notes. Pick your class, plug in your stats, and see your steady-state DPS broken
 down by skill — plus which stat to invest in next.
@@ -165,6 +174,8 @@ your DPS. See `KNOWN_GAPS.md` for the handful of places where the underlying gam
 not the spreadsheet math — is uncertain.
 
 ## Future work
+
+(For the web app's open items see `CLAUDE.md` and `APP.md`; the notes below are the workbooks' own history.)
 
 Have a feature you want, a bug you've found, or a class that feels off? Open an issue — feedback
 and requests are welcome.

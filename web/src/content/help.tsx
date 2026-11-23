@@ -311,3 +311,75 @@ export const ACCOUNTS: HelpSection = {
     </>
   ),
 };
+
+/** Where people reach the operator (no personal e-mail published); change it here and the footer / policy follow. */
+export const CONTACT_URL = "https://github.com/yanivgoft/MapleStoryIdleOptimizer/issues";
+export const PRIVACY_LAST_UPDATED = "2026-11-24";
+
+/** Always shown (also without the accounts feature).  Linked from the footer and from the address `#privacy`. */
+export const PRIVACY: HelpSection = {
+  id: "help-privacy",
+  title: "Privacy policy",
+  body: (
+    <>
+      <p>
+        <em>Last updated {PRIVACY_LAST_UPDATED}.</em>  This is a free, fan-made calculator for MapleStory Idle RPG, run by an individual.  It is not affiliated with or endorsed by Nexon.  Questions or
+        requests about your data: open an issue at{" "}
+        <a href={CONTACT_URL} target="_blank" rel="noreferrer">
+          {CONTACT_URL}
+        </a>
+        .
+      </p>
+      <h4>Without an account</h4>
+      <ul>
+        <li>
+          The stats and settings you type are kept <strong>in your browser</strong> (local storage: profiles, theme, last class).  They never leave your device unless you sign in and press Save to account.
+        </li>
+        <li>
+          To calculate a result, the numbers you enter are sent to this site's calculation server (Google Cloud Run).  It computes the answer from them in memory and does not save them; it keeps recent
+          answers in a short-lived memory cache (about 10 minutes) so that repeating a request is fast.  Like any web host, the hosting provider keeps standard request logs (such as IP address, time and
+          address requested) under its own policy.  The server also uses your IP address, in memory only, to limit how many requests one visitor can make.
+        </li>
+        <li>
+          Importing an Excel workbook happens <strong>entirely in your browser</strong>: the file is read there and never uploaded.
+        </li>
+      </ul>
+      <h4>With a Google account (optional)</h4>
+      <ul>
+        <li>
+          <strong>Stored</strong>: your Google account id and e-mail address (kept by Google sign-in), the profiles you chose to save (their stats, artifacts, companion levels, cube and equipment lines, their names
+          and last-changed times), and your theme and last-used class.  Your Google name and photo are displayed but not stored by this app.
+        </li>
+        <li>
+          <strong>Where and who</strong>: Google Firebase (Authentication and Firestore).  Security rules allow only your own signed-in account to read or write your documents.  The person running this site can,
+          as the administrator of the Firebase project, technically see stored data; it is not used for anything except providing the saved profiles, and it is never sold or shared.
+        </li>
+        <li>
+          <strong>When</strong>: nothing is uploaded until you press <em>Save to account</em>.  Google processes your sign-in under{" "}
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">
+            Google's privacy policy
+          </a>
+          .
+        </li>
+      </ul>
+      <h4>Cookies and tracking</h4>
+      <p>
+        No advertising, no analytics and no tracking cookies.  The browser storage used is functional only: your profiles and settings, and (if you sign in) the Google / Firebase sign-in session.
+      </p>
+      <h4>Your choices</h4>
+      <ul>
+        <li>
+          <strong>Download all my data (JSON)</strong> and <strong>Delete my account and data</strong> are in the account menu; deletion removes your documents and your sign-in account.  Google may keep
+          deleted data in its own systems for a limited time under its policies.
+        </li>
+        <li>
+          <strong>Local data</strong>: clear this site's storage in your browser settings (or sign out and choose "clear this browser") to remove profiles kept on your device.
+        </li>
+        <li>
+          Anything else (access, correction, deletion, questions): use the contact link above.
+        </li>
+      </ul>
+      <p>This site is not directed at children.  If this policy changes, the date above changes with it.</p>
+    </>
+  ),
+};

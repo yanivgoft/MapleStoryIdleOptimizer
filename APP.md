@@ -14,14 +14,13 @@ python3 -m venv .venv
 All 12 classes are served (engine/__init__.py `CLASSES`).  Classes appear automatically: every `engine/classes/<id>.py` exposing `compute` / `defaults` / `schema` is served.  Config via `MSI_*`
 environment variables (CORS origins, rate limits, body-size cap, stat-values cache / timeout): see `api/README.md`.
 
-Stat values: `POST /api/classes/{id}/sensitivity` (+ `GET .../sensitivity/meta`) is served for 7 classes (`registry.SENSITIVITY_CLASSES`: FP-Mage, Dark Knight, Hero, Ice/Lightning Mage, Bishop, Buccaneer, Marksman; Paladin, Bowmaster, Corsair, Night Lord and Shadower
-are pending: they answer 501 and show `status.stat_values: false`).  It costs ~0.5-1 s, so it has its own per-IP limit (`MSI_RATE_LIMIT_SENS_PER_MIN`, 20), an in-memory LRU+TTL cache (`MSI_SENS_CACHE_ENTRIES` 128,
+Stat values: `POST /api/classes/{id}/sensitivity` (+ `GET .../sensitivity/meta`) is served for all 12 classes (`registry.SENSITIVITY_CLASSES`; a class outside that list would answer 501 and show `status.stat_values: false`).  It costs ~0.5-1 s, so it has its own per-IP limit (`MSI_RATE_LIMIT_SENS_PER_MIN`, 20), an in-memory LRU+TTL cache (`MSI_SENS_CACHE_ENTRIES` 128,
 `MSI_SENS_CACHE_TTL_S` 600; `X-Cache` header), `MSI_SENS_WORKERS` (2) parallel evaluations and a `MSI_SENS_TIMEOUT_S` (30) guard (504).
 
 Companions tab: `POST .../sensitivity` also accepts the extra keys `companion_levels` ({companion name: 0-18}, 0 = not unlocked) and `companion_potential_lines_pct` (summoning-time % of boots lines already
 inside the Inputs value); the web **Companions** tab owns the per-companion levels (the Calculator's companion dropdown lists only the companions you own there; see `web/README.md`).
 
-Cubes, Equipment compare and artifact potentials: `GET .../cubes/meta`, `POST .../cubes`, `POST .../equipment-compare`, `POST .../artifact-potentials` - same gate as stat values (the 7 classes above; the other 5 answer 501; the
+Cubes, Equipment compare and artifact potentials: `GET .../cubes/meta`, `POST .../cubes`, `POST .../equipment-compare`, `POST .../artifact-potentials` - same gate as stat values (all 12 classes; a class outside `SENSITIVITY_CLASSES` would answer 501; the
 web tabs say "not available for this class yet").  `/cubes` (a full 30-row call is ~3-6 s; the UI asks 6 rows at a time) has its own per-IP limit (`MSI_RATE_LIMIT_CUBES_PER_MIN`, 20), worker pool (`MSI_CUBES_WORKERS`, 2),
 timeout (`MSI_CUBES_TIMEOUT_S`, 45 -> 504) and per-row LRU+TTL cache (`MSI_CUBES_CACHE_ENTRIES` 256, `MSI_CUBES_CACHE_TTL_S` 600; `X-Cache: HIT | PARTIAL | MISS`); the two live ones share `MSI_RATE_LIMIT_COMPARE_PER_MIN` (60).
 Details in `api/README.md`.
@@ -37,7 +36,7 @@ cd web
 npm install
 npm run dev            # http://localhost:5173, uses VITE_API_URL (default http://localhost:8000)
 # or, without the API:   npm run dev:mock   (all 12 classes from src/fixtures; numbers only scale with Flat ATTACK / companion choice;
-#                         the Stat values tab shows each stat-values class's fixed fixture, the other 5 "not available yet"; the cube tabs serve those 7 classes' real-engine fixtures, equipment / potential edits are recomputed)
+#                         the Stat values tab shows each stat-values class's fixed fixture, the cube tabs serve real-engine fixtures, equipment / potential edits are recomputed)
 ```
 
 ## Tests
@@ -66,3 +65,6 @@ docker run --rm -p 8080:8080 -e MSI_CORS_ORIGINS=http://localhost:5173 msi-api
 ```
 
 The front end is a static bundle (`web/dist` after `npm run build`; set `VITE_API_URL` at build time to the deployed API URL).
+
+## Privacy policy
+A short policy is part of the Help tab (`PRIVACY` in `web/src/content/help.tsx`, id `help-privacy`), linked from the footer and the sign-in dialog and reachable at `/#privacy`. Keep it in sync with what the app really stores (it says: no analytics/ads/tracking cookies; signed-out data stays in the browser; the stateless API keeps only a ~10 minute in-memory cache and standard host logs; with an account: Google id + e-mail, saved profiles, theme / last class in Firebase).

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
 import { HELP_SECTIONS, HelpPanel, hintGroups } from "./HelpPanel";
-import { classCapabilities, KNOWN_GAPS_URL, LIMITATIONS } from "../content/help";
+import { CONTACT_URL, classCapabilities, KNOWN_GAPS_URL, LIMITATIONS } from "../content/help";
 import { ALL, classList, fixtureFor } from "../test/fixtures";
 
 const strip = (h: string) => h.replace(/<!-- -->/g, "").replace(/&#x27;/g, "'");
@@ -63,5 +63,17 @@ describe("Help tab render", () => {
     expect(html).toContain(`href="${KNOWN_GAPS_URL}"`);
     expect(html).toContain("No MP consumption");
     expect(html).toContain("Divine Protection");
+  });
+});
+
+describe("privacy policy", () => {
+  it("is always part of the Help tab (also without accounts), listed in the contents and carries the contact link", () => {
+    const html = strip(renderToString(<HelpPanel classes={classList} schema={null} />));
+    expect(html).toContain('id="help-privacy"');
+    expect(html).toContain("Privacy policy");
+    expect(html).toContain("Without an account");
+    expect(html).toContain("Delete my account and data");
+    expect(html).toContain(CONTACT_URL);
+    expect(HELP_SECTIONS.map((s) => s.id)).toContain("help-privacy");
   });
 });

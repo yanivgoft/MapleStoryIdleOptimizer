@@ -77,7 +77,7 @@ npm test               # vitest: formatter, schema->form logic (iterates all 12 
 ## Classes, hints and the companion section
 
 * The picker lists all 12 classes grouped by job family (Warrior / Mage / Archer / Thief / Pirate) with the stat identity, and a Status line for the
-  selected class: Companions (yes), Artifacts (yes for the classes whose schema says `artifacts_modelled`: today all 12), Stat values (yes for the 7 classes with `status.stat_values`: FP-Mage, Dark Knight, Hero, Ice/Lightning Mage, Bishop, Buccaneer, Marksman; Paladin, Bowmaster, Corsair, Night Lord and Shadower are pending and read "coming soon").  The data comes from
+  selected class: Companions (yes), Artifacts (yes for the classes whose schema says `artifacts_modelled`: today all 12), Stat values (yes for every class with `status.stat_values`: today all 12; a class without it reads "coming soon").  The data comes from
   `GET /api/classes` (`family`, `status`); the form itself needs nothing class-specific, it is generated from each class's schema (Flat STR / DEX / LUK / INT,
   Defense %, Incoming Hit Rate ... appear when the schema has them).
 * Numeric fields carry the schema's `min` / `max`: HTML `min` / `max` attributes (the inputs are `type=text` so "1,209,199" and "1e6" can be typed, which
@@ -183,7 +183,7 @@ are in), and `companions` / `summon_time` / `cdr` only once their collapsible se
 ## Cubes, Equipment compare and artifact potentials
 
 Three views over `GET .../cubes/meta` + `POST .../cubes | equipment-compare | artifact-potentials` (see `api/README.md`).  They exist for the classes whose `status.stat_values` is true (the stat prices come from
-the stat-values engine: FP-Mage, Dark Knight, Hero, Ice/Lightning Mage, Bishop, Buccaneer, Marksman; Paladin, Bowmaster, Corsair, Night Lord and Shadower pending); for the others each shows "... is not available for this class yet" without calling the API (and a 501 from the API gives the same text).  The static tables
+the stat-values engine (all 12 classes today); for a class without it each shows "... is not available for this class yet" without calling the API (and a 501 from the API gives the same text).  The static tables
 (`useCubesMeta`) are fetched once per class, the first time one of the three is opened.  All three keep their data in the profile (`FormState.cubes / equipment`, and the artifact potential lines inside `FormState.artifacts`; saved with localStorage profiles and the
 JSON export/import, repaired on load, absent in older profiles).
 

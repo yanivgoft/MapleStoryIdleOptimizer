@@ -147,6 +147,11 @@ export default function App() {
     helpAnchor.current = id;
     setTab("help");
   };
+  // the address .../#privacy opens the privacy policy (a stable link for the sign-in consent screen / footer)
+  useEffect(() => {
+    if (window.location.hash === "#privacy") openHelp("help-privacy");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (tab === "help" && helpAnchor.current) {
       const id = helpAnchor.current;
@@ -323,6 +328,19 @@ export default function App() {
         </main>
       )}
       {!schema && !fatal && tab !== "help" && <p className="empty">Loading...</p>}
+      <footer className="site-footer">
+        <a
+          href="#privacy"
+          onClick={(e) => {
+            e.preventDefault();
+            window.history.replaceState(null, "", "#privacy");
+            openHelp("help-privacy");
+          }}
+        >
+          Privacy policy
+        </a>
+        <span> · Fan-made, not affiliated with Nexon</span>
+      </footer>
     </div>
   );
 }

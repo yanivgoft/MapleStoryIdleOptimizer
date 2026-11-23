@@ -13,7 +13,7 @@ import { createFirestoreDb } from "../../lib/cloud/firestoreDb";
 import { describeCloudError } from "../../lib/cloud/store";
 import { getLastProfile, publishCloud } from "../../lib/cloud/bridge";
 import { AccountMenuView, SignInButtonView } from "./AccountMenu";
-import { DeleteDialog, HELP_ACCOUNTS_ID, HistoryDialog, MigrationDialog, Notices, PrivacyDialog, SignOutDialog } from "./dialogs";
+import { DeleteDialog, HistoryDialog, MigrationDialog, Notices, PrivacyDialog, SignOutDialog } from "./dialogs";
 
 export interface AccountRootProps {
   classId: string | null;
@@ -233,7 +233,7 @@ export default function AccountRoot({ classId, classes, onApplyClass, onOpenHelp
   const toggleMenu = () => setMenuOpen((o) => !o);
   const openHelp = () => {
     setDialog(null);
-    onOpenHelp(HELP_ACCOUNTS_ID);
+    onOpenHelp("help-privacy");
   };
 
   return (
