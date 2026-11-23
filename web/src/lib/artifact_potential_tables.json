@@ -1,0 +1,129 @@
+{
+ "rarities": [
+  "Rare",
+  "Epic",
+  "Unique",
+  "Legendary",
+  "Mystic",
+  "Mystic (Prime)"
+ ],
+ "stats": [
+  "Main Stat %",
+  "Damage Taken Decrease %",
+  "Defense %",
+  "Accuracy",
+  "Critical Rate %",
+  "Min Damage Multiplier %",
+  "Max Damage Multiplier %",
+  "Boss Monster Damage %",
+  "Normal Monster Damage %",
+  "Status Effect Damage %",
+  "Damage %",
+  "Defense Penetration %"
+ ],
+ "values": {
+  "Main Stat %": {
+   "Rare": 2,
+   "Epic": 3,
+   "Unique": 4.5,
+   "Legendary": 7,
+   "Mystic": 10,
+   "Mystic (Prime)": 12
+  },
+  "Damage Taken Decrease %": {
+   "Rare": 1,
+   "Epic": 1.5,
+   "Unique": 2.3,
+   "Legendary": 3.5,
+   "Mystic": 5,
+   "Mystic (Prime)": 6
+  },
+  "Defense %": {
+   "Rare": 2,
+   "Epic": 3,
+   "Unique": 4.5,
+   "Legendary": 7,
+   "Mystic": 10,
+   "Mystic (Prime)": 12
+  },
+  "Accuracy": {
+   "Rare": 2,
+   "Epic": 3,
+   "Unique": 4,
+   "Legendary": 7,
+   "Mystic": 10,
+   "Mystic (Prime)": 12
+  },
+  "Critical Rate %": {
+   "Rare": 2,
+   "Epic": 3,
+   "Unique": 4.5,
+   "Legendary": 7,
+   "Mystic": 10,
+   "Mystic (Prime)": 12
+  },
+  "Min Damage Multiplier %": {
+   "Rare": 2,
+   "Epic": 3,
+   "Unique": 4.5,
+   "Legendary": 7,
+   "Mystic": 10,
+   "Mystic (Prime)": 12
+  },
+  "Max Damage Multiplier %": {
+   "Rare": 2,
+   "Epic": 3,
+   "Unique": 4.5,
+   "Legendary": 7,
+   "Mystic": 10,
+   "Mystic (Prime)": 12
+  },
+  "Boss Monster Damage %": {
+   "Rare": 4,
+   "Epic": 6,
+   "Unique": 9,
+   "Legendary": 14,
+   "Mystic": 20,
+   "Mystic (Prime)": 24
+  },
+  "Normal Monster Damage %": {
+   "Rare": 4,
+   "Epic": 6,
+   "Unique": 9,
+   "Legendary": 14,
+   "Mystic": 20,
+   "Mystic (Prime)": 24
+  },
+  "Status Effect Damage %": {
+   "Rare": 4,
+   "Epic": 6,
+   "Unique": 9,
+   "Legendary": 14,
+   "Mystic": 20,
+   "Mystic (Prime)": 24
+  },
+  "Damage %": {
+   "Rare": 4,
+   "Epic": 6,
+   "Unique": 9,
+   "Legendary": 14,
+   "Mystic": 20,
+   "Mystic (Prime)": 24
+  },
+  "Defense Penetration %": {
+   "Rare": 2,
+   "Epic": 3,
+   "Unique": 4.5,
+   "Legendary": 7,
+   "Mystic": 10,
+   "Mystic (Prime)": 12
+  }
+ },
+ "line_min_star": [
+  1,
+  2,
+  5
+ ],
+ "default_rarity": "Rare",
+ "none_stat": "(none)"
+}

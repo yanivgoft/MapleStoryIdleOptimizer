@@ -145,12 +145,14 @@ normal_weight = (
 skill1, skill2, skill3, skill4, skill_all = (
     _in("skill_lvl_1st"), _in("skill_lvl_2nd"), _in("skill_lvl_3rd"), _in("skill_lvl_4th"), _in("skill_lvl_all")
 )
-monster_defense = _compute_monster_defense(content_type, chapter, stage, defense)
+defense_pct = _in("defense_pct")
+total_defense = defense * (1 + defense_pct / 100)
+# PvP: the opponent is assumed to have the same TOTAL Defense as you (the workbook's Monster Defense formula uses Defense x (1 + Defense %/100); until 2026-11-20
+# this script passed the flat Defense only, which differs whenever Defense % is not 0 - found by the artifact golden set's PvP cases)
+monster_defense = _compute_monster_defense(content_type, chapter, stage, total_defense)
 flat_attack, attack_pct = _in("flat_attack"), _in("attack_pct")
 attack = flat_attack * (1 + attack_pct / 100)
 flat_str, str_pct, dex_stat = _in("flat_str"), _in("str_pct"), _in("dex")
-defense_pct = _in("defense_pct")
-total_defense = defense * (1 + defense_pct / 100)
 iron_wall_conversion_rate = 10 * get_factor(level, 22) / 1000
 iron_wall_str_bonus = iron_wall_conversion_rate / 100 * total_defense if level >= 38 else 0.0
 stat_damage = ((flat_str + iron_wall_str_bonus) * (1 + str_pct / 100)) * 0.01 + dex_stat * 0.0025
@@ -388,6 +390,9 @@ _stub = dict(mt=monster_type, T=fight_duration, content=content_type, pvp_len=PV
 PLAYER_STUN = [dict(id="RUSH", key="RUSH", typ="cast", dur=2.5, p=1.0, cd=(22 * 0.7) if level >= 90 else 22),
                dict(id="SHOCK", key="EVIL_EYE_SHOCK", typ="cast", dur=1.5, p=1.0, cd=18)]
 _pl_on = any(unlocked(e["key"]) for e in PLAYER_STUN)
+# The workbook's effective Companion Summoning Time Increase is the Inputs value + Arwen's Glass Shoes (+20% star 0 .. +40% star 5, Artifacts row
+# arwens_glass_shoes_summon_time_increase_pct).  The verify run clears the artifact slots, so the artifact term is 0 in every cpm.run below; it is
+# covered by the equivalence test (artifact at Inputs x == no artifact at Inputs x + star value).
 stun_info = (cpm.run(_stub, _companion_choice0, c_level0, _in("companion_summon_time_increase_pct"))
              if (_companion_choice0 != "None" and c_level0 >= 1) else None)
 hasstun = bool(stun_info and stun_info.get("hasstun")) or _pl_on

@@ -1,0 +1,174 @@
+{
+ "request": {
+  "current": {
+   "attack": 1500,
+   "lines": [
+    {
+     "stat": "Damage %",
+     "value": 14
+    },
+    {
+     "stat": "Critical Rate %",
+     "value": 3
+    }
+   ]
+  },
+  "new": {
+   "attack": 2200,
+   "lines": [
+    {
+     "stat": "Final Damage %",
+     "value": 6
+    },
+    {
+     "stat": "Min Damage %",
+     "value": 15
+    },
+    {
+     "stat": "Damage %",
+     "value": 5
+    }
+   ]
+  }
+ },
+ "result": {
+  "current": {
+   "rows": [
+    {
+     "stat": "Attack (flat)",
+     "value": 1500.0,
+     "gain": 46626416532048.26,
+     "first": true,
+     "group": 46626416532048.26,
+     "factor": 1.0012404906055696
+    },
+    {
+     "stat": "Damage %",
+     "value": 14.0,
+     "gain": 468333112342326.06,
+     "first": true,
+     "group": 468333112342326.06,
+     "factor": 1.0124599501601956
+    },
+    {
+     "stat": "Critical Rate %",
+     "value": 3.0,
+     "gain": 239713504477084.2,
+     "first": true,
+     "group": 239713504477084.2,
+     "factor": 1.0063775510204094
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    }
+   ],
+   "total_gain": 758541881966503.8,
+   "pct": 2.0180922071585616
+  },
+  "new": {
+   "rows": [
+    {
+     "stat": "Attack (flat)",
+     "value": 2200.0,
+     "gain": 68385410913670.78,
+     "first": true,
+     "group": 68385410913670.78,
+     "factor": 1.0018193862215021
+    },
+    {
+     "stat": "Final Damage %",
+     "value": 6.0,
+     "gain": 2255224650120030.5,
+     "first": true,
+     "group": 2255224650120030.5,
+     "factor": 1.0600000000000014
+    },
+    {
+     "stat": "Min Damage %",
+     "value": 15.0,
+     "gain": 951411006631841.9,
+     "first": true,
+     "group": 951411006631841.9,
+     "factor": 1.0253121835977066
+    },
+    {
+     "stat": "Damage %",
+     "value": 5.0,
+     "gain": 167261825836545.03,
+     "first": true,
+     "group": 167261825836545.03,
+     "factor": 1.0044499822000699
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    }
+   ],
+   "total_gain": 3520159756705397.0,
+   "pct": 9.365345726914054
+  },
+  "delta_pct": 7.347253519755492,
+  "delta_dps": 2761617874738893.0,
+  "better": "new",
+  "class_id": "ice_lightning_mage",
+  "baseline_total": 3.758707750199964e+16,
+  "crit_rate_total": 152.5,
+  "crit_priced_as_crit_damage": true,
+  "rate_by_stat": {
+   "Main Stat (flat)": 672600087685.5057,
+   "Main Stat %": 93481697854915.11,
+   "Attack (flat)": 31084277688.032173,
+   "Min Damage %": 63427400442122.79,
+   "Max Damage %": 63427400442122.79,
+   "Damage %": 33452365167309.004,
+   "Critical Rate %": 79904501492361.39,
+   "Critical Damage %": 79904501492361.39,
+   "Boss Monster Damage %": 84183173035255.42,
+   "Normal Monster Damage %": 0.0,
+   "Defense Penetration %": 87868083954459.98,
+   "Defense (flat)": 0.0,
+   "Skill Level Bonus \u2014 1st Job": 10511805074347.623,
+   "Skill Level Bonus \u2014 2nd Job": 29113337155173.246,
+   "Skill Level Bonus \u2014 3rd Job": 29841373873870.082,
+   "Skill Level Bonus \u2014 4th Job": 0.0,
+   "Skill Level Bonus \u2014 All Skills": 69498946158574.555,
+   "Final Damage %": 375870775020005.06,
+   "Basic Attack Damage %": 103292985016328.94,
+   "Skill Damage %": 102748322230979.97,
+   "Attack Speed %": 75292549964088.73
+  }
+ }
+}

@@ -1,0 +1,42 @@
+/* Cubes / Equipment compare (uses the theme variables of styles.css and sensitivity.css's .sens-table / .chip / .spinner). */
+.cube-table { width: 100%; font-size: 0.85rem; }
+.cube-table th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.cube-table td { padding: 4px 6px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); vertical-align: middle; }
+.cube-table tr.cfg td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.cube-table td.slot { font-weight: 500; white-space: nowrap; }
+.cube-table select { min-height: 30px; padding: 3px 6px; font-size: 0.85rem; min-width: 0; }
+.cube-table .line { display: flex; gap: 4px; align-items: center; }
+.cube-table .line select { width: 11em; }
+.cube-table .line .numin { width: 4.5em; }
+.cube-table .pity { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+.cube-table .pity .numin { width: 4.5em; }
+.cube-table .cap { color: var(--muted); font-size: 0.72rem; }
+input.numin { min-height: 30px; padding: 3px 6px; font-size: 0.85rem; text-align: right; font-variant-numeric: tabular-nums; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
+input.numin[aria-invalid="true"] { border-color: var(--danger); }
+.cube-controls { display: flex; gap: 10px 16px; align-items: center; flex-wrap: wrap; margin: 10px 0; font-size: 0.85rem; }
+.cube-controls select { width: auto; }
+.cube-controls label.chk { display: flex; gap: 6px; align-items: center; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.progress { flex: 1; min-width: 160px; max-width: 360px; height: 10px; background: color-mix(in srgb, var(--line) 70%, transparent); border-radius: 5px; overflow: hidden; }
+.progress > span { display: block; height: 100%; background: var(--bar); transition: width 0.2s; }
+.explain { color: var(--ink2); font-size: 0.85rem; }
+.explain p { margin: 4px 0; }
+.verdict { display: inline-block; border-radius: 8px; padding: 0 8px; font-size: 0.75rem; border: 1px solid var(--line); cursor: help; }
+.verdict.yes { color: var(--ok); border-color: var(--ok); }
+.verdict.maybe { color: var(--bar-alt); border-color: var(--bar-alt); }
+.verdict.marginal, .verdict.no { color: var(--muted); }
+.cube-outdated { color: var(--bar-alt); font-size: 0.85rem; margin: 4px 0; }
+.equip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 800px) { .equip-grid { grid-template-columns: 1fr; } }
+.equip-line { display: grid; grid-template-columns: minmax(0, 1fr) 6em; gap: 6px; margin: 4px 0; align-items: center; }
+.equip-line .label-fixed { color: var(--ink2); font-size: 0.85rem; }
+.equip-line .numin { width: 100%; }
+.equip-total { font-size: 1.1rem; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 8px; }
+/* a stored stat the slot cannot roll (kept, flagged) */
+.cube-table select.warn { border-color: var(--bar-alt); }
+
+
+/* Recommendations: one block per roll track (Potential, then Bonus Potential), ranked separately. */
+.sens-table tr.group-row th { text-transform: none; font-size: 0.85rem; letter-spacing: 0; color: var(--text, inherit); background: color-mix(in srgb, var(--accent) 8%, transparent); padding: 6px 8px; }
+.sens-table tr.group-row .sub { margin-left: 0.5em; font-weight: 400; }

@@ -1,0 +1,23 @@
+/* The Artifacts table (components/ArtifactTable.tsx): sticky header, scrolls in both directions inside its own box (a horizontal scroll container makes the header
+   stick to the box, not to the page, so the box has its own max height). */
+.art-controls-row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 8px 0; }
+.art-controls-row input[type="search"] { width: 14em; max-width: 100%; }
+.art-controls-row label.check { display: inline-flex; gap: 6px; align-items: center; }
+.equip-count { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+.equip-count.full { color: var(--bar-alt); }
+.art-table-wrap { overflow: auto; max-height: 75vh; border: 1px solid var(--line); border-radius: 8px; }
+.art-table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1100px; font-size: 0.85rem; }
+.art-table thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); border-bottom: 2px solid var(--line); text-align: left; padding: 6px 8px; white-space: nowrap; }
+.art-table td { border-bottom: 1px solid var(--line); padding: 6px 8px; vertical-align: top; }
+.art-table tr.rank-row th { position: static; background: var(--surface); text-align: left; padding: 4px 8px; font-size: 0.8rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink2); border-bottom: 1px solid var(--line); }
+.art-table tr.equipped td { background: color-mix(in srgb, var(--ok) 8%, transparent); }
+.art-table .art-name-cell { min-width: 15em; max-width: 22em; }
+.art-table .art-fx { margin: 2px 0 0; }
+.art-table .equip-cell { text-align: center; }
+.art-table .line-cell { min-width: 15em; }
+.art-table .line-cell select { display: block; width: 100%; min-height: 28px; padding: 2px 6px; font-size: 0.82rem; margin-bottom: 3px; }
+.art-table .line-cell.inactive { opacity: 0.55; }
+.art-table .line-na { color: var(--muted); text-align: center; }
+.art-table .total-cell { white-space: nowrap; }
+.art-table select.warn { border-color: var(--bar-alt); }
+.art-table td.empty { text-align: center; color: var(--muted); padding: 14px; }

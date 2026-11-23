@@ -1,0 +1,24 @@
+/* Import from Excel: drop zone and preview dialog (uses the theme variables of styles.css). */
+.xlsx-import { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.xlsx-import h3 { margin: 0 0 4px; font-size: 1rem; }
+.xlsx-drop { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; border: 2px dashed var(--line); border-radius: 8px; padding: 12px; margin: 8px 0; background: var(--surface); }
+.xlsx-drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.xlsx-drop .hint { color: var(--muted); font-size: 0.85rem; }
+.xlsx-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 5vh 12px; background: color-mix(in srgb, var(--ink) 45%, transparent); }
+.xlsx-dialog { width: min(780px, 100%); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; box-shadow: 0 8px 32px color-mix(in srgb, var(--ink) 30%, transparent); }
+.xlsx-dialog:focus { outline: none; }
+.xlsx-dialog h2 { margin: 0 0 8px; }
+.xlsx-dialog dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 8px 0; font-size: 0.9rem; }
+.xlsx-dialog dl.facts dt { color: var(--ink2); }
+.xlsx-dialog dl.facts dd { margin: 0; }
+.xlsx-dialog .field-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 8px 0; }
+.xlsx-dialog .field-row input[type="text"] { flex: 1 1 16em; }
+.xlsx-dialog table.counts { border-collapse: collapse; font-size: 0.85rem; margin: 4px 0 8px; }
+.xlsx-dialog table.counts th, .xlsx-dialog table.counts td { text-align: left; padding: 2px 14px 2px 0; }
+.xlsx-dialog table.counts td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.xlsx-dialog details { margin: 8px 0; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+.xlsx-dialog details.warn { border-color: var(--danger); }
+.xlsx-dialog summary { cursor: pointer; font-weight: 600; }
+.xlsx-dialog ul.notes { margin: 6px 0 2px; padding-left: 18px; font-size: 0.85rem; max-height: 14em; overflow-y: auto; }
+.xlsx-dialog ul.notes .cells { color: var(--muted); }
+.xlsx-dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }

@@ -1,0 +1,184 @@
+{
+ "classes": [
+  {
+   "id": "bishop",
+   "name": "Bishop",
+   "family": "Mage",
+   "stat_identity": {
+    "main": "INT",
+    "sub": "LUK"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": true
+   }
+  },
+  {
+   "id": "bowmaster",
+   "name": "Bowmaster",
+   "family": "Archer",
+   "stat_identity": {
+    "main": "DEX",
+    "sub": "STR"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": false
+   }
+  },
+  {
+   "id": "buccaneer",
+   "name": "Buccaneer",
+   "family": "Pirate",
+   "stat_identity": {
+    "main": "STR",
+    "sub": "DEX"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": true
+   }
+  },
+  {
+   "id": "corsair",
+   "name": "Corsair",
+   "family": "Pirate",
+   "stat_identity": {
+    "main": "DEX",
+    "sub": "STR"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": false
+   }
+  },
+  {
+   "id": "dark_knight",
+   "name": "Dark Knight",
+   "family": "Warrior",
+   "stat_identity": {
+    "main": "STR",
+    "sub": "DEX"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": true
+   }
+  },
+  {
+   "id": "fp_mage",
+   "name": "Fire/Poison Arch Mage",
+   "family": "Mage",
+   "stat_identity": {
+    "main": "INT",
+    "sub": "LUK"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": true
+   }
+  },
+  {
+   "id": "hero",
+   "name": "Hero",
+   "family": "Warrior",
+   "stat_identity": {
+    "main": "STR",
+    "sub": "DEX"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": true
+   }
+  },
+  {
+   "id": "ice_lightning_mage",
+   "name": "Ice/Lightning Arch Mage",
+   "family": "Mage",
+   "stat_identity": {
+    "main": "INT",
+    "sub": "LUK"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": true
+   }
+  },
+  {
+   "id": "marksman",
+   "name": "Marksman",
+   "family": "Archer",
+   "stat_identity": {
+    "main": "DEX",
+    "sub": "STR"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": true
+   }
+  },
+  {
+   "id": "night_lord",
+   "name": "Night Lord",
+   "family": "Thief",
+   "stat_identity": {
+    "main": "LUK",
+    "sub": "DEX"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": false
+   }
+  },
+  {
+   "id": "paladin",
+   "name": "Paladin",
+   "family": "Warrior",
+   "stat_identity": {
+    "main": "STR",
+    "sub": "DEX"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": false
+   }
+  },
+  {
+   "id": "shadower",
+   "name": "Shadower",
+   "family": "Thief",
+   "stat_identity": {
+    "main": "LUK",
+    "sub": "DEX"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": false
+   }
+  }
+ ]
+}

@@ -1,0 +1,292 @@
+{
+ "artifacts": [
+  {
+   "key": "alliance_badge",
+   "star": 4
+  },
+  {
+   "key": "arwens_glass_shoes",
+   "star": 2
+  },
+  {
+   "key": "book_of_ancient",
+   "star": 5
+  },
+  {
+   "key": "pigs_ribbon",
+   "star": "Not Unlocked"
+  }
+ ],
+ "result": {
+  "total_dps": 7.57146657700352e+16,
+  "artifacts": {
+   "equipped": [
+    {
+     "key": "alliance_badge",
+     "name": "Alliance Badge",
+     "star": 4,
+     "rank": "Legendary",
+     "effect": "live",
+     "no_dps_effect": false,
+     "reason": null
+    },
+    {
+     "key": "arwens_glass_shoes",
+     "name": "Arwen's Glass Shoes",
+     "star": 2,
+     "rank": "Unique",
+     "effect": "live",
+     "no_dps_effect": false,
+     "reason": null
+    },
+    {
+     "key": "book_of_ancient",
+     "name": "Book of Ancient",
+     "star": 5,
+     "rank": "Legendary",
+     "effect": "reference_only",
+     "no_dps_effect": false,
+     "reason": null
+    },
+    {
+     "key": "pigs_ribbon",
+     "name": "Pig's Ribbon",
+     "star": 0,
+     "rank": "Epic",
+     "effect": "no_dps_effect",
+     "no_dps_effect": true,
+     "reason": "stat not used by the DPS model (no attacking effect)"
+    }
+   ],
+   "buckets": {
+    "attack_pct": 18,
+    "final_damage": 0.0,
+    "damage": 0,
+    "skill_damage": 0.0,
+    "basic_attack_damage": 0,
+    "crit_rate": 0.0,
+    "crit_damage": 0,
+    "boss_damage": 0,
+    "normal_damage": 0,
+    "enemy_damage_taken": 0,
+    "final_damage_normal_only": 0,
+    "final_damage_boss_only": 0,
+    "soul_contract_cooldown_decrease_pct": 0,
+    "contract_of_darkness_boss_crit_rate": 0,
+    "reindeer_spear_extra_def_pen_unit": 0,
+    "companion_summon_time_increase_pct": 28
+   },
+   "rows": {
+    "rainbow_crit_rate": 0,
+    "rainbow_crit_damage": 0,
+    "icy_soul_rock": 0,
+    "roc_threshold_cr": 152.5,
+    "roc_crit_rate": 0.0,
+    "roc_skill_damage": 0.0,
+    "roc_excess_points": 0,
+    "roc_basic_attack_damage": 0,
+    "candle_final_damage": 0,
+    "candle_boss_damage": 0,
+    "peach_enemy_dmg_taken": 0,
+    "silver_enemy_dmg_taken": 0,
+    "hexagon_avg_stacks": 1.2857142857142858,
+    "hexagon_damage": 0,
+    "charm_of_the_undead": 0,
+    "old_music_box_attack_pct": 0,
+    "secret_map_attack_pct": 0,
+    "reindeer_spear_attack_pct": 0,
+    "alliance_badge": 18,
+    "bottle_of_emotion_attack_pct": 0,
+    "secret_map_final_dmg_normal": 0,
+    "flaming_lava": 0,
+    "horn_flute": 0,
+    "fire_flower_normal": 0,
+    "fire_flower_boss": 0,
+    "chalice_normal": 0,
+    "chalice_boss": 0,
+    "sayrams_necklace_normal": 0,
+    "sayrams_necklace_boss": 0,
+    "contract_of_darkness_crit_rate_bonus": 0,
+    "reindeer_spear_base_def_pen_reference": 0,
+    "soul_contract_pct": 0,
+    "arwens_glass_shoes_summon_time_increase_pct": 28
+   },
+   "reference_only": {
+    "book_of_ancient_crit_damage": 91.5,
+    "book_of_ancient_crit_rate": 20
+   },
+   "notes": [
+    "reference_only artifacts: their stat is entered by hand in Inputs (workbook convention); equipping changes nothing live"
+   ],
+   "horn_flute_uptime": 0.5576315427943392,
+   "extra_boss_multiplier": 1.0,
+   "extra_normal_multiplier": 1.0,
+   "hexagon_charm": {
+    "hex_per_stack": 0,
+    "hex_average": 0,
+    "charm_full": 0,
+    "charm_average": 0,
+    "phase_factor_boss": 1.0,
+    "phase_factor_normal": 1.0
+   }
+  },
+  "player_dps": 5.293515715018247e+16,
+  "boss_dps": 7.57146657700352e+16,
+  "normal_dps": 1.826979252523541e+16,
+  "player_boss_dps": 5.293515715018247e+16,
+  "player_normal_dps": 0.0,
+  "skills": [
+   {
+    "key": "BIG_BANG",
+    "name": "Big Bang",
+    "dps": 2.4456756997034424e+16,
+    "share": 0.32301215026578667,
+    "boss_dps": 2.4456756997034424e+16,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "ANGEL_RAY",
+    "name": "Angel Ray",
+    "dps": 6494388040154454.0,
+    "share": 0.08577450582532545,
+    "boss_dps": 6494388040154454.0,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "ANGEL_RAY_BOSS_PROC",
+    "name": "Angel Ray - Boss Monster Damage (Mastery Lv.122)",
+    "dps": 721598671128272.4,
+    "share": 0.00953050064725838,
+    "boss_dps": 721598671128272.4,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "GENESIS",
+    "name": "Genesis",
+    "dps": 6685399453100170.0,
+    "share": 0.08829728540842322,
+    "boss_dps": 6685399453100171.0,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "BAHAMUT",
+    "name": "Bahamut",
+    "dps": 8886820667611366.0,
+    "share": 0.11737251399356252,
+    "boss_dps": 8886820667611366.0,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "TRIUMPH_FEATHER",
+    "name": "Triumph Feather",
+    "dps": 5690193321153784.0,
+    "share": 0.07515311945556699,
+    "boss_dps": 5690193321153784.0,
+    "normal_dps": 0.0,
+    "unlocked": true
+   }
+  ],
+  "companion": {
+   "choice": "Blaze Wizard",
+   "level": 10,
+   "dps": 2.2779508619852724e+16,
+   "boss_dps": 2.2779508619852724e+16,
+   "normal_dps": 1.826979252523541e+16,
+   "share": 0.3008599244040767,
+   "damage": 1.4373153918041172e+18,
+   "uplift": 1.5725021158557338e+17,
+   "best_candidate": 1,
+   "summon_time_s": 31.6,
+   "window_s": 38.4,
+   "details": {
+    "comp_boss_dps": 2.2779508619852724e+16,
+    "comp_norm_dps": 1.826979252523541e+16,
+    "comp_blend_dps": 2.2779508619852724e+16,
+    "best": 1,
+    "s": 31.6,
+    "W": 38.4,
+    "E": 0.0,
+    "ext": 0.0,
+    "horn_uptime": 0.5485714285714286,
+    "s0": 31.6,
+    "W0": 38.4,
+    "stunfracB": 0.1357142857142857,
+    "stunfracN": 0.1357142857142857,
+    "hasstun": 1,
+    "dmg_b": 1.4373153918041172e+18,
+    "dmg_n": 1.2788854767664786e+18,
+    "upl_b": 1.5725021158557338e+17,
+    "upl_n": 0.0
+   }
+  },
+  "engine_on": true,
+  "engine": {
+   "casts": {
+    "MAGIC_GUARD": 4,
+    "HEAL": 4,
+    "BLESS": 3,
+    "HOLY_MAGIC_SHELL": 3,
+    "ADVANCED_BLESSING": 3,
+    "INFINITY": 3,
+    "ANGEL_RAY": 5,
+    "ANGEL_RAY_BOSS_PROC": 5,
+    "GENESIS": 5,
+    "BAHAMUT": 2
+   },
+   "phi_unif": 1.0398670879081542,
+   "phi_rows": {
+    "ANGEL_RAY": 1.3210484151284523,
+    "ANGEL_RAY_BOSS_PROC": 1.3210484151284523,
+    "GENESIS": 1.321048415128452,
+    "BAHAMUT": 1.026265141735276
+   }
+  },
+  "derived": {
+   "attack": 416841125.27500004,
+   "stat_damage": 4343.943927633911,
+   "actions_per_second": 1.7318455,
+   "cast_rate": 0.5285714285714286,
+   "basic_attacks_per_second": 1.2032740714285715,
+   "avg_buff_mult": 3.269154326739751,
+   "as_bonus": 28.070714285714285,
+   "element_amp_pct": 23.955,
+   "arcane_aim_pct": 5.699999999999999,
+   "buff_mastery_pct": 19.0,
+   "skill_coefficient_base": 638.0,
+   "buff_cast_startup_time": 0.0,
+   "attack_bucket_sum": 92.49197165714287,
+   "monster_dmg_bonus": 12.219999999999999,
+   "normal_dmg_bonus": 22.354805999999996,
+   "damage_bonus": 25,
+   "crit_damage_bonus": 38.0,
+   "big_bang_hits": 6,
+   "total_defense": 94503.14589246428,
+   "divine_protection_bonus": 37.06751071428571,
+   "invincible_conversion_rate": 14.2,
+   "invincible_int_bonus": 13419.446716729926,
+   "triumph_feather": {
+    "boss_rate": 0.18581861511949146,
+    "normal_rate": 0.04192498360957431,
+    "hits": 3,
+    "targets": 7,
+    "stage1_chance_pct": 25
+   },
+   "stunned_share_boss": 0.1357142857142857,
+   "stunned_share_normal": 0.1357142857142857,
+   "monster_type": "boss",
+   "chapter": 37.0,
+   "stage": 37.0,
+   "breakthrough_normal_weight_pct": 60,
+   "breakthrough_stage_index": 149.0,
+   "monster_defense": 3650.0,
+   "fight_duration": 70,
+   "normal_weight": 0.0,
+   "fixed_duration_active": true
+  }
+ }
+}

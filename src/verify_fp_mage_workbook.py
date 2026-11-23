@@ -175,6 +175,9 @@ skill_damage = _in("skill_damage")
 skill_cooldown_decrease = _in("skill_cooldown_decrease")
 basic_attack_target_increase = _in("basic_attack_target_increase")
 buff_duration_increase_pct = _in("buff_duration_increase_pct")
+# The workbook's effective value is this Inputs value + Arwen's Glass Shoes (+20% star 0 .. +40% star 5, Artifacts row
+# arwens_glass_shoes_summon_time_increase_pct).  The verify run clears the artifact slots, so the artifact term is 0 here; it is covered by the
+# equivalence test (artifact at Inputs x == no artifact at Inputs x + star value, tests/golden/artifact_cases.py EQUIV_PAIRS).
 companion_summon_time_increase_pct = _in("companion_summon_time_increase_pct")
 fight_duration = _compute_fight_duration(content_type)
 max_enemies_hit = _in("max_enemies_hit")

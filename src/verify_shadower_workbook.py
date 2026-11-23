@@ -382,6 +382,9 @@ PLAYER_STUN = [
     dict(id="DASH", key="PHASE_DASH", typ="cast", dur=2.0, p=1.0, cd=23, min_level=0, tick=1.0, win=0.0),
 ]
 _pl_on = any(unlocked(e["key"]) and level >= e["min_level"] for e in PLAYER_STUN)
+# The workbook's effective Companion Summoning Time Increase is the Inputs value + Arwen's Glass Shoes (+20% star 0 .. +40% star 5, Artifacts row
+# arwens_glass_shoes_summon_time_increase_pct).  The verify run clears the artifact slots, so the artifact term is 0 in every cpm.run below; it is
+# covered by the equivalence test (artifact at Inputs x == no artifact at Inputs x + star value, tests/golden/shadower_artifact_cases.py EQUIV_PAIRS).
 _stun_in0 = _companion_choice0 != "None" and c_level0 >= 1
 hasstun = (_stun_in0 and bool(cpm.run(_stub, _companion_choice0, c_level0, _in("companion_summon_time_increase_pct")).get("hasstun"))) or _pl_on
 KO_WINDOWS = {"World Boss": [(24, 34), (59, 69)], "Enhancement Dungeon": [(fight_duration - 4.5, fight_duration)]}

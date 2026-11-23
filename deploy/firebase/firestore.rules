@@ -1,0 +1,85 @@
+rules_version = '2';
+
+// Security rules of the optional accounts feature (web/src/lib/cloud/, design: APP_ACCOUNTS_DESIGN.md).
+//
+//   users/{uid}                          { createdAt?, lastSeenAt, schema }
+//   users/{uid}/profiles/{profileId}     { classId, name, updatedAt, deleted?, state }   state = the exported profile as a JSON STRING
+//   users/{uid}/settings/app             { theme, lastClassId?, lastProfileId?, updatedAt }
+//
+// Only the signed-in owner (request.auth.uid == uid) can read or write anything; everything else is denied.  Writes are shape- and size-checked.
+//
+// Deviations from the sketch in the design document (deliberate):
+//  * "request.resource.size()" does not exist in the rules language (there is no byte size of a document), so the size guard bounds each field instead:
+//    state <= 180000 characters, name <= 80, classId <= 64, ids <= 64.  Together that keeps a profile document far below the 200 KB budget in the normal case
+//    (and below Firestore's own 1 MiB limit even for 4-byte characters).  The web client enforces the same numbers before it writes (lib/cloud/merge.ts).
+//  * The 50-profile cap is client-side only: rules cannot count a collection, and a counter document the same client maintains would not stop a
+//    hostile owner either.  A hostile owner can only fill their OWN documents (per-document limits above); enable App Check if abuse of the quota is a worry.
+//  * `state` is a string (not a map): Firestore rejects nested arrays and `undefined`, indexes every map field, and a string cannot break when the profile
+//    format changes.
+// Keep the numbers and key lists below in sync with web/src/lib/cloud/merge.ts and store.ts (a web test, rulesContract.test.ts, checks that they agree).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedInAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // ---- users/{uid} ----
+    function validUser() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['createdAt', 'lastSeenAt', 'schema'])
+        && d.keys().hasAll(['lastSeenAt', 'schema'])
+        && d.lastSeenAt is number
+        && d.schema is int && d.schema >= 1 && d.schema < 100
+        && (!('createdAt' in d) || d.createdAt is number);
+    }
+
+    // ---- users/{uid}/profiles/{profileId} ----
+    function validProfile() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['classId', 'name', 'updatedAt', 'deleted', 'state'])
+        && d.keys().hasAll(['classId', 'name', 'updatedAt', 'state'])
+        && d.classId is string && d.classId.size() >= 1 && d.classId.size() <= 64
+        && d.name is string && d.name.size() >= 1 && d.name.size() <= 80
+        && d.updatedAt is number
+        && d.state is string && d.state.size() <= 180000
+        && (!('deleted' in d) || d.deleted is bool)
+        // a soft-deleted profile (tombstone) carries no content; a live one must carry some
+        && (d.get('deleted', false) == true ? d.state.size() == 0 : d.state.size() > 0);
+    }
+
+    // ---- users/{uid}/settings/app ----
+    function validSettings() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['theme', 'lastClassId', 'lastProfileId', 'updatedAt'])
+        && d.keys().hasAll(['theme', 'updatedAt'])
+        && d.theme in ['auto', 'light', 'dark']
+        && d.updatedAt is number
+        && (!('lastClassId' in d) || (d.lastClassId is string && d.lastClassId.size() <= 64))
+        && (!('lastProfileId' in d) || (d.lastProfileId is string && d.lastProfileId.size() <= 64));
+    }
+
+    match /users/{uid} {
+      allow read, delete: if signedInAs(uid);
+      allow create, update: if signedInAs(uid) && validUser();
+
+      match /profiles/{profileId} {
+        allow read, delete: if signedInAs(uid);
+        allow create, update: if signedInAs(uid)
+          && profileId.matches('^[A-Za-z0-9_-]{1,64}$')
+          && validProfile();
+      }
+
+      match /settings/{docId} {
+        allow read, delete: if signedInAs(uid);
+        allow create, update: if signedInAs(uid) && docId == 'app' && validSettings();
+      }
+    }
+
+    // everything else is closed
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

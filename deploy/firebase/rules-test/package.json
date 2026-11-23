@@ -1,0 +1,19 @@
+{
+  "name": "msi-firestore-rules-test",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Tests of ../firestore.rules against the Firestore emulator (needs Java).  Run: npm run test:emulator",
+  "scripts": {
+    "lint": "node lint-rules.mjs ../firestore.rules",
+    "test": "node --test rules.test.mjs",
+    "test:emulator": "npx --yes firebase-tools@latest emulators:exec --only firestore --project demo-msi-rules \"npm test\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.4.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.7"
+  }
+}

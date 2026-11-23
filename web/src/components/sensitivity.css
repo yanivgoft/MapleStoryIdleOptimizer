@@ -1,0 +1,39 @@
+/* Stat values tab + EquipRanking (imported by the components; uses the theme variables of styles.css). */
+.sens-head { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; margin-bottom: 10px; }
+.sens-head .big { font-size: 1.4rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sens-head .note { color: var(--muted); font-size: 0.8rem; }
+.sens-controls { display: flex; gap: 10px; align-items: center; margin: 6px 0 10px; font-size: 0.85rem; flex-wrap: wrap; }
+.sens-controls select { width: auto; }
+.sens-wrap { overflow-x: auto; }
+.sens-table { width: 100%; font-variant-numeric: tabular-nums; }
+.sens-table th { text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.sens-table td { padding: 5px 8px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); vertical-align: top; }
+.sens-table th.num, .sens-table td.num { text-align: right; }
+.sens-table td.rank { color: var(--muted); width: 2em; }
+.sens-table tr.dim td { color: var(--muted); }
+.sens-table tr.dim .label-main { color: var(--muted); }
+.sens-table tr.current td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.sens-table .label-main { font-weight: 500; }
+.sens-table .sub { display: block; color: var(--muted); font-size: 0.75rem; }
+.sens-table .neg { color: var(--danger); }
+.sens-table .pos { color: var(--ok); }
+.sens-bar { display: inline-block; width: 90px; height: 8px; background: color-mix(in srgb, var(--line) 70%, transparent); border-radius: 4px; overflow: hidden; vertical-align: middle; }
+.sens-bar > span { display: block; height: 100%; background: var(--bar); border-radius: 4px; }
+.sens-bar.alt > span { background: var(--bar-alt); }
+.chip { display: inline-block; border: 1px solid var(--line); border-radius: 8px; padding: 0 6px; margin: 2px 4px 0 0; font-size: 0.7rem; color: var(--muted); }
+.chip.ok { color: var(--ok); border-color: var(--ok); }
+.chip.warn { color: var(--bar-alt); border-color: var(--bar-alt); }
+.info { cursor: help; color: var(--muted); }
+.sens-section { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); margin: 0 0 12px; padding: 8px 14px; }
+.sens-section > summary { padding: 4px 0; }
+.sens-section[open] > summary { margin-bottom: 8px; }
+.sens-section .hint { color: var(--muted); font-size: 0.8rem; margin: 0 0 8px; }
+.sens-loading { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.85rem; margin: 4px 0 8px; }
+.spinner { width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: sens-spin 0.8s linear infinite; display: inline-block; }
+@keyframes sens-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+.skeleton { display: block; height: 14px; border-radius: 4px; background: linear-gradient(90deg, var(--line), color-mix(in srgb, var(--line) 40%, transparent), var(--line)); background-size: 200% 100%; animation: sens-shimmer 1.4s linear infinite; }
+@keyframes sens-shimmer { to { background-position: -200% 0; } }
+.sens-stale { opacity: 0.55; transition: opacity 0.15s; }
+.sens-message { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; background: var(--surface); color: var(--ink2); }
+.sens-message.error { border-color: var(--danger); color: var(--danger); }

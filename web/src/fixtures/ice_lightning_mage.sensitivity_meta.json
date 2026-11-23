@@ -1,0 +1,509 @@
+{
+ "class_id": "ice_lightning_mage",
+ "parts": [
+  "stats",
+  "artifacts",
+  "companions",
+  "summon_time",
+  "cdr"
+ ],
+ "stats": [
+  {
+   "key": "flat_int",
+   "label": "Flat INT",
+   "type": "flat",
+   "step": "+1",
+   "semantics": "adds the main stat's flat-Attack channel (1 INT = 1 Attack before ATTACK%) next to STAT_DAMAGE"
+  },
+  {
+   "key": "int_pct",
+   "label": "INT %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": "adds the main stat's flat-Attack channel (1 INT = 1 Attack before ATTACK%) next to STAT_DAMAGE"
+  },
+  {
+   "key": "damage",
+   "label": "DAMAGE %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": null
+  },
+  {
+   "key": "damage_amp",
+   "label": "DAMAGE_AMP %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": null
+  },
+  {
+   "key": "boss_damage",
+   "label": "BOSS_DAMAGE %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": null
+  },
+  {
+   "key": "normal_damage",
+   "label": "NORMAL_DAMAGE %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": null
+  },
+  {
+   "key": "status_effect_damage",
+   "label": "STATUS_EFFECT_DAMAGE %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": null
+  },
+  {
+   "key": "final_damage",
+   "label": "FINAL_DAMAGE % (multiplicative source)",
+   "type": "mult",
+   "step": "x1.01 (multiplicative source)",
+   "semantics": null
+  },
+  {
+   "key": "min_damage",
+   "label": "MIN_DAMAGE %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": null
+  },
+  {
+   "key": "max_damage",
+   "label": "MAX_DAMAGE %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": null
+  },
+  {
+   "key": "crit_rate",
+   "label": "CRIT_RATE %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": "Book of Ancient (if equipped): Crit Damage follows the crit-rate change"
+  },
+  {
+   "key": "crit_damage",
+   "label": "CRIT_DAMAGE %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": null
+  },
+  {
+   "key": "attack_speed",
+   "label": "ATTACK_SPEED % (diminishing returns, factor 150)",
+   "type": "dr150",
+   "step": "+1 combined by diminishing returns (factor 150)",
+   "semantics": "Athena's Gloves (if equipped): Max Damage follows; Bottle of Emotion (if equipped): Final Damage follows"
+  },
+  {
+   "key": "def_pen",
+   "label": "DEF_PEN % (diminishing returns, factor 100)",
+   "type": "dr100",
+   "step": "+1 combined by diminishing returns (factor 100)",
+   "semantics": null
+  },
+  {
+   "key": "basic_attack_damage",
+   "label": "BASIC_ATTACK_DAMAGE %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": null
+  },
+  {
+   "key": "skill_damage",
+   "label": "SKILL_DAMAGE %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": null
+  },
+  {
+   "key": "skill_lvl_1st",
+   "label": "Skill Level Bonus \u2014 1st Job",
+   "type": "level",
+   "step": "+1 skill level",
+   "semantics": null
+  },
+  {
+   "key": "skill_lvl_2nd",
+   "label": "Skill Level Bonus \u2014 2nd Job",
+   "type": "level",
+   "step": "+1 skill level",
+   "semantics": "adds High Wisdom's (Crit Rate), Spell Mastery's (Min Damage) and Magic Acceleration's (Attack Speed) level deltas"
+  },
+  {
+   "key": "skill_lvl_3rd",
+   "label": "Skill Level Bonus \u2014 3rd Job",
+   "type": "level",
+   "step": "+1 skill level",
+   "semantics": "adds Magic Critical's Crit Rate / Crit Damage level delta"
+  },
+  {
+   "key": "skill_lvl_4th",
+   "label": "Skill Level Bonus \u2014 4th Job",
+   "type": "level",
+   "step": "+1 skill level",
+   "semantics": null
+  },
+  {
+   "key": "skill_lvl_all",
+   "label": "Skill Level Bonus \u2014 All Skills",
+   "type": "level",
+   "step": "+1 skill level",
+   "semantics": "adds High Wisdom, Magic Critical (Crit Rate / Crit Damage), Spell Mastery and Magic Acceleration level deltas"
+  },
+  {
+   "key": "flat_attack",
+   "label": "Flat ATTACK",
+   "type": "flat",
+   "step": "+1",
+   "semantics": null
+  },
+  {
+   "key": "attack_pct",
+   "label": "ATTACK %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": null
+  },
+  {
+   "key": "skill_cooldown_decrease",
+   "label": "Skill Cooldown Decrease (seconds)",
+   "type": "flat",
+   "step": "+1",
+   "semantics": null
+  },
+  {
+   "key": "basic_attack_target_increase",
+   "label": "Basic Attack Target Increase (flat)",
+   "type": "flat",
+   "step": "+1",
+   "semantics": null
+  },
+  {
+   "key": "buff_duration_increase_pct",
+   "label": "Buff Duration Increase %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": null
+  },
+  {
+   "key": "companion_summon_time_increase_pct",
+   "label": "Companion Summoning Time Increase %",
+   "type": "pct",
+   "step": "+1 percentage point",
+   "semantics": null
+  }
+ ],
+ "artifacts": [
+  {
+   "key": "charm_of_the_undead",
+   "label": "Charm of the Undead",
+   "rank": "Epic",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "pigs_ribbon",
+   "label": "Pig's Ribbon",
+   "rank": "Epic",
+   "effect": "no_dps_effect",
+   "no_dps_effect": true,
+   "reason": "stat not used by the DPS model (no attacking effect)"
+  },
+  {
+   "key": "shamaness_marble",
+   "label": "Shamaness Marble",
+   "rank": "Epic",
+   "effect": "reference_only",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "contract_of_darkness",
+   "label": "The Contract of Darkness",
+   "rank": "Epic",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "rainbow_snail_shell",
+   "label": "Rainbow-colored Snail Shell",
+   "rank": "Unique",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "hexagon_necklace",
+   "label": "Hexagon Necklace",
+   "rank": "Unique",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "arwens_glass_shoes",
+   "label": "Arwen's Glass Shoes",
+   "rank": "Unique",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "mushmoms_cap",
+   "label": "Mushmom's Cap",
+   "rank": "Unique",
+   "effect": "no_dps_effect",
+   "no_dps_effect": true,
+   "reason": "stat not used by the DPS model (Accuracy vs Evasion not modelled)"
+  },
+  {
+   "key": "clear_spring_water",
+   "label": "Clear Spring Water",
+   "rank": "Unique",
+   "effect": "reference_only",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "athena_gloves",
+   "label": "Athena Pierce's Old Gloves",
+   "rank": "Unique",
+   "effect": "reference_only",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "zakums_stone_piece",
+   "label": "Zakum's Stone Piece",
+   "rank": "Unique",
+   "effect": "no_dps_effect",
+   "no_dps_effect": true,
+   "reason": "raid content (not modelled)"
+  },
+  {
+   "key": "horntails_scale",
+   "label": "Horntail's Scale",
+   "rank": "Unique",
+   "effect": "no_dps_effect",
+   "no_dps_effect": true,
+   "reason": "raid content (not modelled)"
+  },
+  {
+   "key": "pink_beans_giant_rib",
+   "label": "Pink Bean's Giant Rib",
+   "rank": "Unique",
+   "effect": "no_dps_effect",
+   "no_dps_effect": true,
+   "reason": "raid content (not modelled)"
+  },
+  {
+   "key": "chalice",
+   "label": "Chalice",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "old_music_box",
+   "label": "Old Music Box",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "silver_pendant",
+   "label": "Silver Pendant",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "star_rock",
+   "label": "Star Rock",
+   "rank": "Legendary",
+   "effect": "reference_only",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "book_of_ancient",
+   "label": "Book of Ancient",
+   "rank": "Legendary",
+   "effect": "reference_only",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "lunar_dew",
+   "label": "Lunar Dew",
+   "rank": "Legendary",
+   "effect": "no_dps_effect",
+   "no_dps_effect": true,
+   "reason": "stat not used by the DPS model (no attacking effect)"
+  },
+  {
+   "key": "fire_flower",
+   "label": "Fire Flower",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "soul_contract",
+   "label": "Soul Contract",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "lit_lamp",
+   "label": "Lit Lamp",
+   "rank": "Legendary",
+   "effect": "reference_only",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "soul_pouch",
+   "label": "Soul Pouch",
+   "rank": "Legendary",
+   "effect": "reference_only",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "ancient_text_piece",
+   "label": "Ancient Text Piece",
+   "rank": "Legendary",
+   "effect": "no_dps_effect",
+   "no_dps_effect": true,
+   "reason": "Guild Conquest content (not modelled)"
+  },
+  {
+   "key": "icy_soul_rock",
+   "label": "Icy Soul Rock",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "flaming_lava",
+   "label": "Flaming Lava",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "sayrams_necklace",
+   "label": "Sayram's Necklace",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "bottle_of_emotion",
+   "label": "Bottle of Emotion",
+   "rank": "Legendary",
+   "effect": "reference_only",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "peach_tree",
+   "label": "Peach Tree Herb Pouch",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "candle",
+   "label": "Candle",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "alliance_badge",
+   "label": "Alliance Badge",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "horn_flute",
+   "label": "Horn Flute",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "cursed_doll",
+   "label": "Cursed Doll",
+   "rank": "Legendary",
+   "effect": "reference_only",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "reindeer_spear",
+   "label": "Reindeer's Spear",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "secret_map",
+   "label": "Secret Map",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "ring_of_cycles",
+   "label": "Ring of Cycles",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  }
+ ],
+ "cdr_values": [
+  0.5,
+  1.0,
+  1.5,
+  2.0,
+  2.5,
+  3.0,
+  3.5,
+  4.0,
+  4.5,
+  5.0
+ ],
+ "metric": {
+  "units_per_1pct": "units of the stat needed for +1% DPS (1 / (% gain of one step - 100)); LOWER = more valuable per unit; null = n/a (no gain)",
+  "dps_gain": "total DPS gained by ONE step of the stat (the 'DPS per +1')",
+  "pct_gain": "new total / baseline total x 100 (100 = no change)",
+  "equip": "artifacts are ranked by % gain among unlocked ones; no_dps_effect artifacts do not change the model"
+ }
+}

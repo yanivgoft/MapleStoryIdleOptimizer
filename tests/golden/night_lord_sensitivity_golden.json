@@ -1,0 +1,2578 @@
+{
+"meta": {
+"workbook": "Night-Lord-DPS-Calculator.xlsx",
+"workbook_sha256": "2140d39cb799a2feb0de01230f0ad2dcb3d871f96777c4582773541aeeace29f",
+"builder_sha256": "9da34a284a2a98e61d92e4d62ffc798722ee4c28025b96a1d30844d2a0341496",
+"strip": "Sensitivity sheet reduced to the compared blocks / rows; formulas outside it reading it = 0; Companion grid columns blanked unless a table is compared",
+"evaluator": "formulas 1.3.4"
+},
+"cases": {
+"I/WB140/0": {
+"inputs": {
+"flat_attack": 250000,
+"attack_pct": 1800,
+"defense": 12000,
+"crit_rate": 60,
+"crit_damage": 150,
+"attack_speed": 100.0,
+"flat_luk": 5000,
+"luk_pct": 40,
+"dex": 800,
+"damage": 30,
+"damage_amp": 20,
+"basic_attack_damage": 15,
+"skill_damage": 20,
+"def_pen": 35.0,
+"boss_damage": 40,
+"normal_damage": 25,
+"status_effect_damage": 30,
+"min_damage": 80,
+"max_damage": 130.0,
+"final_damage": 12.00000000000001,
+"skill_lvl_1st": 3,
+"skill_lvl_2nd": 5,
+"skill_lvl_3rd": 10,
+"skill_lvl_4th": 15,
+"skill_lvl_all": 20,
+"skill_cooldown_decrease": 1,
+"basic_attack_target_increase": 2,
+"buff_duration_increase_pct": 15.0,
+"companion_summon_time_increase_pct": 0,
+"boss_normal_weight_choice": null,
+"max_enemies_hit": null,
+"incoming_hit_rate": 1.5,
+"pvp_fight_length": null,
+"level": 140,
+"content_type": "World Boss",
+"chapter_stage": null,
+"companion_choice": "Blaze Wizard",
+"companion_level": 10,
+"artifacts": [],
+"artifact_stars": {
+"charm_of_the_undead": 5,
+"pigs_ribbon": 5,
+"shamaness_marble": 5,
+"contract_of_darkness": 5,
+"rainbow_snail_shell": 5,
+"hexagon_necklace": 3,
+"arwens_glass_shoes": 2,
+"mushmoms_cap": 5,
+"clear_spring_water": 5,
+"athena_gloves": 4,
+"zakums_stone_piece": 5,
+"horntails_scale": 5,
+"pink_beans_giant_rib": 5,
+"chalice": 1,
+"old_music_box": 5,
+"silver_pendant": 5,
+"star_rock": 2,
+"book_of_ancient": 3,
+"lunar_dew": null,
+"fire_flower": 5,
+"soul_contract": 5,
+"lit_lamp": 5,
+"soul_pouch": 3,
+"ancient_text_piece": 5,
+"icy_soul_rock": 5,
+"flaming_lava": 5,
+"sayrams_necklace": 5,
+"bottle_of_emotion": 5,
+"peach_tree": 5,
+"candle": 2,
+"alliance_badge": 5,
+"horn_flute": 4,
+"cursed_doll": 5,
+"reindeer_spear": 3,
+"secret_map": 0,
+"ring_of_cycles": 2
+}
+},
+"stats": [
+"flat_luk",
+"dex",
+"skill_lvl_1st",
+"incoming_hit_rate"
+],
+"toggles": [
+"shamaness_marble",
+"book_of_ancient",
+"ring_of_cycles",
+"hexagon_necklace"
+],
+"cdr": false,
+"tables": false,
+"potential": {
+"hexagon_necklace": 250000000000000.0,
+"book_of_ancient": 100000000000000.0
+},
+"workbook": {
+"stats": {
+"flat_luk": {
+"total": 11393355618.868721,
+"boss": 11393355618.868721,
+"normal": 560188694.3786463,
+"units_per_1pct": 114.94807180753621,
+"current": 5000.0,
+"new": 5001.0,
+"baseline": 11392364530.94947,
+"new_total": 11393355618.868721,
+"dps_gain": 991087.9192498897,
+"pct_gain": 100.00869958046512
+},
+"dex": {
+"total": 11392541510.173355,
+"boss": 11392541510.173355,
+"normal": 560148666.2690712,
+"units_per_1pct": 643.7119725686405,
+"current": 800.0,
+"new": 801.0,
+"baseline": 11392364530.94947,
+"new_total": 11392541510.173355,
+"dps_gain": 176979.22388366394,
+"pct_gain": 100.0015534898256
+},
+"skill_lvl_1st": {
+"total": 11396414050.645477,
+"boss": 11396414050.645477,
+"normal": 560364345.7919105,
+"units_per_1pct": 28.132631487589396,
+"current": 3.0,
+"new": 4.0,
+"baseline": 11392364530.94947,
+"new_total": 11396414050.645477,
+"dps_gain": 4049519.6960071167,
+"pct_gain": 100.0355459104649
+},
+"incoming_hit_rate": {
+"total": 11858342693.093233,
+"boss": 11858342693.093233,
+"normal": 560139964.5517129,
+"units_per_1pct": 0.24448279890495686,
+"current": 1.5,
+"new": 2.5,
+"baseline": 11392364530.94947,
+"new_total": 11858342693.093233,
+"dps_gain": 465978162.14376247,
+"pct_gain": 104.0902673091073
+}
+},
+"toggles": {
+"shamaness_marble": {
+"total": 11753075649.769203,
+"boss": 11753075649.769203,
+"normal": 573326621.9896445,
+"dps_gain": 360711118.81973356,
+"pct_gain": 103.16625330799233,
+"unlocked": true
+},
+"book_of_ancient": {
+"total": 14701324270.715408,
+"boss": 14701324270.715408,
+"normal": 722834950.8559353,
+"dps_gain": 100003308959739.77,
+"pct_gain": 877909.9461974046,
+"unlocked": true
+},
+"ring_of_cycles": {
+"total": 13777126171.694138,
+"boss": 13777126171.694138,
+"normal": 677393963.6914043,
+"dps_gain": 2384761640.744668,
+"pct_gain": 120.9329822116034,
+"unlocked": true
+},
+"hexagon_necklace": {
+"total": 15911829235.020718,
+"boss": 15911829235.020718,
+"normal": 829007147.5365354,
+"dps_gain": 250004519464704.06,
+"pct_gain": 2194591.922949976,
+"unlocked": true
+}
+},
+"cdr": [],
+"companions": [],
+"summon_time": [],
+"summary": {
+"total": 11392364530.94947,
+"boss_only": 11392364530.94947,
+"normal_only": 560139964.5517129,
+"aps": 2.055985745060736
+},
+"companion_main": {
+"best": 1.0,
+"best_s": 45.0,
+"best_E": 0.0,
+"best_Tend": 75.0,
+"comp_blend_dps": 1515043822.4658704,
+"comp_boss_dps": 1515043822.4658704,
+"comp_norm_dps": 560139964.5517129,
+"s_0": 45.0,
+"W_0": 30.0,
+"stunfracB": 0.14666666666666667,
+"stunfracN": 0.14666666666666667,
+"horn_uptime": 0.4326306141154904,
+"pb": 9877320708.4836,
+"pn": 0.0,
+"tb0": 0.0,
+"Tbp": 1.0
+},
+"block_offsets": {
+"total": 44,
+"boss": 46,
+"normal": 47
+},
+"load_s": 164.8,
+"calc_s": 83.1,
+"case": "I/WB140/0",
+"build_s": 1.4,
+"eval_total_s": 249.5,
+"max_rss_gb": 6.44
+}
+},
+"I/WB140/1": {
+"inputs": {
+"flat_attack": 250000,
+"attack_pct": 1800,
+"defense": 12000,
+"crit_rate": 60,
+"crit_damage": 150,
+"attack_speed": 100.0,
+"flat_luk": 5000,
+"luk_pct": 40,
+"dex": 800,
+"damage": 30,
+"damage_amp": 20,
+"basic_attack_damage": 15,
+"skill_damage": 20,
+"def_pen": 35.0,
+"boss_damage": 40,
+"normal_damage": 25,
+"status_effect_damage": 30,
+"min_damage": 80,
+"max_damage": 130.0,
+"final_damage": 12.00000000000001,
+"skill_lvl_1st": 3,
+"skill_lvl_2nd": 5,
+"skill_lvl_3rd": 10,
+"skill_lvl_4th": 15,
+"skill_lvl_all": 20,
+"skill_cooldown_decrease": 1,
+"basic_attack_target_increase": 2,
+"buff_duration_increase_pct": 27.0,
+"companion_summon_time_increase_pct": 0,
+"boss_normal_weight_choice": null,
+"max_enemies_hit": null,
+"incoming_hit_rate": 1.5,
+"pvp_fight_length": null,
+"level": 140,
+"content_type": "World Boss",
+"chapter_stage": null,
+"companion_choice": "Blaze Wizard",
+"companion_level": 10,
+"artifacts": [
+{
+"key": "shamaness_marble",
+"star": 5
+}
+],
+"artifact_stars": {
+"charm_of_the_undead": 5,
+"pigs_ribbon": 5,
+"shamaness_marble": 5,
+"contract_of_darkness": 5,
+"rainbow_snail_shell": 5,
+"hexagon_necklace": 3,
+"arwens_glass_shoes": 2,
+"mushmoms_cap": 5,
+"clear_spring_water": 5,
+"athena_gloves": 4,
+"zakums_stone_piece": 5,
+"horntails_scale": 5,
+"pink_beans_giant_rib": 5,
+"chalice": 1,
+"old_music_box": 5,
+"silver_pendant": 5,
+"star_rock": 2,
+"book_of_ancient": 3,
+"lunar_dew": null,
+"fire_flower": 5,
+"soul_contract": 5,
+"lit_lamp": 5,
+"soul_pouch": 3,
+"ancient_text_piece": 5,
+"icy_soul_rock": 5,
+"flaming_lava": 5,
+"sayrams_necklace": 5,
+"bottle_of_emotion": 5,
+"peach_tree": 5,
+"candle": 2,
+"alliance_badge": 5,
+"horn_flute": 4,
+"cursed_doll": 5,
+"reindeer_spear": 3,
+"secret_map": 0,
+"ring_of_cycles": 2
+}
+},
+"stats": [
+"skill_lvl_2nd",
+"buff_duration_increase_pct",
+"skill_cooldown_decrease",
+"skill_lvl_3rd"
+],
+"toggles": [
+"shamaness_marble",
+"athena_gloves",
+"arwens_glass_shoes"
+],
+"cdr": false,
+"tables": false,
+"potential": {},
+"workbook": {
+"stats": {
+"skill_lvl_2nd": {
+"total": 11763851129.634314,
+"boss": 11763851129.634314,
+"normal": 573699015.9625481,
+"units_per_1pct": 10.907241066661268,
+"current": 5.0,
+"new": 6.0,
+"baseline": 11753075649.769203,
+"new_total": 11763851129.634314,
+"dps_gain": 10775479.865109138,
+"pct_gain": 100.09168221311772
+},
+"buff_duration_increase_pct": {
+"total": 11784135422.931253,
+"boss": 11784135422.931253,
+"normal": 574425217.4700034,
+"units_per_1pct": 3.784018507942303,
+"current": 27.0,
+"new": 28.0,
+"baseline": 11753075649.769203,
+"new_total": 11784135422.931253,
+"dps_gain": 31059773.162051167,
+"pct_gain": 100.26426932053876
+},
+"skill_cooldown_decrease": {
+"total": 11923226131.943647,
+"boss": 11923226131.943647,
+"normal": 573465266.9163246,
+"units_per_1pct": 0.6907459502653435,
+"current": 1.0,
+"new": 2.0,
+"baseline": 11753075649.769203,
+"new_total": 11923226131.943647,
+"dps_gain": 170150482.17444292,
+"pct_gain": 101.44771026108204
+},
+"skill_lvl_3rd": {
+"total": 11788074452.479382,
+"boss": 11788074452.479382,
+"normal": 573746916.9759982,
+"units_per_1pct": 3.3581364902951316,
+"current": 10.0,
+"new": 11.0,
+"baseline": 11753075649.769203,
+"new_total": 11788074452.479382,
+"dps_gain": 34998802.710179664,
+"pct_gain": 100.29778420349797
+}
+},
+"toggles": {
+"shamaness_marble": {
+"total": 11392364530.94947,
+"boss": 11392364530.94947,
+"normal": 560139964.5517129,
+"dps_gain": 360711118.8197324,
+"pct_gain": 103.16625330799233,
+"unlocked": true
+},
+"athena_gloves": {
+"total": 15240572258.180416,
+"boss": 15240572258.180416,
+"normal": 746864574.313024,
+"dps_gain": 3487496608.4112144,
+"pct_gain": 129.67305505669657,
+"unlocked": true
+},
+"arwens_glass_shoes": {
+"total": 12235557205.661278,
+"boss": 12235557205.661278,
+"normal": 732326553.9578947,
+"dps_gain": 482481555.8920737,
+"pct_gain": 104.10515145370947,
+"unlocked": true
+}
+},
+"cdr": [],
+"companions": [],
+"summon_time": [],
+"summary": {
+"total": 11753075649.769203,
+"boss_only": 11753075649.769203,
+"normal_only": 573326621.9896445,
+"aps": 2.057593495603278
+},
+"companion_main": {
+"best": 1.0,
+"best_s": 45.0,
+"best_E": 0.0,
+"best_Tend": 75.0,
+"comp_blend_dps": 1550815064.085456,
+"comp_boss_dps": 1550815064.085456,
+"comp_norm_dps": 573326621.9896445,
+"s_0": 45.0,
+"W_0": 30.0,
+"stunfracB": 0.14666666666666667,
+"stunfracN": 0.14666666666666667,
+"horn_uptime": 0.4326306141154904,
+"pb": 10202260585.683748,
+"pn": 0.0,
+"tb0": 0.0,
+"Tbp": 1.0
+},
+"block_offsets": {
+"total": 44,
+"boss": 46,
+"normal": 47
+},
+"load_s": 174.5,
+"calc_s": 59.8,
+"case": "I/WB140/1",
+"build_s": 1.5,
+"eval_total_s": 236.0,
+"max_rss_gb": 5.84
+}
+},
+"I/WB140/2": {
+"inputs": {
+"flat_attack": 250000,
+"attack_pct": 1800,
+"defense": 12000,
+"crit_rate": 60,
+"crit_damage": 150,
+"attack_speed": 114.4,
+"flat_luk": 5000,
+"luk_pct": 40,
+"dex": 800,
+"damage": 30,
+"damage_amp": 20,
+"basic_attack_damage": 15,
+"skill_damage": 20,
+"def_pen": 35.0,
+"boss_damage": 40,
+"normal_damage": 25,
+"status_effect_damage": 30,
+"min_damage": 80,
+"max_damage": 181.48000000000002,
+"final_damage": 12.00000000000001,
+"skill_lvl_1st": 3,
+"skill_lvl_2nd": 5,
+"skill_lvl_3rd": 10,
+"skill_lvl_4th": 15,
+"skill_lvl_all": 20,
+"skill_cooldown_decrease": 1,
+"basic_attack_target_increase": 2,
+"buff_duration_increase_pct": 27.0,
+"companion_summon_time_increase_pct": 0,
+"boss_normal_weight_choice": null,
+"max_enemies_hit": null,
+"incoming_hit_rate": 1.5,
+"pvp_fight_length": null,
+"level": 140,
+"content_type": "World Boss",
+"chapter_stage": null,
+"companion_choice": "Blaze Wizard",
+"companion_level": 10,
+"artifacts": [
+{
+"key": "shamaness_marble",
+"star": 5
+},
+{
+"key": "athena_gloves",
+"star": 4
+}
+],
+"artifact_stars": {
+"charm_of_the_undead": 5,
+"pigs_ribbon": 5,
+"shamaness_marble": 5,
+"contract_of_darkness": 5,
+"rainbow_snail_shell": 5,
+"hexagon_necklace": 3,
+"arwens_glass_shoes": 2,
+"mushmoms_cap": 5,
+"clear_spring_water": 5,
+"athena_gloves": 4,
+"zakums_stone_piece": 5,
+"horntails_scale": 5,
+"pink_beans_giant_rib": 5,
+"chalice": 1,
+"old_music_box": 5,
+"silver_pendant": 5,
+"star_rock": 2,
+"book_of_ancient": 3,
+"lunar_dew": null,
+"fire_flower": 5,
+"soul_contract": 5,
+"lit_lamp": 5,
+"soul_pouch": 3,
+"ancient_text_piece": 5,
+"icy_soul_rock": 5,
+"flaming_lava": 5,
+"sayrams_necklace": 5,
+"bottle_of_emotion": 5,
+"peach_tree": 5,
+"candle": 2,
+"alliance_badge": 5,
+"horn_flute": 4,
+"cursed_doll": 5,
+"reindeer_spear": 3,
+"secret_map": 0,
+"ring_of_cycles": 2
+}
+},
+"stats": [
+"attack_speed",
+"crit_rate",
+"skill_lvl_4th",
+"final_damage"
+],
+"toggles": [
+"athena_gloves",
+"reindeer_spear",
+"horn_flute",
+"charm_of_the_undead"
+],
+"cdr": false,
+"tables": false,
+"potential": {},
+"workbook": {
+"stats": {
+"attack_speed": {
+"total": 15256779926.576973,
+"boss": 15256779926.576973,
+"normal": 747712215.3310488,
+"units_per_1pct": 9.403309523174315,
+"current": 114.4,
+"new": 114.63733333333334,
+"baseline": 15240572258.180414,
+"new_total": 15256779926.576973,
+"dps_gain": 16207668.396558698,
+"pct_gain": 100.10634553691288
+},
+"crit_rate": {
+"total": 15356395337.57498,
+"boss": 15356395337.57498,
+"normal": 752540486.8327267,
+"units_per_1pct": 1.315849340031914,
+"current": 60.0,
+"new": 61.0,
+"baseline": 15240572258.180414,
+"new_total": 15356395337.57498,
+"dps_gain": 115823079.39456543,
+"pct_gain": 100.75996542277078
+},
+"skill_lvl_4th": {
+"total": 15303014110.24722,
+"boss": 15303014110.24722,
+"normal": 747848176.7195276,
+"units_per_1pct": 2.44076236590078,
+"current": 15.0,
+"new": 16.0,
+"baseline": 15240572258.180414,
+"new_total": 15303014110.24722,
+"dps_gain": 62441852.06680527,
+"pct_gain": 100.40970805432381
+},
+"final_damage": {
+"total": 15392977980.762222,
+"boss": 15392977980.762222,
+"normal": 754333220.056154,
+"units_per_1pct": 0.9999999999999716,
+"current": 12.00000000000001,
+"new": 13.12000000000002,
+"baseline": 15240572258.180414,
+"new_total": 15392977980.762222,
+"dps_gain": 152405722.58180767,
+"pct_gain": 101.00000000000003
+}
+},
+"toggles": {
+"athena_gloves": {
+"total": 11753075649.769203,
+"boss": 11753075649.769203,
+"normal": 573326621.9896445,
+"dps_gain": 3487496608.4112115,
+"pct_gain": 129.67305505669654,
+"unlocked": true
+},
+"reindeer_spear": {
+"total": 20176844661.005,
+"boss": 20176844661.005,
+"normal": 850947156.1519612,
+"dps_gain": 4936272402.824588,
+"pct_gain": 132.38902266399498,
+"unlocked": true
+},
+"horn_flute": {
+"total": 16545857201.674978,
+"boss": 16545857201.674978,
+"normal": 881300197.6893679,
+"dps_gain": 1305284943.4945648,
+"pct_gain": 108.56454023761444,
+"unlocked": true
+},
+"charm_of_the_undead": {
+"total": 16448021228.393444,
+"boss": 16448021228.393444,
+"normal": 746864574.313024,
+"dps_gain": 1207448970.21303,
+"pct_gain": 107.92259601384015,
+"unlocked": true
+}
+},
+"cdr": [],
+"companions": [],
+"summon_time": [],
+"summary": {
+"total": 15240572258.180414,
+"boss_only": 15240572258.180414,
+"normal_only": 746864574.313024,
+"aps": 2.1851856508503986
+},
+"companion_main": {
+"best": 1.0,
+"best_s": 45.0,
+"best_E": 0.0,
+"best_Tend": 75.0,
+"comp_blend_dps": 2015969192.7421477,
+"comp_boss_dps": 2015969192.7421477,
+"comp_norm_dps": 746864574.313024,
+"s_0": 45.0,
+"W_0": 30.0,
+"stunfracB": 0.14666666666666667,
+"stunfracN": 0.14666666666666667,
+"horn_uptime": 0.4326306141154904,
+"pb": 13224603065.438267,
+"pn": 0.0,
+"tb0": 0.0,
+"Tbp": 1.0
+},
+"block_offsets": {
+"total": 44,
+"boss": 46,
+"normal": 47
+},
+"load_s": 127.8,
+"calc_s": 61.8,
+"case": "I/WB140/2",
+"build_s": 1.4,
+"eval_total_s": 191.2,
+"max_rss_gb": 5.46
+}
+},
+"I/WB140/3": {
+"inputs": {
+"flat_attack": 250000,
+"attack_pct": 1800,
+"defense": 12000,
+"crit_rate": 60,
+"crit_damage": 150,
+"attack_speed": 114.4,
+"flat_luk": 5000,
+"luk_pct": 40,
+"dex": 800,
+"damage": 30,
+"damage_amp": 20,
+"basic_attack_damage": 15,
+"skill_damage": 20,
+"def_pen": 40.19999999999999,
+"boss_damage": 40,
+"normal_damage": 25,
+"status_effect_damage": 30,
+"min_damage": 80,
+"max_damage": 181.48000000000002,
+"final_damage": 12.00000000000001,
+"skill_lvl_1st": 3,
+"skill_lvl_2nd": 5,
+"skill_lvl_3rd": 10,
+"skill_lvl_4th": 15,
+"skill_lvl_all": 20,
+"skill_cooldown_decrease": 1,
+"basic_attack_target_increase": 2,
+"buff_duration_increase_pct": 27.0,
+"companion_summon_time_increase_pct": 0,
+"boss_normal_weight_choice": null,
+"max_enemies_hit": null,
+"incoming_hit_rate": 1.5,
+"pvp_fight_length": null,
+"level": 140,
+"content_type": "World Boss",
+"chapter_stage": null,
+"companion_choice": "Blaze Wizard",
+"companion_level": 10,
+"artifacts": [
+{
+"key": "shamaness_marble",
+"star": 5
+},
+{
+"key": "athena_gloves",
+"star": 4
+},
+{
+"key": "reindeer_spear",
+"star": 3
+}
+],
+"artifact_stars": {
+"charm_of_the_undead": 5,
+"pigs_ribbon": 5,
+"shamaness_marble": 5,
+"contract_of_darkness": 5,
+"rainbow_snail_shell": 5,
+"hexagon_necklace": 3,
+"arwens_glass_shoes": 2,
+"mushmoms_cap": 5,
+"clear_spring_water": 5,
+"athena_gloves": 4,
+"zakums_stone_piece": 5,
+"horntails_scale": 5,
+"pink_beans_giant_rib": 5,
+"chalice": 1,
+"old_music_box": 5,
+"silver_pendant": 5,
+"star_rock": 2,
+"book_of_ancient": 3,
+"lunar_dew": null,
+"fire_flower": 5,
+"soul_contract": 5,
+"lit_lamp": 5,
+"soul_pouch": 3,
+"ancient_text_piece": 5,
+"icy_soul_rock": 5,
+"flaming_lava": 5,
+"sayrams_necklace": 5,
+"bottle_of_emotion": 5,
+"peach_tree": 5,
+"candle": 2,
+"alliance_badge": 5,
+"horn_flute": 4,
+"cursed_doll": 5,
+"reindeer_spear": 3,
+"secret_map": 0,
+"ring_of_cycles": 2
+}
+},
+"stats": [
+"def_pen",
+"skill_lvl_all",
+"skill_damage",
+"boss_damage"
+],
+"toggles": [
+"reindeer_spear",
+"bottle_of_emotion",
+"cursed_doll"
+],
+"cdr": false,
+"tables": false,
+"potential": {},
+"workbook": {
+"stats": {
+"def_pen": {
+"total": 20347706023.30715,
+"boss": 20347706023.30715,
+"normal": 858336613.8236947,
+"units_per_1pct": 1.1808898389399551,
+"current": 40.19999999999999,
+"new": 40.79799999999999,
+"baseline": 20176844661.005,
+"new_total": 20347706023.30715,
+"dps_gain": 170861362.302152,
+"pct_gain": 100.84681904020587
+},
+"skill_lvl_all": {
+"total": 20343853408.310555,
+"boss": 20343853408.310555,
+"normal": 853523584.463901,
+"units_per_1pct": 1.2081310102931295,
+"current": 20.0,
+"new": 21.0,
+"baseline": 20176844661.005,
+"new_total": 20343853408.310555,
+"dps_gain": 167008747.30555525,
+"pct_gain": 100.82772480093642
+},
+"skill_damage": {
+"total": 20261175826.464058,
+"boss": 20261175826.464058,
+"normal": 853289680.8441132,
+"units_per_1pct": 2.3925727281453906,
+"current": 20.0,
+"new": 21.0,
+"baseline": 20176844661.005,
+"new_total": 20261175826.464058,
+"dps_gain": 84331165.45905471,
+"pct_gain": 100.41796012645148
+},
+"boss_damage": {
+"total": 20284199962.08736,
+"boss": 20284199962.08736,
+"normal": 850685085.8580277,
+"units_per_1pct": 1.879445584668999,
+"current": 40.0,
+"new": 41.0,
+"baseline": 20176844661.005,
+"new_total": 20284199962.08736,
+"dps_gain": 107355301.0823585,
+"pct_gain": 100.53207180253432
+}
+},
+"toggles": {
+"reindeer_spear": {
+"total": 15240572258.180414,
+"boss": 15240572258.180414,
+"normal": 746864574.313024,
+"dps_gain": 4936272402.824587,
+"pct_gain": 132.38902266399498,
+"unlocked": true
+},
+"bottle_of_emotion": {
+"total": 29596690088.092495,
+"boss": 29596690088.092495,
+"normal": 1218651385.7691414,
+"dps_gain": 9419845427.087492,
+"pct_gain": 146.68641497395706,
+"unlocked": true
+},
+"cursed_doll": {
+"total": 23001602913.545704,
+"boss": 23001602913.545704,
+"normal": 970079758.0132365,
+"dps_gain": 2824758252.540703,
+"pct_gain": 114.00000000000001,
+"unlocked": true
+}
+},
+"cdr": [],
+"companions": [],
+"summon_time": [],
+"summary": {
+"total": 20176844661.005,
+"boss_only": 20176844661.005,
+"normal_only": 850947156.1519612,
+"aps": 2.1851856508503986
+},
+"companion_main": {
+"best": 1.0,
+"best_s": 45.0,
+"best_E": 0.0,
+"best_Tend": 75.0,
+"comp_blend_dps": 2604248885.993977,
+"comp_boss_dps": 2604248885.993977,
+"comp_norm_dps": 850947156.1519612,
+"s_0": 45.0,
+"W_0": 30.0,
+"stunfracB": 0.14666666666666667,
+"stunfracN": 0.14666666666666667,
+"horn_uptime": 0.4326306141154904,
+"pb": 17572595775.011024,
+"pn": 0.0,
+"tb0": 0.0,
+"Tbp": 1.0
+},
+"block_offsets": {
+"total": 44,
+"boss": 46,
+"normal": 47
+},
+"load_s": 111.9,
+"calc_s": 58.8,
+"case": "I/WB140/3",
+"build_s": 1.4,
+"eval_total_s": 172.3,
+"max_rss_gb": 5.97
+}
+},
+"I/WB140/3b": {
+"inputs": {
+"flat_attack": 250000,
+"attack_pct": 1800,
+"defense": 12000,
+"crit_rate": 60,
+"crit_damage": 150,
+"attack_speed": 114.4,
+"flat_luk": 5000,
+"luk_pct": 40,
+"dex": 800,
+"damage": 30,
+"damage_amp": 20,
+"basic_attack_damage": 15,
+"skill_damage": 20,
+"def_pen": 40.19999999999999,
+"boss_damage": 40,
+"normal_damage": 25,
+"status_effect_damage": 30,
+"min_damage": 80,
+"max_damage": 181.48000000000002,
+"final_damage": 32.30933333333334,
+"skill_lvl_1st": 3,
+"skill_lvl_2nd": 5,
+"skill_lvl_3rd": 10,
+"skill_lvl_4th": 15,
+"skill_lvl_all": 20,
+"skill_cooldown_decrease": 1,
+"basic_attack_target_increase": 2,
+"buff_duration_increase_pct": 27.0,
+"companion_summon_time_increase_pct": 0,
+"boss_normal_weight_choice": null,
+"max_enemies_hit": null,
+"incoming_hit_rate": 1.5,
+"pvp_fight_length": null,
+"level": 140,
+"content_type": "World Boss",
+"chapter_stage": null,
+"companion_choice": "Blaze Wizard",
+"companion_level": 10,
+"artifacts": [
+{
+"key": "shamaness_marble",
+"star": 5
+},
+{
+"key": "athena_gloves",
+"star": 4
+},
+{
+"key": "reindeer_spear",
+"star": 3
+},
+{
+"key": "bottle_of_emotion",
+"star": 5
+}
+],
+"artifact_stars": {
+"charm_of_the_undead": 5,
+"pigs_ribbon": 5,
+"shamaness_marble": 5,
+"contract_of_darkness": 5,
+"rainbow_snail_shell": 5,
+"hexagon_necklace": 3,
+"arwens_glass_shoes": 2,
+"mushmoms_cap": 5,
+"clear_spring_water": 5,
+"athena_gloves": 4,
+"zakums_stone_piece": 5,
+"horntails_scale": 5,
+"pink_beans_giant_rib": 5,
+"chalice": 1,
+"old_music_box": 5,
+"silver_pendant": 5,
+"star_rock": 2,
+"book_of_ancient": 3,
+"lunar_dew": null,
+"fire_flower": 5,
+"soul_contract": 5,
+"lit_lamp": 5,
+"soul_pouch": 3,
+"ancient_text_piece": 5,
+"icy_soul_rock": 5,
+"flaming_lava": 5,
+"sayrams_necklace": 5,
+"bottle_of_emotion": 5,
+"peach_tree": 5,
+"candle": 2,
+"alliance_badge": 5,
+"horn_flute": 4,
+"cursed_doll": 5,
+"reindeer_spear": 3,
+"secret_map": 0,
+"ring_of_cycles": 2
+}
+},
+"stats": [
+"status_effect_damage",
+"basic_attack_damage",
+"min_damage",
+"max_damage",
+"luk_pct"
+],
+"toggles": [
+"bottle_of_emotion",
+"star_rock",
+"candle"
+],
+"cdr": false,
+"tables": false,
+"potential": {},
+"workbook": {
+"stats": {
+"status_effect_damage": {
+"total": 29742337113.802593,
+"boss": 29742337113.802593,
+"normal": 1220363411.9815884,
+"units_per_1pct": 2.0320833840440216,
+"current": 30.0,
+"new": 31.0,
+"baseline": 29596690088.092495,
+"new_total": 29742337113.802593,
+"dps_gain": 145647025.71009916,
+"pct_gain": 100.49210579046708
+},
+"basic_attack_damage": {
+"total": 29723599369.078712,
+"boss": 29723599369.078712,
+"normal": 1225018443.291323,
+"units_per_1pct": 2.332113920912246,
+"current": 15.0,
+"new": 16.0,
+"baseline": 29596690088.092495,
+"new_total": 29723599369.078712,
+"dps_gain": 126909280.98621812,
+"pct_gain": 100.42879551939248
+},
+"min_damage": {
+"total": 29709879204.231754,
+"boss": 29709879204.231754,
+"normal": 1223311976.9645264,
+"units_per_1pct": 2.614799999999965,
+"current": 80.0,
+"new": 81.0,
+"baseline": 29596690088.092495,
+"new_total": 29709879204.231754,
+"dps_gain": 113189116.13925636,
+"pct_gain": 100.38243842741319
+},
+"max_damage": {
+"total": 29709879204.231754,
+"boss": 29709879204.231754,
+"normal": 1223311976.9645264,
+"units_per_1pct": 2.614799999999965,
+"current": 181.48,
+"new": 182.48,
+"baseline": 29596690088.092495,
+"new_total": 29709879204.231754,
+"dps_gain": 113189116.13925636,
+"pct_gain": 100.38243842741319
+},
+"luk_pct": {
+"total": 29688663523.27904,
+"boss": 29688663523.27904,
+"normal": 1222438415.8022447,
+"units_per_1pct": 3.2179607109446273,
+"current": 40.0,
+"new": 41.0,
+"baseline": 29596690088.092495,
+"new_total": 29688663523.27904,
+"dps_gain": 91973435.18654683,
+"pct_gain": 100.3107558139535
+}
+},
+"toggles": {
+"bottle_of_emotion": {
+"total": 20176844661.004997,
+"boss": 20176844661.004997,
+"normal": 850947156.1519612,
+"dps_gain": 9419845427.087498,
+"pct_gain": 146.68641497395708,
+"unlocked": true
+},
+"star_rock": {
+"total": 40624669927.33606,
+"boss": 40624669927.33606,
+"normal": 1199785982.6811323,
+"dps_gain": 11027979839.24356,
+"pct_gain": 137.26085520515824,
+"unlocked": true
+},
+"candle": {
+"total": 34873174629.99524,
+"boss": 34873174629.99524,
+"normal": 1350722431.6996393,
+"dps_gain": 5276484541.902741,
+"pct_gain": 117.82795483615787,
+"unlocked": true
+}
+},
+"cdr": [],
+"companions": [],
+"summon_time": [],
+"summary": {
+"total": 29596690088.092495,
+"boss_only": 29596690088.092495,
+"normal_only": 1218651385.7691414,
+"aps": 2.1851856508503986
+},
+"companion_main": {
+"best": 1.0,
+"best_s": 45.0,
+"best_E": 0.0,
+"best_Tend": 75.0,
+"comp_blend_dps": 3552474080.9810953,
+"comp_boss_dps": 3552474080.9810953,
+"comp_norm_dps": 1218651385.7691414,
+"s_0": 45.0,
+"W_0": 30.0,
+"stunfracB": 0.14666666666666667,
+"stunfracN": 0.14666666666666667,
+"horn_uptime": 0.4326306141154905,
+"pb": 26044216007.1114,
+"pn": 0.0,
+"tb0": 0.0,
+"Tbp": 1.0
+},
+"block_offsets": {
+"total": 44,
+"boss": 46,
+"normal": 47
+},
+"load_s": 117.7,
+"calc_s": 50.6,
+"case": "I/WB140/3b",
+"build_s": 1.5,
+"eval_total_s": 169.9,
+"max_rss_gb": 5.75
+}
+},
+"I/WB140/4": {
+"inputs": {
+"flat_attack": 250000,
+"attack_pct": 1800,
+"defense": 12000,
+"crit_rate": 60,
+"crit_damage": 150,
+"attack_speed": 114.4,
+"flat_luk": 5000,
+"luk_pct": 40,
+"dex": 800,
+"damage": 30,
+"damage_amp": 20,
+"basic_attack_damage": 15,
+"skill_damage": 20,
+"def_pen": 40.19999999999999,
+"boss_damage": 40,
+"normal_damage": 25,
+"status_effect_damage": 30,
+"min_damage": 80,
+"max_damage": 181.48000000000002,
+"final_damage": 27.680000000000014,
+"skill_lvl_1st": 3,
+"skill_lvl_2nd": 5,
+"skill_lvl_3rd": 10,
+"skill_lvl_4th": 15,
+"skill_lvl_all": 20,
+"skill_cooldown_decrease": 1,
+"basic_attack_target_increase": 2,
+"buff_duration_increase_pct": 27.0,
+"companion_summon_time_increase_pct": 0,
+"boss_normal_weight_choice": null,
+"max_enemies_hit": null,
+"incoming_hit_rate": 1.5,
+"pvp_fight_length": null,
+"level": 140,
+"content_type": "World Boss",
+"chapter_stage": null,
+"companion_choice": "Blaze Wizard",
+"companion_level": 10,
+"artifacts": [
+{
+"key": "shamaness_marble",
+"star": 5
+},
+{
+"key": "athena_gloves",
+"star": 4
+},
+{
+"key": "reindeer_spear",
+"star": 3
+},
+{
+"key": "cursed_doll",
+"star": 5
+}
+],
+"artifact_stars": {
+"charm_of_the_undead": 5,
+"pigs_ribbon": 5,
+"shamaness_marble": 5,
+"contract_of_darkness": 5,
+"rainbow_snail_shell": 5,
+"hexagon_necklace": 3,
+"arwens_glass_shoes": 2,
+"mushmoms_cap": 5,
+"clear_spring_water": 5,
+"athena_gloves": 4,
+"zakums_stone_piece": 5,
+"horntails_scale": 5,
+"pink_beans_giant_rib": 5,
+"chalice": 1,
+"old_music_box": 5,
+"silver_pendant": 5,
+"star_rock": 2,
+"book_of_ancient": 3,
+"lunar_dew": null,
+"fire_flower": 5,
+"soul_contract": 5,
+"lit_lamp": 5,
+"soul_pouch": 3,
+"ancient_text_piece": 5,
+"icy_soul_rock": 5,
+"flaming_lava": 5,
+"sayrams_necklace": 5,
+"bottle_of_emotion": 5,
+"peach_tree": 5,
+"candle": 2,
+"alliance_badge": 5,
+"horn_flute": 4,
+"cursed_doll": 5,
+"reindeer_spear": 3,
+"secret_map": 0,
+"ring_of_cycles": 2
+}
+},
+"stats": [
+"damage",
+"damage_amp",
+"crit_damage",
+"flat_attack",
+"attack_pct"
+],
+"toggles": [
+"cursed_doll",
+"lit_lamp",
+"peach_tree"
+],
+"cdr": false,
+"tables": false,
+"potential": {},
+"workbook": {
+"stats": {
+"damage": {
+"total": 23178538320.57297,
+"boss": 23178538320.57297,
+"normal": 977541909.9979533,
+"units_per_1pct": 1.3000000000000407,
+"current": 30.0,
+"new": 31.0,
+"baseline": 23001602913.545704,
+"new_total": 23178538320.57297,
+"dps_gain": 176935407.02726892,
+"pct_gain": 100.76923076923075
+},
+"damage_amp": {
+"total": 23193282937.82525,
+"boss": 23193282937.82525,
+"normal": 978163755.9966807,
+"units_per_1pct": 1.2000000000000068,
+"current": 20.0,
+"new": 21.0,
+"baseline": 23001602913.545704,
+"new_total": 23193282937.82525,
+"dps_gain": 191680024.27954686,
+"pct_gain": 100.83333333333333
+},
+"crit_damage": {
+"total": 23076393427.5079,
+"boss": 23076393427.5079,
+"normal": 973234006.1740637,
+"units_per_1pct": 3.0754706305629895,
+"current": 150.0,
+"new": 151.0,
+"baseline": 23001602913.545704,
+"new_total": 23076393427.5079,
+"dps_gain": 74790513.96219827,
+"pct_gain": 100.32515348709961
+},
+"flat_attack": {
+"total": 23001694919.957355,
+"boss": 23001694919.957355,
+"normal": 970083638.3322682,
+"units_per_1pct": 2500.0000000946443,
+"current": 250000.0,
+"new": 250001.0,
+"baseline": 23001602913.545704,
+"new_total": 23001694919.957355,
+"dps_gain": 92006.41165172114,
+"pct_gain": 100.00039999999998
+},
+"attack_pct": {
+"total": 23013709020.3423,
+"boss": 23013709020.3423,
+"normal": 970590326.3069271,
+"units_per_1pct": 19.00000000000972,
+"current": 1800.0,
+"new": 1801.0,
+"baseline": 23001602913.545704,
+"new_total": 23013709020.3423,
+"dps_gain": 12106106.796598444,
+"pct_gain": 100.05263157894734
+}
+},
+"toggles": {
+"cursed_doll": {
+"total": 20176844661.005,
+"boss": 20176844661.005,
+"normal": 850947156.1519612,
+"dps_gain": 2824758252.5407014,
+"pct_gain": 114.00000000000001,
+"unlocked": true
+},
+"lit_lamp": {
+"total": 32202244078.963974,
+"boss": 32202244078.963974,
+"normal": 1358111661.2185302,
+"dps_gain": 9200641165.41827,
+"pct_gain": 139.99999999999994,
+"unlocked": true
+},
+"peach_tree": {
+"total": 26260679235.760082,
+"boss": 26260679235.760082,
+"normal": 1116011190.9168394,
+"dps_gain": 3259076322.2143764,
+"pct_gain": 114.16890959497043,
+"unlocked": true
+}
+},
+"cdr": [],
+"companions": [],
+"summon_time": [],
+"summary": {
+"total": 23001602913.545704,
+"boss_only": 23001602913.545704,
+"normal_only": 970079758.0132365,
+"aps": 2.1851856508503986
+},
+"companion_main": {
+"best": 1.0,
+"best_s": 45.0,
+"best_E": 0.0,
+"best_Tend": 75.0,
+"comp_blend_dps": 2968843730.033135,
+"comp_boss_dps": 2968843730.033135,
+"comp_norm_dps": 970079758.0132365,
+"s_0": 45.0,
+"W_0": 30.0,
+"stunfracB": 0.14666666666666667,
+"stunfracN": 0.14666666666666667,
+"horn_uptime": 0.4326306141154904,
+"pb": 20032759183.51257,
+"pn": 0.0,
+"tb0": 0.0,
+"Tbp": 1.0
+},
+"block_offsets": {
+"total": 44,
+"boss": 46,
+"normal": 47
+},
+"load_s": 80.4,
+"calc_s": 43.6,
+"case": "I/WB140/4",
+"build_s": 1.3,
+"eval_total_s": 125.3,
+"max_rss_gb": 4.15
+}
+},
+"S/ED140": {
+"inputs": {
+"flat_attack": 250000,
+"attack_pct": 1800,
+"defense": 12000,
+"crit_rate": 60,
+"crit_damage": 150,
+"attack_speed": 20,
+"flat_luk": 5000,
+"luk_pct": 40,
+"dex": 800,
+"damage": 30,
+"damage_amp": 20,
+"basic_attack_damage": 15,
+"skill_damage": 20,
+"def_pen": 35,
+"boss_damage": 40,
+"normal_damage": 25,
+"status_effect_damage": 30,
+"min_damage": 80,
+"max_damage": 130,
+"final_damage": 12,
+"skill_lvl_1st": 3,
+"skill_lvl_2nd": 5,
+"skill_lvl_3rd": 10,
+"skill_lvl_4th": 15,
+"skill_lvl_all": 20,
+"skill_cooldown_decrease": 1,
+"basic_attack_target_increase": 2,
+"buff_duration_increase_pct": 15,
+"companion_summon_time_increase_pct": 0,
+"boss_normal_weight_choice": null,
+"max_enemies_hit": null,
+"incoming_hit_rate": 1.5,
+"pvp_fight_length": null,
+"level": 140,
+"content_type": "Enhancement Dungeon",
+"chapter_stage": "80",
+"companion_choice": "Blaze Wizard",
+"companion_level": 10,
+"artifacts": [
+{
+"key": "ring_of_cycles",
+"star": 2
+},
+{
+"key": "clear_spring_water",
+"star": 5
+},
+{
+"key": "star_rock",
+"star": 2
+},
+{
+"key": "book_of_ancient",
+"star": 3
+}
+],
+"artifact_stars": {
+"charm_of_the_undead": 5,
+"pigs_ribbon": 5,
+"shamaness_marble": 5,
+"contract_of_darkness": 5,
+"rainbow_snail_shell": 5,
+"hexagon_necklace": 3,
+"arwens_glass_shoes": 2,
+"mushmoms_cap": 5,
+"clear_spring_water": 5,
+"athena_gloves": 4,
+"zakums_stone_piece": 5,
+"horntails_scale": 5,
+"pink_beans_giant_rib": 5,
+"chalice": 1,
+"old_music_box": 5,
+"silver_pendant": 5,
+"star_rock": 2,
+"book_of_ancient": 3,
+"lunar_dew": null,
+"fire_flower": 5,
+"soul_contract": 5,
+"lit_lamp": 5,
+"soul_pouch": 3,
+"ancient_text_piece": 5,
+"icy_soul_rock": 5,
+"flaming_lava": 5,
+"sayrams_necklace": 5,
+"bottle_of_emotion": 5,
+"peach_tree": 5,
+"candle": 2,
+"alliance_badge": 5,
+"horn_flute": 4,
+"cursed_doll": 5,
+"reindeer_spear": 3,
+"secret_map": 0,
+"ring_of_cycles": 2
+}
+},
+"stats": [
+"skill_lvl_1st",
+"skill_lvl_3rd",
+"skill_damage",
+"boss_damage",
+"crit_rate",
+"companion_summon_time_increase_pct",
+"status_effect_damage"
+],
+"toggles": [
+"clear_spring_water"
+],
+"cdr": false,
+"tables": false,
+"potential": {},
+"workbook": {
+"stats": {
+"skill_lvl_1st": {
+"total": 65813385454.127625,
+"boss": 65813385454.127625,
+"normal": 5213228340.132057,
+"units_per_1pct": 42.89385939452087,
+"current": 3.0,
+"new": 4.0,
+"baseline": 65798045718.63928,
+"new_total": 65813385454.127625,
+"dps_gain": 15339735.488346871,
+"pct_gain": 100.0233133603298
+},
+"skill_lvl_3rd": {
+"total": 65996500969.63309,
+"boss": 65996500969.63309,
+"normal": 5215676661.233625,
+"units_per_1pct": 3.31551044324293,
+"current": 10.0,
+"new": 11.0,
+"baseline": 65798045718.63928,
+"new_total": 65996500969.63309,
+"dps_gain": 198455250.9938116,
+"pct_gain": 100.30161268290921
+},
+"skill_damage": {
+"total": 66183463222.5245,
+"boss": 66183463222.5245,
+"normal": 5231898438.407365,
+"units_per_1pct": 1.70718882913616,
+"current": 20.0,
+"new": 21.0,
+"baseline": 65798045718.63928,
+"new_total": 66183463222.5245,
+"dps_gain": 385417503.88522214,
+"pct_gain": 100.58575828457477
+},
+"boss_damage": {
+"total": 66138120314.94395,
+"boss": 66138120314.94395,
+"normal": 5210178661.571212,
+"units_per_1pct": 1.9348121392664424,
+"current": 40.0,
+"new": 41.0,
+"baseline": 65798045718.63928,
+"new_total": 66138120314.94395,
+"dps_gain": 340074596.3046633,
+"pct_gain": 100.51684604396742
+},
+"crit_rate": {
+"total": 65911817555.616776,
+"boss": 65911817555.616776,
+"normal": 5220676208.311076,
+"units_per_1pct": 5.78333333333237,
+"current": 60.0,
+"new": 61.0,
+"baseline": 65798045718.63928,
+"new_total": 65911817555.616776,
+"dps_gain": 113771836.97749087,
+"pct_gain": 100.17291066282424
+},
+"companion_summon_time_increase_pct": {
+"total": 65798045718.63928,
+"boss": 65798045718.63928,
+"normal": 5211664684.361172,
+"units_per_1pct": "n/a",
+"current": 0.0,
+"new": 1.0,
+"baseline": 65798045718.63928,
+"new_total": 65798045718.63928,
+"dps_gain": 0.0,
+"pct_gain": 100.0
+},
+"status_effect_damage": {
+"total": 66093236197.659225,
+"boss": 66093236197.659225,
+"normal": 5225126548.859522,
+"units_per_1pct": 2.2290029792659385,
+"current": 30.0,
+"new": 31.0,
+"baseline": 65798045718.63928,
+"new_total": 66093236197.659225,
+"dps_gain": 295190479.0199461,
+"pct_gain": 100.44863107375896
+}
+},
+"toggles": {
+"clear_spring_water": {
+"total": 54831704765.532745,
+"boss": 54831704765.532745,
+"normal": 4343053903.63431,
+"dps_gain": 10966340953.106537,
+"pct_gain": 119.99999999999997,
+"unlocked": true
+}
+},
+"cdr": [],
+"companions": [],
+"summon_time": [],
+"summary": {
+"total": 65798045718.63928,
+"boss_only": 65798045718.63928,
+"normal_only": 5211664684.361172,
+"aps": 1.3717850391735704
+},
+"companion_main": {
+"best": 1.0,
+"best_s": 7.0,
+"best_E": 0.0,
+"best_Tend": 25.0,
+"comp_blend_dps": 13143396058.431944,
+"comp_boss_dps": 13143396058.431944,
+"comp_norm_dps": 5211664684.361172,
+"s_0": 7.0,
+"W_0": 18.0,
+"stunfracB": 0.28,
+"stunfracN": 0.28,
+"horn_uptime": 0.7714285714285714,
+"pb": 52654649660.20734,
+"pn": 0.0,
+"tb0": 0.0,
+"Tbp": 1.0
+},
+"block_offsets": {
+"total": 44,
+"boss": 46,
+"normal": 47
+},
+"load_s": 144.5,
+"calc_s": 71.5,
+"case": "S/ED140",
+"build_s": 1.5,
+"eval_total_s": 217.9,
+"max_rss_gb": 6.78
+}
+},
+"S/BT140": {
+"inputs": {
+"flat_attack": 250000,
+"attack_pct": 1800,
+"defense": 12000,
+"crit_rate": 60,
+"crit_damage": 150,
+"attack_speed": 20,
+"flat_luk": 5000,
+"luk_pct": 40,
+"dex": 800,
+"damage": 30,
+"damage_amp": 20,
+"basic_attack_damage": 15,
+"skill_damage": 20,
+"def_pen": 35,
+"boss_damage": 40,
+"normal_damage": 25,
+"status_effect_damage": 30,
+"min_damage": 80,
+"max_damage": 130,
+"final_damage": 12,
+"skill_lvl_1st": 3,
+"skill_lvl_2nd": 5,
+"skill_lvl_3rd": 10,
+"skill_lvl_4th": 15,
+"skill_lvl_all": 20,
+"skill_cooldown_decrease": 1,
+"basic_attack_target_increase": 2,
+"buff_duration_increase_pct": 15,
+"companion_summon_time_increase_pct": 12.9,
+"boss_normal_weight_choice": "A Little More Normal",
+"max_enemies_hit": 999,
+"incoming_hit_rate": 1.5,
+"pvp_fight_length": null,
+"level": 140,
+"content_type": "Breakthrough",
+"chapter_stage": "38-9",
+"companion_choice": "Blaze Wizard",
+"companion_level": 10,
+"artifacts": [
+{
+"key": "hexagon_necklace",
+"star": 3
+},
+{
+"key": "bottle_of_emotion",
+"star": 5
+}
+],
+"artifact_stars": {
+"charm_of_the_undead": 5,
+"pigs_ribbon": 5,
+"shamaness_marble": 5,
+"contract_of_darkness": 5,
+"rainbow_snail_shell": 5,
+"hexagon_necklace": 3,
+"arwens_glass_shoes": 2,
+"mushmoms_cap": 5,
+"clear_spring_water": 5,
+"athena_gloves": 4,
+"zakums_stone_piece": 5,
+"horntails_scale": 5,
+"pink_beans_giant_rib": 5,
+"chalice": 1,
+"old_music_box": 5,
+"silver_pendant": 5,
+"star_rock": 2,
+"book_of_ancient": 3,
+"lunar_dew": null,
+"fire_flower": 5,
+"soul_contract": 5,
+"lit_lamp": 5,
+"soul_pouch": 3,
+"ancient_text_piece": 5,
+"icy_soul_rock": 5,
+"flaming_lava": 5,
+"sayrams_necklace": 5,
+"bottle_of_emotion": 5,
+"peach_tree": 5,
+"candle": 2,
+"alliance_badge": 5,
+"horn_flute": 4,
+"cursed_doll": 5,
+"reindeer_spear": 3,
+"secret_map": 0,
+"ring_of_cycles": 2
+}
+},
+"stats": [
+"skill_cooldown_decrease",
+"companion_summon_time_increase_pct",
+"boss_damage",
+"def_pen"
+],
+"toggles": [
+"horn_flute",
+"hexagon_necklace",
+"arwens_glass_shoes"
+],
+"cdr": false,
+"tables": false,
+"potential": {},
+"workbook": {
+"stats": {
+"skill_cooldown_decrease": {
+"total": 182205025836.39368,
+"boss": 83427967566.25858,
+"normal": 248056398016.48376,
+"units_per_1pct": 0.33391594637928124,
+"current": 1.0,
+"new": 2.0,
+"baseline": 179220532307.8374,
+"new_total": 182205025836.39368,
+"dps_gain": 5367234906.004413,
+"pct_gain": 102.99476563142073
+},
+"companion_summon_time_increase_pct": {
+"total": 188057303379.50436,
+"boss": 89538051762.47406,
+"normal": 253736804457.52457,
+"units_per_1pct": 0.13336082314437475,
+"current": 12.9,
+"new": 13.9,
+"baseline": 179220532307.8374,
+"new_total": 188057303379.50436,
+"dps_gain": 13438769203.89246,
+"pct_gain": 107.4984540168698
+},
+"boss_damage": {
+"total": 179351069558.98083,
+"boss": 78736014940.39554,
+"normal": 246427772638.03775,
+"units_per_1pct": 4.95765207022992,
+"current": 40.0,
+"new": 41.0,
+"baseline": 179220532307.8374,
+"new_total": 179351069558.98083,
+"dps_gain": 361502844.0257691,
+"pct_gain": 100.20170838651725
+},
+"def_pen": {
+"total": 180031117714.14792,
+"boss": 78663387664.41391,
+"normal": 247609604413.9706,
+"units_per_1pct": 2.2110012210011787,
+"current": 35.0,
+"new": 35.650000000000006,
+"baseline": 179220532307.8374,
+"new_total": 180031117714.14792,
+"dps_gain": 810585406.3105583,
+"pct_gain": 100.45228378460469
+}
+},
+"toggles": {
+"horn_flute": {
+"total": 204047400778.09177,
+"boss": 88781786562.98814,
+"normal": 280891143588.1609,
+"dps_gain": 24592414420.967125,
+"pct_gain": 113.72187332795446,
+"unlocked": true
+},
+"hexagon_necklace": {
+"total": 173086817267.31067,
+"boss": 62974920214.29471,
+"normal": 246494748635.98798,
+"dps_gain": 14037783106.888195,
+"pct_gain": 108.49833482902676,
+"unlocked": true
+},
+"arwens_glass_shoes": {
+"total": 188268507906.01852,
+"boss": 98014102534.73395,
+"normal": 248438111486.8749,
+"dps_gain": 18886642150.68707,
+"pct_gain": 110.53821339970496,
+"unlocked": true
+}
+},
+"cdr": [],
+"companions": [],
+"summon_time": [],
+"summary": {
+"total": 179220532307.8374,
+"boss_only": 78309207815.61151,
+"normal_only": 246494748635.988,
+"aps": 1.337746124178455
+},
+"companion_main": {
+"best": 3.0,
+"best_s": 7.0,
+"best_E": 6.5,
+"best_Tend": 46.5,
+"comp_blend_dps": 72439950116.10359,
+"comp_boss_dps": 33452870256.252472,
+"comp_norm_dps": 98431336689.33768,
+"s_0": 12.630000000000003,
+"W_0": 33.87,
+"stunfracB": 0.325,
+"stunfracN": 0.325,
+"horn_uptime": 0.7180803571428571,
+"pb": 44856337559.35904,
+"pn": 148063411946.65033,
+"tb0": 20.0,
+"Tbp": 20.0
+},
+"block_offsets": {
+"total": 44,
+"boss": 46,
+"normal": 47
+},
+"load_s": 139.8,
+"calc_s": 62.2,
+"case": "S/BT140",
+"build_s": 1.6,
+"eval_total_s": 203.6,
+"max_rss_gb": 6.47
+}
+},
+"C/BT140": {
+"inputs": {
+"flat_attack": 250000,
+"attack_pct": 1800,
+"defense": 12000,
+"crit_rate": 60,
+"crit_damage": 150,
+"attack_speed": 20,
+"flat_luk": 5000,
+"luk_pct": 40,
+"dex": 800,
+"damage": 30,
+"damage_amp": 20,
+"basic_attack_damage": 15,
+"skill_damage": 20,
+"def_pen": 35,
+"boss_damage": 40,
+"normal_damage": 25,
+"status_effect_damage": 30,
+"min_damage": 80,
+"max_damage": 130,
+"final_damage": 12,
+"skill_lvl_1st": 3,
+"skill_lvl_2nd": 5,
+"skill_lvl_3rd": 10,
+"skill_lvl_4th": 15,
+"skill_lvl_all": 20,
+"skill_cooldown_decrease": 1,
+"basic_attack_target_increase": 2,
+"buff_duration_increase_pct": 15,
+"companion_summon_time_increase_pct": 12.9,
+"boss_normal_weight_choice": "A Little More Normal",
+"max_enemies_hit": 999,
+"incoming_hit_rate": 1.5,
+"pvp_fight_length": null,
+"level": 140,
+"content_type": "Breakthrough",
+"chapter_stage": "38-9",
+"companion_choice": "Blaze Wizard",
+"companion_level": 5,
+"artifacts": [
+{
+"key": "hexagon_necklace",
+"star": 3
+},
+{
+"key": "bottle_of_emotion",
+"star": 5
+}
+],
+"artifact_stars": {
+"charm_of_the_undead": 5,
+"pigs_ribbon": 5,
+"shamaness_marble": 5,
+"contract_of_darkness": 5,
+"rainbow_snail_shell": 5,
+"hexagon_necklace": 3,
+"arwens_glass_shoes": 2,
+"mushmoms_cap": 5,
+"clear_spring_water": 5,
+"athena_gloves": 4,
+"zakums_stone_piece": 5,
+"horntails_scale": 5,
+"pink_beans_giant_rib": 5,
+"chalice": 1,
+"old_music_box": 5,
+"silver_pendant": 5,
+"star_rock": 2,
+"book_of_ancient": 3,
+"lunar_dew": null,
+"fire_flower": 5,
+"soul_contract": 5,
+"lit_lamp": 5,
+"soul_pouch": 3,
+"ancient_text_piece": 5,
+"icy_soul_rock": 5,
+"flaming_lava": 5,
+"sayrams_necklace": 5,
+"bottle_of_emotion": 5,
+"peach_tree": 5,
+"candle": 2,
+"alliance_badge": 5,
+"horn_flute": 4,
+"cursed_doll": 5,
+"reindeer_spear": 3,
+"secret_map": 0,
+"ring_of_cycles": 2
+},
+"companion_levels": {
+"Wind Archer": 10,
+"Dawn Warrior": 7,
+"Blaze Wizard": 5,
+"IL Mage": 1,
+"FP Mage": 0,
+"Bishop": 10,
+"Night Walker": 7,
+"Hero": 5,
+"Paladin": 1,
+"Dark Knight": 0,
+"Bow Master": 10,
+"Marksman": 7,
+"Night Lord": 5,
+"Shadower": 1,
+"Buccaneer": 0,
+"Corsair": 10
+}
+},
+"stats": [],
+"toggles": [
+"alliance_badge"
+],
+"cdr": false,
+"tables": true,
+"potential": {},
+"workbook": {
+"stats": {},
+"toggles": {
+"alliance_badge": {
+"total": 185851373439.6622,
+"boss": 85089485081.20047,
+"normal": 253025965678.6367,
+"dps_gain": 21895699509.21631,
+"pct_gain": 113.35607458973217,
+"unlocked": true
+}
+},
+"cdr": [],
+"companions": [
+{
+"name": "Wind Archer",
+"level": 10.0,
+"gain": 35428622601.25949,
+"pct": 133.17890001540198,
+"unlocked": true,
+"rank": 4.0
+},
+{
+"name": "Dawn Warrior",
+"level": 7.0,
+"gain": 40261944507.21513,
+"pct": 137.70530529129474,
+"unlocked": true,
+"rank": 3.0
+},
+{
+"name": "Blaze Wizard",
+"level": 5.0,
+"gain": 61283585782.26002,
+"pct": 157.39206934854508,
+"unlocked": true,
+"rank": 2.0
+},
+{
+"name": "IL Mage",
+"level": 1.0,
+"gain": 12807981575.771172,
+"pct": 111.99467291981358,
+"unlocked": true,
+"rank": 13.0
+},
+{
+"name": "FP Mage",
+"level": 0.0,
+"gain": 3395294360.2926407,
+"pct": 103.17969268438347,
+"unlocked": false,
+"rank": ""
+},
+{
+"name": "Bishop",
+"level": 10.0,
+"gain": 68090112787.37954,
+"pct": 163.76638091850617,
+"unlocked": true,
+"rank": 1.0
+},
+{
+"name": "Night Walker",
+"level": 7.0,
+"gain": 29634038237.14942,
+"pct": 127.75227258448444,
+"unlocked": true,
+"rank": 7.0
+},
+{
+"name": "Hero",
+"level": 5.0,
+"gain": 29319544598.18592,
+"pct": 127.4577493364291,
+"unlocked": true,
+"rank": 8.0
+},
+{
+"name": "Paladin",
+"level": 1.0,
+"gain": 19546773649.307045,
+"pct": 118.30555073600284,
+"unlocked": true,
+"rank": 11.0
+},
+{
+"name": "Dark Knight",
+"level": 0.0,
+"gain": 3395294360.2926407,
+"pct": 103.17969268438347,
+"unlocked": false,
+"rank": ""
+},
+{
+"name": "Bow Master",
+"level": 10.0,
+"gain": 33287739790.09163,
+"pct": 131.17396356794592,
+"unlocked": true,
+"rank": 5.0
+},
+{
+"name": "Marksman",
+"level": 7.0,
+"gain": 26808559577.515903,
+"pct": 125.10621222253576,
+"unlocked": true,
+"rank": 9.0
+},
+{
+"name": "Night Lord",
+"level": 5.0,
+"gain": 21687231713.819923,
+"pct": 120.31008940827708,
+"unlocked": true,
+"rank": 10.0
+},
+{
+"name": "Shadower",
+"level": 1.0,
+"gain": 15417322826.460354,
+"pct": 114.43832062909829,
+"unlocked": true,
+"rank": 12.0
+},
+{
+"name": "Buccaneer",
+"level": 0.0,
+"gain": 3395294360.2926407,
+"pct": 103.17969268438347,
+"unlocked": false,
+"rank": ""
+},
+{
+"name": "Corsair",
+"level": 10.0,
+"gain": 29893487364.942966,
+"pct": 127.99524665567623,
+"unlocked": true,
+"rank": 6.0
+}
+],
+"summon_time": [
+{
+"total_pct": 0.0,
+"avg_boss_dps_change": 0.0,
+"boss_phase_time_factor": 1.0,
+"boss_damage_change": 0.0,
+"normal_dps_change": 0.0,
+"weighted_dps_change": 0.0
+},
+{
+"total_pct": 5.0,
+"avg_boss_dps_change": -0.03672510306200849,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.12684987943689574,
+"normal_dps_change": -0.001046306109701578,
+"weighted_dps_change": 0.05011216810893737
+},
+{
+"total_pct": 8.0,
+"avg_boss_dps_change": -0.028207854010643962,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.13681345379886922,
+"normal_dps_change": -0.0035562847591821267,
+"weighted_dps_change": 0.0525916106640385
+},
+{
+"total_pct": 10.0,
+"avg_boss_dps_change": -0.02252935766667441,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.1434562231069092,
+"normal_dps_change": -0.005161910448709617,
+"weighted_dps_change": 0.05428534297353793
+},
+{
+"total_pct": 12.0,
+"avg_boss_dps_change": -0.01685061294020518,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.15009928297560893,
+"normal_dps_change": -0.006716398185429351,
+"weighted_dps_change": 0.05600987427898607
+},
+{
+"total_pct": 13.0,
+"avg_boss_dps_change": -0.014011151743978378,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.1534209168277989,
+"normal_dps_change": -0.0074752227088585865,
+"weighted_dps_change": 0.056883233105804454
+},
+{
+"total_pct": 15.0,
+"avg_boss_dps_change": -0.005946333539521342,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.16285523246320155,
+"normal_dps_change": -0.009165127694133468,
+"weighted_dps_change": 0.05964301636880043
+},
+{
+"total_pct": 16.0,
+"avg_boss_dps_change": -0.0031069776300198804,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.16617674314978803,
+"normal_dps_change": -0.009886966683441578,
+"weighted_dps_change": 0.060538517249850266
+},
+{
+"total_pct": 18.0,
+"avg_boss_dps_change": 0.0025719079106112375,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.1728199677444886,
+"normal_dps_change": -0.011297756048549656,
+"weighted_dps_change": 0.06234933346866578
+},
+{
+"total_pct": 20.0,
+"avg_boss_dps_change": 0.007333915260689938,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.17839061785212773,
+"normal_dps_change": -0.012867039480570885,
+"weighted_dps_change": 0.06363602345250863
+},
+{
+"total_pct": 21.0,
+"avg_boss_dps_change": 0.01079036869263117,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.18243401620647415,
+"normal_dps_change": -0.013534101915577357,
+"weighted_dps_change": 0.06485314533324327
+},
+{
+"total_pct": 24.0,
+"avg_boss_dps_change": 0.0205429922320417,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.19384274562993564,
+"normal_dps_change": -0.015477197549668475,
+"weighted_dps_change": 0.0682507797221732
+},
+{
+"total_pct": 28.0,
+"avg_boss_dps_change": 0.03313583134615006,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.20857399138606247,
+"normal_dps_change": -0.01794009085572701,
+"weighted_dps_change": 0.07266554204098874
+},
+{
+"total_pct": 32.0,
+"avg_boss_dps_change": 0.0463464953591437,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.22402797570314936,
+"normal_dps_change": -0.020267831410783477,
+"weighted_dps_change": 0.07745049143478955
+},
+{
+"total_pct": 36.0,
+"avg_boss_dps_change": 0.051980882234179626,
+"boss_phase_time_factor": 1.169811320754717,
+"boss_damage_change": 0.2306191452550781,
+"normal_dps_change": -0.02125573532240299,
+"weighted_dps_change": 0.07949421690858949
+},
+{
+"total_pct": 40.0,
+"avg_boss_dps_change": 0.04472376733700778,
+"boss_phase_time_factor": 1.2452830188679245,
+"boss_damage_change": 0.3009767668725001,
+"normal_dps_change": -0.026965019876862728,
+"weighted_dps_change": 0.1042116948228824
+},
+{
+"total_pct": 44.0,
+"avg_boss_dps_change": 0.044727114181278615,
+"boss_phase_time_factor": 1.2452830188679245,
+"boss_damage_change": 0.30098093464083764,
+"normal_dps_change": -0.024779795412174677,
+"weighted_dps_change": 0.1055244966090303
+},
+{
+"total_pct": 52.0,
+"avg_boss_dps_change": 0.044727114181278615,
+"boss_phase_time_factor": 1.2452830188679245,
+"boss_damage_change": 0.30098093464083764,
+"normal_dps_change": -0.024779795412174677,
+"weighted_dps_change": 0.1055244966090303
+},
+{
+"total_pct": 60.0,
+"avg_boss_dps_change": 0.044727114181278615,
+"boss_phase_time_factor": 1.2452830188679245,
+"boss_damage_change": 0.30098093464083764,
+"normal_dps_change": -0.024779795412174677,
+"weighted_dps_change": 0.1055244966090303
+}
+],
+"summary": {
+"total": 163938134383.0558,
+"boss_only": 75083507579.69969,
+"normal_only": 223174552251.9599,
+"aps": 1.337746124178455
+},
+"companion_main": {
+"best": 3.0,
+"best_s": 7.0,
+"best_E": 6.5,
+"best_Tend": 46.5,
+"comp_blend_dps": 57157552191.322,
+"comp_boss_dps": 30227170020.34065,
+"comp_norm_dps": 75111140305.30957,
+"s_0": 12.630000000000003,
+"W_0": 33.87,
+"stunfracB": 0.325,
+"stunfracN": 0.325,
+"horn_uptime": 0.7180803571428571,
+"pb": 44856337559.35904,
+"pn": 148063411946.65033,
+"tb0": 20.0,
+"Tbp": 20.0
+},
+"block_offsets": {
+"total": 44,
+"boss": 46,
+"normal": 47
+},
+"load_s": 301.8,
+"calc_s": 184.8,
+"case": "C/BT140",
+"build_s": 1.5,
+"eval_total_s": 488.3,
+"max_rss_gb": 11.75
+}
+},
+"S/CH118": {
+"inputs": {
+"flat_attack": 250000,
+"attack_pct": 1800,
+"defense": 12000,
+"crit_rate": 60,
+"crit_damage": 150,
+"attack_speed": 20,
+"flat_luk": 5000,
+"luk_pct": 40,
+"dex": 800,
+"damage": 30,
+"damage_amp": 20,
+"basic_attack_damage": 15,
+"skill_damage": 20,
+"def_pen": 35,
+"boss_damage": 40,
+"normal_damage": 25,
+"status_effect_damage": 30,
+"min_damage": 80,
+"max_damage": 130,
+"final_damage": 12,
+"skill_lvl_1st": 3,
+"skill_lvl_2nd": 5,
+"skill_lvl_3rd": 10,
+"skill_lvl_4th": 15,
+"skill_lvl_all": 20,
+"skill_cooldown_decrease": 1,
+"basic_attack_target_increase": 2,
+"buff_duration_increase_pct": 15,
+"companion_summon_time_increase_pct": 0,
+"boss_normal_weight_choice": null,
+"max_enemies_hit": 999,
+"incoming_hit_rate": 1.5,
+"pvp_fight_length": null,
+"level": 118,
+"content_type": "Chapter Hunt",
+"chapter_stage": "38-9",
+"companion_choice": "Blaze Wizard",
+"companion_level": 10,
+"artifacts": [
+{
+"key": "bottle_of_emotion",
+"star": 5
+},
+{
+"key": "soul_contract",
+"star": 5
+},
+{
+"key": "book_of_ancient",
+"star": 3
+}
+],
+"artifact_stars": {
+"charm_of_the_undead": 5,
+"pigs_ribbon": 5,
+"shamaness_marble": 5,
+"contract_of_darkness": 5,
+"rainbow_snail_shell": 5,
+"hexagon_necklace": 3,
+"arwens_glass_shoes": 2,
+"mushmoms_cap": 5,
+"clear_spring_water": 5,
+"athena_gloves": 4,
+"zakums_stone_piece": 5,
+"horntails_scale": 5,
+"pink_beans_giant_rib": 5,
+"chalice": 1,
+"old_music_box": 5,
+"silver_pendant": 5,
+"star_rock": 2,
+"book_of_ancient": 3,
+"lunar_dew": null,
+"fire_flower": 5,
+"soul_contract": 5,
+"lit_lamp": 5,
+"soul_pouch": 3,
+"ancient_text_piece": 5,
+"icy_soul_rock": 5,
+"flaming_lava": 5,
+"sayrams_necklace": 5,
+"bottle_of_emotion": 5,
+"peach_tree": 5,
+"candle": 2,
+"alliance_badge": 5,
+"horn_flute": 4,
+"cursed_doll": 5,
+"reindeer_spear": 3,
+"secret_map": 0,
+"ring_of_cycles": 2
+}
+},
+"stats": [
+"skill_cooldown_decrease",
+"skill_lvl_4th",
+"skill_lvl_all",
+"attack_speed",
+"normal_damage",
+"basic_attack_target_increase"
+],
+"toggles": [
+"soul_contract",
+"contract_of_darkness"
+],
+"cdr": [
+0.5,
+2.0,
+5.0
+],
+"tables": false,
+"potential": {},
+"workbook": {
+"stats": {
+"skill_cooldown_decrease": {
+"total": 141787913670.83017,
+"boss": 32466216432.112206,
+"normal": 141787913670.83017,
+"units_per_1pct": 0.7024079358122237,
+"current": 1.0,
+"new": 2.0,
+"baseline": 139797650697.2829,
+"new_total": 141787913670.83017,
+"dps_gain": 1990262973.5472581,
+"pct_gain": 101.42367412014453
+},
+"skill_lvl_4th": {
+"total": 140919314692.44333,
+"boss": 31551767066.309498,
+"normal": 140919314692.44333,
+"units_per_1pct": 1.2463416076512863,
+"current": 15.0,
+"new": 16.0,
+"baseline": 139797650697.2829,
+"new_total": 140919314692.44333,
+"dps_gain": 1121663995.1604424,
+"pct_gain": 100.80234824374072
+},
+"skill_lvl_all": {
+"total": 141591253523.06674,
+"boss": 31694718513.630527,
+"normal": 141591253523.06674,
+"units_per_1pct": 0.7794236755631196,
+"current": 20.0,
+"new": 21.0,
+"baseline": 139797650697.2829,
+"new_total": 141591253523.06674,
+"dps_gain": 1793602825.7838328,
+"pct_gain": 101.2829992613164
+},
+"attack_speed": {
+"total": 140196746847.5953,
+"boss": 31374451673.224888,
+"normal": 140196746847.5953,
+"units_per_1pct": 3.5028564066040904,
+"current": 20.0,
+"new": 20.86666666666666,
+"baseline": 139797650697.2829,
+"new_total": 140196746847.5953,
+"dps_gain": 399096150.3124102,
+"pct_gain": 100.28548129980854
+},
+"normal_damage": {
+"total": 140623864375.0655,
+"boss": 31296055393.37294,
+"normal": 140623864375.0655,
+"units_per_1pct": 1.6920277944619948,
+"current": 25.0,
+"new": 26.0,
+"baseline": 139797650697.2829,
+"new_total": 140623864375.0655,
+"dps_gain": 826213677.7826043,
+"pct_gain": 100.59100684000168
+},
+"basic_attack_target_increase": {
+"total": 142416771155.59445,
+"boss": 31466512193.425182,
+"normal": 142416771155.59445,
+"units_per_1pct": 0.5337580035834038,
+"current": 2.0,
+"new": 3.0,
+"baseline": 139797650697.2829,
+"new_total": 142416771155.59445,
+"dps_gain": 2619120458.311566,
+"pct_gain": 101.87350820650269
+}
+},
+"toggles": {
+"soul_contract": {
+"total": 91537290016.05551,
+"boss": 20082051894.94681,
+"normal": 91537290016.05551,
+"dps_gain": 48260360681.22739,
+"pct_gain": 152.72207716960222,
+"unlocked": true
+},
+"contract_of_darkness": {
+"total": 139797650697.2829,
+"boss": 35077108110.424675,
+"normal": 139797650697.2829,
+"dps_gain": 0.0,
+"pct_gain": 100.0,
+"unlocked": true
+}
+},
+"cdr": [
+{
+"total": 138711294787.8932,
+"boss": 30781265423.447304,
+"normal": 138711294787.8932,
+"cdr": 0.5,
+"table_total": 138711294787.8932,
+"table_step": 0.0,
+"table_pct": -0.777091677843785,
+"step_prev_kept": true
+},
+{
+"total": 141787913670.83017,
+"boss": 32466216432.112206,
+"normal": 141787913670.83017,
+"cdr": 2.0,
+"table_total": 141787913670.83017,
+"table_step": 141787913670.83017,
+"table_pct": 1.4236741201445344,
+"step_prev_kept": false
+},
+{
+"total": 145127530578.53644,
+"boss": 39648759592.80445,
+"normal": 145127530578.53644,
+"cdr": 5.0,
+"table_total": 145127530578.53644,
+"table_step": 145127530578.53644,
+"table_pct": 3.812567560806036,
+"step_prev_kept": false
+}
+],
+"companions": [],
+"summon_time": [],
+"summary": {
+"total": 139797650697.2829,
+"boss_only": 31296055393.37294,
+"normal_only": 139797650697.2829,
+"aps": 1.3451194922541896
+},
+"companion_main": {
+"best": 1.0,
+"best_s": 0.0,
+"best_E": 0.0,
+"best_Tend": 0.0,
+"comp_blend_dps": 23232909324.090225,
+"comp_boss_dps": 3199252258.756653,
+"comp_norm_dps": 23232909324.090225,
+"s_0": 0.0,
+"W_0": 30.0,
+"stunfracB": 0.1782608695652174,
+"stunfracN": 0.1782608695652174,
+"horn_uptime": 0.3333333333333333,
+"pb": 28096803134.616287,
+"pn": 116564741373.19267,
+"tb0": 0.0,
+"Tbp": 1.0
+},
+"block_offsets": {
+"total": 44,
+"boss": 46,
+"normal": 47
+},
+"load_s": 177.2,
+"calc_s": 74.7,
+"case": "S/CH118",
+"build_s": 1.5,
+"eval_total_s": 253.7,
+"max_rss_gb": 8.09
+}
+}
+}
+}

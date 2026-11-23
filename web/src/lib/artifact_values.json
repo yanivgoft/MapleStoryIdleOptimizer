@@ -1,0 +1,322 @@
+{
+ "book_of_ancient_crit_rate": [
+  10,
+  12,
+  14,
+  16,
+  18,
+  20
+ ],
+ "book_of_ancient_crit_damage_pct_of_crit_rate": [
+  30,
+  36,
+  42,
+  48,
+  54,
+  60
+ ],
+ "ring_of_cycles_crit_rate": [
+  30,
+  36,
+  42,
+  48,
+  54,
+  60
+ ],
+ "ring_of_cycles_skill_damage": [
+  40,
+  48,
+  56,
+  64,
+  72,
+  80
+ ],
+ "ring_of_cycles_basic_attack_damage_per_point": [
+  0.6,
+  0.72,
+  0.84,
+  0.96,
+  1.08,
+  1.2
+ ],
+ "candle_final_damage": [
+  8,
+  9.6,
+  11.2,
+  12.8,
+  14.4,
+  16
+ ],
+ "candle_boss_damage": [
+  30,
+  36,
+  42,
+  48,
+  54,
+  60
+ ],
+ "peach_tree_enemy_dmg_taken": [
+  15,
+  18,
+  21,
+  24,
+  27,
+  30
+ ],
+ "silver_pendant_enemy_dmg_taken": [
+  10,
+  12,
+  14,
+  16,
+  18,
+  20
+ ],
+ "athena_gloves_attack_speed": [
+  8,
+  9.6,
+  11.2,
+  12.8,
+  14.4,
+  16
+ ],
+ "athena_gloves_max_damage_pct_of_attack_speed": [
+  25,
+  30,
+  35,
+  40,
+  45,
+  50
+ ],
+ "hexagon_necklace_damage": [
+  15,
+  18,
+  21,
+  24,
+  27,
+  30
+ ],
+ "rainbow_snail_shell_crit_rate": [
+  15,
+  18,
+  21,
+  24,
+  27,
+  30
+ ],
+ "rainbow_snail_shell_crit_damage": [
+  20,
+  24,
+  28,
+  32,
+  36,
+  40
+ ],
+ "clear_spring_water_final_damage": [
+  10,
+  12,
+  14,
+  16,
+  18,
+  20
+ ],
+ "old_music_box_attack_pct": [
+  25,
+  30,
+  35,
+  40,
+  45,
+  50
+ ],
+ "soul_contract_cooldown_decrease_pct": [
+  20,
+  24,
+  28,
+  32,
+  36,
+  40
+ ],
+ "soul_pouch_final_damage": [
+  20,
+  24,
+  28,
+  32,
+  36,
+  40
+ ],
+ "flaming_lava_final_damage_debuffed": [
+  8,
+  9.6,
+  11.2,
+  12.8,
+  14.4,
+  16
+ ],
+ "icy_soul_rock_crit_damage": [
+  20,
+  24,
+  28,
+  32,
+  36,
+  40
+ ],
+ "secret_map_attack_pct": [
+  5,
+  6,
+  7,
+  8,
+  9,
+  10
+ ],
+ "secret_map_final_damage": [
+  5,
+  6,
+  7,
+  8,
+  9,
+  10
+ ],
+ "reindeer_spear_attack_pct": [
+  5,
+  6,
+  7,
+  8,
+  9,
+  10
+ ],
+ "reindeer_spear_def_pen": [
+  5,
+  6,
+  7,
+  8,
+  9,
+  10
+ ],
+ "cursed_doll_final_damage": [
+  7,
+  8.4,
+  9.8,
+  11.2,
+  12.6,
+  14
+ ],
+ "horn_flute_final_damage": [
+  10,
+  12,
+  14,
+  16,
+  18,
+  20
+ ],
+ "bottle_of_emotion_attack_pct": [
+  15,
+  18,
+  21,
+  24,
+  27,
+  30
+ ],
+ "bottle_of_emotion_final_damage_per_3pct_as": [
+  0.5,
+  0.6,
+  0.7,
+  0.8,
+  0.9,
+  1
+ ],
+ "bottle_of_emotion_final_damage_cap": [
+  10,
+  12,
+  14,
+  16,
+  18,
+  20
+ ],
+ "alliance_badge_attack_pct": [
+  10,
+  12,
+  14,
+  16,
+  18,
+  20
+ ],
+ "sayrams_necklace_normal_damage": [
+  30,
+  36,
+  42,
+  48,
+  54,
+  60
+ ],
+ "sayrams_necklace_boss_damage": [
+  10,
+  12,
+  14,
+  16,
+  18,
+  20
+ ],
+ "lit_lamp_final_damage": [
+  20,
+  24,
+  28,
+  32,
+  36,
+  40
+ ],
+ "fire_flower_final_damage_per_target": [
+  1,
+  1.2,
+  1.4,
+  1.6,
+  1.8,
+  2
+ ],
+ "star_rock_boss_damage": [
+  50,
+  60,
+  70,
+  80,
+  90,
+  100
+ ],
+ "chalice_final_damage": [
+  15,
+  18,
+  21,
+  24,
+  27,
+  30
+ ],
+ "contract_of_darkness_crit_rate": [
+  8,
+  9.6,
+  11.2,
+  12.8,
+  14.4,
+  16
+ ],
+ "shamaness_marble_buff_duration_increase_pct": [
+  6,
+  7.2,
+  8.4,
+  9.6,
+  10.8,
+  12
+ ],
+ "charm_of_the_undead_attack_pct": [
+  10,
+  12,
+  14,
+  16,
+  18,
+  20
+ ],
+ "arwens_glass_shoes_summon_time_increase_pct": [
+  20,
+  24,
+  28,
+  32,
+  36,
+  40
+ ]
+}

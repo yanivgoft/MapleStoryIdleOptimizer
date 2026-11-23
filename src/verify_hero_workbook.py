@@ -410,6 +410,9 @@ _stub = dict(mt=monster_type, T=fight_duration, content=content_type, pvp_len=PV
 # The player's own stunning skills (game table): Rush stuns for 2.5 s, cast on cooldown from the start
 PLAYER_STUN = [dict(id="RUSH", key="RUSH", typ="cast", dur=2.5, p=1.0, cd=(22 * 0.7) if level >= 90 else 22)]
 _pl_on = any(unlocked(e["key"]) for e in PLAYER_STUN)
+# The workbook's effective Companion Summoning Time Increase is the Inputs value + Arwen's Glass Shoes (+20% star 0 .. +40% star 5, Artifacts row
+# arwens_glass_shoes_summon_time_increase_pct).  The verify run clears the artifact slots, so the artifact term is 0 in every cpm.run below; it is
+# covered by the equivalence test (artifact at Inputs x == no artifact at Inputs x + star value).
 stun_info = (cpm.run(_stub, _companion_choice0, c_level0, _in("companion_summon_time_increase_pct"))
              if (_companion_choice0 != "None" and c_level0 >= 1) else None)
 hasstun = bool(stun_info and stun_info.get("hasstun")) or _pl_on

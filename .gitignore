@@ -10,3 +10,17 @@ __pycache__/
 
 # Generated output from potential_cubes_ev.py
 *_potential_cubes_ev.csv
+
+# Firebase / deploy artifacts
+firebase-debug.log
+firebase-debug.*.log
+deploy/firebase/public/
+deploy/firebase/.firebase/
+deploy/.env
+web/dist/
+web/node_modules/
+.venv/
+
+# accounts: Firestore rules tests
+deploy/firebase/rules-test/node_modules/
+web/.env.local

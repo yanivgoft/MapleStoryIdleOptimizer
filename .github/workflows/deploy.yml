@@ -1,0 +1,261 @@
+name: Deploy
+
+# Manual deploy of the web app: API -> Google Cloud Run, front end -> GitHub Pages (default, no card needed) or Firebase Hosting.
+# NEVER runs on push.  Optional release trigger: only acts if the repository variable DEPLOY_ON_RELEASE is "true".
+# One-time setup (Workload Identity Federation, variables, secrets, Pages switch) is documented in deploy/README.md section 12.
+#
+# Repository / environment VARIABLES (Settings -> Secrets and variables -> Actions -> Variables; an Environment's own value wins):
+#   GCP_PROJECT_ID                      Google Cloud project ID                                        (required for the API job)
+#   GCP_WORKLOAD_IDENTITY_PROVIDER      projects/<number>/locations/global/workloadIdentityPools/<pool>/providers/<provider>
+#   GCP_SERVICE_ACCOUNT                 deployer service account e-mail                                 (required for the API job)
+#   CLOUD_RUN_SERVICE                   optional, default msi-api
+#   CORS_ORIGINS                        optional, default https://<owner>.github.io  (comma list of front-end ORIGINS, no path)
+#   MSI_PROXY_HOPS                      optional, default 1 (verify on Cloud Run, deploy/README.md section 6)
+#   API_URL                             only needed when deploy_api=false (front end only): the existing API's URL
+#   WEB_BASE                            optional, GitHub Pages path; default /<repo-name>/ ; use / for a custom domain or <owner>.github.io repo
+#   FIREBASE_PROJECT                    only for web_target=firebase
+#   DEPLOY_ON_RELEASE                   "true" = also deploy when a GitHub release is published (defaults of production / region var / github-pages)
+#   GCP_REGION                          optional default region for release-triggered runs
+#   WEB_TARGET                          optional, github-pages (default) | firebase: front-end host for release-triggered runs
+# SECRETS:
+#   FIREBASE_SERVICE_ACCOUNT            only for web_target=firebase: JSON key of a service account with the "Firebase Hosting Admin" role
+#   (the Google Cloud side needs NO secret: it uses keyless Workload Identity Federation)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: GitHub Environment (its variables / protection rules apply)
+        type: choice
+        options: [production, staging]
+        default: production
+      region:
+        description: Cloud Run region (check the free-tier regions at https://cloud.google.com/run/pricing)
+        type: string
+        default: us-central1
+      deploy_api:
+        description: Deploy the API to Cloud Run (uncheck for a front-end-only deploy; then the repo variable API_URL is used)
+        type: boolean
+        default: true
+      web_target:
+        description: Where the front end goes
+        type: choice
+        options: [github-pages, firebase, none]
+        default: github-pages
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment || 'production' }}
+  cancel-in-progress: false
+
+jobs:
+  # ------------------------------------------------------------------------------------------------------------------------------
+  # Same steps as app-tests.yml (engine goldens pinned to Python 3.11 + PYTHONHASHSEED=0, API tests, web tests).  Nothing deploys if red.
+  # ------------------------------------------------------------------------------------------------------------------------------
+  test-python:
+    if: github.event_name == 'workflow_dispatch' || vars.DEPLOY_ON_RELEASE == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install API dependencies
+        run: python -m pip install -r api/requirements-dev.txt
+      - name: Engine golden tests (12 classes)
+        env:
+          PYTHONHASHSEED: "0"
+        run: |
+          for t in fp_mage hero ice_lightning_mage paladin bowmaster bishop dark_knight marksman buccaneer corsair night_lord shadower; do
+            python tests/golden/test_$t.py
+          done
+          python tests/golden/test_fp_mage_artifacts.py
+      - name: API tests
+        env:
+          PYTHONHASHSEED: "0"
+        run: python -m pytest api/tests -q
+
+  test-web:
+    if: github.event_name == 'workflow_dispatch' || vars.DEPLOY_ON_RELEASE == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  # ------------------------------------------------------------------------------------------------------------------------------
+  # API -> Cloud Run, through deploy/deploy_api.sh (the same script you run by hand).
+  # ------------------------------------------------------------------------------------------------------------------------------
+  deploy-api:
+    needs: [test-python, test-web]
+    if: github.event_name == 'release' || inputs.deploy_api
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'production' }}
+    permissions:
+      contents: read
+      id-token: write            # OIDC token for Workload Identity Federation
+    outputs:
+      api_url: ${{ steps.deploy.outputs.api_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve settings
+        env:
+          INPUT_REGION: ${{ inputs.region }}
+          VAR_REGION: ${{ vars.GCP_REGION }}
+          VAR_CORS: ${{ vars.CORS_ORIGINS }}
+          VAR_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+          VAR_HOPS: ${{ vars.MSI_PROXY_HOPS }}
+          VAR_PROJECT: ${{ vars.GCP_PROJECT_ID }}
+          VAR_WIP: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          VAR_SA: ${{ vars.GCP_SERVICE_ACCOUNT }}
+        run: |
+          [ -n "$VAR_PROJECT" ] || { echo "::error::variable GCP_PROJECT_ID is not set"; exit 1; }
+          [ -n "$VAR_WIP" ]     || { echo "::error::variable GCP_WORKLOAD_IDENTITY_PROVIDER is not set (deploy/README.md section 12)"; exit 1; }
+          [ -n "$VAR_SA" ]      || { echo "::error::variable GCP_SERVICE_ACCOUNT is not set (deploy/README.md section 12)"; exit 1; }
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          {
+            echo "PROJECT_ID=$VAR_PROJECT"
+            echo "REGION=${INPUT_REGION:-${VAR_REGION:-us-central1}}"
+            echo "SERVICE=${VAR_SERVICE:-msi-api}"
+            echo "CORS_ORIGINS=${VAR_CORS:-https://${owner}.github.io}"
+            echo "PROXY_HOPS=${VAR_HOPS:-1}"
+          } >> "$GITHUB_ENV"
+
+      - name: Authenticate to Google Cloud (Workload Identity Federation, keyless)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and deploy to Cloud Run
+        id: deploy
+        run: deploy/deploy_api.sh
+
+      - name: Smoke test the deployed API
+        env:
+          API_URL: ${{ steps.deploy.outputs.api_url }}
+        run: |
+          # CORS is checked for the first allowed origin; EXPECT_CLASSES defaults to 12
+          SMOKE_ORIGIN="${CORS_ORIGINS%%,*}" deploy/smoke_test.sh "$API_URL"
+
+      - name: Summary
+        env:
+          API_URL: ${{ steps.deploy.outputs.api_url }}
+        run: |
+          {
+            echo "### API deployed"
+            echo "- URL: $API_URL"
+            echo "- project \`$PROJECT_ID\`, region \`$REGION\`, service \`$SERVICE\`"
+            echo "- rollback: \`gcloud run services update-traffic $SERVICE --region $REGION --to-revisions <previous-revision>=100\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ------------------------------------------------------------------------------------------------------------------------------
+  # Front end: build once against the API URL (VITE_API_URL is baked in at build time), then publish.
+  # ------------------------------------------------------------------------------------------------------------------------------
+  build-web:
+    needs: [test-python, test-web, deploy-api]
+    if: >-
+      always() && needs.test-python.result == 'success' && needs.test-web.result == 'success'
+      && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped')
+      && (github.event_name == 'release' || inputs.web_target != 'none')
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'production' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Resolve API URL and base path
+        id: cfg
+        env:
+          DEPLOYED_API_URL: ${{ needs.deploy-api.outputs.api_url }}
+          VAR_API_URL: ${{ vars.API_URL }}
+          VAR_WEB_BASE: ${{ vars.WEB_BASE }}
+          TARGET: ${{ inputs.web_target || vars.WEB_TARGET || 'github-pages' }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          api="${DEPLOYED_API_URL:-$VAR_API_URL}"
+          [ -n "$api" ] || { echo "::error::no API URL: deploy the API in this run or set the repository variable API_URL"; exit 1; }
+          case "$TARGET" in
+            github-pages) base="${VAR_WEB_BASE:-/${REPO_NAME}/}" ;;
+            firebase)     base="/" ;;
+            *) echo "::error::unknown web target '$TARGET'"; exit 1 ;;
+          esac
+          echo "api_url=$api"  >> "$GITHUB_OUTPUT"
+          echo "base=$base"    >> "$GITHUB_OUTPUT"
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+      - name: Build (deploy/deploy_web.sh, build-only mode)
+        env:
+          API_URL: ${{ steps.cfg.outputs.api_url }}
+          WEB_BASE: ${{ steps.cfg.outputs.base }}
+          STATIC_HOST: none
+          OUT_DIR: ${{ github.workspace }}/web-dist
+        run: deploy/deploy_web.sh
+      - name: Upload the built site (GitHub Pages artifact)
+        if: steps.cfg.outputs.target == 'github-pages'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web-dist
+      - name: Upload the built site (plain artifact for Firebase)
+        if: steps.cfg.outputs.target == 'firebase'
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: web-dist
+          retention-days: 3
+    outputs:
+      target: ${{ steps.cfg.outputs.target }}
+
+  publish-pages:
+    needs: build-web
+    if: needs.build-web.outputs.target == 'github-pages'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write               # deploy to Pages
+      id-token: write            # verify the deployment originates from this workflow
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  publish-firebase:
+    needs: build-web
+    if: needs.build-web.outputs.target == 'firebase'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write              # the action posts a check / PR comment with the preview URL
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: deploy/firebase/public
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: ${{ vars.FIREBASE_PROJECT }}
+          channelId: live
+          entryPoint: deploy/firebase

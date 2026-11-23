@@ -1,0 +1,7115 @@
+{
+ "level": 123,
+ "contentType": "PvP",
+ "perContent": {
+  "Chapter Boss": {
+   "chapter_stage": "28-9",
+   "flat_attack": 7.0,
+   "attack_pct": 9.0,
+   "defense": 11.0,
+   "defense_pct": 13.0,
+   "crit_rate": 15.0,
+   "crit_damage": 17.0,
+   "attack_speed": 19.0,
+   "flat_str": 21.0,
+   "str_pct": 23.0,
+   "dex": 25.0,
+   "damage": 27.0,
+   "damage_amp": 29.0,
+   "basic_attack_damage": 31.0,
+   "skill_damage": 33.0,
+   "def_pen": 35.0,
+   "boss_damage": 37.0,
+   "normal_damage": 39.0,
+   "status_effect_damage": 41.0,
+   "min_damage": 43.0,
+   "max_damage": 45.0,
+   "final_damage": 47.0,
+   "skill_lvl_1st": 5,
+   "skill_lvl_2nd": 6,
+   "skill_lvl_3rd": 7,
+   "skill_lvl_4th": 8,
+   "skill_lvl_all": 9,
+   "skill_cooldown_decrease": 59.0,
+   "basic_attack_target_increase": 2,
+   "buff_duration_increase_pct": 63.0,
+   "companion_summon_time_increase_pct": 65.0,
+   "boss_normal_weight_choice": null,
+   "max_enemies_hit": null,
+   "companion_choice": "Hero",
+   "pvp_fight_length": null
+  },
+  "Breakthrough": {
+   "chapter_stage": "85",
+   "flat_attack": 7.5,
+   "attack_pct": 0,
+   "defense": 11.5,
+   "defense_pct": 13.5,
+   "crit_rate": 15.5,
+   "crit_damage": 17.5,
+   "attack_speed": 19.5,
+   "flat_str": 21.5,
+   "str_pct": 23.5,
+   "dex": 25.5,
+   "damage": 27.5,
+   "damage_amp": 29.5,
+   "basic_attack_damage": 31.5,
+   "skill_damage": 33.5,
+   "def_pen": 35.5,
+   "boss_damage": 37.5,
+   "normal_damage": 39.5,
+   "status_effect_damage": 41.5,
+   "min_damage": 43.5,
+   "max_damage": 45.5,
+   "final_damage": 47.5,
+   "skill_lvl_1st": 6,
+   "skill_lvl_2nd": 7,
+   "skill_lvl_3rd": 8,
+   "skill_lvl_4th": 9,
+   "skill_lvl_all": 1,
+   "skill_cooldown_decrease": 59.5,
+   "basic_attack_target_increase": 3,
+   "buff_duration_increase_pct": 63.5,
+   "companion_summon_time_increase_pct": 65.5,
+   "boss_normal_weight_choice": "Equal",
+   "max_enemies_hit": 7,
+   "companion_choice": "None",
+   "pvp_fight_length": null
+  },
+  "PvP": {
+   "chapter_stage": null,
+   "flat_attack": 8.0,
+   "attack_pct": 10.0,
+   "defense": 12.0,
+   "defense_pct": 14.0,
+   "crit_rate": 16.0,
+   "crit_damage": 18.0,
+   "attack_speed": 20.0,
+   "flat_str": 22.0,
+   "str_pct": 24.0,
+   "dex": 26.0,
+   "damage": 28.0,
+   "damage_amp": 30.0,
+   "basic_attack_damage": 32.0,
+   "skill_damage": 34.0,
+   "def_pen": 36.0,
+   "boss_damage": 38.0,
+   "normal_damage": 40.0,
+   "status_effect_damage": 42.0,
+   "min_damage": 44.0,
+   "max_damage": 46.0,
+   "final_damage": 48.0,
+   "skill_lvl_1st": 7,
+   "skill_lvl_2nd": 8,
+   "skill_lvl_3rd": 9,
+   "skill_lvl_4th": 1,
+   "skill_lvl_all": 2,
+   "skill_cooldown_decrease": 60.0,
+   "basic_attack_target_increase": 4,
+   "buff_duration_increase_pct": 64.0,
+   "companion_summon_time_increase_pct": 66.0,
+   "boss_normal_weight_choice": null,
+   "max_enemies_hit": null,
+   "companion_choice": "Hero",
+   "pvp_fight_length": 74.0
+  },
+  "EXP Dungeon": {
+   "chapter_stage": "90",
+   "flat_attack": 8.5,
+   "attack_pct": 10.5,
+   "defense": 12.5,
+   "defense_pct": 14.5,
+   "crit_rate": 501,
+   "crit_damage": 18.5,
+   "attack_speed": 20.5,
+   "flat_str": 22.5,
+   "str_pct": 24.5,
+   "dex": 26.5,
+   "damage": 28.5,
+   "damage_amp": 30.5,
+   "basic_attack_damage": 32.5,
+   "skill_damage": 34.5,
+   "def_pen": 36.5,
+   "boss_damage": 38.5,
+   "normal_damage": 40.5,
+   "status_effect_damage": 42.5,
+   "min_damage": 44.5,
+   "max_damage": 46.5,
+   "final_damage": 48.5,
+   "skill_lvl_1st": 8,
+   "skill_lvl_2nd": 9,
+   "skill_lvl_3rd": 1,
+   "skill_lvl_4th": 2,
+   "skill_lvl_all": 3,
+   "skill_cooldown_decrease": 60,
+   "basic_attack_target_increase": 5,
+   "buff_duration_increase_pct": 64.5,
+   "companion_summon_time_increase_pct": 66.5,
+   "boss_normal_weight_choice": null,
+   "max_enemies_hit": 9,
+   "companion_choice": "None",
+   "pvp_fight_length": null
+  },
+  "Equipment Dungeon": {
+   "chapter_stage": "100",
+   "flat_attack": 9.0,
+   "attack_pct": 11.0,
+   "defense": 13.0,
+   "defense_pct": 15.0,
+   "crit_rate": 17.0,
+   "crit_damage": 19.0,
+   "attack_speed": 21.0,
+   "flat_str": 23.0,
+   "str_pct": 25.0,
+   "dex": 27.0,
+   "damage": 29.0,
+   "damage_amp": 31.0,
+   "basic_attack_damage": 33.0,
+   "skill_damage": 35.0,
+   "def_pen": 37.0,
+   "boss_damage": 39.0,
+   "normal_damage": 41.0,
+   "status_effect_damage": 43.0,
+   "min_damage": 45.0,
+   "max_damage": 47.0,
+   "final_damage": 49.0,
+   "skill_lvl_1st": 9,
+   "skill_lvl_2nd": 1,
+   "skill_lvl_3rd": 2,
+   "skill_lvl_4th": 3,
+   "skill_lvl_all": 4,
+   "skill_cooldown_decrease": 60,
+   "basic_attack_target_increase": 6,
+   "buff_duration_increase_pct": 65.0,
+   "companion_summon_time_increase_pct": 67.0,
+   "boss_normal_weight_choice": null,
+   "max_enemies_hit": 1,
+   "companion_choice": "Hero",
+   "pvp_fight_length": null
+  },
+  "Weapon Dungeon": {
+   "chapter_stage": "7",
+   "flat_attack": 9.5,
+   "attack_pct": 11.5,
+   "defense": 13.5,
+   "defense_pct": 15.5,
+   "crit_rate": 17.5,
+   "crit_damage": 19.5,
+   "attack_speed": 21.5,
+   "flat_str": 23.5,
+   "str_pct": 25.5,
+   "dex": 27.5,
+   "damage": 29.5,
+   "damage_amp": 31.5,
+   "basic_attack_damage": 33.5,
+   "skill_damage": 35.5,
+   "def_pen": 37.5,
+   "boss_damage": 39.5,
+   "normal_damage": 41.5,
+   "status_effect_damage": 43.5,
+   "min_damage": 45.5,
+   "max_damage": 47.5,
+   "final_damage": 49.5,
+   "skill_lvl_1st": 1,
+   "skill_lvl_2nd": 2,
+   "skill_lvl_3rd": 3,
+   "skill_lvl_4th": 4,
+   "skill_lvl_all": 5,
+   "skill_cooldown_decrease": 60,
+   "basic_attack_target_increase": 7,
+   "buff_duration_increase_pct": 65.5,
+   "companion_summon_time_increase_pct": 67.5,
+   "boss_normal_weight_choice": null,
+   "max_enemies_hit": null,
+   "companion_choice": "None",
+   "pvp_fight_length": null
+  },
+  "Enhancement Dungeon": {
+   "chapter_stage": "5",
+   "flat_attack": 10.0,
+   "attack_pct": 12.0,
+   "defense": 14.0,
+   "defense_pct": 16.0,
+   "crit_rate": 18.0,
+   "crit_damage": 20.0,
+   "attack_speed": 22.0,
+   "flat_str": 24.0,
+   "str_pct": 26.0,
+   "dex": 28.0,
+   "damage": 30.0,
+   "damage_amp": 32.0,
+   "basic_attack_damage": 34.0,
+   "skill_damage": 36.0,
+   "def_pen": 38.0,
+   "boss_damage": 40.0,
+   "normal_damage": 42.0,
+   "status_effect_damage": 44.0,
+   "min_damage": 46.0,
+   "max_damage": 48.0,
+   "final_damage": 50.0,
+   "skill_lvl_1st": 2,
+   "skill_lvl_2nd": 3,
+   "skill_lvl_3rd": 4,
+   "skill_lvl_4th": 5,
+   "skill_lvl_all": 6,
+   "skill_cooldown_decrease": 60,
+   "basic_attack_target_increase": 8,
+   "buff_duration_increase_pct": 66.0,
+   "companion_summon_time_increase_pct": 68.0,
+   "boss_normal_weight_choice": null,
+   "max_enemies_hit": null,
+   "companion_choice": "Hero",
+   "pvp_fight_length": null
+  },
+  "Hero Dungeon": {
+   "chapter_stage": "41",
+   "flat_attack": 10.5,
+   "attack_pct": 12.5,
+   "defense": 14.5,
+   "defense_pct": 16.5,
+   "crit_rate": 18.5,
+   "crit_damage": 20.5,
+   "attack_speed": 22.5,
+   "flat_str": 24.5,
+   "str_pct": 26.5,
+   "dex": 28.5,
+   "damage": 30.5,
+   "damage_amp": 32.5,
+   "basic_attack_damage": 34.5,
+   "skill_damage": 36.5,
+   "def_pen": 38.5,
+   "boss_damage": 40.5,
+   "normal_damage": 42.5,
+   "status_effect_damage": 44.5,
+   "min_damage": 46.5,
+   "max_damage": 48.5,
+   "final_damage": 50.5,
+   "skill_lvl_1st": 3,
+   "skill_lvl_2nd": 4,
+   "skill_lvl_3rd": 5,
+   "skill_lvl_4th": 6,
+   "skill_lvl_all": 7,
+   "skill_cooldown_decrease": 60,
+   "basic_attack_target_increase": 9,
+   "buff_duration_increase_pct": 66.5,
+   "companion_summon_time_increase_pct": 68.5,
+   "boss_normal_weight_choice": "A Little More Boss",
+   "max_enemies_hit": 4,
+   "companion_choice": "None",
+   "pvp_fight_length": null
+  },
+  "World Boss": {
+   "chapter_stage": null,
+   "flat_attack": 11.0,
+   "attack_pct": 13.0,
+   "defense": 15.0,
+   "defense_pct": 17.0,
+   "crit_rate": 19.0,
+   "crit_damage": 21.0,
+   "attack_speed": 23.0,
+   "flat_str": 25.0,
+   "str_pct": 27.0,
+   "dex": 29.0,
+   "damage": 31.0,
+   "damage_amp": 33.0,
+   "basic_attack_damage": 35.0,
+   "skill_damage": 37.0,
+   "def_pen": 39.0,
+   "boss_damage": 41.0,
+   "normal_damage": 43.0,
+   "status_effect_damage": 45.0,
+   "min_damage": 47.0,
+   "max_damage": 49.0,
+   "final_damage": 51.0,
+   "skill_lvl_1st": 4,
+   "skill_lvl_2nd": 5,
+   "skill_lvl_3rd": 6,
+   "skill_lvl_4th": 7,
+   "skill_lvl_all": 8,
+   "skill_cooldown_decrease": 60,
+   "basic_attack_target_increase": 1,
+   "buff_duration_increase_pct": 67.0,
+   "companion_summon_time_increase_pct": 69.0,
+   "boss_normal_weight_choice": null,
+   "max_enemies_hit": null,
+   "companion_choice": "Hero",
+   "pvp_fight_length": null
+  },
+  "Chapter Hunt": {
+   "chapter_stage": "55",
+   "flat_attack": 11.5,
+   "attack_pct": 13.5,
+   "defense": 15.5,
+   "defense_pct": 17.5,
+   "crit_rate": 19.5,
+   "crit_damage": 21.5,
+   "attack_speed": 23.5,
+   "flat_str": 25.5,
+   "str_pct": 27.5,
+   "dex": 29.5,
+   "damage": 31.5,
+   "damage_amp": 33.5,
+   "basic_attack_damage": 35.5,
+   "skill_damage": 37.5,
+   "def_pen": 39.5,
+   "boss_damage": 41.5,
+   "normal_damage": 43.5,
+   "status_effect_damage": 45.5,
+   "min_damage": 47.5,
+   "max_damage": 49.5,
+   "final_damage": 51.5,
+   "skill_lvl_1st": 5,
+   "skill_lvl_2nd": 6,
+   "skill_lvl_3rd": 7,
+   "skill_lvl_4th": 8,
+   "skill_lvl_all": 9,
+   "skill_cooldown_decrease": 60,
+   "basic_attack_target_increase": 2,
+   "buff_duration_increase_pct": 67.5,
+   "companion_summon_time_increase_pct": 69.5,
+   "boss_normal_weight_choice": null,
+   "max_enemies_hit": 6,
+   "companion_choice": "None",
+   "pvp_fight_length": null
+  }
+ },
+ "warnings": 17,
+ "ignoredHints": [
+  "does not apply to Chapter Boss"
+ ],
+ "loadouts": {
+  "Chapter Boss": [
+   "charm_of_the_undead",
+   "mushmoms_cap",
+   "old_music_box",
+   "lit_lamp"
+  ],
+  "Breakthrough": [
+   "hexagon_necklace",
+   "pink_beans_giant_rib",
+   "fire_flower",
+   "sayrams_necklace"
+  ],
+  "PvP": [
+   "zakums_stone_piece",
+   "book_of_ancient",
+   "icy_soul_rock",
+   "horn_flute"
+  ],
+  "EXP Dungeon": [
+   "silver_pendant",
+   "soul_pouch",
+   "candle",
+   "charm_of_the_undead"
+  ],
+  "Equipment Dungeon": [
+   "soul_contract"
+  ],
+  "Weapon Dungeon": [
+   "flaming_lava",
+   "cursed_doll",
+   "contract_of_darkness",
+   "zakums_stone_piece"
+  ],
+  "Enhancement Dungeon": [
+   "alliance_badge",
+   "pigs_ribbon",
+   "clear_spring_water",
+   "silver_pendant"
+  ],
+  "Hero Dungeon": [
+   "ring_of_cycles",
+   "arwens_glass_shoes",
+   "chalice",
+   "soul_contract"
+  ],
+  "World Boss": [
+   "rainbow_snail_shell",
+   "horntails_scale",
+   "lunar_dew",
+   "flaming_lava"
+  ],
+  "Chapter Hunt": [
+   "athena_gloves",
+   "star_rock",
+   "ancient_text_piece",
+   "alliance_badge"
+  ]
+ },
+ "artifactsFrom": "PvP",
+ "stars": {
+  "charm_of_the_undead": "Not Unlocked",
+  "pigs_ribbon": 0,
+  "shamaness_marble": 1,
+  "contract_of_darkness": 2,
+  "rainbow_snail_shell": 3,
+  "hexagon_necklace": 4,
+  "arwens_glass_shoes": 5,
+  "mushmoms_cap": "Not Unlocked",
+  "clear_spring_water": 0,
+  "athena_gloves": 1,
+  "zakums_stone_piece": 2,
+  "horntails_scale": 3,
+  "pink_beans_giant_rib": 4,
+  "chalice": 5,
+  "old_music_box": "Not Unlocked",
+  "silver_pendant": 0,
+  "star_rock": 1,
+  "book_of_ancient": 2,
+  "lunar_dew": 3,
+  "fire_flower": 4,
+  "soul_contract": 5,
+  "lit_lamp": "Not Unlocked",
+  "soul_pouch": 0,
+  "ancient_text_piece": 1,
+  "icy_soul_rock": 2,
+  "flaming_lava": 3,
+  "sayrams_necklace": 4,
+  "bottle_of_emotion": 5,
+  "peach_tree": "Not Unlocked",
+  "candle": 0,
+  "alliance_badge": 1,
+  "horn_flute": 2,
+  "cursed_doll": 3,
+  "reindeer_spear": 4,
+  "secret_map": 5,
+  "ring_of_cycles": "Not Unlocked"
+ },
+ "tables": {
+  "Chapter Boss": {
+   "charm_of_the_undead": {
+    "star": null,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pigs_ribbon": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "shamaness_marble": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "contract_of_darkness": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "rainbow_snail_shell": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "hexagon_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "arwens_glass_shoes": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "mushmoms_cap": {
+    "star": null,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "clear_spring_water": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "athena_gloves": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "zakums_stone_piece": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "horntails_scale": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pink_beans_giant_rib": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "chalice": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "old_music_box": {
+    "star": null,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "silver_pendant": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "star_rock": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "book_of_ancient": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "lunar_dew": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "fire_flower": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "soul_contract": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "lit_lamp": {
+    "star": null,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "soul_pouch": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ancient_text_piece": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "icy_soul_rock": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "flaming_lava": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "sayrams_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "bottle_of_emotion": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "peach_tree": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "candle": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "alliance_badge": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "horn_flute": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "cursed_doll": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "reindeer_spear": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "secret_map": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ring_of_cycles": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   }
+  },
+  "Breakthrough": {
+   "charm_of_the_undead": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pigs_ribbon": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "shamaness_marble": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "contract_of_darkness": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "rainbow_snail_shell": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "hexagon_necklace": {
+    "star": 4,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "arwens_glass_shoes": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "mushmoms_cap": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "clear_spring_water": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "athena_gloves": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "zakums_stone_piece": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "horntails_scale": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pink_beans_giant_rib": {
+    "star": 4,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "chalice": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "old_music_box": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "silver_pendant": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "star_rock": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "book_of_ancient": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "lunar_dew": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "fire_flower": {
+    "star": 4,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "soul_contract": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "lit_lamp": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "soul_pouch": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ancient_text_piece": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "icy_soul_rock": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "flaming_lava": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "sayrams_necklace": {
+    "star": 4,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "bottle_of_emotion": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "peach_tree": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "candle": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "alliance_badge": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "horn_flute": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "cursed_doll": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "reindeer_spear": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "secret_map": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ring_of_cycles": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   }
+  },
+  "PvP": {
+   "charm_of_the_undead": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pigs_ribbon": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "shamaness_marble": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "contract_of_darkness": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "rainbow_snail_shell": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "hexagon_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "arwens_glass_shoes": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "mushmoms_cap": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "clear_spring_water": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "athena_gloves": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "zakums_stone_piece": {
+    "star": 2,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "horntails_scale": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pink_beans_giant_rib": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "chalice": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "old_music_box": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "silver_pendant": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "star_rock": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "book_of_ancient": {
+    "star": 2,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "lunar_dew": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "fire_flower": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "soul_contract": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "lit_lamp": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "soul_pouch": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ancient_text_piece": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "icy_soul_rock": {
+    "star": 2,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "flaming_lava": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "sayrams_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "bottle_of_emotion": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "peach_tree": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "candle": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "alliance_badge": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "horn_flute": {
+    "star": 2,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "cursed_doll": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "reindeer_spear": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "secret_map": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ring_of_cycles": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   }
+  },
+  "EXP Dungeon": {
+   "charm_of_the_undead": {
+    "star": null,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pigs_ribbon": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "shamaness_marble": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "contract_of_darkness": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "rainbow_snail_shell": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "hexagon_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "arwens_glass_shoes": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "mushmoms_cap": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "clear_spring_water": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "athena_gloves": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "zakums_stone_piece": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "horntails_scale": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pink_beans_giant_rib": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "chalice": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "old_music_box": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "silver_pendant": {
+    "star": 0,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "star_rock": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "book_of_ancient": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "lunar_dew": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "fire_flower": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "soul_contract": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "lit_lamp": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "soul_pouch": {
+    "star": 0,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ancient_text_piece": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "icy_soul_rock": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "flaming_lava": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "sayrams_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "bottle_of_emotion": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "peach_tree": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "candle": {
+    "star": 0,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "alliance_badge": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "horn_flute": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "cursed_doll": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "reindeer_spear": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "secret_map": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ring_of_cycles": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   }
+  },
+  "Equipment Dungeon": {
+   "charm_of_the_undead": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pigs_ribbon": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "shamaness_marble": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "contract_of_darkness": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "rainbow_snail_shell": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "hexagon_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "arwens_glass_shoes": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "mushmoms_cap": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "clear_spring_water": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "athena_gloves": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "zakums_stone_piece": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "horntails_scale": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pink_beans_giant_rib": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "chalice": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "old_music_box": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "silver_pendant": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "star_rock": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "book_of_ancient": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "lunar_dew": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "fire_flower": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "soul_contract": {
+    "star": 5,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "lit_lamp": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "soul_pouch": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ancient_text_piece": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "icy_soul_rock": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "flaming_lava": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "sayrams_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "bottle_of_emotion": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "peach_tree": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "candle": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "alliance_badge": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "horn_flute": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "cursed_doll": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "reindeer_spear": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "secret_map": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ring_of_cycles": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   }
+  },
+  "Weapon Dungeon": {
+   "charm_of_the_undead": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pigs_ribbon": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "shamaness_marble": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "contract_of_darkness": {
+    "star": 2,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "rainbow_snail_shell": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "hexagon_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "arwens_glass_shoes": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "mushmoms_cap": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "clear_spring_water": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "athena_gloves": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "zakums_stone_piece": {
+    "star": 2,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "horntails_scale": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pink_beans_giant_rib": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "chalice": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "old_music_box": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "silver_pendant": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "star_rock": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "book_of_ancient": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "lunar_dew": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "fire_flower": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "soul_contract": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "lit_lamp": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "soul_pouch": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ancient_text_piece": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "icy_soul_rock": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "flaming_lava": {
+    "star": 3,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "sayrams_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "bottle_of_emotion": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "peach_tree": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "candle": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "alliance_badge": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "horn_flute": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "cursed_doll": {
+    "star": 3,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "reindeer_spear": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "secret_map": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ring_of_cycles": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   }
+  },
+  "Enhancement Dungeon": {
+   "charm_of_the_undead": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pigs_ribbon": {
+    "star": 0,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "shamaness_marble": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "contract_of_darkness": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "rainbow_snail_shell": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "hexagon_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "arwens_glass_shoes": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "mushmoms_cap": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "clear_spring_water": {
+    "star": 0,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "athena_gloves": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "zakums_stone_piece": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "horntails_scale": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pink_beans_giant_rib": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "chalice": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "old_music_box": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "silver_pendant": {
+    "star": 0,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "star_rock": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "book_of_ancient": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "lunar_dew": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "fire_flower": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "soul_contract": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "lit_lamp": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "soul_pouch": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ancient_text_piece": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "icy_soul_rock": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "flaming_lava": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "sayrams_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "bottle_of_emotion": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "peach_tree": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "candle": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "alliance_badge": {
+    "star": 1,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "horn_flute": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "cursed_doll": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "reindeer_spear": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "secret_map": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ring_of_cycles": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   }
+  },
+  "Hero Dungeon": {
+   "charm_of_the_undead": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pigs_ribbon": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "shamaness_marble": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "contract_of_darkness": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "rainbow_snail_shell": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "hexagon_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "arwens_glass_shoes": {
+    "star": 5,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "mushmoms_cap": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "clear_spring_water": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "athena_gloves": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "zakums_stone_piece": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "horntails_scale": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pink_beans_giant_rib": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "chalice": {
+    "star": 5,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "old_music_box": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "silver_pendant": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "star_rock": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "book_of_ancient": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "lunar_dew": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "fire_flower": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "soul_contract": {
+    "star": 5,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "lit_lamp": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "soul_pouch": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ancient_text_piece": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "icy_soul_rock": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "flaming_lava": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "sayrams_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "bottle_of_emotion": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "peach_tree": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "candle": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "alliance_badge": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "horn_flute": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "cursed_doll": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "reindeer_spear": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "secret_map": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ring_of_cycles": {
+    "star": null,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   }
+  },
+  "World Boss": {
+   "charm_of_the_undead": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pigs_ribbon": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "shamaness_marble": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "contract_of_darkness": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "rainbow_snail_shell": {
+    "star": 3,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "hexagon_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "arwens_glass_shoes": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "mushmoms_cap": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "clear_spring_water": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "athena_gloves": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "zakums_stone_piece": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "horntails_scale": {
+    "star": 3,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pink_beans_giant_rib": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "chalice": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "old_music_box": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "silver_pendant": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "star_rock": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "book_of_ancient": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "lunar_dew": {
+    "star": 3,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "fire_flower": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "soul_contract": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "lit_lamp": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "soul_pouch": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ancient_text_piece": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "icy_soul_rock": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "flaming_lava": {
+    "star": 3,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "sayrams_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "bottle_of_emotion": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "peach_tree": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "candle": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "alliance_badge": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "horn_flute": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "cursed_doll": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "reindeer_spear": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "secret_map": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ring_of_cycles": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   }
+  },
+  "Chapter Hunt": {
+   "charm_of_the_undead": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pigs_ribbon": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "shamaness_marble": {
+    "star": 1,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "contract_of_darkness": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "rainbow_snail_shell": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "hexagon_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "arwens_glass_shoes": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "mushmoms_cap": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "clear_spring_water": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "athena_gloves": {
+    "star": 1,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "zakums_stone_piece": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "horntails_scale": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "pink_beans_giant_rib": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "chalice": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "old_music_box": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "silver_pendant": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "star_rock": {
+    "star": 1,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "book_of_ancient": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "lunar_dew": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "fire_flower": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "soul_contract": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "lit_lamp": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "soul_pouch": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ancient_text_piece": {
+    "star": 1,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "icy_soul_rock": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "flaming_lava": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "sayrams_necklace": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "bottle_of_emotion": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "peach_tree": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "candle": {
+    "star": 0,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   },
+   "alliance_badge": {
+    "star": 1,
+    "equipped": true,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Damage Taken Decrease %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Defense %"
+     }
+    ]
+   },
+   "horn_flute": {
+    "star": 2,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Epic",
+      "stat": "Defense %"
+     },
+     {
+      "rarity": "Unique",
+      "stat": "Accuracy"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "cursed_doll": {
+    "star": 3,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Critical Rate %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Max Damage Multiplier %"
+     }
+    ]
+   },
+   "reindeer_spear": {
+    "star": 4,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Mystic",
+      "stat": "Boss Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Normal Monster Damage %"
+     }
+    ]
+   },
+   "secret_map": {
+    "star": 5,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic",
+      "stat": "Normal Monster Damage %"
+     },
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Status Effect Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     }
+    ]
+   },
+   "ring_of_cycles": {
+    "star": null,
+    "equipped": false,
+    "lines": [
+     {
+      "rarity": "Mystic (Prime)",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Main Stat %"
+     }
+    ]
+   }
+  }
+ },
+ "linesRead": 62,
+ "companionLevels": {
+  "Wind Archer": 3,
+  "Hero": 7,
+  "Dark Knight": 18
+ },
+ "cubes": {
+  "state": {
+   "legs|Potential": {
+    "rarity": "legendary",
+    "pity": 120,
+    "lines": [
+     {
+      "stat": "Defense %",
+      "value": 12
+     },
+     {
+      "stat": "Final Damage %",
+      "value": 9.5
+     },
+     {
+      "stat": "Luk",
+      "value": 400
+     }
+    ]
+   },
+   "legs|Bonus Potential": {
+    "rarity": "epic",
+    "pity": 49,
+    "lines": [
+     {
+      "stat": "Max HP %",
+      "value": 6
+     },
+     {
+      "stat": "Skill Cooldown Decrease (seconds)",
+      "value": 4.5
+     },
+     {
+      "stat": "(none)",
+      "value": null
+     }
+    ]
+   },
+   "belt|Potential": {
+    "rarity": "rare",
+    "pity": 75,
+    "lines": [
+     {
+      "stat": "Defense %",
+      "value": 8
+     },
+     {
+      "stat": "(none)",
+      "value": null
+     },
+     {
+      "stat": "Basic Attack Damage %",
+      "value": 7
+     }
+    ]
+   },
+   "gloves|Bonus Potential": {
+    "rarity": "unique",
+    "pity": 417,
+    "lines": [
+     {
+      "stat": "Damage %",
+      "value": null
+     },
+     {
+      "stat": "(none)",
+      "value": null
+     },
+     {
+      "stat": "Luk",
+      "value": 7.5
+     }
+    ]
+   },
+   "boots|Potential": {
+    "rarity": "mystic",
+    "pity": 5,
+    "lines": [
+     {
+      "stat": "Damage %",
+      "value": 15
+     },
+     {
+      "stat": "Dex %",
+      "value": 12
+     },
+     {
+      "stat": "(none)",
+      "value": null
+     }
+    ]
+   },
+   "neck|Bonus Potential": {
+    "rarity": "normal",
+    "pity": 20,
+    "lines": [
+     {
+      "stat": "(none)",
+      "value": null
+     },
+     {
+      "stat": "(none)",
+      "value": null
+     },
+     {
+      "stat": "(none)",
+      "value": null
+     }
+    ]
+   }
+  },
+  "pieces": 5,
+  "lines": 11,
+  "rows": 6,
+  "warnings": 9,
+  "ignored": 1,
+  "hints": [
+   "unknown stat \"Bogus Stat\"; the line was left empty",
+   "Basic Attack Damage % cannot roll on this slot",
+   "is not below the rare cap of 60 for Potential",
+   "is not below the unique cap of 417 for Bonus Potential",
+   "has no value; left empty",
+   "is the top tier, so pity 5 has no meaning",
+   "unknown rarity \"Godlike\"; normal used",
+   "pity \"abc\" is not a number",
+   "appears twice"
+  ]
+ },
+ "class": "dark_knight"
+}

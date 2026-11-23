@@ -1,0 +1,50 @@
+name: App tests
+
+# Engine golden tests (plain Python, no Excel), API tests and web tests/build.
+# The engine goldens are generated with Python 3.11 and PYTHONHASHSEED=0 (3.12+ changes sum() rounding; the
+# verify scripts have set-order float sums) so CI pins both.
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+  workflow_dispatch: {}
+
+jobs:
+  engine-and-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install API dependencies
+        run: python -m pip install -r api/requirements-dev.txt
+      - name: Engine golden tests (12 classes)
+        env:
+          PYTHONHASHSEED: "0"
+        run: |
+          for t in fp_mage hero ice_lightning_mage paladin bowmaster bishop dark_knight marksman buccaneer corsair night_lord shadower; do
+            python tests/golden/test_$t.py
+          done
+          python tests/golden/test_fp_mage_artifacts.py
+      - name: API tests
+        env:
+          PYTHONHASHSEED: "0"
+        run: python -m pytest api/tests -q
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build

@@ -449,6 +449,23 @@ ARTIFACT_STAR_VALUES = {
     "contract_of_darkness_crit_rate": [8, 9.6, 11.2, 12.8, 14.4, 16],
     "shamaness_marble_buff_duration_increase_pct": [6, 7.2, 8.4, 9.6, 10.8, 12],
     "charm_of_the_undead_attack_pct": [10, 12, 14, 16, 18, 20],
+    # Arwen's Glass Shoes: Companion Summoning Time Increase % (percentage points added to Inputs!companion_summon_time_increase_pct while
+    # equipped; Artifacts row arwens_glass_shoes_summon_time_increase_pct).  Star 0 = 20, star 5 = 40 and the linear steps
+    # between them (20, 24, 28, 32, 36, 40) are USER-CONFIRMED (2026-11-19).  One table: change the values here if the game changes.
+    "arwens_glass_shoes_summon_time_increase_pct": [20, 24, 28, 32, 36, 40],
+}
+
+# Artifacts that genuinely have NO DPS effect in this model (user, 2026-11-19): their stat is one the DPS model does not use, or their content
+# is not modelled.  This is a statement of fact, not missing data - equipping them changes nothing and their Artifacts-sheet row is a constant 0.
+# artifact id -> (short reason, shown on the Artifacts / ArtifactsInput sheets and in the engine schema)
+ARTIFACT_NO_DPS_EFFECT = {
+    "ancient_text_piece": "Guild Conquest content (not modelled)",
+    "lunar_dew": "stat not used by the DPS model (no attacking effect)",
+    "pink_beans_giant_rib": "raid content (not modelled)",
+    "horntails_scale": "raid content (not modelled)",
+    "zakums_stone_piece": "raid content (not modelled)",
+    "mushmoms_cap": "stat not used by the DPS model (Accuracy vs Evasion not modelled)",
+    "pigs_ribbon": "stat not used by the DPS model (no attacking effect)",
 }
 
 # ArtifactsInput sheet layout — a friendlier "current state" sheet (styled after PotentialCubes)
@@ -790,6 +807,17 @@ def artifact_cursed_doll_reference_expr(eq_expr, star_expr):
     return f'IF({eq_expr},{star_lookup_expr(star_expr, "cursed_doll_final_damage")},0)'
 
 
+def artifact_arwens_glass_shoes_expr(eq_expr, star_expr):
+    """Arwen's Glass Shoes: Companion Summoning Time Increase % (percentage points; star 0 = 20, star 5 = 40, linear steps in between, all
+    user-confirmed - see ARTIFACT_STAR_VALUES).  0 when not equipped."""
+    return f'IF({eq_expr},{star_lookup_expr(star_expr, "arwens_glass_shoes_summon_time_increase_pct")},0)'
+
+
+def companion_summon_time_inc_expr(input_expr, arwens_expr):
+    """The companion's effective Summoning Time Increase % = the Inputs value + Arwen's Glass Shoes (every host `inc` goes through here)."""
+    return f'({input_expr}+{arwens_expr})'
+
+
 def artifact_horn_flute_full_expr(eq_expr, content_type_expr, star_expr):
     """Horn Flute's Final Damage while its companion is out (doubled in Chapter Boss)."""
     return (f'IF({eq_expr},{star_lookup_expr(star_expr, "horn_flute_final_damage")}'
@@ -1124,7 +1152,7 @@ def build_inputs_sheet(wb, existing=None):
         ("skill_cooldown_decrease", "Skill Cooldown Decrease (seconds; applies to every cooldown — skills, buffs and passives)", 0),
         ("basic_attack_target_increase", "Basic Attack Target Increase (flat, adds to the 6-target Showdown base)", 1),
         ("buff_duration_increase_pct", "Buff Duration Increase %", 0),
-        ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companion duration = 30s x (1 + this/100); summon cooldown is always 90s; see Companion sheet)", 0),
+        ("companion_summon_time_increase_pct", "Companion Summoning Time Increase % (companion duration = 30s x (1 + (this + Arwen's Glass Shoes, if equipped)/100); summon cooldown is always 90s; see Companion sheet)", 0),
         ("boss_normal_weight_choice", "Boss/Normal Emphasis (used when Content Type is Breakthrough or Hero Dungeon)", "A Little More Normal"),
         ("max_enemies_hit", "Max Enemies Actually In Range (normal monsters only; default 999 = uncapped)", 999),
         ("incoming_hit_rate", "Incoming Hit Rate (hits/sec taken — user-estimated, feeds Shadow Shifter's counterattack only)", 1),
@@ -1334,15 +1362,16 @@ ART_ROW = {
     "contract_of_darkness_crit_rate_bonus": 69,
     "shamaness_marble_reference": 70,
     "charm_of_the_undead": 71,
-    # Always-0 artifacts (raid content / companion-only / non-attacking procs this project
-    # doesn't model at all) — trivial rows kept only for ArtifactsInput tracking consistency.
+    # No-DPS-effect artifacts (see ARTIFACT_NO_DPS_EFFECT: raid / guild content and stats the model
+    # does not use) — constant-0 rows kept only for ArtifactsInput tracking consistency.  Arwen's
+    # Glass Shoes (row 78) is NOT one of them: it adds Companion Summoning Time Increase %.
     "ancient_text_piece_reference": 72,
     "lunar_dew_reference": 73,
     "pink_beans_giant_rib_reference": 74,
     "horntails_scale_reference": 75,
     "zakums_stone_piece_reference": 76,
     "mushmoms_cap_reference": 77,
-    "arwens_glass_shoes_reference": 78,
+    "arwens_glass_shoes_summon_time_increase_pct": 78,
     "pigs_ribbon_reference": 79,
     "AGG_NORMAL_DAMAGE": 80,
     "AGG_FINAL_DAMAGE_BOSS_ONLY": 81,
@@ -1687,20 +1716,21 @@ def build_artifacts_sheet(wb):
         eq["charm_of_the_undead"], IB("monster_type"), IB("fight_duration"), star["charm_of_the_undead"],
     ))
 
-    # Always-0 artifacts — raid content (Pink Bean/Horntail/Zakum), Guild Conquest (Ancient Text
-    # Piece), companion-only or non-attacking procs (Lunar Dew, Mushmom's Cap, Arwen's Glass Shoes,
-    # Pig's Ribbon) this project doesn't model at all. Trivial rows kept only so ArtifactsInput
-    # still tracks star level/equip state consistently — see KNOWN_GAPS.md for why each is 0.
-    for zero_key, zero_label in [
-        ("ancient_text_piece_reference", "Ancient Text Piece — always 0 (Guild Conquest not modeled)"),
-        ("lunar_dew_reference", "Lunar Dew — always 0 (no attacking effect)"),
-        ("pink_beans_giant_rib_reference", "Pink Bean's Giant Rib — always 0 (raid content not modeled)"),
-        ("horntails_scale_reference", "Horntail's Scale — always 0 (raid content not modeled)"),
-        ("zakums_stone_piece_reference", "Zakum's Stone Piece — always 0 (raid content not modeled)"),
-        ("mushmoms_cap_reference", "Mushmom's Cap — always 0 (Accuracy-vs-Evasion not modeled)"),
-        ("arwens_glass_shoes_reference", "Arwen's Glass Shoes — always 0 (companions not modeled)"),
-        ("pigs_ribbon_reference", "Pig's Ribbon — always 0 (no attacking effect)"),
-    ]:
+    # Arwen's Glass Shoes — real, live: Companion Summoning Time Increase % (star-dependent; linear 20..40 steps, user-confirmed, see
+    # ARTIFACT_STAR_VALUES).  Added to Inputs!companion_summon_time_increase_pct everywhere that value feeds the companion model
+    # (companion_summon_time_inc_expr).
+    ws.cell(row=r["arwens_glass_shoes_summon_time_increase_pct"], column=1, value=(
+        "Arwen's Glass Shoes — Companion Summoning Time Increase % (added to the Inputs value; linear 20/24/28/32/36/40 by star, "
+        "user-confirmed)"
+    ))
+    ws.cell(row=r["arwens_glass_shoes_summon_time_increase_pct"], column=2, value="=" + artifact_arwens_glass_shoes_expr(
+        eq["arwens_glass_shoes"], star["arwens_glass_shoes"],
+    ))
+
+    # No-DPS-effect artifacts (ARTIFACT_NO_DPS_EFFECT) — constant 0 by design (the stat is not used by the model, or the content is not
+    # modelled), not missing information.  Rows kept only so ArtifactsInput still tracks star level/equip state consistently.
+    for zero_key, zero_label in [(f"{k}_reference", f"{ARTIFACT_LABELS[k]} — no DPS effect ({reason})")
+                                 for k, reason in ARTIFACT_NO_DPS_EFFECT.items()]:
         ws.cell(row=r[zero_key], column=1, value=zero_label)
         ws.cell(row=r[zero_key], column=2, value=0)
 
@@ -2573,11 +2603,35 @@ STATUS_PHI_ROWS = sorted({e[0] for _g, _c, ents in STATUS_GROUPS for e in ents})
 STATUS_PERCAST_KEYS = sorted({e[4] for _g, _c, ents in STATUS_GROUPS for e in ents})
 # stat sweeps whose block must re-run the engine (they move cast times / buff windows / the Status Effect Damage input / Hexagon stacks)
 STATUS_REBUILD_KEYS = ["skill_cooldown_decrease", "buff_duration_increase_pct", "shamaness_marble_equipped", "status_effect_damage",
-                       "companion_summon_time_increase_pct", "hexagon_necklace_equipped",
+                       "companion_summon_time_increase_pct", "hexagon_necklace_equipped", "arwens_glass_shoes_equipped",
                        # everything that moves the engine's buff bucket must re-run the strip too - with the engine on, Summary's Attack% bucket IS the strip's mean buff
                        # bucket (A0 incl. Charm / the Attack% artifacts, Dark Sight's and Frailty Curse's F incl. the 1st/3rd/4th-job skill-level inputs)
                        "charm_of_the_undead_equipped", "old_music_box_equipped", "secret_map_equipped", "reindeer_spear_equipped",
-                       "alliance_badge_equipped", "bottle_of_emotion_equipped", "skill_lvl_1st", "skill_lvl_3rd", "skill_lvl_4th", "skill_lvl_all"]
+                       "alliance_badge_equipped", "bottle_of_emotion_equipped", "skill_lvl_1st", "skill_lvl_3rd", "skill_lvl_4th", "skill_lvl_all",
+                       # Sensitivity fix 1 (2026-11-21): every other stat whose swept value changes something the strip CONSUMES must re-run its own strip.
+                       # The strip reads (a) Dark Sight's / Frailty Curse's F, duration and cooldown and the cast groups' cooldowns (Gust Charm's stun window too),
+                       # (b) the per-cast damage weights (Calc column Y) and the basic-attack weight c_slot (Showdown).  Weights only matter through their RELATIVE sizes
+                       # (a cast is worth w*Wt - c_slot*Wt), so a stat that scales every damage row alike leaves the strip's timing factors untouched and reuse is EXACT.
+                       # Engine experiment (reuse of the main strip vs a full re-solve; World Boss / Enhancement Dungeon, Lv110 / 140, stat sets A / C, with and without a
+                       # companion, doses +1 / +30 / +300): exact to 1e-15 for LUK / DEX, Defense, Damage %, Damage Amp, Final Damage, Min / Max Damage, Crit Damage, Def Pen,
+                       # Flat ATTACK, ATTACK %, Attack Speed, Normal Damage (the strip is boss-branch only), the Basic Attack Target Increase, Incoming Hit Rate AND the 2nd-job
+                       # skill level (Gust Charm is a FIXED on-cooldown stun cast: its weight never enters a decision; Assassin's Mark is a uniformly spread row).  NOT exact
+                       # (a discrete cast decision flips): the stats of the first block above, and
+                       # - Skill Damage % / Basic Attack Damage %: skill rows vs Showdown, the basic attack a cast replaces (c_slot) (Skill Damage is off by 0.6 % at +1 in the
+                       #   Enhancement Dungeon, Basic Attack Damage by 0.5 % at +30);
+                       # - Boss Damage %: Showdown has its own Boss Mastery chain, so the boss bucket is not uniform across rows (exact at +30, off by 1 % at +300; Candle /
+                       #   Sayram's Necklace / Star Rock add to it; Peach Tree / Silver Pendant add to the Monster Damage-Taken bucket that sums with it);
+                       # - Crit Rate %: Ring of Cycles' Skill / Basic Attack Damage bonus follows the crit rate (Book of Ancient / Rainbow Snail Shell move it too; The Contract
+                       #   of Darkness' boss-only Crit Rate does NOT enter Ring of Cycles' threshold here and scales every row alike: reuse is exact).
+                       # (Soul Contract's cooldown cut only exists in Chapter Hunt, whose normal-monster weight is never 0, so the strip is never on there: reuse exact.)
+                       "skill_damage", "basic_attack_damage", "boss_damage", "crit_rate",
+                       "ring_of_cycles_equipped", "book_of_ancient_equipped", "rainbow_snail_shell_equipped",
+                       "candle_equipped", "sayrams_necklace_equipped", "star_rock_equipped", "peach_tree_equipped", "silver_pendant_equipped"]
+# Blocks that run the full 3-candidate companion summon-time search themselves (everything else reuses the main sheet's choice): guide "Gap found by the Buccaneer port", items 1-4
+COMPANION_FULL_SEARCH_KEYS = ("companion_summon_time_increase_pct", "hexagon_necklace_equipped", "horn_flute_equipped", "skill_cooldown_decrease",
+                              "arwens_glass_shoes_equipped")
+# sweeps that change the companion's summon DURATION itself (its own s_0 / W_0 in the stun strip instead of the main sheet's)
+SUMMON_TIME_KEYS = ("companion_summon_time_increase_pct", "arwens_glass_shoes_equipped")
 STATUS_KO_FIRST_BIN_NOTE = "World Boss: KO 24-34 s and 59-69 s; Enhancement Dungeon: KO for the last 4.5 s (user, 2026-11-14)"
 
 
@@ -3275,7 +3329,8 @@ def companion_host_main():
     r_dsa = ROW["DARK_SIGHT_ATK"]
     attack_bucket_avg = f'((Calc!C{r_dsa}=TRUE)*Calc!F{r_dsa}*{main_buff_uptime(r_dsa)}+{art_ref("AGG_ATTACK_PCT")})'
     return {
-        "choice": IB("companion_choice"), "inc": IB("companion_summon_time_increase_pct"),
+        "choice": IB("companion_choice"),
+        "inc": companion_summon_time_inc_expr(IB("companion_summon_time_increase_pct"), art_ref("arwens_glass_shoes_summon_time_increase_pct")),
         "lvl": companion_level_lookup_expr(IB("companion_choice")),
         "mt": IB("monster_type"), "T": IB("fight_duration"), "content": IB("content_type"),
         "pvp_len": PVP_FIGHT_DURATION, "cap": IB("max_enemies_hit"), "w": IB("normal_weight_frac"),
@@ -3517,9 +3572,9 @@ def build_companion_sheet(wb):
         for sc, vc in (("E", "F"), ("G", "H"), ("I", "J"))
     )
     ws.cell(row=r_b0, column=1, value=(
-        "b0 = Companion Summoning Time Increase % WITHOUT the boots potential lines listed on PotentialCubes"
+        "b0 = Companion Summoning Time Increase % WITHOUT the boots potential lines listed on PotentialCubes (Arwen's Glass Shoes, when equipped, included)"
     )).font = LABEL_FONT
-    ws.cell(row=r_b0, column=2, value=f'=MAX(0,{IB("companion_summon_time_increase_pct")}-({own_lines}))')
+    ws.cell(row=r_b0, column=2, value=f'=MAX(0,{IB("companion_summon_time_increase_pct")}-({own_lines}))+{art_ref("arwens_glass_shoes_summon_time_increase_pct")}')
     ws.cell(row=COMPANION_FIRST_ROW - 2, column=COMPANION_POT_FIRST_COL, value="Summoning Time Increase % = b0 + X, X (the header) =").font = LABEL_FONT
     for x, col_idx in ([] if os.environ.get('COMP_LIGHT') else COMPANION_POT_COL.items()):
         col = get_column_letter(col_idx)
@@ -3774,6 +3829,14 @@ def alloc_status_strip_row0(stat_key):
     return row0
 
 
+def mastery_final_block_expr(key, skills_row, row_of, ib):
+    """A row's MasteryFinalDamage% inside a Sensitivity block.  Assassin's Mark's cell on the Skills sheet reads the MAIN Calc!F of Night Lord's Mark
+    (_MARK_OF_ASSASSIN_FD), which a block sweeping a 4th-job skill level never saw move (CLAUDE.md bug 19): read this block's own Night Lord's Mark row instead."""
+    if key == "MARK_OF_ASSASSIN":
+        return f'IF({ib("level")}>=107,F{row_of["NIGHT_LORDS_MARK"]},0)'
+    return S("MasteryFinalDamage%", skills_row)
+
+
 def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, strip_row0=None):
     row_label = base_row
     row_header = base_row + 1
@@ -3810,7 +3873,11 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, stri
     avgbuff_ref = f"B{s_avgbuff}"
 
     fda_block = fixed_duration_active_expr(ib("monster_type"), ib("fight_duration"))
-    bdi_block = ib("buff_duration_increase_pct")
+    # Shamaness Marble's Buff Duration Increase is baked into Inputs!buff_duration_increase_pct, so its equip what-if is a signed DELTA (shamaness_marble_delta_block,
+    # defined below, written to this helper cell).  EVERY reader of the block's Buff Duration Increase goes through bdi_block (buff uptimes, Alchemic Adrenaline's
+    # window, the strip's durations); until 2026-11-23 the delta was defined but never added, so the Shamaness row was inert (same gap as Corsair / Bowmaster).
+    shamaness_bdi_cell = f"U{row_header + 8}"
+    bdi_block = f'({ib("buff_duration_increase_pct")}+{shamaness_bdi_cell})'
 
     def buff_uptime_block(local_row, skills_row):
         return uptime_fraction_or_exact_expr(
@@ -3930,13 +3997,25 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, stri
     # Clear Spring Water / Soul Pouch — baked into Inputs when equipped; each is a flat,
     # content-type-gated value with no dependency on any OTHER swept stat, so a single toggle-delta
     # (0 everywhere except that artifact's own equip-toggle block) suffices.
-    csw_delta_block = (
-        f'({ib("clear_spring_water_equipped")}-{IB("clear_spring_water_equipped")})'
-        f'*IF({_growth_dungeon_gate_expr(ib("content_type"))},{star_lookup_expr(ib("clear_spring_water_star"), "clear_spring_water_final_damage")},0)'
+    # The Final Damage a baked-in artifact grants is typed into Inputs!final_damage, i.e. it MULTIPLIES everything else (K carries (1+final_damage/100)*(1+bucket/100)).
+    # So its what-if is a FACTOR on the whole product, in both directions: adding multiplies by (1 + x/100), removing by 1/(1 + x/100) - exact inverses (CLAUDE.md
+    # item 15).  The first version put +x / -x inside the additive artifact bucket: removal read (1 + x/100) times the adding gain, and with a live Final Damage
+    # artifact (Candle / Flaming Lava / Horn Flute: bucket a = 1 + L/100 > 1) adding read (a + x/100)/a instead of 1 + x/100.  The factor is applied to the live
+    # bucket: bucket_block = ((1 + L/100) * product of the factors - 1) * 100.
+    # fd_live_cell / agg_fd_cell are block-local helper cells (column U, 6th / 7th skill row; also keeps the long expressions out of every K formula).
+    fd_live_cell, agg_fd_cell = f"U{row_header + 6}", f"U{row_header + 7}"
+
+    def fd_baked_factor(eq_after, eq_base, magnitude):
+        """Multiplicative what-if factor of a baked-in Final Damage artifact: 1 + x/100 when this block equips it, 1/(1 + x/100) when it unequips it, 1 elsewhere."""
+        step = f'({eq_after}-{eq_base})'
+        return f'IF({step}>0,1+({magnitude})/100,IF({step}<0,1/(1+({magnitude})/100),1))'
+    csw_factor_block = fd_baked_factor(
+        ib("clear_spring_water_equipped"), IB("clear_spring_water_equipped"),
+        f'IF({_growth_dungeon_gate_expr(ib("content_type"))},{star_lookup_expr(ib("clear_spring_water_star"), "clear_spring_water_final_damage")},0)',
     )
-    soul_pouch_delta_block = (
-        f'({ib("soul_pouch_equipped")}-{IB("soul_pouch_equipped")})'
-        f'*IF({ib("monster_type")}="pvp",{star_lookup_expr(ib("soul_pouch_star"), "soul_pouch_final_damage")},0)'
+    soul_pouch_factor_block = fd_baked_factor(
+        ib("soul_pouch_equipped"), IB("soul_pouch_equipped"),
+        f'IF({ib("monster_type")}="pvp",{star_lookup_expr(ib("soul_pouch_star"), "soul_pouch_final_damage")},0)',
     )
     old_music_box_block = artifact_old_music_box_expr(
         ib("old_music_box_equipped"), ib("content_type"), ib("old_music_box_star"),
@@ -3965,9 +4044,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, stri
         f'(100*(1-(1-({ib("def_pen")}+{delta["def_pen"]})/100)*(1-{_reindeer_star_magnitude}/100)^{_reindeer_extra_dose_block}))'
     )
 
-    cursed_doll_delta_block = (
-        f'({ib("cursed_doll_equipped")}-{IB("cursed_doll_equipped")})'
-        f'*{star_lookup_expr(ib("cursed_doll_star"), "cursed_doll_final_damage")}'
+    cursed_doll_factor_block = fd_baked_factor(
+        ib("cursed_doll_equipped"), IB("cursed_doll_equipped"),
+        star_lookup_expr(ib("cursed_doll_star"), "cursed_doll_final_damage"),
     )
     horn_flute_block = artifact_horn_flute_expr(
         ib("horn_flute_equipped"), ib("content_type"), ib("horn_flute_star"), companion_block_ref(base_row, "horn_uptime"),
@@ -3982,8 +4061,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, stri
         _boe_magnitude = artifact_bottle_of_emotion_final_damage_value_expr(
             "TRUE", ib("bottle_of_emotion_star"), IB("attack_speed"),
         )
-        bottle_of_emotion_final_damage_delta_block = (
-            f'(IF({ib("bottle_of_emotion_equipped")},1,-1)*{_boe_magnitude})'
+        # same inverse-step rule as the other baked-in Final Damage artifacts (see fd_baked_factor); the toggle always reads the real Attack Speed
+        bottle_of_emotion_factor_block = fd_baked_factor(
+            ib("bottle_of_emotion_equipped"), IB("bottle_of_emotion_equipped"), _boe_magnitude,
         )
     else:
         _boe_new = artifact_bottle_of_emotion_final_damage_value_expr(
@@ -3992,14 +4072,15 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, stri
         _boe_baseline = artifact_bottle_of_emotion_final_damage_value_expr(
             ib("bottle_of_emotion_equipped"), ib("bottle_of_emotion_star"), IB("attack_speed"),
         )
-        bottle_of_emotion_final_damage_delta_block = f'({_boe_new}-{_boe_baseline})'
+        # a changed Attack Speed moves the (typed) Bottle value from _boe_baseline to _boe_new: a multiplicative factor on the product, like every Final Damage source
+        bottle_of_emotion_factor_block = f'((1+{_boe_new}/100)/(1+{_boe_baseline}/100))'
     alliance_badge_block = artifact_alliance_badge_expr(ib("alliance_badge_equipped"), ib("alliance_badge_star"))
     sayrams_normal_block, sayrams_boss_block = artifact_sayrams_necklace_exprs(
         ib("sayrams_necklace_equipped"), ib("sayrams_necklace_star"),
     )
-    lit_lamp_delta_block = (
-        f'({ib("lit_lamp_equipped")}-{IB("lit_lamp_equipped")})'
-        f'*IF({ib("content_type")}="World Boss",{star_lookup_expr(ib("lit_lamp_star"), "lit_lamp_final_damage")},0)'
+    lit_lamp_factor_block = fd_baked_factor(
+        ib("lit_lamp_equipped"), IB("lit_lamp_equipped"),
+        f'IF({ib("content_type")}="World Boss",{star_lookup_expr(ib("lit_lamp_star"), "lit_lamp_final_damage")},0)',
     )
     fire_flower_normal_block, fire_flower_boss_block = artifact_fire_flower_exprs(
         ib("fire_flower_equipped"), ib("fire_flower_star"),
@@ -4025,11 +4106,12 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, stri
     # Aggregate bucket totals — block-local mirror of the Artifacts sheet's AGG_* rows.
     agg_crit_rate_block = f'({roc_crit_rate_block}+{rainbow_crit_rate_block})'
     agg_crit_damage_block = f'({boa_crit_damage_delta}+{rainbow_crit_damage_block}+{icy_soul_rock_block})'
-    agg_final_damage_block = (
-        f'(((1+{candle_final_dmg_block}/100)*(1+{flaming_lava_block}/100)*(1+{horn_flute_block}/100)-1)*100'
-        f'+{csw_delta_block}+{soul_pouch_delta_block}+{cursed_doll_delta_block}+{lit_lamp_delta_block}'
-        f'+{bottle_of_emotion_final_damage_delta_block})'
+    fd_live_formula = f'=((1+{candle_final_dmg_block}/100)*(1+{flaming_lava_block}/100)*(1+{horn_flute_block}/100)-1)*100'
+    agg_fd_formula = (
+        f'=((1+{fd_live_cell}/100)*{csw_factor_block}*{soul_pouch_factor_block}*{cursed_doll_factor_block}*{lit_lamp_factor_block}'
+        f'*{bottle_of_emotion_factor_block}-1)*100'
     )
+    agg_final_damage_block = agg_fd_cell      # (helper cell: live Final Damage bucket x the baked-in what-if factor, written below)
     agg_boss_damage_block = f'({candle_boss_dmg_block}+{sayrams_boss_block}+{star_rock_delta_block})'
     agg_normal_damage_block = f'({sayrams_normal_block})'
     agg_enemy_dmg_taken_block = f'({peach_tree_block}+{silver_pendant_block})'
@@ -4099,6 +4181,9 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, stri
         f'FactorTable!$A$2:$A$301,0), 22)'
     )
     ws[basic_coeff_cell] = f'=290*{basic_factor_cell}/1000'
+    ws[fd_live_cell] = fd_live_formula
+    ws[agg_fd_cell] = agg_fd_formula
+    ws[shamaness_bdi_cell] = f'={shamaness_marble_delta_block}'
 
     FULL_HIT_PIPELINE_KEYS = ["SHOWDOWN"] + DAMAGE_ROW_KEYS + TOXIC_VENOM_ROW_KEYS + SHADOW_SHIFTER_ROW_KEYS
 
@@ -4111,9 +4196,11 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, stri
 
         has_cooldown = ROW_HAS_COOLDOWN[key]
         if has_cooldown:
-            eff_cd_row = effective_cooldown_expr(
-                ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"),
-                cdr_applies_expr(key),
+            # Soul Contract's Chapter-Hunt-only cooldown decrease (CLAUDE.md item 11): same multiplicative wrapper as the main Calc sheet's call site (it was
+            # missing here: a Sensitivity block never saw the artifact's cooldown cut).
+            eff_cd_row = (
+                f'({effective_cooldown_expr(ib("monster_type"), S("Cooldown(s)", r), ib("skill_cooldown_decrease"), cdr_applies_expr(key))}'
+                f'*(1-{artifact_soul_contract_pct_expr(ib("soul_contract_equipped"), ib("content_type"), ib("soul_contract_star"))}/100))'
             )
             if key in BUFF_ROW_KEYS:
                 available_duration_row = ib("fight_duration")
@@ -4168,7 +4255,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, stri
                 f'=J{row}*(1+{ib("stat_damage")}/100)*(1+{ib("damage")}/100)'
                 f'*(1+{ib("damage_amp")}/100)'
                 f'*(5000/(6000+{ib("monster_defense")}*(1-{def_pen_total_block}/100)))'
-                f'*(1+({ib("final_damage")}+{delta["final_damage"]})/100)*(1+{S("MasteryFinalDamage%", r)}/100)*(1+{agg_final_damage_block}/100)'
+                f'*(1+({ib("final_damage")}+{delta["final_damage"]})/100)*(1+{mastery_final_block_expr(key, r, row_of, ib)}/100)*(1+{agg_final_damage_block}/100)'
                 f'*(1+(IF({S("Key", r)}="SHOWDOWN",{ib("basic_attack_damage")}+{delta["basic_attack_damage"]}+{agg_basic_attack_damage_block},'
                 f'{ib("skill_damage")}+{delta["skill_damage"]}+{agg_skill_damage_block}))/100)'
                 f'*({avgbuff_with_deltas}*{shadow_partner_mult_ref}*(1+{agg_damage_block}/100)*I{row})'
@@ -4396,7 +4483,10 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, stri
     _charm_val_block = f'IF({ib("charm_of_the_undead_equipped")},{star_lookup_expr(ib("charm_of_the_undead_star"), "charm_of_the_undead_attack_pct")},0)'
     _hex_v_block = f'IF({ib("hexagon_necklace_equipped")},{star_lookup_expr(ib("hexagon_necklace_star"), "hexagon_necklace_damage")},0)'
     block_host = {
-        "choice": ib("companion_choice"), "inc": ib("companion_summon_time_increase_pct"),
+        "choice": ib("companion_choice"),
+        "inc": companion_summon_time_inc_expr(
+            ib("companion_summon_time_increase_pct"),
+            artifact_arwens_glass_shoes_expr(ib("arwens_glass_shoes_equipped"), ib("arwens_glass_shoes_star"))),
         "lvl": companion_level_lookup_expr(ib("companion_choice")),
         "mt": ib("monster_type"), "T": ib("fight_duration"), "content": ib("content_type"),
         "pvp_len": PVP_FIGHT_DURATION, "cap": ib("max_enemies_hit"), "w": ib("normal_weight_frac"),
@@ -4444,7 +4534,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, stri
     # which must search again.  Hexagon Necklace / Horn Flute equip toggles change what the candidate summon times are worth (stack times, the flute's own
     # Final Damage), and Skill Cooldown Decrease re-times every cooldown cast and the player's own stun, so those blocks search the candidates themselves too
     # (guide "Gap found by the Buccaneer port", items 1-4).
-    if stat_key in ("companion_summon_time_increase_pct", "hexagon_necklace_equipped", "horn_flute_equipped", "skill_cooldown_decrease"):
+    if stat_key in COMPANION_FULL_SEARCH_KEYS:
         _block_cells = cm.cells(block_host)
     else:
         _block_cells = cm.cells(block_host, ncand=1, fixed_s=companion_main_ref("best_s"),
@@ -4456,7 +4546,7 @@ def build_stat_block(ws, base_row, ib, stat_key, stat_label, override_expr, stri
         # summon time the main sheet CHOSE (which can be another candidate), so read the main sheet's s_0 / W_0 here - exactly what the main strip (and a full
         # re-evaluation at the swept value) uses.  Only the Summoning-Time block, which sweeps the duration itself, keeps its own s_0 / W_0.
         def _stun_ref(name):
-            if name in ("s_0", "W_0") and stat_key != "companion_summon_time_increase_pct":
+            if name in ("s_0", "W_0") and stat_key not in SUMMON_TIME_KEYS:
                 return companion_main_ref(name)
             return comp_ref(name)
         _bhost = status_engine_host(
@@ -5069,7 +5159,7 @@ def build_artifacts_input_sheet(wb, existing=None):
         "Line 2 Rarity", "Line 2 Stat", "Line 2 DPS Gain",
         "Line 3 Rarity (Legendary only)", "Line 3 Stat (Legendary only)", "Line 3 DPS Gain",
         "Total Potential DPS Gain",
-        "Equipped? (computed)", "Star Level, resolved (computed)",
+        "Equipped? (computed)", "Star Level, resolved (computed)", "Equip effect in the DPS model",
     ]
     for i, name in enumerate(headers):
         ws.cell(row=ARTIFACTS_INPUT_TABLE_HEADER_ROW, column=i + 1, value=name)
@@ -5140,8 +5230,14 @@ def build_artifacts_input_sheet(wb, existing=None):
         ) + ")"
         ws.cell(row=row, column=13, value=eq_formula)
         ws.cell(row=row, column=14, value=f'=IF(B{row}="Not Unlocked",0,B{row})')
+        if art_key in ARTIFACT_NO_DPS_EFFECT:
+            ws.cell(row=row, column=15, value=f"No DPS effect ({ARTIFACT_NO_DPS_EFFECT[art_key]})")
+        elif art_key == "arwens_glass_shoes":
+            ws.cell(row=row, column=15, value=(
+                "Companion Summoning Time Increase % (live): +20% at star 0 and +40% at star 5 (confirmed), linear steps "
+                "20/24/28/32/36/40 in between (confirmed; ARTIFACT_STAR_VALUES) - added to the Inputs value"))
 
-    widths = [42, 12, 12, 26, 14, 12, 26, 14, 12, 26, 14, 16, 18, 20]
+    widths = [42, 12, 12, 26, 14, 12, 26, 14, 12, 26, 14, 16, 18, 20, 60]
     for i, w in enumerate(widths):
         ws.column_dimensions[get_column_letter(i + 1)].width = w
     ws.freeze_panes = f"A{ARTIFACTS_INPUT_TABLE_HEADER_ROW + 1}"

@@ -1,0 +1,13 @@
+# BuildKit reads "<Dockerfile name>.dockerignore" next to the Dockerfile (context = repo root).  The Dockerfile only COPYs what it needs;
+# this keeps the (large) rest of the repository out of the build context sent to the daemon.
+*
+!engine/
+!src/companion_kits.py
+!src/companion_python_model.py
+!src/status_timeline.py
+!data/factor_table.json
+!data/cube_potential_data.json
+!api/
+**/__pycache__
+**/*.pyc
+api/tests

@@ -1,0 +1,320 @@
+{
+ "total_dps": 5.036411024321569e+16,
+ "artifacts": {
+  "equipped": [],
+  "buckets": {
+   "attack_pct": 0,
+   "final_damage": 0.0,
+   "damage": 0,
+   "skill_damage": 0.0,
+   "basic_attack_damage": 0,
+   "crit_rate": 0.0,
+   "crit_damage": 0,
+   "boss_damage": 0,
+   "normal_damage": 0,
+   "enemy_damage_taken": 0,
+   "final_damage_normal_only": 0,
+   "final_damage_boss_only": 0,
+   "soul_contract_cooldown_decrease_pct": 0,
+   "contract_of_darkness_boss_crit_rate": 0,
+   "reindeer_spear_extra_def_pen_unit": 0,
+   "companion_summon_time_increase_pct": 0
+  },
+  "rows": {
+   "rainbow_crit_rate": 0,
+   "rainbow_crit_damage": 0,
+   "icy_soul_rock": 0,
+   "roc_threshold_cr": 152.5,
+   "roc_crit_rate": 0.0,
+   "roc_skill_damage": 0.0,
+   "roc_excess_points": 0,
+   "roc_basic_attack_damage": 0,
+   "candle_final_damage": 0,
+   "candle_boss_damage": 0,
+   "peach_enemy_dmg_taken": 0,
+   "silver_enemy_dmg_taken": 0,
+   "hexagon_avg_stacks": 1.2857142857142858,
+   "hexagon_damage": 0,
+   "charm_of_the_undead": 0,
+   "old_music_box_attack_pct": 0,
+   "secret_map_attack_pct": 0,
+   "reindeer_spear_attack_pct": 0,
+   "alliance_badge": 0,
+   "bottle_of_emotion_attack_pct": 0,
+   "secret_map_final_dmg_normal": 0,
+   "flaming_lava": 0,
+   "horn_flute": 0,
+   "fire_flower_normal": 0,
+   "fire_flower_boss": 0,
+   "chalice_normal": 0,
+   "chalice_boss": 0,
+   "sayrams_necklace_normal": 0,
+   "sayrams_necklace_boss": 0,
+   "contract_of_darkness_crit_rate_bonus": 0,
+   "reindeer_spear_base_def_pen_reference": 0,
+   "soul_contract_pct": 0,
+   "arwens_glass_shoes_summon_time_increase_pct": 0
+  },
+  "reference_only": {},
+  "notes": [
+   "reference_only artifacts: their stat is entered by hand in Inputs (workbook convention); equipping changes nothing live"
+  ],
+  "horn_flute_uptime": 0.43582510578279277,
+  "extra_boss_multiplier": 1.0,
+  "extra_normal_multiplier": 1.0,
+  "hexagon_charm": {
+   "hex_per_stack": 0,
+   "hex_average": 0,
+   "charm_full": 0,
+   "charm_average": 0,
+   "phase_factor_boss": 1.0,
+   "phase_factor_normal": 1.0
+  }
+ },
+ "player_dps": 3.990694073586515e+16,
+ "boss_dps": 5.036411024321569e+16,
+ "normal_dps": 8016629975214045.0,
+ "player_boss_dps": 3.990694073586515e+16,
+ "player_normal_dps": 0.0,
+ "skills": [
+  {
+   "key": "BASIC_ATTACK",
+   "name": "Basic Attack",
+   "dps": 9809177081380350.0,
+   "share": 0.19476522138503774,
+   "boss_dps": 9809177081380350.0,
+   "normal_dps": 0.0,
+   "unlocked": true
+  },
+  {
+   "key": "IGNITE",
+   "name": "Ignite",
+   "dps": 1684542843836970.8,
+   "share": 0.033447286881512765,
+   "boss_dps": 1684542843836970.8,
+   "normal_dps": 0.0,
+   "unlocked": true
+  },
+  {
+   "key": "POISON_BREATH",
+   "name": "Poison Breath",
+   "dps": 2519146583632907.0,
+   "share": 0.05001868535883148,
+   "boss_dps": 2519146583632907.0,
+   "normal_dps": 0.0,
+   "unlocked": true
+  },
+  {
+   "key": "ELEMENTAL_DRAIN",
+   "name": "Elemental Drain",
+   "dps": 3741202077620127.0,
+   "share": 0.07428309682337904,
+   "boss_dps": 3741202077620127.0,
+   "normal_dps": 0.0,
+   "unlocked": true
+  },
+  {
+   "key": "POISON_MIST_BURST",
+   "name": "Poison Mist (burst)",
+   "dps": 255242928355599.38,
+   "share": 0.005067952697327398,
+   "boss_dps": 255242928355599.4,
+   "normal_dps": 0.0,
+   "unlocked": true
+  },
+  {
+   "key": "POISON_MIST_DOT",
+   "name": "Poison Mist (fog DoT)",
+   "dps": 1523180594121221.8,
+   "share": 0.030243373441237398,
+   "boss_dps": 1523180594121221.8,
+   "normal_dps": 0.0,
+   "unlocked": true
+  },
+  {
+   "key": "MIST_ERUPTION",
+   "name": "Mist Eruption",
+   "dps": 2296731468105137.0,
+   "share": 0.045602542306691876,
+   "boss_dps": 2296731468105137.0,
+   "normal_dps": 0.0,
+   "unlocked": true
+  },
+  {
+   "key": "CREEPING_TOXIN",
+   "name": "Creeping Toxin",
+   "dps": 1164282657109096.5,
+   "share": 0.023117308168189698,
+   "boss_dps": 1164282657109096.5,
+   "normal_dps": 0.0,
+   "unlocked": true
+  },
+  {
+   "key": "METEOR_SHOWER_BURST",
+   "name": "Meteor Shower (burst)",
+   "dps": 2686572216831946.0,
+   "share": 0.05334298975715235,
+   "boss_dps": 2686572216831946.0,
+   "normal_dps": 0.0,
+   "unlocked": true
+  },
+  {
+   "key": "METEOR_PROC",
+   "name": "Meteor Proc (30% on-hit, 1s ICD)",
+   "dps": 1701809374780524.0,
+   "share": 0.03379012091273402,
+   "boss_dps": 1701809374780524.0,
+   "normal_dps": 0.0,
+   "unlocked": true
+  },
+  {
+   "key": "FLAME_HAZE_BURST",
+   "name": "Flame Haze (burst)",
+   "dps": 850673653400787.6,
+   "share": 0.016890473182048876,
+   "boss_dps": 850673653400787.6,
+   "normal_dps": 0.0,
+   "unlocked": true
+  },
+  {
+   "key": "FLAME_HAZE_DOT",
+   "name": "Flame Haze (burn DoT)",
+   "dps": 5058228914468400.0,
+   "share": 0.10043320312900336,
+   "boss_dps": 5058228914468400.0,
+   "normal_dps": 0.0,
+   "unlocked": true
+  },
+  {
+   "key": "IFRIT",
+   "name": "Ifrit",
+   "dps": 5092969748100865.0,
+   "share": 0.10112299658439643,
+   "boss_dps": 5092969748100865.0,
+   "normal_dps": 0.0,
+   "unlocked": true
+  },
+  {
+   "key": "FLAME_HAZE_FOG",
+   "name": "Flame Haze (poison fog DoT)",
+   "dps": 1523180594121221.8,
+   "share": 0.030243373441237398,
+   "boss_dps": 1523180594121221.8,
+   "normal_dps": 0.0,
+   "unlocked": true
+  }
+ ],
+ "companion": {
+  "choice": "Blaze Wizard",
+  "level": 10,
+  "dps": 1.0457169507350538e+16,
+  "boss_dps": 1.0457169507350538e+16,
+  "normal_dps": 8016629975214045.0,
+  "share": 0.20763137593122027,
+  "damage": 6.053719082786522e+17,
+  "uplift": 1.266299572358856e+17,
+  "best_candidate": 1,
+  "summon_time_s": 40.0,
+  "window_s": 30.0,
+  "details": {
+   "comp_boss_dps": 1.0457169507350538e+16,
+   "comp_norm_dps": 8016629975214045.0,
+   "comp_blend_dps": 1.0457169507350538e+16,
+   "best": 1,
+   "s": 40.0,
+   "W": 30.0,
+   "E": 0.0,
+   "ext": 0.0,
+   "horn_uptime": 0.42857142857142855,
+   "s0": 40.0,
+   "W0": 30.0,
+   "stunfracB": 0.04285714285714286,
+   "stunfracN": 0.04285714285714286,
+   "hasstun": 1,
+   "dmg_b": 6.053719082786522e+17,
+   "dmg_n": 5.611640982649832e+17,
+   "upl_b": 1.266299572358856e+17,
+   "upl_n": 0.0
+  }
+ },
+ "engine_on": true,
+ "engine": {
+  "casts": {
+   "MEDITATION": 3,
+   "MAGIC_GUARD": 4,
+   "INFINITY": 3,
+   "POISON_BREATH": 4,
+   "POISON_MIST_BURST": 3,
+   "POISON_MIST_DOT": 3,
+   "MIST_ERUPTION": 3,
+   "FLAME_HAZE_BURST": 3,
+   "FLAME_HAZE_DOT": 3,
+   "FLAME_HAZE_FOG": 3,
+   "CREEPING_TOXIN": 3,
+   "METEOR_SHOWER_BURST": 3,
+   "IFRIT": 1
+  },
+  "phi_unif": 1.0113164481608892,
+  "phi_rows": {
+   "POISON_BREATH": 1.1469154473832697,
+   "POISON_MIST_BURST": 0.8304970668265117,
+   "POISON_MIST_DOT": 1.036810706414877,
+   "MIST_ERUPTION": 1.0090155407609154,
+   "FLAME_HAZE_BURST": 0.8304970668265118,
+   "FLAME_HAZE_DOT": 1.0368107064148773,
+   "FLAME_HAZE_FOG": 1.036810706414877,
+   "CREEPING_TOXIN": 1.1069668252296416,
+   "METEOR_SHOWER_BURST": 1.165711609578425,
+   "IFRIT": 1.047289996222445
+  }
+ },
+ "derived": {
+  "attack": 416841125.27500004,
+  "stat_damage": 3020.49016,
+  "actions_per_second": 1.5932455,
+  "cast_rate": 0.4142857142857143,
+  "basic_attacks_per_second": 1.1789597857142857,
+  "avg_buff_mult": 1.8972377281746495,
+  "as_bonus": 6.070714285714286,
+  "burning_magic_mult": 1.25,
+  "elemental_decrease_mult": 1.19164,
+  "element_amp_pct": 28.5,
+  "arcane_aim_pct": 5.699999999999999,
+  "fervent_drain_pct": 7.6,
+  "buff_mastery_pct": 19.0,
+  "skill_coefficient_base": 638.0,
+  "buff_cast_startup_time": 0.0,
+  "attack_bucket_sum": 42.41089828571429,
+  "meteor_attempts_per_s": {
+   "boss": 0.43511650714285716,
+   "normal": 0.0
+  },
+  "meteor_proc_rate": {
+   "boss": 0.3031924620594891,
+   "normal": 0.0
+  },
+  "ignite_ticks_per_s": {
+   "boss": 2.7714285714285714,
+   "normal": 0.0
+  },
+  "flame_haze_dot_stack_multiplier": {
+   "boss": 2.906194097596006,
+   "normal": 2.5272035200216454
+  },
+  "flame_haze_total_stacks": {
+   "boss": 2.3249552780768052,
+   "normal": 2.021762816017316
+  },
+  "stunned_share_boss": 0.04285714285714286,
+  "stunned_share_normal": 0.04285714285714286,
+  "monster_type": "boss",
+  "chapter": 37.0,
+  "stage": 37.0,
+  "breakthrough_normal_weight_pct": 60,
+  "breakthrough_stage_index": 149.0,
+  "monster_defense": 3650.0,
+  "fight_duration": 70,
+  "normal_weight": 0.0,
+  "fixed_duration_active": true
+ }
+}
