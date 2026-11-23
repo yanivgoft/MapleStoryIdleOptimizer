@@ -32,17 +32,22 @@ engine/
     artifacts.py     GENERATED copy of the builder's artifact tables (labels, ranks, star values, potential-line tables) - tests/golden/gen_artifact_data.py
   classes/
     fp_mage.py       compute(inputs), defaults(content_type), schema()
+tests/run_all.py   ONE-COMMAND REGRESSION RUN (all golden jobs in parallel + api pytest in 4 processes + web vitest/tsc/xlsx-map check; ~80 s; `--changed`, `--class <id>`, `--only`; see its docstring)
 tests/golden/
     cases.py         the golden input matrix (158 FP-Mage cases)
     artifact_cases.py        the 33 artifact cases (every artifact at star 5 in World Boss + Blaze Wizard Lv10, other fight shapes, stars, toggles)
     artifact_reference.py    ground truth: evaluates the WORKBOOK (stripped copy, `formulas`) per case, one evaluation at a time (~37 s, ~1.6 GB)
     fp_mage_artifacts_golden.json  frozen workbook values of those cases (+ workbook commit / sha256)
-    test_fp_mage_artifacts.py      engine vs workbook with artifacts equipped (rel 1e-9) + equip-toggle deltas; also reads the *_special.json file
+    test_artifacts.py --class fp_mage      engine vs workbook with artifacts equipped (rel 1e-9) + equip-toggle deltas; also reads the *_special.json file
     gen_artifact_data.py     regenerates / --check engine/data/artifacts.py from the builder's tables
     run_reference.py runs the ORIGINAL src/verify_fp_mage_workbook.py workbook-free (see below)
     make_golden.py   regenerates fp_mage_golden.json (one subprocess, PYTHONHASHSEED=0)
     fp_mage_golden.json   frozen numbers of the verify script
     test_fp_mage.py  engine vs golden, exact ==
+    registry.py      ONE list of the 12 classes: engine module, golden files, sens spec, per-class options; run_all.py / pytest / --class all read it (`python3 tests/golden/registry.py` checks the files)
+    update_goldens.py  refresh a golden from the CURRENT ENGINE after an on-purpose model change (dry run by default, --write --reason; logs to golden_refresh_log.md); test_update_goldens.py
+    test_artifacts.py     ONE parametrised test for all classes (`--class <id>`, `-v`, `--rtol`; pytest id `test_artifacts_match_workbook[<id>]`); per-class options in registry.py + artifacts_extras.py
+    test_sensitivity.py   ONE parametrised test for all classes (`--class <id>`, `-v`, `--rtol`, `--case`); shared tests in sens_test_common.py, class-specific ones in sens_extras/<id>.py
 ```
 
 ## The `compute(inputs)` contract
@@ -73,11 +78,11 @@ changes nothing live), the Horn Flute uptime, the boss / normal extra multiplier
 Companion Summoning Time Increase % (star 0 = +20 .. star 5 = +40 in linear steps, user-confirmed 2026-11-19) to the `companion_summon_time_increase_pct`
 input everywhere the companion model reads it (stun probe, Horn Flute window, companion run); reported as `artifacts.buckets.companion_summon_time_increase_pct`
 and `artifacts.rows.arwens_glass_shoes_summon_time_increase_pct`.  Golden: artifact at Inputs x == no artifact at Inputs x + star value, exactly
-(`tests/golden/artifact_cases.py` `EQUIV_PAIRS`, checked in the workbook and the engine by `test_fp_mage_artifacts.py`).
+(`tests/golden/artifact_cases.py` `EQUIV_PAIRS`, checked in the workbook and the engine by `test_artifacts.py --class fp_mage`).
 
 **Fifth artifact slot** (2026-11-23): the game now has 5 artifact slots, so `engine/artifacts.py` `MAX_SLOTS` = 5 and every class's `schema()["artifacts"]["max_slots"]` / `resolve_slots` / the API's validation follow it (a 6th entry is
 rejected: `ValueError "at most 5 artifact slots"` / API 422 `at most 5 slots`).  The 12 workbooks keep **4** slot rows on their Inputs sheet (`WORKBOOK_SLOTS` = 4; changing 12 builders is a separate task), so everything
-verified against Excel (`tests/golden/test_<class>_artifacts.py`, the sensitivity goldens, all <= 4 equipped) is bit-for-bit unchanged, and **the behaviour with 5 equipped cannot be checked against the workbooks**: it is
+verified against Excel (`tests/golden/test_artifacts.py --class <class>`, the sensitivity goldens, all <= 4 equipped) is bit-for-bit unchanged, and **the behaviour with 5 equipped cannot be checked against the workbooks**: it is
 the engine's own composition of the verified per-artifact effects.  Nothing in an effect depends on the slot it sits in (each contributes to additive / multiplicative buckets or to a per-artifact row exactly as in the
 4-slot case, the same artifact counts once), so a 5th artifact is the same step that a 4th already was.  `tests/golden/test_artifact_five_slots.py` (engine-only, ~5 s) pins that: the schema offers 5 slots in all 12 classes;
 5 equipped compute without error to finite numbers in every class and fight shape tried; permuting the slots gives the same total (all 120 orders of a mixed set in FP-Mage and Hero, 1e-12); the same artifact twice
@@ -108,14 +113,32 @@ workbook is opened, no `formulas` evaluation happens.  The verify script is NOT 
 file is generated with `PYTHONHASHSEED=0` because the verify script sums Meteor Proc's trigger rates over a Python `set` (ulp-level noise
 depending on the hash seed); the engine fixes that summation order (`TRIGGERS_METEOR` in `data/fp_mage.py`).
 
+### Refreshing a golden from the engine (`tests/golden/update_goldens.py`, Excel retired)
+
+When a model rule is changed ON PURPOSE the goldens (frozen from the verify scripts / workbooks) must move with it.  Do not hand-edit them and do not regenerate them from a workbook:
+
+```
+python3 tests/golden/update_goldens.py --class hero                  # DRY RUN: cases / values changed, max rel diff, the 10 most-changed fields (old -> new), verdict
+python3 tests/golden/update_goldens.py --class hero --kind sensitivity --case "S/WB140"      # narrow it (--class all, --max-cases N, --exact, -v, --golden-dir DIR)
+python3 tests/golden/update_goldens.py --class hero --write --reason "Raging Blow base 360 -> 380 (user, 2026-12-01)"     # rewrite + one line in golden_refresh_log.md
+```
+
+How: every compared leaf of a golden (`out` of the class goldens, `workbook` of the artifacts / sensitivity goldens) is loaded as a tracked float / int / str / bool that remembers its JSON path;
+the class's OWN comparer (`test_<id>.py::compare`, `ArtifactsTest.compare`, `sens_compare_generic.compare_case`) runs unchanged and each `chk(name, golden, engine)` whose golden value is a tracked leaf
+gives `path -> engine value`.  A value is rewritten when the comparer's own check fails (class goldens: any difference; artifacts / sensitivity: outside rel 1e-9 + the comparer's atol; `--exact`: anything
+not bit-equal), the file is dumped in its own JSON format (class goldens `json.dumps`, the others `indent=0`; a no-op refresh is byte-identical) and keeps its `meta` header untouched.  Checks against a
+literal or an arithmetically derived golden value (`{}` / `None` / `bool(...)` / `x or 0.0`: ~3% of all checks, all equal today) cannot be refreshed: if one differs it is reported as UNREFRESHABLE (e.g. the
+timeline engine switching on for a case, ranking changes) and the exit code is 1.  **A refreshed golden pins the ENGINE's behaviour, it is no longer an independent workbook value** (the log header says so).
+Tests: `tests/golden/test_update_goldens.py` (~9 s; every write goes to a temp copy via `--golden-dir`).
+
 ### Shared test harness (the per-class files are thin wrappers)
 
 Everything the per-class golden files have in common lives in `tests/golden/`: `golden_harness.py` (`test_<class>.py`: engine vs the verify-script golden, only the class's own checks stay
-in its `compare`), `artifacts_harness.py` (`test_<class>_artifacts.py`: `ArtifactsTest(class_module, golden, boss_col, normal_col, summary_rows=...)`), `artifact_reference_common.py`
+in its `compare`), `artifacts_harness.py` (`test_artifacts.py --class <class>`: `ArtifactsTest(class_module, golden, boss_col, normal_col, summary_rows=...)`), `artifact_reference_common.py`
 (`<class>_artifact_reference.py`: `ArtifactReference(...)`), `reference_fake.py` (the workbook-free stand-in of `run_reference_<class>.py`: `Reference(verify_script, builder).run_case(...)`),
-`make_golden_common.py`, `check_fake_common.py` (`Check(...).main(pre_check=..., post_check=...)`), `sens_test_common.py` (`test_<class>_sensitivity.py`), `case_common.py` (content types,
+`make_golden_common.py`, `check_fake_common.py` (`Check(...).main(pre_check=..., post_check=...)`), `sens_test_common.py` (`test_sensitivity.py --class <class>`), `case_common.py` (content types,
 `make_inputs`), `artifact_cases_common.py` (the artifact matrix every class shares; a class adds its own shapes between `common_cases` and `arwen_cases`) and `sens_cases.case_builder`.
-A new class is a ~10-line wrapper around each.  The command lines (`python3 tests/golden/test_<class>.py [--rtol ...]`, `--list / --case / --run-all / --assemble` of the reference scripts,
+A new class is one `registry.py` entry + a ~10-line wrapper around each of the others (`sens_extras/<id>.py` holds its sensitivity-specific tests).  The command lines (`python3 tests/golden/test_<class>.py [--rtol ...]`, `--list / --case / --run-all / --assemble` of the reference scripts,
 `make_golden_<class>.py`, `check_<class>_fake.py [--write]`) are unchanged.  The API side is one parametrized `api/tests/test_sensitivity_classes.py` (a row of `CLASSES` per class).
 
 ## How to add a class (the recipe used for FP-Mage)
@@ -129,7 +152,7 @@ A new class is a ~10-line wrapper around each.  The command lines (`python3 test
 5. Generate the golden, run the test, require bit-exact equality.
 
 ```
-python3 tests/golden/test_fp_mage_artifacts.py -v     # engine == workbook (formulas) with artifacts equipped
+python3 tests/golden/test_artifacts.py --class fp_mage -v     # engine == workbook (formulas) with artifacts equipped
 python3 tests/golden/gen_artifact_data.py --check      # engine/data/artifacts.py == the builder's tables
 python3 tests/golden/artifact_reference.py --run-all   # (re)evaluate the workbook for every missing case, then --assemble
 ```
@@ -144,7 +167,7 @@ frozen numbers in `hero_golden.json` (262 cases = the matrix + the 10 real conte
 ```
 python3 tests/golden/make_golden_hero.py      # regenerate hero_golden.json from src/verify_hero_workbook.py (workbook-free, one subprocess)
 python3 tests/golden/test_hero.py             # engine == golden, exact ==   -> "OK: 262 golden cases match the verify script bit-exactly"
-python3 tests/golden/test_hero_artifacts.py    # engine (artifacts equipped) == the Hero workbook, rel 1e-9
+python3 tests/golden/test_artifacts.py --class hero    # engine (artifacts equipped) == the Hero workbook, rel 1e-9
 python3 tests/golden/check_hero_fake.py       # streams ONLY the real Inputs / CompanionsInput cells (read_only, ~64 MB, 0.4 s, no `formulas`) through the
                                               # stand-in and checks it serves the verify script the same cells (add --write to refresh hero_real_inputs.json)
 ```
@@ -182,7 +205,7 @@ Hero-specific points (all taken from the verify script, numerics identical):
   Arwen's Glass Shoes adds its Summoning Time Increase to the Inputs value before the stun probe, the stun run, the Horn Flute window and the companion run.
   Golden: `tests/golden/hero_artifact_cases.py` (58 workbook evaluations: every artifact at star 5 in World Boss with Blaze Wizard Lv10, other fight shapes, stars, crit-rate
   branches, Reindeer def pen 50 / 80 / 99, Hero-specific Rush-stun shapes, the Glass Shoes equivalence pairs) -> `hero_artifact_reference.py` (stripped workbook copy, `formulas`, one
-  evaluation at a time, ~30 s and ~1.2 GB each) -> `hero_artifacts_golden.json` -> `test_hero_artifacts.py` (engine == workbook within rel 1e-9, 6 equip-toggle deltas, 10 equivalence pairs).
+  evaluation at a time, ~30 s and ~1.2 GB each) -> `hero_artifacts_golden.json` -> `test_artifacts.py --class hero` (engine == workbook within rel 1e-9, 6 equip-toggle deltas, 10 equivalence pairs).
 * Not modelled (same as the verify script): Weapon Acceleration / Physical Training / Weapon Mastery / Combat Mastery / Power Stance /
   Chance Attack rows: listed on the Skills sheet, no separate DPS term in the verify script (so none in the engine).
 
@@ -199,7 +222,7 @@ the monster damage-taken bucket (`monster_dmg_bonus`: Freezing Breath Weaken + E
 to the Inputs value before the stun probe, the stun run, the Horn Flute window and the companion run.  With no artifact every term is neutral (x1.0 / +0.0) and `test_ice_lightning_mage.py` stays bit-exact.
 Golden: `tests/golden/ice_lightning_mage_artifact_cases.py` (58 workbook evaluations: every artifact at star 5 in World Boss with Blaze Wizard Lv10, other fight shapes, stars, crit-rate branches,
 Reindeer def pen 50 / 80 / 99, Glacier-Wall-stun shapes, Lv 105 / 112, the Glass Shoes equivalence pairs) -> `ice_lightning_mage_artifact_reference.py` (stripped workbook copy, `formulas`, one evaluation
-at a time, ~35 s and ~1.6 GB each) -> `ice_lightning_mage_artifacts_golden.json` -> `test_ice_lightning_mage_artifacts.py` (engine == workbook within rel 1e-9, 6 equip-toggle deltas, 10 equivalence pairs).
+at a time, ~35 s and ~1.6 GB each) -> `ice_lightning_mage_artifacts_golden.json` -> `test_artifacts.py --class ice_lightning_mage` (engine == workbook within rel 1e-9, 6 equip-toggle deltas, 10 equivalence pairs).
 
 ## Paladin (artifacts ported 2026-11-20)
 
@@ -215,7 +238,7 @@ uses the stub-host run WITH the player's Rush entries (`s0` / `W0`, `A0` = Vesse
 probe, the stun run, the Horn Flute window and the companion run.  With no artifact every term is neutral (x1.0 / +0.0) and `test_paladin.py` stays bit-exact.
 Golden: `tests/golden/paladin_artifact_cases.py` (64 workbook evaluations: every artifact at star 5 in World Boss with Blaze Wizard Lv10, other fight shapes, stars, crit-rate branches, Reindeer def pen
 50 / 80 / 99, Rush-stun shapes, Combat Orders at Lv68 / 69 / 82 / 105 / 140 with skill-level bonuses and Soul Contract / Shamaness Marble, the Glass Shoes equivalence pairs) -> `paladin_artifact_reference.py`
-(stripped workbook copy, `formulas`, one evaluation at a time, ~30 s and ~1.5 GB each) -> `paladin_artifacts_golden.json` -> `test_paladin_artifacts.py` (engine == workbook within rel 1e-9, 6 equip-toggle
+(stripped workbook copy, `formulas`, one evaluation at a time, ~30 s and ~1.5 GB each) -> `paladin_artifacts_golden.json` -> `test_artifacts.py --class paladin` (engine == workbook within rel 1e-9, 6 equip-toggle
 deltas, 10 equivalence pairs).
 
 ## Bowmaster (artifacts ported 2026-11-20)
@@ -233,7 +256,7 @@ neutral (x1.0 / +0.0) and `test_bowmaster.py` stays bit-exact.
 Golden: `tests/golden/bowmaster_artifact_cases.py` (65 workbook evaluations: every artifact at star 5 in World Boss with Blaze Wizard Lv10, other fight shapes, stars, crit-rate branches, Reindeer def pen
 50 / 80 / 99, Covering-Fire-stun shapes with and without a companion (Lv48 / Lv49 in Breakthrough and World Boss), Illusion Step Lv117 / 118, Lv100, the boss-bucket artifacts, the Glass Shoes equivalence
 pairs) -> `bowmaster_artifact_reference.py` (stripped workbook copy, `formulas`, one evaluation at a time, ~25 s and ~1.2 GB each) -> `bowmaster_artifacts_golden.json` ->
-`test_bowmaster_artifacts.py` (engine == workbook within rel 1e-9 (worst 1.2e-10), 6 equip-toggle deltas, 10 equivalence pairs).  Sensitivity support was added 2026-11-22 (`sens_specs/bowmaster.py`, `bowmaster_sens_cases.py`, `test_bowmaster_sensitivity.py`; KNOWN_GAPS "Bowmaster: Sensitivity in the engine"); the
+`test_artifacts.py --class bowmaster` (engine == workbook within rel 1e-9 (worst 1.2e-10), 6 equip-toggle deltas, 10 equivalence pairs).  Sensitivity support was added 2026-11-22 (`sens_specs/bowmaster.py`, `bowmaster_sens_cases.py`, `test_sensitivity.py --class bowmaster`; KNOWN_GAPS "Bowmaster: Sensitivity in the engine"); the
 Sensitivity strip-rebuild set of the workbook was chosen with the engine's reuse-vs-re-solve experiment (see KNOWN_GAPS "Bowmaster: Companions + Status Effect Damage / KO timeline port", last bullet).
 
 ## Bishop (artifacts ported 2026-11-20)
@@ -250,7 +273,7 @@ was missing that call site until 2026-11-20); Horn Flute's uptime uses the stub-
 Inputs value before the stun probe, the stun run, the Horn Flute window and the companion run.  With no artifact every term is neutral (x1.0 / +0.0) and `test_bishop.py` stays bit-exact.
 Golden: `tests/golden/bishop_artifact_cases.py` (64 workbook evaluations: every artifact at star 5 in World Boss with Blaze Wizard Lv10, other fight shapes, stars, crit-rate branches, Reindeer def pen 50 / 80 / 99,
 Bishop shapes around Big Bang Lv100 / Angel Ray Lv103 (Lv 99 / 100 / 102 / 103 / 112 / 125, Angel Ray's stun without a companion, PvP with Defense %), the Glass Shoes equivalence pairs) -> `bishop_artifact_reference.py`
-(stripped workbook copy, `formulas`, one evaluation at a time, ~35 s and ~1.5 GB each) -> `bishop_artifacts_golden.json` -> `test_bishop_artifacts.py` (engine == workbook within rel 1.4e-10 worst case, ~2e-16 typically; 6 equip-toggle
+(stripped workbook copy, `formulas`, one evaluation at a time, ~35 s and ~1.5 GB each) -> `bishop_artifacts_golden.json` -> `test_artifacts.py --class bishop` (engine == workbook within rel 1.4e-10 worst case, ~2e-16 typically; 6 equip-toggle
 deltas, 10 equivalence pairs).
 
 ## Marksman (artifacts ported 2026-11-20)
@@ -266,9 +289,9 @@ via `fight.cd_extra_pct` (it reaches the three player stuns, Illusion Step / Sha
 Horn Flute window and the companion run.  With no artifact every term is neutral (x1.0 / +0.0) and `test_marksman.py` stays bit-exact.
 Golden: `tests/golden/marksman_artifact_cases.py` (67 workbook evaluations: every artifact at star 5 in World Boss with Blaze Wizard Lv10, other fight shapes, stars, crit-rate branches, Reindeer def pen 50 / 80 / 99,
 the three-stun shapes (Lv49 / 60 / 98 / 104 / 117 / 118 / 140, with and without a companion), Illusion Step / Sharp Eyes around Lv115-118, Soul Contract in Chapter Hunt, the Glass Shoes equivalence pairs) ->
-`marksman_artifact_reference.py` (stripped workbook copy, `formulas`, one evaluation at a time, ~30 s and ~1.2 GB each) -> `marksman_artifacts_golden.json` -> `test_marksman_artifacts.py` (engine == workbook within
+`marksman_artifact_reference.py` (stripped workbook copy, `formulas`, one evaluation at a time, ~30 s and ~1.2 GB each) -> `marksman_artifacts_golden.json` -> `test_artifacts.py --class marksman` (engine == workbook within
 rel 1e-9 (worst 4.9e-11, the fractional-window artifact of Wind Archer at +45%), 6 equip-toggle deltas, 10 equivalence pairs).  The golden run found that the Marksman workbook never wired Soul Contract's cooldown
-decrease into its cooldown formulas (CLAUDE.md item 11; fixed in the builder, see the 2026-11-21 bullet of KNOWN_GAPS "Marksman: Companions + Status Effect Damage / KO timeline").  Sensitivity support was added 2026-11-22 (`sens_specs/marksman.py`, `marksman_sens_cases.py`, `test_marksman_sensitivity.py`; KNOWN_GAPS "Marksman: Sensitivity in the engine"); the workbook's Sensitivity
+decrease into its cooldown formulas (CLAUDE.md item 11; fixed in the builder, see the 2026-11-21 bullet of KNOWN_GAPS "Marksman: Companions + Status Effect Damage / KO timeline").  Sensitivity support was added 2026-11-22 (`sens_specs/marksman.py`, `marksman_sens_cases.py`, `test_sensitivity.py --class marksman`; KNOWN_GAPS "Marksman: Sensitivity in the engine"); the workbook's Sensitivity
 strip-rebuild set was chosen with the engine's reuse-vs-re-solve experiment.
 
 ## Dark Knight (artifacts ported 2026-11-21)
@@ -288,7 +311,7 @@ PvP cases with Defense % != 0 changed).
 Golden: `tests/golden/dark_knight_artifact_cases.py` (68 workbook evaluations: every artifact at star 5 in World Boss with Blaze Wizard Lv10, other fight shapes, stars, crit-rate branches, Reindeer def pen
 50 / 80 / 99, Evil Eye Shock alone (Lv45 / 62) vs + Rush (Lv63+), the timed buffs unlocking at Lv45 / 66 / 69 / 115 with skill-level bonuses and Soul Contract / Shamaness Marble, Defense 0, the Glass Shoes
 equivalence pairs) -> `dark_knight_artifact_reference.py` (stripped workbook copy, `formulas`, one evaluation at a time, ~30 s and ~1.3 GB each) -> `dark_knight_artifacts_golden.json` ->
-`test_dark_knight_artifacts.py` (engine == workbook within rel 1e-9 (worst 4.8e-11, typically 1e-16), 6 equip-toggle deltas, 10 equivalence pairs).  Sensitivity: see "Sensitivity for more than one class" below (Dark Knight is the second class with a spec).
+`test_artifacts.py --class dark_knight` (engine == workbook within rel 1e-9 (worst 4.8e-11, typically 1e-16), 6 equip-toggle deltas, 10 equivalence pairs).  Sensitivity: see "Sensitivity for more than one class" below (Dark Knight is the second class with a spec).
 
 ## Buccaneer (artifacts ported 2026-11-21)
 
@@ -305,7 +328,7 @@ second (Hexagon-weighted) engine run: nothing here is a skill-level buff.  With 
 Golden: `tests/golden/buccaneer_artifact_cases.py` (66 workbook evaluations: every artifact at star 5 in World Boss with Blaze Wizard Lv10, other fight shapes, stars, crit-rate branches, Reindeer def pen 50 / 80 / 99,
 Corkscrew-Blow shapes with and without a companion (Lv62 / 63, Breakthrough boss-phase extension), Hook Bomber Lv99 / 100, Crossbones Lv115, Time Leap Lv125, Octopunch haste Lv134, Soul Contract in Chapter Hunt,
 the Glass Shoes equivalence pairs) -> `buccaneer_artifact_reference.py` (stripped workbook copy, `formulas`, one evaluation at a time, ~25 s and ~1.3 GB each) -> `buccaneer_artifacts_golden.json` ->
-`test_buccaneer_artifacts.py` (engine == workbook within rel 6.3e-16 worst case, 6 equip-toggle deltas, 10 equivalence pairs).  Sensitivity: `engine/sens_specs/buccaneer.py` + `tests/golden/test_buccaneer_sensitivity.py` (2026-11-22, see KNOWN_GAPS "Buccaneer: Sensitivity in the engine").
+`test_artifacts.py --class buccaneer` (engine == workbook within rel 6.3e-16 worst case, 6 equip-toggle deltas, 10 equivalence pairs).  Sensitivity: `engine/sens_specs/buccaneer.py` + `tests/golden/test_sensitivity.py --class buccaneer` (2026-11-22, see KNOWN_GAPS "Buccaneer: Sensitivity in the engine").
 
 ## Corsair (artifacts ported 2026-11-21)
 
@@ -323,8 +346,8 @@ the Inputs value before the stun probe, the stun run, the Horn Flute window and 
 Golden: `tests/golden/corsair_artifact_cases.py` (71 workbook evaluations: every artifact at star 5 in World Boss with Blaze Wizard Lv10, other fight shapes, stars, crit-rate branches, Reindeer def pen
 50 / 80 / 99, Blackboot Bill Lv65 / Lv66 in World Boss and Breakthrough, Broadside Lv117 / 118 / 138, Quickdraw Lv124 / 125 with Soul Contract in Chapter Hunt, Jolly Roger next to the Final Damage
 artifacts, the boss-bucket artifacts, the Glass Shoes equivalence pairs) -> `corsair_artifact_reference.py` (stripped workbook copy, `formulas`, one evaluation at a time, ~33 s and ~1.4 GB each) ->
-`corsair_artifacts_golden.json` -> `test_corsair_artifacts.py` (engine == workbook within rel 1e-9 (worst 1.5e-10, Breakthrough + Wind Archer's fractional-window noise), 7 equip-toggle deltas incl.
-Soul Contract in Chapter Hunt with Quickdraw (rel 2.5e-16), 10 equivalence pairs).  Sensitivity: `engine/sens_specs/corsair.py` + `tests/golden/test_corsair_sensitivity.py` (12 slimmed-copy evaluations, 823 values, rel 1e-9; KNOWN_GAPS "Corsair: Sensitivity in the engine"); the workbook's Sensitivity strip-rebuild set was chosen
+`corsair_artifacts_golden.json` -> `test_artifacts.py --class corsair` (engine == workbook within rel 1e-9 (worst 1.5e-10, Breakthrough + Wind Archer's fractional-window noise), 7 equip-toggle deltas incl.
+Soul Contract in Chapter Hunt with Quickdraw (rel 2.5e-16), 10 equivalence pairs).  Sensitivity: `engine/sens_specs/corsair.py` + `tests/golden/test_sensitivity.py --class corsair` (12 slimmed-copy evaluations, 823 values, rel 1e-9; KNOWN_GAPS "Corsair: Sensitivity in the engine"); the workbook's Sensitivity strip-rebuild set was chosen
 with the engine's reuse-vs-re-solve experiment (see KNOWN_GAPS "Corsair: Companions + Status Effect Damage / KO timeline", last bullet).
 
 ## Night Lord (artifacts ported 2026-11-21)
@@ -346,7 +369,7 @@ besides Dark Sight.  With no artifact every term is neutral (x1.0 / +0.0).  Nigh
 Golden: `tests/golden/night_lord_artifact_cases.py` (73 workbook evaluations: every artifact at star 5 in World Boss with Blaze Wizard Lv10 (9 groups of 4), other fight shapes, stars, crit-rate branches, Reindeer
 def pen 50 / 80 / 99, Gust Charm alone at Lv34 / 35, Adrenalin Lv66, Showdown Lv99 / 100, Frailty Curse Lv110, Soul Contract / Shamaness Marble with skill-level bonuses and a Cooldown Decrease, `incoming_hit_rate`
 0 / 2 / 5, Defense 0, the Glass Shoes equivalence pairs) -> `night_lord_artifact_reference.py` (stripped workbook copy, `formulas`, one evaluation at a time, ~35 s and ~1.3 GB each) ->
-`night_lord_artifacts_golden.json` -> `test_night_lord_artifacts.py` (engine == workbook within rel 1.4e-10 worst case - the Breakthrough Wind Archer cases at a +40% summon window, the documented
+`night_lord_artifacts_golden.json` -> `test_artifacts.py --class night_lord` (engine == workbook within rel 1.4e-10 worst case - the Breakthrough Wind Archer cases at a +40% summon window, the documented
 fractional-window artifact - 67 of 73 below 1e-14, 6 equip-toggle deltas, 10 equivalence pairs).  The engine has no `sensitivity` support for Night Lord yet.
 
 ## Shadower (artifacts ported 2026-11-21)
@@ -364,7 +387,7 @@ run; Shadow Partner's average multiplier stays divided out of the companion `uni
 Golden: `tests/golden/shadower_artifact_cases.py` (75 workbook evaluations: every artifact at star 5 in World Boss with Blaze Wizard Lv10, other fight shapes, stars, crit-rate branches with Dark Sight Crit at the 100% line,
 Reindeer def pen 50 / 80 / 99, Phase Dash Lv62 / 63 with and without a companion (Breakthrough boss-phase extension), Lv75 / 82 / 99 / 100 / 110 / 113 / 115 (incoming hit rate 0 / 2.5 / 6) / 125 / 136, stat set B, Soul Contract in
 Chapter Hunt, the Glass Shoes equivalence pairs) -> `shadower_artifact_reference.py` (stripped workbook copy, `formulas`, one evaluation at a time, ~34 s and ~1.4 GB each) -> `shadower_artifacts_golden.json` ->
-`test_shadower_artifacts.py` (engine == workbook within rel 1e-9 (worst 9.8e-11, Breakthrough + Wind Archer's fractional-window noise; otherwise <= 6e-16), 7 equip-toggle deltas incl. Soul Contract in Chapter Hunt, 10 equivalence
+`test_artifacts.py --class shadower` (engine == workbook within rel 1e-9 (worst 9.8e-11, Breakthrough + Wind Archer's fractional-window noise; otherwise <= 6e-16), 7 equip-toggle deltas incl. Soul Contract in Chapter Hunt, 10 equivalence
 pairs).  The engine has no `sensitivity` support for Shadower yet (`engine/sensitivity.py::STATUS_REBUILD_KEYS` would need the workbook's list, see KNOWN_GAPS "Shadower: Companions ..." -> Sensitivity fixes).
 
 ## Sensitivity / stat values (Phase 3)
@@ -401,7 +424,7 @@ sensitivity.STAT_SWEEP / STAT_LIST / ARTIFACT_TOGGLES                      # met
   artifact (Cursed Doll, Lit Lamp, Clear Spring Water, Soul Pouch, Bottle of Emotion's FD) is a multiplicative factor on the whole product in both directions
   (`sens["final_damage_factor"]`: 1+x/100 adding, 1/(1+x/100) removing), so removal reports the same dollar gain and % Gain as adding.
 * Golden: `tests/golden/sens_cases.py` (36 cases) -> `sens_reference.py` (Sensitivity-slimmed copies of the workbook, one `formulas` evaluation at a time, ~2-4 min and 4-8 GB each)
-  -> `fp_mage_sensitivity_golden.json` -> `test_fp_mage_sensitivity.py` (rel 1e-9; companion quantities at a FRACTIONAL window carry the workbook's ~1.6e-9 `(a+b-|a-b|)/2`
+  -> `fp_mage_sensitivity_golden.json` -> `test_sensitivity.py --class fp_mage` (rel 1e-9; companion quantities at a FRACTIONAL window carry the workbook's ~1.6e-9 `(a+b-|a-b|)/2`
   precision artifact, see `FRAC_RTOL` there).
 
 ### Sensitivity for more than one class (generalised 2026-11-21; FP-Mage + Dark Knight)
@@ -411,7 +434,7 @@ type in `engine/common/sens.py`) and the class module's **`model(inputs)`** entr
 `final_damage_bucket`, `boa_crit_damage_delta` in `engine/common/sens.py`; every hook is a no-op without `_sens`, so `compute` stays bit-exact).  Public API:
 `sensitivity.run(class_module, inputs, which, naive, companion_level)` (NotImplementedError without a spec), `supports(class_module)`, `meta(class_module)` / `stat_sweep(class_module)` (the class's own
 stat list for a UI); the module-level `STAT_SWEEP` / `STAT_LIST` / `STATUS_REBUILD_KEYS` / `COMPANION_FULL_SEARCH_KEYS` names are FP-Mage's (unchanged).  Dark Knight: 30 stats (Flat STR, STR %, DEX,
-Defense and Defense % with Iron Wall, ...), 36 toggles, companion / summon-time / CDR tables, `tests/golden/test_dark_knight_sensitivity.py` (workbook golden), `api/tests/test_sensitivity_classes.py`.  Hero (2026-11-22): 28 stats, 36 toggles, tables as above, `tests/golden/test_hero_sensitivity.py` (12 workbook evaluations), `api/tests/test_sensitivity_classes.py`; its spec flags: `baked_fd_form="typed"` (the builder retypes `Inputs!final_damage` inside the additive Final Damage bucket, so a baked-in Final Damage what-if is a factor on the TYPED value: `final_damage_factor` in `engine/classes/hero.py`) and `mult_extra` (the Final Damage +1% step bumps the whole bucket incl. Enrage / Combo Synergy, `MULT_KIND_EXTRA_REF`); Hero's block wires Reindeer's dose, Shamaness Marble and (since the 2026-11-22 builder fix) Athena's Attack Speed correctly.  Ice/Lightning Mage (2026-11-22): 27 stats, 36 toggles, tables as above, `tests/golden/test_ice_lightning_mage_sensitivity.py` (12 workbook evaluations, 88 blocks, engine == workbook within rel 1e-9), `api/tests/test_sensitivity_classes.py`; the builder's inert Shamaness Marble row was FIXED (`bdi_block` adds `shamaness_marble_delta_block`), Reindeer's dose and Athena's Attack Speed were already wired; new hook `as_bonus_extra` (Magic Acceleration's delta joins MP Eater's flat Attack Speed, i.e. the bonus side of the Attack Speed diminishing returns, gated on MP Eater's unlock); the class's `crit_rate_bonus` is 0 (its artifact crit bucket is `art_crit_rate`), `crit_rate_total` is exposed.
+Defense and Defense % with Iron Wall, ...), 36 toggles, companion / summon-time / CDR tables, `tests/golden/test_sensitivity.py --class dark_knight` (workbook golden), `api/tests/test_sensitivity_classes.py`.  Hero (2026-11-22): 28 stats, 36 toggles, tables as above, `tests/golden/test_sensitivity.py --class hero` (12 workbook evaluations), `api/tests/test_sensitivity_classes.py`; its spec flags: `baked_fd_form="typed"` (the builder retypes `Inputs!final_damage` inside the additive Final Damage bucket, so a baked-in Final Damage what-if is a factor on the TYPED value: `final_damage_factor` in `engine/classes/hero.py`) and `mult_extra` (the Final Damage +1% step bumps the whole bucket incl. Enrage / Combo Synergy, `MULT_KIND_EXTRA_REF`); Hero's block wires Reindeer's dose, Shamaness Marble and (since the 2026-11-22 builder fix) Athena's Attack Speed correctly.  Ice/Lightning Mage (2026-11-22): 27 stats, 36 toggles, tables as above, `tests/golden/test_sensitivity.py --class ice_lightning_mage` (12 workbook evaluations, 88 blocks, engine == workbook within rel 1e-9), `api/tests/test_sensitivity_classes.py`; the builder's inert Shamaness Marble row was FIXED (`bdi_block` adds `shamaness_marble_delta_block`), Reindeer's dose and Athena's Attack Speed were already wired; new hook `as_bonus_extra` (Magic Acceleration's delta joins MP Eater's flat Attack Speed, i.e. the bonus side of the Attack Speed diminishing returns, gated on MP Eater's unlock); the class's `crit_rate_bonus` is 0 (its artifact crit bucket is `art_crit_rate`), `crit_rate_total` is exposed.
 
 **How to add a class to the sensitivity engine** (Shadower is done (`sens_specs/shadower.py`, `shadower_sens_cases.py`: `baked_fd_form="factor"` - the typed Final Damage is its own factor in K next to the artifact bucket, no `mult_extra`; 10 passive deltas incl. Channel Karma's Attack% (`attack_mult_delta`) and Critical Edge's Crit Rate AND Crit Damage; `incoming_hit_rate` is a plain stat; its builder had the Athena / Shamaness gaps, fixed 2026-11-23, Reindeer was already correct; LEAN golden of 7 evaluations: the baked-in chain of four World Boss states, Enhancement Dungeon, Breakthrough with both tables, Chapter Hunt Lv118; the case matrix must mirror the PotentialCubes sheet's boots Summoning-Time line, see `companion_potential_lines_pct`); Paladin is done - `sens_specs/paladin.py`, `paladin_sens_cases.py`: typed Final Damage like Hero / Buccaneer, plus `passive_deltas_in_model=True` because Paladin's passives are time-averaged with Combat Orders' skill-level bonus, so the class module computes the passive deltas itself and the engine hands it the main model's `passive_values` as `_sens["passive_ref"]`; Bowmaster is done (`sens_specs/bowmaster.py`, `bowmaster_sens_cases.py`: the plain-factor Final Damage form on the artifact bucket (`baked_fd_form="factor"`) with Mortal Blow in the `mult_extra` bracket, 11 passive deltas incl. Armor Break's Def Pen (new hook `def_pen_delta`) and `attack_mult_delta`; its builder had the Athena / Shamaness gaps, fixed; the golden is a CHAIN of baked-in states because the workbook has only 4 artifact slots), Night Lord is done (`sens_specs/night_lord.py`, `night_lord_sens_cases.py`: `baked_fd_form="factor"` on the artifact bucket, no `mult_extra`, 10 passive deltas incl. `boss_damage_delta` / `attack_mult_delta` / `crit_damage_delta`, its builder had the Shamaness gap only, fixed; the strip does not read Actions Per Second so Athena needs no rebuild), Shadower is next - Corsair is done (`sens_specs/corsair.py`, `corsair_sens_cases.py`: `baked_fd_form="typed"` through a block-local SHIFT cell inside the additive Final Damage bracket, Jolly Roger / Ahoy Mateys in `mult_extra` (`final_damage_all`), 9 passive deltas incl. `attack_mult_delta` / `crit_damage_delta`; its builder had the Athena / Shamaness gaps, fixed, Reindeer was already correct), Marksman is done (`sens_specs/marksman.py`, `marksman_sens_cases.py`: `baked_fd_form="typed"` with Mortal Blow in the bucket, 10 passive deltas incl. `attack_mult_delta`, Illusion Step's boost re-pointed in the builder), Bishop is done (`sens_specs/bishop.py`, `bishop_sens_cases.py`: Defense / Invincible, pinned PvP opponent Defense, Magic-pattern passive deltas incl. `as_bonus_extra`), Hero is done, see its files as the template for a class with an ADDITIVE typed Final Damage bucket; Buccaneer is done (additive typed Final Damage like Hero, plus passive Attack%/Attack Speed deltas: hook `attack_mult_delta`), Ice/Lightning Mage is done, the template for the mage / plain-factor Final Damage form with passive deltas; the class must already have `model()` + artifacts):
 
@@ -428,7 +451,7 @@ Defense and Defense % with Iron Wall, ...), 36 toggles, companion / summon-time 
    one is active); `monster_defense` (PvP classes whose Defense is an input); expose `summon_time_inc`, `comp_host`, `crit_rate_total` (the FULL live crit total) and `crit_rate_bonus` (a live
    crit-rate source such as Lord of Darkness / Sharp Eyes, 0 otherwise).  The model attributes the core reads: `total_dps`, `result()`, `normal_weight`, `eq`, `status_on`, `e1`, `e_engine`,
    `companion_result` (`s`, `E`), `comp_host`, `companion_choice`, `companion_level`, `companion_dps`, `pb_total`, `pn_total`, `summon_time_inc`, `pvp_len`, `fight_duration`, `monster_type`,
-   `content_type`, `art_effects.rows`.  Re-run `test_<class>.py` / `test_<class>_artifacts.py` (bit-exact / unchanged) after the edits.
+   `content_type`, `art_effects.rows`.  Re-run `test_<class>.py` / `test_artifacts.py --class <class>` (bit-exact / unchanged) after the edits.
 2. **Spec** (`engine/sens_specs/<class>.py`, register the id in `sens_specs.CLASS_IDS`): `stat_list` = the builder's `STAT_SWEEP_STAT_ENTRIES`; `status_rebuild_keys`, `companion_full_search_keys`,
    `summon_time_keys` = the builder's lists (the test compares them); `mainstat = MainStat(flat key, % key, subs=((sub stat key, ratio), ...))` for the flat-Attack channel of CLAUDE.md bug 7 (the
    sub stats that ARE sweep stats); `passive_levels` = one `PassiveLevel(hook, base, fidx, step, unlock)` per `PASSIVE_DELTA_SLOT` row (the Skills-sheet tuple; the hook names above);
@@ -440,7 +463,7 @@ Defense and Defense % with Iron Wall, ...), 36 toggles, companion / summon-time 
 3. **Golden**: `tests/golden/<class>_sens_cases.py` (copy `dark_knight_sens_cases.py`: <= 8 blocks per case, every stat once, the strip-rebuild stats in World Boss AND Enhancement Dungeon, the toggles
    incl. baked-in artifacts in both directions (`I/` chain), CDR milestones as 5-value subsets (`cdr=[...]`), the two companion tables, PvP when the class has a Defense input), a row in
    `CLASSES` of `tests/golden/sens_reference_generic.py` (slimmed workbook copies, ONE `formulas` evaluation at a time, ~2.5-5 min and 3.5-4.5 GB each; `--class <id> --run-all`, `--assemble`), and a
-   10-line `tests/golden/test_<class>_sensitivity.py` around `sens_compare_generic.run_golden` (+ the static spec == builder test and the engine-only direction-invariance test of the Dark Knight file).
+   a `tests/golden/registry.py` entry + `tests/golden/sens_extras/<class>.py` (copy Dark Knight's: the static spec == builder test, the toggle pairs of the direction-invariance test and the `API` data of the shared tests; `test_sensitivity.py --class <class>` runs it around `sens_compare_generic.run_golden`).
    Any difference above rel 1e-9 must be understood and documented as a replicated workbook semantic (Dark Knight found three real workbook gaps this way: the inert Shamaness row, the Reindeer dose missing from the rows' defense reduction and Athena's Attack Speed missing from the block's APS; all three fixed in the Dark Knight builder 2026-11-23).
 4. **API**: add the id to `api/registry.py::SENSITIVITY_CLASSES` (only once 1-3 are green), run `/tmp/api_venv/bin/python -m pytest api/tests -q`, add a row to `CLASSES` of `api/tests/test_sensitivity_classes.py` (the one parametrized API test of every class with stat values).
 

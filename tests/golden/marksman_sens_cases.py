@@ -36,7 +36,7 @@ ALL_STATS = ["flat_dex", "dex_pct", "str", "damage", "damage_amp", "boss_damage"
              "companion_summon_time_increase_pct"]
 assert len(ALL_STATS) == 28
 
-# baked-in artifact magnitudes at the STARS of sens_cases (checked against the artifact table by test_marksman_sensitivity.test_constants)
+# baked-in artifact magnitudes at the STARS of sens_cases (checked against the artifact table by sens_extras/marksman.py::test_constants)
 CURSED_DOLL_FD = 14.0           # star 5
 ATHENA_AS, ATHENA_MAX_PCT = 14.4, 45.0      # star 4: direct Attack Speed, Max Damage % of the total Attack Speed
 SHAMANESS_BDI = 12.0            # star 5

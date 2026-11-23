@@ -1,8 +1,8 @@
 """Class-agnostic comparison of ``engine.sensitivity`` against a workbook golden file (the numbers of ``sens_reference_generic.py``).
 
 ``compare_case(class_module, cid, case, rtol)`` -> (number of values compared, [(name, workbook value, engine value), ...]) - the logic of
-``test_fp_mage_sensitivity.py`` (rel 1e-9 everywhere; the workbook's fractional-window artifact of the companion chain gets ``FRAC_RTOL`` / ``FRAC_ATOL``, see below)
-for any class.  Used by ``test_dark_knight_sensitivity.py``; a new class's test is a ten-line wrapper around it.
+the former FP-Mage copy (rel 1e-9 everywhere; the workbook's fractional-window artifact of the companion chain gets ``FRAC_RTOL`` / ``FRAC_ATOL``, see below)
+for any class.  Used by ``test_sensitivity.py`` (through ``sens_test_common.SensTest``) for every class, FP-Mage included.
 
 Compared per case: the workbook's Summary baselines (Total / boss-only / normal-only); per stat the Sensitivity table row (Units per +1%, Current, New, Baseline,
 New Total, DPS Gain, % Gain) and the block's own Total / boss-only / normal-only; per equip toggle the staging row (DPS Gain, % Gain, unlocked) and the block

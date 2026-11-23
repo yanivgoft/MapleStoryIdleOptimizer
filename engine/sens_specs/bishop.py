@@ -1,5 +1,5 @@
 """Bishop Sensitivity spec: the builder's ``STAT_SWEEP`` (stat entries), ``STATUS_REBUILD_KEYS``, ``COMPANION_FULL_SEARCH_KEYS``, ``SUMMON_TIME_KEYS`` and the
-passive-skill level deltas of ``src/build_bishop_workbook.py`` (cross-checked against the builder by ``tests/golden/test_bishop_sensitivity.py``).
+passive-skill level deltas of ``src/build_bishop_workbook.py`` (cross-checked against the builder by ``tests/golden/test_sensitivity.py --class bishop``).
 
 Bishop specifics (all reproduced from ``build_stat_block``):
 
@@ -74,7 +74,7 @@ PASSIVE_LEVELS = (
 )
 
 # the builder's POTENTIAL_STAT_TO_SWEEP_KEY / POTENTIAL_SUB_STAT_PCT_LINES / EQUIP_COMPARE_STAT_TO_SWEEP_KEY / ARTIFACT_POTENTIAL_STAT_TO_SWEEP_KEY (checked against it by
-# tests/golden/test_bishop_sensitivity.py::test_static); Invincible makes "Defense %" / "Defense (flat)" cube / equipment lines real here (artifact-potential Defense % stays
+# tests/golden/test_sensitivity.py::test_static[bishop]); Invincible makes "Defense %" / "Defense (flat)" cube / equipment lines real here (artifact-potential Defense % stays
 # unpriced in the builder map)
 STAT_TO_KEY = sens_mod.standard_stat_to_key("Int", "flat_int", "int_pct", defense_pct="defense_pct")
 

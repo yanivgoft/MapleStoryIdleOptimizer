@@ -1,15 +1,10 @@
-#!/usr/bin/env python3
-"""Golden test: ``engine.classes.fp_mage.compute`` WITH artifacts equipped against the FP-Mage WORKBOOK (evaluated with ``formulas`` by
-``artifact_reference.py``; numbers frozen in tests/golden/fp_mage_artifacts_golden.json).  Plain ``python3`` runnable, also pytest-collectable.
+"""The callables behind the few per-class options of the artifacts golden (``test_artifacts.py``); the DATA options (Calc columns, extra Summary rows) are in
+``registry.py``.  ``CONFIG[key]()`` -> extra keyword arguments of ``artifacts_harness.ArtifactsTest``.
 
-    python3 tests/golden/test_fp_mage_artifacts.py             # rel 1e-9 on every compared value; exits 1 on any difference
-    python3 tests/golden/test_fp_mage_artifacts.py --rtol 1e-6 -v
-
-A second file, ``fp_mage_artifacts_golden_special.json`` (a list of ``{"name", "inputs", "artifacts": [{"artifact": <workbook name>, "star"}],
-"workbook": {total_dps, boss_dps, normal_dps, companion_dps}}``, written by ``artifact_reference_special.py``), is loaded too when it exists (skipped with
-a notice otherwise); the workbook's artifact NAMES are mapped to the engine ids.
-
-The shared body is ``artifacts_harness.py``.
+* ``fp_mage``: a second golden file, ``fp_mage_artifacts_golden_special.json`` (a list of ``{"name", "inputs", "artifacts": [{"artifact": <workbook name>, "star"}],
+  "workbook": {total_dps, boss_dps, normal_dps, companion_dps}}``, written by ``artifact_reference_special.py``), is loaded too when it exists (skipped with a notice
+  otherwise); the workbook's artifact NAMES are mapped to the engine ids.  Its Summary values are the base set with the Elemental Decrease multiplier instead of the cast rate.
+* ``marksman``: Summary's Global Critical Damage Bonus (row 20) is Sharp Eyes' average alone; the engine's ``crit_damage_bonus`` adds the Crit Damage artifacts.
 """
 import json
 import sys
@@ -18,14 +13,12 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
-from engine.classes import fp_mage  # noqa: E402
 import artifacts_harness as AH  # noqa: E402
 
-GOLDEN = HERE / "fp_mage_artifacts_golden.json"
 GOLDEN_SPECIAL = HERE / "fp_mage_artifacts_golden_special.json"
 # Summary values compared (the base set with the Elemental Decrease multiplier instead of the cast rate)
-SUMMARY = (("avg_buff_mult", "avgbuff", "avg_buff_mult"), ("elemental_decrease_mult", "ed_mult", "elemental_decrease_mult"),
-           ("actions_per_second", "aps", "actions_per_second"), ("startup", "startup", "buff_cast_startup_time"))
+FP_MAGE_SUMMARY = (("avg_buff_mult", "avgbuff", "avg_buff_mult"), ("elemental_decrease_mult", "ed_mult", "elemental_decrease_mult"),
+                   ("actions_per_second", "aps", "actions_per_second"), ("startup", "startup", "buff_cast_startup_time"))
 
 
 def special_engine_inputs(entry):
@@ -33,7 +26,7 @@ def special_engine_inputs(entry):
     inputs, plus the artifact slots (workbook names -> engine ids)."""
     from engine import artifacts as art
     inputs = entry["inputs"]
-    d = fp_mage.defaults(inputs["content_type"])
+    d = _fp_mage().defaults(inputs["content_type"])
     d.update(inputs)
     slots = []
     for a in entry.get("artifacts", []):
@@ -53,7 +46,7 @@ def run_special(rtol=1e-9, verbose=False):
     entries = json.loads(GOLDEN_SPECIAL.read_text())
     bad = {}
     for e in entries:
-        res = fp_mage.compute(special_engine_inputs(e))
+        res = _fp_mage().compute(special_engine_inputs(e))
         wb = e["workbook"]
         diffs = []
         for name, wbv, eng in (("total_dps", wb.get("total_dps"), res["total_dps"]), ("boss_dps", wb.get("boss_dps"), res["boss_dps"]),
@@ -69,13 +62,15 @@ def run_special(rtol=1e-9, verbose=False):
     return len(entries), bad
 
 
-TEST = AH.ArtifactsTest(fp_mage, GOLDEN, boss_col="S", normal_col="U", special=run_special, summary=SUMMARY)
-compare, run = TEST.compare, TEST.run
+def _fp_mage():
+    from engine.classes import fp_mage
+    return fp_mage
 
 
-def test_fp_mage_artifacts_match_workbook():
-    TEST.assert_matches()
+def extra_summary(chk, wb, s, d):
+    # Summary's Global Critical Damage Bonus (row 20) is Sharp Eyes' average alone; the engine's ``crit_damage_bonus`` adds the Crit Damage artifacts
+    chk("summary.crit_damage_bonus", s["20"] + wb["artifacts"]["AGG_CRIT_DAMAGE"], d["crit_damage_bonus"])
 
 
-if __name__ == "__main__":
-    TEST.main()
+CONFIG = {"fp_mage": lambda: dict(special=run_special, summary=FP_MAGE_SUMMARY),
+          "marksman": lambda: dict(extra_summary=extra_summary)}

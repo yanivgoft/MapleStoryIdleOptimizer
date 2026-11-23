@@ -1,6 +1,6 @@
 """Every class with stat values (all but FP-Mage, which has its own ``test_sensitivity.py``) through the API: POST /api/classes/<id>/sensitivity (+ meta), and the
 cube / equipment / artifact-potential features that price their stats with it (the class's stat maps come from its Sensitivity spec).  Golden vs the engine
-called directly; the engine itself is checked against the workbook by tests/golden/test_<class>_sensitivity.py.
+called directly; the engine itself is checked against the workbook by tests/golden/test_sensitivity.py --class <class>.
 
 One parametrized module for the former ``test_sensitivity_<class>.py`` files: ``CLASSES`` holds what differs per class (main / sub stat, Defense stats, the
 Inputs the cases use, the shape of the stat sweep); the checks are the same.

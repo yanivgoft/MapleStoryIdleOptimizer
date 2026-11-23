@@ -1,23 +1,13 @@
-#!/usr/bin/env python3
-"""Golden test: ``engine.sensitivity`` for HERO against the Hero WORKBOOK's Sensitivity sheet (evaluated with ``formulas`` on Sensitivity-slimmed copies by
-``sens_reference_generic.py --class hero``; numbers frozen in tests/golden/hero_sensitivity_golden.json).  Plain ``python3`` runnable, also pytest-collectable.  The
-comparison logic is the class-agnostic ``sens_compare_generic.py`` (a new class's test is a wrapper like this file).
-
-    python3 tests/golden/test_hero_sensitivity.py              # rel 1e-9 on every compared value; exits 1 on any difference
-    python3 tests/golden/test_hero_sensitivity.py -v --rtol 1e-6
-    python3 tests/golden/test_hero_sensitivity.py --case "S/WB140/a"
-
-Besides the golden: the spec == the builder's tables (STAT_SWEEP, STATUS_REBUILD_KEYS, COMPANION_FULL_SEARCH_KEYS, SUMMON_TIME_KEYS, PASSIVE_DELTA_SLOT and the passive rows'
-Skills-sheet data), the engine-only direction-invariance of the equip toggles (CLAUDE.md item 15 / checklist 8c; Hero wires all of Reindeer's Spear, Athena's Gloves and
-Shamaness Marble correctly, so they are in the list) and the API shape.
-"""
+"""Class-specific sensitivity tests of Hero (the tests every class repeats - hooks are no-ops, API shape, the equip-toggle direction-invariance loop, the golden - are in
+``sens_test_common.py`` / ``test_sensitivity.py``; this module holds what only Hero has: the spec == builder check, the baked-in artifact pairs and the DATA of the shared tests).
+Protocol: see ``sens_test_common.plan``."""
 import importlib.util
 import json
 import math
 import sys
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parent.parent
 REPO = HERE.parents[1]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(HERE))
@@ -28,13 +18,17 @@ from engine.data import artifacts as AD  # noqa: E402
 import sens_compare_generic as C  # noqa: E402
 import sens_test_common as SC  # noqa: E402
 
-GOLDEN = HERE / "hero_sensitivity_golden.json"
-TEST = SC.SensTest("hero", hero, GOLDEN, "Hero")
+TEST = SC.SensTest.from_registry("hero")
+GOLDEN = TEST.GOLDEN
 SPEC = sens_specs.get("hero")
 
 
 _builder, _inputs = TEST.builder, TEST.inputs
 
+
+# data of the shared test_api_shape
+API = dict(content="Breakthrough", shamaness="positive", naive_rows=28, keys_prefix=['flat_str', 'str_pct', 'dex', 'damage'], keys_absent=['defense'])
+FD_SWEEP = "plain"          # shared sweep (sens_test_common.final_damage_sweep)
 
 def test_static():
     """The spec reproduces the builder's tables (so a builder change that is not mirrored in the spec fails here)."""
@@ -83,7 +77,7 @@ def test_cursed_doll_value():
     assert art.sv("cursed_doll_final_damage", STARS["cursed_doll"]) == CURSED_DOLL_FD
 
 
-def test_toggle_direction_invariance():
+def toggle_pairs():
     """CLAUDE.md item 15 / checklist 8c, engine-only: the same real state reached from the two directions (artifact equipped with its baked-in stat typed into the
     Inputs, or unequipped with the stat removed) reports the IDENTICAL DPS gain and % gain - in World Boss (pure boss: the time-weighted ratio blend collapses to
     the dollar delta) - and the adding gain equals the true Total delta.  Hero's block wires Reindeer's Spear (Def Pen dose in the rows), Athena's Gloves (direct Attack
@@ -114,26 +108,7 @@ def test_toggle_direction_invariance():
         pairs.append((key, dict(final_damage=12.0), dict(final_damage=((1 + 12.0 / 100) * (1 + fd / 100) - 1) * 100)))
     fd_cd = art.sv("cursed_doll_final_damage", STARS["cursed_doll"])          # with a LIVE Final Damage artifact (bucket a > 1) equipped as well
     pairs.append(("cursed_doll", dict(final_damage=12.0), dict(final_damage=((1 + 12.0 / 100) * (1 + fd_cd / 100) - 1) * 100), "flaming_lava"))
-    for key, off_over, on_over, *live in pairs:
-        base_slots = [{"key": k, "star": STARS[k]} for k in live]
-        slot = base_slots + [{"key": key, "star": STARS[key]}]
-        off = sensitivity.run(hero, _inputs("World Boss", base_slots, **off_over), which="artifacts")["artifacts"]["rows"]
-        on = sensitivity.run(hero, _inputs("World Boss", slot, **on_over), which="artifacts")["artifacts"]["rows"]
-        r_off = next(r for r in off if r["key"] == key)
-        r_on = next(r for r in on if r["key"] == key)
-        t_off = hero.compute(_inputs("World Boss", base_slots, **off_over))["total_dps"]
-        t_on = hero.compute(_inputs("World Boss", slot, **on_over))["total_dps"]
-        assert math.isclose(r_off["dps_gain"], t_on - t_off, rel_tol=1e-9), (key, r_off["dps_gain"], t_on - t_off)      # adding = the true delta
-        assert math.isclose(r_on["dps_gain"], r_off["dps_gain"], rel_tol=1e-9), (key, r_off["dps_gain"], r_on["dps_gain"])
-        assert math.isclose(r_off["pct_gain"], r_on["pct_gain"], rel_tol=1e-11), (key, r_off["pct_gain"], r_on["pct_gain"])
-
-
-def test_final_damage_sweep_is_exactly_one_percent():
-    """The +1% multiplicative Final Damage step bumps the FULL bucket (typed + Enrage / Combo Synergy / Lv98): the ratio is exactly 1.01 (pure boss content)."""
-    out = sensitivity.run(hero, _inputs("World Boss", [{"key": "bottle_of_emotion", "star": 5}]), which="stats")["stats"]["rows"]
-    r = next(x for x in out if x["key"] == "final_damage")
-    assert math.isclose(r["pct_gain"], 101.0, rel_tol=1e-12), r["pct_gain"]
-    assert r["current"] > 12.0 and r["new"] > r["current"]          # Current / New include the live Final Damage share (like the workbook's table)
+    return pairs
 
 
 def test_baked_fd_both_directions_golden():
@@ -153,49 +128,5 @@ def test_baked_fd_both_directions_golden():
     assert math.isclose(rem["dps_gain"] - pot, true, rel_tol=1e-12), (rem["dps_gain"], pot, true)
 
 
-def test_hooks_are_noops_without_sens():
-    TEST.test_hooks_are_noops_without_sens()
-
-
-def _class_without_spec():
-    import importlib
-    for cid in ("ice_lightning_mage", "paladin", "bishop", "bowmaster", "buccaneer", "marksman", "corsair", "night_lord", "shadower"):
-        if sens_specs.get(cid) is None:
-            return importlib.import_module(f"engine.classes.{cid}")
-    return None
-
-
-def test_api_shape():
-    """`which` selection, JSON-serialisable output, the no-effect flag, the potential-gain term, the live Shamaness row and the naive switch."""
-    inp = _inputs("Breakthrough", [{"key": "hexagon_necklace", "star": 5}])
-    out = sensitivity.run(hero, inp, which=["artifacts", "cdr"])
-    assert set(out) >= {"artifacts", "cdr", "baseline_total"} and "stats" not in out and "companions" not in out and out["class_id"] == "hero"
-    json.dumps(out)
-    rows = {r["key"]: r for r in out["artifacts"]["rows"]}
-    assert rows["pigs_ribbon"]["no_dps_effect"] and rows["pigs_ribbon"]["dps_gain"] == 0.0 and rows["pigs_ribbon"]["pct_gain"] == 100.0
-    assert rows["hexagon_necklace"]["equipped"] and rows["hexagon_necklace"]["dps_gain"] > 0
-    assert rows["shamaness_marble"]["dps_gain"] > 0 and not rows["shamaness_marble"]["no_dps_effect"]      # wired in the Hero workbook (not inert like Dark Knight's)
-    out2 = sensitivity.run(hero, dict(inp, artifact_potential_gain={"pigs_ribbon": 1.0e9}), which="artifacts")
-    assert {r["key"]: r for r in out2["artifacts"]["rows"]}["pigs_ribbon"]["dps_gain"] == 1.0e9
-    naive = sensitivity.run(hero, inp, which="stats", naive=True)
-    assert naive["semantics"] == "naive" and len(naive["stats"]["rows"]) == 28
-    keys = [r["key"] for r in naive["stats"]["rows"]]
-    assert keys[:4] == ["flat_str", "str_pct", "dex", "damage"] and "defense" not in keys
-    other = _class_without_spec()
-    if other is not None:
-        try:
-            sensitivity.run(other, inp)
-            raise AssertionError("a class without a spec must raise")
-        except NotImplementedError:
-            pass
-
-
-def test_golden():
-    TEST.test_golden()
-
-
-if __name__ == "__main__":
-    TEST.main([test_static, test_cursed_doll_value, test_hooks_are_noops_without_sens,
-               test_api_shape, test_final_damage_sweep_is_exactly_one_percent, test_toggle_direction_invariance],
-              [test_baked_fd_both_directions_golden],
-              "ok: spec == builder, hooks are no-ops, API shape, Final Damage +1% exact, toggle direction invariance (engine + workbook golden)")
+EXTRA = [test_cursed_doll_value]            # engine-only tests of this class
+GOLDEN_EXTRA = [test_baked_fd_both_directions_golden]      # checks of the golden file's own states (run when the file exists)

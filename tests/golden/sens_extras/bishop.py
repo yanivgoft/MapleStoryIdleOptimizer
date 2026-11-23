@@ -1,24 +1,13 @@
-#!/usr/bin/env python3
-"""Golden test: ``engine.sensitivity`` for BISHOP against the Bishop WORKBOOK's Sensitivity sheet (evaluated with ``formulas`` on Sensitivity-slimmed
-copies by ``sens_reference_generic.py --class bishop``; numbers frozen in tests/golden/bishop_sensitivity_golden.json).  Plain ``python3``
-runnable, also pytest-collectable.  The comparison logic is the class-agnostic ``sens_compare_generic.py`` (a new class's test is a wrapper like this file).
-
-    python3 tests/golden/test_bishop_sensitivity.py              # rel 1e-9 on every compared value; exits 1 on any difference
-    python3 tests/golden/test_bishop_sensitivity.py -v --rtol 1e-6
-    python3 tests/golden/test_bishop_sensitivity.py --case "S/WB140/a"
-
-Besides the golden: the spec == the builder's tables (STAT_SWEEP, STATUS_REBUILD_KEYS, COMPANION_FULL_SEARCH_KEYS, SUMMON_TIME_KEYS, the passive rows of the Skills sheet, the
-cube / equipment / artifact-potential stat maps), the three workbook wirings the Dark Knight port found missing (Shamaness Marble and the Reindeer dose were already wired in this
-builder, Athena's Gloves' Attack Speed in the block's Actions Per Second was fixed 2026-11-22), the engine-only direction-invariance of the equip toggles (CLAUDE.md item 15 /
-checklist 8c) and the API shape.
-"""
+"""Class-specific sensitivity tests of Bishop (the tests every class repeats - hooks are no-ops, API shape, the equip-toggle direction-invariance loop, the golden - are in
+``sens_test_common.py`` / ``test_sensitivity.py``; this module holds what only Bishop has: the spec == builder check, the baked-in artifact pairs and the DATA of the shared tests).
+Protocol: see ``sens_test_common.plan``."""
 import json
 import math
 import sys
 import types
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parent.parent
 REPO = HERE.parents[1]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(HERE))
@@ -29,13 +18,16 @@ from engine.data import artifacts as AD  # noqa: E402
 import sens_compare_generic as C  # noqa: E402
 import sens_test_common as SC  # noqa: E402
 
-GOLDEN = HERE / "bishop_sensitivity_golden.json"
-TEST = SC.SensTest("bishop", bishop, GOLDEN, "Bishop")
+TEST = SC.SensTest.from_registry("bishop")
+GOLDEN = TEST.GOLDEN
 SPEC = sens_specs.get("bishop")
 
 
 _builder, _inputs = TEST.builder, TEST.inputs
 
+
+# data of the shared test_api_shape
+API = dict(content="World Boss", shamaness="nonzero", naive_rows=29, keys_prefix=['flat_int', 'int_pct', 'defense', 'defense_pct', 'damage'], keys_absent=[])
 
 def test_static():
     """The spec reproduces the builder's tables (so a builder change that is not mirrored in the spec fails here)."""
@@ -80,7 +72,7 @@ def test_static():
     assert SPEC.bdi_toggle_wired and SPEC.reindeer_dose_in_rows and SPEC.athena_as_in_aps and SPEC.pin_monster_defense and SPEC.baked_fd_form == "factor"
 
 
-def test_toggle_direction_invariance():
+def toggle_pairs():
     """CLAUDE.md item 15 / checklist 8c, engine-only: the same real state reached from the two directions (artifact equipped with its baked-in stat typed into the
     Inputs, or unequipped with the stat removed) reports the IDENTICAL DPS gain and % gain - in World Boss (pure boss: the time-weighted ratio blend collapses to
     the dollar delta) - and the adding gain equals the true Total delta."""
@@ -110,18 +102,7 @@ def test_toggle_direction_invariance():
     dp = art.sv("reindeer_spear_def_pen", STARS["reindeer_spear"])
     pairs.append(("reindeer_spear", dict(def_pen=35.0), dict(def_pen=100 * (1 - (1 - 35.0 / 100) * (1 - dp / 100)))))
     pairs.append(("star_rock", dict(boss_damage=40.0), dict(boss_damage=40.0 + art.sv("star_rock_boss_damage", STARS["star_rock"]))))
-    for key, off_over, on_over, *live in pairs:
-        base_slots = [{"key": k, "star": STARS[k]} for k in live]
-        slot = base_slots + [{"key": key, "star": STARS[key]}]
-        off = sensitivity.run(bishop, _inputs("World Boss", base_slots, **off_over), which="artifacts")["artifacts"]["rows"]
-        on = sensitivity.run(bishop, _inputs("World Boss", slot, **on_over), which="artifacts")["artifacts"]["rows"]
-        r_off = next(r for r in off if r["key"] == key)
-        r_on = next(r for r in on if r["key"] == key)
-        t_off = bishop.compute(_inputs("World Boss", base_slots, **off_over))["total_dps"]
-        t_on = bishop.compute(_inputs("World Boss", slot, **on_over))["total_dps"]
-        assert math.isclose(r_off["dps_gain"], t_on - t_off, rel_tol=1e-9), (key, r_off["dps_gain"], t_on - t_off)      # adding = the true delta
-        assert math.isclose(r_on["dps_gain"], r_off["dps_gain"], rel_tol=1e-9), (key, r_off["dps_gain"], r_on["dps_gain"])
-        assert math.isclose(r_off["pct_gain"], r_on["pct_gain"], rel_tol=1e-11), (key, r_off["pct_gain"], r_on["pct_gain"])
+    return pairs
 
 
 def test_baked_fd_both_directions_golden():
@@ -151,7 +132,7 @@ def test_defense_rows_are_plain_reruns():
     assert "flat_int" in diff and "int_pct" in diff
     out = sensitivity.run(bishop, inp, which="stats")["stats"]["rows"]
     r = {x["key"]: x for x in out}
-    assert r["defense"]["dps_gain"] > 0 and r["defense_pct"]["dps_gain"] > 0       # Invincible: Defense is worth DPS here
+    assert r["defense"]["dps_gain"] > 0 and r["defense_pct"]["dps_gain"] > 0
 
 
 def test_pvp_opponent_defense_is_pinned():
@@ -162,42 +143,8 @@ def test_pvp_opponent_defense_is_pinned():
         plain = bishop.model(dict(inp, **{key: new}))
         assert plain.monster_defense != base.monster_defense                         # a plain re-run moves the opponent ...
         pinned = bishop.model(dict(inp, **{key: new}, _sens={"monster_defense": base.monster_defense}))
-        assert pinned.monster_defense == base.monster_defense and pinned.total_defense == plain.total_defense      # ... the block keeps it, my own Defense still moves
+        assert pinned.monster_defense == base.monster_defense and pinned.total_defense == plain.total_defense
 
 
-def test_hooks_are_noops_without_sens():
-    TEST.test_hooks_are_noops_without_sens()
-
-
-def test_api_shape():
-    """`which` selection, JSON-serialisable output, the no-effect flag, the potential-gain term, the live Shamaness row and the naive switch."""
-    inp = _inputs("World Boss", [{"key": "hexagon_necklace", "star": 5}])
-    out = sensitivity.run(bishop, inp, which=["artifacts", "cdr"])
-    assert set(out) >= {"artifacts", "cdr", "baseline_total"} and "stats" not in out and "companions" not in out and out["class_id"] == "bishop"
-    json.dumps(out)
-    rows = {r["key"]: r for r in out["artifacts"]["rows"]}
-    assert rows["pigs_ribbon"]["no_dps_effect"] and rows["pigs_ribbon"]["dps_gain"] == 0.0 and rows["pigs_ribbon"]["pct_gain"] == 100.0
-    assert rows["hexagon_necklace"]["equipped"] and rows["hexagon_necklace"]["dps_gain"] > 0
-    assert rows["shamaness_marble"]["dps_gain"] != 0.0 and not rows["shamaness_marble"]["no_dps_effect"]      # live since the 2026-11-22 builder fix (was inert)
-    out2 = sensitivity.run(bishop, dict(inp, artifact_potential_gain={"pigs_ribbon": 1.0e9}), which="artifacts")
-    assert {r["key"]: r for r in out2["artifacts"]["rows"]}["pigs_ribbon"]["dps_gain"] == 1.0e9
-    naive = sensitivity.run(bishop, inp, which="stats", naive=True)
-    assert naive["semantics"] == "naive" and len(naive["stats"]["rows"]) == 29
-    keys = [r["key"] for r in naive["stats"]["rows"]]
-    assert keys[:5] == ["flat_int", "int_pct", "defense", "defense_pct", "damage"]
-    try:
-        sensitivity.run(types.SimpleNamespace(CLASS_ID="no_such_class"), inp)
-        raise AssertionError("a class without a spec must raise")
-    except NotImplementedError:
-        pass
-
-
-def test_golden():
-    TEST.test_golden()
-
-
-if __name__ == "__main__":
-    TEST.main([test_static, test_hooks_are_noops_without_sens, test_api_shape,
-               test_toggle_direction_invariance, test_defense_rows_are_plain_reruns, test_pvp_opponent_defense_is_pinned],
-              [test_baked_fd_both_directions_golden],
-              "ok: spec == builder, hooks are no-ops, API shape, toggle direction invariance (engine + workbook golden)")
+EXTRA = [test_defense_rows_are_plain_reruns, test_pvp_opponent_defense_is_pinned]            # engine-only tests of this class
+GOLDEN_EXTRA = [test_baked_fd_both_directions_golden]      # checks of the golden file's own states (run when the file exists)

@@ -6,7 +6,7 @@
 ``compute(inputs)`` is bit-identical to the verify script (same operations in the same order); the verify script stays the independent
 reference, ``tests/golden/test_night_lord.py`` compares the two (with no artifact equipped).  Artifact equip effects (``inputs["artifacts"]``, up to 4
 slots) are ported in ``engine/artifacts.py`` (shared with the other classes; the Artifacts sheet of the builders is identical) and wired the way
-``src/build_night_lord_workbook.py`` wires them; the verify script does not model artifacts, so ``tests/golden/test_night_lord_artifacts.py`` checks
+``src/build_night_lord_workbook.py`` wires them; the verify script does not model artifacts, so ``tests/golden/test_artifacts.py --class night_lord`` checks
 them against the workbook itself (``tests/golden/night_lord_artifacts_golden.json``, evaluated with ``formulas``).  The explicit hook
 ``inputs["artifact_attack_pct"]`` (default 0) stays: extra Attack% added to the artifact Attack% in Dark Sight's additive bucket (the 2026-11-03
 ``R_AVGBUFF`` rule: Dark Sight + artifact Attack% are ONE additive bucket, Frailty Curse's and Alchemic Adrenaline's Final Damage stay their own factors).

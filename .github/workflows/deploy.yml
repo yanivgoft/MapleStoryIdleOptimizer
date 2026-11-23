@@ -73,7 +73,7 @@ jobs:
           for t in fp_mage hero ice_lightning_mage paladin bowmaster bishop dark_knight marksman buccaneer corsair night_lord shadower; do
             python tests/golden/test_$t.py
           done
-          python tests/golden/test_fp_mage_artifacts.py
+          python tests/golden/test_artifacts.py --class fp_mage
       - name: API tests
         env:
           PYTHONHASHSEED: "0"

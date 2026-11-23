@@ -1,5 +1,5 @@
 """Dark Knight Sensitivity spec: the builder's ``STAT_SWEEP`` (stat entries), ``STATUS_REBUILD_KEYS``, ``COMPANION_FULL_SEARCH_KEYS``, ``SUMMON_TIME_KEYS`` and
-``PASSIVE_DELTA_SLOT`` of ``src/build_dark_knight_workbook.py`` (cross-checked against the builder by ``tests/golden/test_dark_knight_sensitivity.py``).
+``PASSIVE_DELTA_SLOT`` of ``src/build_dark_knight_workbook.py`` (cross-checked against the builder by ``tests/golden/test_sensitivity.py --class dark_knight``).
 
 Dark Knight specifics (all reproduced from ``build_stat_block``):
 
@@ -68,7 +68,7 @@ PASSIVE_LEVELS = (
 )
 
 # the builder's POTENTIAL_STAT_TO_SWEEP_KEY / POTENTIAL_SUB_STAT_PCT_LINES / EQUIP_COMPARE_STAT_TO_SWEEP_KEY / ARTIFACT_POTENTIAL_STAT_TO_SWEEP_KEY (checked against it by
-# tests/golden/test_dark_knight_sensitivity.py::test_static); Iron Wall makes "Defense" / "Defense %" lines real here (they are worth 0 in most classes)
+# tests/golden/test_sensitivity.py::test_static[dark_knight]); Iron Wall makes "Defense" / "Defense %" lines real here (they are worth 0 in most classes)
 STAT_TO_KEY = sens_mod.standard_stat_to_key("Str", "flat_str", "str_pct", sub=("Dex", "dex"), defense_pct="defense_pct")
 
 SPEC = SensSpec(

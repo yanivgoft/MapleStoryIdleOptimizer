@@ -6,7 +6,7 @@
 ``compute(inputs)`` is bit-identical to the verify script (same operations in the same order); the verify script stays the independent
 reference, ``tests/golden/test_shadower.py`` compares the two (with no artifact equipped).  Artifact equip effects (``inputs["artifacts"]``, up to 4
 slots) are ported in ``engine/artifacts.py`` (shared with the other classes; the Artifacts sheet of the builders is identical) and wired the way
-``src/build_shadower_workbook.py`` wires them; the verify script does not model artifacts, so ``tests/golden/test_shadower_artifacts.py`` checks them
+``src/build_shadower_workbook.py`` wires them; the verify script does not model artifacts, so ``tests/golden/test_artifacts.py --class shadower`` checks them
 against the workbook itself (``tests/golden/shadower_artifacts_golden.json``, evaluated with ``formulas``).  The artifacts' enemy-damage-taken term
 (Peach Tree / Silver Pendant) is the workbook's ``AGG_ENEMY_DMG_TAKEN`` inside Summary's ``R_MONSTER_DMG_BONUS`` (next to Venom's Weaken): it adds to BOTH the
 Boss and the Normal Monster Damage terms and to the companion's ``boss_pct`` / ``norm_pct``; the explicit input ``artifact_monster_dmg_bonus`` (default 0) is a

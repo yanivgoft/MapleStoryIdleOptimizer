@@ -1,5 +1,5 @@
 """Marksman Sensitivity spec: the builder's ``STAT_SWEEP`` (stat entries), ``STATUS_REBUILD_KEYS``, ``COMPANION_FULL_SEARCH_KEYS``, ``SUMMON_TIME_KEYS`` and
-``PASSIVE_DELTA_SLOT`` of ``src/build_marksman_workbook.py`` (cross-checked against the builder by ``tests/golden/test_marksman_sensitivity.py``).
+``PASSIVE_DELTA_SLOT`` of ``src/build_marksman_workbook.py`` (cross-checked against the builder by ``tests/golden/test_sensitivity.py --class marksman``).
 
 Marksman specifics (all reproduced from ``build_stat_block``):
 
@@ -68,7 +68,7 @@ PASSIVE_LEVELS = (
 )
 
 # the builder's POTENTIAL_STAT_TO_SWEEP_KEY / POTENTIAL_SUB_STAT_PCT_LINES / EQUIP_COMPARE_STAT_TO_SWEEP_KEY / ARTIFACT_POTENTIAL_STAT_TO_SWEEP_KEY (checked against it by
-# tests/golden/test_marksman_sensitivity.py::test_static); "Defense (flat)" has no sweep row in this class: a key without a rate prices as 0
+# tests/golden/test_sensitivity.py::test_static[marksman]); "Defense (flat)" has no sweep row in this class: a key without a rate prices as 0
 STAT_TO_KEY = sens_mod.standard_stat_to_key("Dex", "flat_dex", "dex_pct", sub=("Str", "str"))
 
 SPEC = SensSpec(

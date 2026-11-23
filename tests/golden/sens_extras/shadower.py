@@ -1,24 +1,13 @@
-#!/usr/bin/env python3
-"""Golden test: ``engine.sensitivity`` for SHADOWER against the Shadower WORKBOOK's Sensitivity sheet (evaluated with ``formulas`` on Sensitivity-slimmed copies by
-``sens_reference_generic.py --class shadower``; numbers frozen in tests/golden/shadower_sensitivity_golden.json).  Plain ``python3`` runnable, also pytest-collectable.  The
-comparison logic is the class-agnostic ``sens_compare_generic.py`` (a new class's test is a wrapper like this file).
-
-    python3 tests/golden/test_shadower_sensitivity.py              # rel 1e-9 on every compared value; exits 1 on any difference
-    python3 tests/golden/test_shadower_sensitivity.py -v --rtol 1e-6
-    python3 tests/golden/test_shadower_sensitivity.py --case "S/CH118"
-
-Besides the golden: the spec == the builder's tables (STAT_SWEEP, STATUS_REBUILD_KEYS, COMPANION_FULL_SEARCH_KEYS, SUMMON_TIME_KEYS, PASSIVE_DELTA_SLOT and the passive rows'
-Skills-sheet data), the engine-only direction-invariance of the equip toggles (CLAUDE.md item 15 / checklist 8c; the Shadower builder wires Reindeer's Spear, Athena's Gloves and
-Shamaness Marble correctly since 2026-11-23, so they are all in the list), the workbook-side chain I/WB140/* (both directions of three baked-in artifacts: Shamaness Marble,
-Athena's Gloves, Reindeer's Spear) and the API shape.
-"""
+"""Class-specific sensitivity tests of Shadower (the tests every class repeats - hooks are no-ops, API shape, the equip-toggle direction-invariance loop, the golden - are in
+``sens_test_common.py`` / ``test_sensitivity.py``; this module holds what only Shadower has: the spec == builder check, the baked-in artifact pairs and the DATA of the shared tests).
+Protocol: see ``sens_test_common.plan``."""
 import importlib.util
 import json
 import math
 import sys
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parent.parent
 REPO = HERE.parents[1]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(HERE))
@@ -29,13 +18,16 @@ from engine.data import artifacts as AD  # noqa: E402
 import sens_compare_generic as C  # noqa: E402
 import sens_test_common as SC  # noqa: E402
 
-GOLDEN = HERE / "shadower_sensitivity_golden.json"
-TEST = SC.SensTest("shadower", shadower, GOLDEN, "Shadower")
+TEST = SC.SensTest.from_registry("shadower")
+GOLDEN = TEST.GOLDEN
 SPEC = sens_specs.get("shadower")
 
 
 _builder, _inputs = TEST.builder, TEST.inputs
 
+
+# data of the shared test_api_shape
+API = dict(content="Breakthrough", shamaness="positive", naive_rows=29, keys_prefix=['flat_luk', 'luk_pct', 'dex', 'damage'], keys_absent=['defense'], keys_last="incoming_hit_rate")
 
 def test_static():
     """The spec reproduces the builder's tables (so a builder change that is not mirrored in the spec fails here)."""
@@ -85,23 +77,10 @@ def test_static():
 
 def test_baked_values():
     """The constants of the case matrix (plain data) are the artifact tables' values at the case stars."""
-    from engine import artifacts as art
-    from sens_cases import STARS
-    import shadower_sens_cases as K
-    assert art.sv("shamaness_marble_buff_duration_increase_pct", STARS["shamaness_marble"]) == K.SHAMANESS_BDI
-    assert art.sv("athena_gloves_attack_speed", STARS["athena_gloves"]) == K.ATHENA_AS
-    assert art.sv("athena_gloves_max_damage_pct_of_attack_speed", STARS["athena_gloves"]) == K.ATHENA_MAX_PCT
-    assert art.sv("reindeer_spear_def_pen", STARS["reindeer_spear"]) == K.REINDEER_DEF_PEN
-    assert art.sv("cursed_doll_final_damage", STARS["cursed_doll"]) == K.CURSED_DOLL_FD
-    assert art.sv("bottle_of_emotion_final_damage_per_3pct_as", STARS["bottle_of_emotion"]) == K.BOTTLE_PER_3PCT
-    assert art.sv("bottle_of_emotion_final_damage_cap", STARS["bottle_of_emotion"]) == K.BOTTLE_CAP
+    TEST.baked_values(full=True)
 
 
-def _rows_of(inputs):
-    return {r["key"]: r for r in sensitivity.run(shadower, inputs, which="artifacts")["artifacts"]["rows"]}
-
-
-def test_toggle_direction_invariance():
+def toggle_pairs():
     """CLAUDE.md item 15 / checklist 8c, engine-only: the same real state reached from the two directions (artifact equipped with its baked-in stat typed into the
     Inputs, or unequipped with the stat removed) reports the IDENTICAL DPS gain and % gain - in World Boss (pure boss: the time-weighted ratio blend collapses to
     the dollar delta) - and the adding gain equals the true Total delta.  The chain artifacts (Shamaness Marble, Athena's Gloves, Reindeer's Spear) are the golden's own states
@@ -110,19 +89,7 @@ def test_toggle_direction_invariance():
     from engine import artifacts as art
     from sens_cases import STARS
     import shadower_sens_cases as K
-    cases = {c["id"]: c for c in K.sens_cases()}
-    tot, rows = {}, {}
-    for suffix, _eq, _flags in K.CHAIN:
-        out = sensitivity.run(shadower, cases[f"I/WB140/{suffix}"]["inputs"], which="artifacts")
-        tot[suffix] = out["baseline_total"]
-        rows[suffix] = {r["key"]: r for r in out["artifacts"]["rows"]}
-    for key, add, rem in K.CHAIN_PAIRS:
-        true = tot[rem] - tot[add]
-        a, r = rows[add][key], rows[rem][key]
-        assert math.isclose(a["dps_gain"], true, rel_tol=1e-9), (key, a["dps_gain"], true)             # adding = the true delta
-        assert math.isclose(r["dps_gain"], true, rel_tol=1e-9), (key, r["dps_gain"], true)             # removing = the same value
-        assert math.isclose(a["pct_gain"], r["pct_gain"], rel_tol=1e-11), (key, a["pct_gain"], r["pct_gain"])
-    # (artifact, Inputs of the state WITHOUT it, Inputs of the state WITH it (its baked-in stat typed in), live slots)
+    TEST.chain_invariance("I/WB140", "CHAIN", "CHAIN_PAIRS")
     pairs = []
     for key in ("hexagon_necklace", "candle", "secret_map", "alliance_badge", "charm_of_the_undead", "old_music_box", "ring_of_cycles"):
         pairs.append((key, {}, {}))        # live artifacts: no Inputs adjustment
@@ -139,16 +106,7 @@ def test_toggle_direction_invariance():
     # Bottle of Emotion: typed Attack Speed 100 -> its Final Damage per 3% over 60 (cap 20)
     bfd = min(K.BOTTLE_CAP, max(0.0, K.BOTTLE_PER_3PCT / 3 * (100.0 - 60)))
     pairs.append(("bottle_of_emotion", dict(attack_speed=100.0, final_damage=12.0), dict(attack_speed=100.0, final_damage=((1 + 12.0 / 100) * (1 + bfd / 100) - 1) * 100)))
-    for key, off_over, on_over, *live in pairs:
-        base_slots = [{"key": k, "star": STARS[k]} for k in live]
-        slot = base_slots + [{"key": key, "star": STARS[key]}]
-        t_off = shadower.compute(_inputs("World Boss", base_slots, **off_over))["total_dps"]
-        t_on = shadower.compute(_inputs("World Boss", slot, **on_over))["total_dps"]
-        off, on = _rows_of(_inputs("World Boss", base_slots, **off_over)), _rows_of(_inputs("World Boss", slot, **on_over))
-        r_off, r_on = off[key], on[key]
-        assert math.isclose(r_off["dps_gain"], t_on - t_off, rel_tol=1e-9), (key, r_off["dps_gain"], t_on - t_off)      # adding = the true delta
-        assert math.isclose(r_on["dps_gain"], r_off["dps_gain"], rel_tol=1e-9), (key, r_off["dps_gain"], r_on["dps_gain"])
-        assert math.isclose(r_off["pct_gain"], r_on["pct_gain"], rel_tol=1e-11), (key, r_off["pct_gain"], r_on["pct_gain"])
+    return pairs
 
 
 def test_final_damage_sweep_is_exactly_one_percent():
@@ -166,22 +124,7 @@ def test_final_damage_sweep_is_exactly_one_percent():
 
 
 def test_baked_chain_golden():
-    """Workbook ground truth (cases I/WB140/*): state k has the first k chain artifacts equipped with their baked-in stats typed into the Inputs; the toggle row of artifact k
-    read in the state without it (adding) and in the state with it (removing) gives the identical gain and % Gain, equal to Summary Total(with) - Total(without) - for Shamaness
-    Marble (Buff Duration), Athena's Gloves (Attack Speed + Max Damage) and Reindeer's Spear (Def Pen)."""
-    if not GOLDEN.exists():
-        return
-    import shadower_sens_cases as K
-    g = json.loads(GOLDEN.read_text())["cases"]
-    for art, add_s, rem_s in K.CHAIN_PAIRS:
-        u, e = f"I/WB140/{add_s}", f"I/WB140/{rem_s}"
-        if u not in g or e not in g:
-            continue
-        add, rem = g[u]["workbook"]["toggles"][art], g[e]["workbook"]["toggles"][art]
-        true = g[e]["workbook"]["summary"]["total"] - g[u]["workbook"]["summary"]["total"]
-        assert math.isclose(add["dps_gain"], rem["dps_gain"], rel_tol=1e-9), (art, add["dps_gain"], rem["dps_gain"])
-        assert math.isclose(add["pct_gain"], rem["pct_gain"], rel_tol=1e-11), (art, add["pct_gain"], rem["pct_gain"])
-        assert math.isclose(add["dps_gain"], true, rel_tol=1e-9), (art, add["dps_gain"], true)
+    TEST.baked_chain_golden("I/WB140", "CHAIN_PAIRS")
 
 
 def test_potential_lines_are_the_workbooks():
@@ -200,50 +143,6 @@ def test_potential_lines_are_the_workbooks():
     assert total == K.BOOTS_SUMMON_LINES_PCT, (total, K.BOOTS_SUMMON_LINES_PCT)
 
 
-def test_hooks_are_noops_without_sens():
-    TEST.test_hooks_are_noops_without_sens()
-
-
-def _class_without_spec():
-    import importlib
-    for cid in ("night_lord", "ice_lightning_mage", "bishop", "bowmaster", "marksman", "corsair", "paladin", "hero", "buccaneer", "dark_knight", "fp_mage"):
-        if sens_specs.get(cid) is None:
-            return importlib.import_module(f"engine.classes.{cid}")
-    return None
-
-
-def test_api_shape():
-    """`which` selection, JSON-serialisable output, the no-effect flag, the potential-gain term, the live Shamaness row and the naive switch."""
-    inp = _inputs("Breakthrough", [{"key": "hexagon_necklace", "star": 5}])
-    out = sensitivity.run(shadower, inp, which=["artifacts", "cdr"])
-    assert set(out) >= {"artifacts", "cdr", "baseline_total"} and "stats" not in out and "companions" not in out and out["class_id"] == "shadower"
-    json.dumps(out)
-    rows = {r["key"]: r for r in out["artifacts"]["rows"]}
-    assert rows["pigs_ribbon"]["no_dps_effect"] and rows["pigs_ribbon"]["dps_gain"] == 0.0 and rows["pigs_ribbon"]["pct_gain"] == 100.0
-    assert rows["hexagon_necklace"]["equipped"] and rows["hexagon_necklace"]["dps_gain"] > 0
-    assert rows["shamaness_marble"]["dps_gain"] > 0 and not rows["shamaness_marble"]["no_dps_effect"]      # wired since 2026-11-23 (it was inert before the fix)
-    out2 = sensitivity.run(shadower, dict(inp, artifact_potential_gain={"pigs_ribbon": 1.0e9}), which="artifacts")
-    assert {r["key"]: r for r in out2["artifacts"]["rows"]}["pigs_ribbon"]["dps_gain"] == 1.0e9
-    naive = sensitivity.run(shadower, inp, which="stats", naive=True)
-    assert naive["semantics"] == "naive" and len(naive["stats"]["rows"]) == 29
-    keys = [r["key"] for r in naive["stats"]["rows"]]
-    assert keys[:4] == ["flat_luk", "luk_pct", "dex", "damage"] and keys[-1] == "incoming_hit_rate" and "defense" not in keys
-    other = _class_without_spec()
-    if other is not None:
-        try:
-            sensitivity.run(other, inp)
-            raise AssertionError("a class without a spec must raise")
-        except NotImplementedError:
-            pass
-
-
-def test_golden():
-    TEST.test_golden()
-
-
-if __name__ == "__main__":
-    TEST.main([test_static, test_baked_values, test_potential_lines_are_the_workbooks,
-               test_hooks_are_noops_without_sens, test_api_shape, test_final_damage_sweep_is_exactly_one_percent,
-               test_toggle_direction_invariance],
-              [test_baked_chain_golden],
-              "ok: spec == builder, hooks are no-ops, API shape, Final Damage +1% exact, toggle direction invariance (engine + workbook golden)")
+FD_SWEEP = test_final_damage_sweep_is_exactly_one_percent          # this class's own sweep
+EXTRA = [test_baked_values, test_potential_lines_are_the_workbooks]            # engine-only tests of this class
+GOLDEN_EXTRA = [test_baked_chain_golden]      # checks of the golden file's own states (run when the file exists)

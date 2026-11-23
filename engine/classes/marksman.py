@@ -6,7 +6,7 @@
 ``compute(inputs)`` is bit-identical to the verify script (same operations in the same order) with no artifact equipped; the verify script stays the
 independent reference, ``tests/golden/test_marksman.py`` compares the two.  Artifact equip effects (``inputs["artifacts"]``, up to 4 slots) are ported in
 ``engine/artifacts.py`` (shared with FP-Mage / Hero / Ice-Lightning Mage / Paladin; the Artifacts sheet of the builders is identical) and wired the way
-``src/build_marksman_workbook.py`` wires them; the verify script does not model artifacts, so ``tests/golden/test_marksman_artifacts.py`` checks them against
+``src/build_marksman_workbook.py`` wires them; the verify script does not model artifacts, so ``tests/golden/test_artifacts.py --class marksman`` checks them against
 the workbook itself (``tests/golden/marksman_artifacts_golden.json``, evaluated with ``formulas``).
 
 Inputs dict: the workbook's Inputs keys already resolved for the chosen content type (see ``schema()``), plus ``companion_level`` (the

@@ -6,7 +6,7 @@
 ``compute(inputs)`` is bit-identical to the verify script (same operations in the same order); the verify script stays the independent
 reference, ``tests/golden/test_corsair.py`` compares the two (with no artifact equipped).  Artifact equip effects (``inputs["artifacts"]``, up to 4
 slots) are ported in ``engine/artifacts.py`` (shared with FP-Mage / Hero / ...; the Artifacts sheet of the builders is identical) and wired the way
-``src/build_corsair_workbook.py`` wires them; the verify script does not model artifacts, so ``tests/golden/test_corsair_artifacts.py`` checks them
+``src/build_corsair_workbook.py`` wires them; the verify script does not model artifacts, so ``tests/golden/test_artifacts.py --class corsair`` checks them
 against the workbook itself (``tests/golden/corsair_artifacts_golden.json``, evaluated with ``formulas``).
 
 Inputs dict: the workbook's Inputs keys already resolved for the chosen content type (see ``schema()``), plus ``companion_level`` (the

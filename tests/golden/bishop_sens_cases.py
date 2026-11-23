@@ -40,7 +40,7 @@ assert len(ALL_STATS) == 29
 case = case_builder(make_inputs)
 
 
-CURSED_DOLL_FD = 14.0        # star 5 (checked against the artifact table by test_bishop_sensitivity.test_cursed_doll_value)
+CURSED_DOLL_FD = 14.0        # star 5 (checked against the artifact table by sens_extras/bishop.py::test_cursed_doll_value)
 
 
 def sens_cases():

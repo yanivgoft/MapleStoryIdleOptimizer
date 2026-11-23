@@ -1,5 +1,5 @@
 """Ice/Lightning Mage Sensitivity spec: the builder's ``STAT_SWEEP`` (stat entries), ``STATUS_REBUILD_KEYS``, ``COMPANION_FULL_SEARCH_KEYS``, ``SUMMON_TIME_KEYS`` and
-the passive-skill level deltas of ``src/build_ice_lightning_mage_workbook.py`` (cross-checked against the builder by ``tests/golden/test_ice_lightning_mage_sensitivity.py``).
+the passive-skill level deltas of ``src/build_ice_lightning_mage_workbook.py`` (cross-checked against the builder by ``tests/golden/test_sensitivity.py --class ice_lightning_mage``).
 
 Ice/Lightning Mage specifics (all reproduced from ``build_stat_block``):
 

@@ -1,4 +1,4 @@
-"""Shared body of ``test_<class>_artifacts.py``: ``engine.classes.<class>.compute`` WITH artifacts equipped against the class's WORKBOOK (evaluated with
+"""Shared body of ``test_artifacts.py`` (one parametrised test over the classes of ``registry.py``): ``engine.classes.<class>.compute`` WITH artifacts equipped against the class's WORKBOOK (evaluated with
 ``formulas`` by ``<class>_artifact_reference.py``; numbers frozen in tests/golden/<class>_artifacts_golden.json).  Plain ``python3`` runnable
 (``--rtol 1e-6 -v``), also pytest-collectable.
 
@@ -135,9 +135,10 @@ class ArtifactsTest:
             n2, bad2 = self.special(1e-9)
             assert not bad2, f"{len(bad2)} of {n2} special artifact cases differ"
 
-    def main(self):
-        rtol = rtol_arg()
-        verbose = "-v" in sys.argv
+    def main(self, rtol=None, verbose=None):
+        """Print the report; returns the exit code (0 = every value matches, 1 = a difference).  ``rtol`` / ``verbose`` default to the command line (``--rtol``, ``-v``)."""
+        rtol = rtol_arg() if rtol is None else rtol
+        verbose = ("-v" in sys.argv) if verbose is None else verbose
         n, bad, toggles = self.run(rtol, verbose)
         for cid, diffs in bad.items():
             print(f"MISMATCH {cid}: {len(diffs)} field(s)")
@@ -154,6 +155,7 @@ class ArtifactsTest:
             print(f"toggle {label:28s} workbook delta {wbd:.12e} engine delta {engd:.12e} rel {abs(wbd - engd) / abs(wbd) if wbd else 0:.1e} {'OK' if ok else 'DIFF'}")
         if bad or bad2 or not all(t[3] for t in toggles) or not all(e[5] for e in self.equiv):
             print(f"FAILED: {len(bad)} of {n} cases" + (f" (+ {len(bad2)} of {n2} special)" if self.special is not None else "") + f" differ (rtol={rtol})")
-            sys.exit(1)
+            return 1
         print(f"OK: {n} artifact golden cases match the workbook within rel {rtol:g}; {len(toggles)} equip-toggle deltas match; {len(self.equiv)} Arwen equivalence pairs identical"
               + (((f"; {n2} special cases match" if n2 else "; special cases: none (file missing)")) if self.special is not None else ""))
+        return 0

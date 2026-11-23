@@ -5,7 +5,7 @@
 
 ``compute(inputs)`` is bit-identical to the verify script (same operations in the same order); the verify script stays the independent
 reference, ``tests/golden/test_fp_mage.py`` compares the two (with no artifact equipped).  Artifact equip effects (``inputs["artifacts"]``,
-up to 4 slots) are ported in ``engine/artifacts.py``; the verify scripts do not model them, so ``tests/golden/test_fp_mage_artifacts.py``
+up to 4 slots) are ported in ``engine/artifacts.py``; the verify scripts do not model them, so ``tests/golden/test_artifacts.py --class fp_mage``
 checks them against the workbook itself.
 
 Inputs dict: the workbook's Inputs keys already resolved for the chosen content type (see ``schema()``), plus ``companion_level`` (the

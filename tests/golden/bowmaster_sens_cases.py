@@ -40,13 +40,13 @@ ALL_STATS = ["flat_dex", "dex_pct", "str", "damage", "damage_amp", "boss_damage"
              "companion_summon_time_increase_pct"]
 assert len(ALL_STATS) == 28
 
-# baked-in artifact magnitudes at the STARS of sens_cases (checked against the artifact table by test_bowmaster_sensitivity.test_constants)
+# baked-in artifact magnitudes at the STARS of sens_cases (checked against the artifact table by sens_extras/bowmaster.py::test_constants)
 CURSED_DOLL_FD = 14.0           # star 5
 ATHENA_AS, ATHENA_MAX_PCT = 14.4, 45.0      # star 4: direct Attack Speed, Max Damage % of the total Attack Speed
 SHAMANESS_BDI = 12.0            # star 5
 REINDEER_DEF_PEN = 8.0          # star 3
 # Mortal Blow's live Final Damage at Lv140 (Lv118: the same) with STATS_S: it shares the Final Damage bracket (1 + (typed + Mortal Blow)/100) with the typed Inputs value
-# (checked against the engine by test_bowmaster_sensitivity.test_constants)
+# (checked against the engine by sens_extras/bowmaster.py::test_constants)
 MORTAL_BLOW = 17.4
 
 

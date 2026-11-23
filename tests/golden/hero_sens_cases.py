@@ -37,7 +37,7 @@ assert len(ALL_STATS) == 28
 case = case_builder(make_inputs)
 
 
-CURSED_DOLL_FD = 14.0        # star 5 (checked against the artifact table by test_hero_sensitivity.test_cursed_doll_value)
+CURSED_DOLL_FD = 14.0        # star 5 (checked against the artifact table by sens_extras/hero.py::test_cursed_doll_value)
 
 
 def sens_cases():

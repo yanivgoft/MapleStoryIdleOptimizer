@@ -1,24 +1,13 @@
-#!/usr/bin/env python3
-"""Golden test: ``engine.sensitivity`` for PALADIN against the Paladin WORKBOOK's Sensitivity sheet (evaluated with ``formulas`` on Sensitivity-slimmed copies by
-``sens_reference_generic.py --class paladin``; numbers frozen in tests/golden/paladin_sensitivity_golden.json).  Plain ``python3`` runnable, also pytest-collectable.  The
-comparison logic is the class-agnostic ``sens_compare_generic.py`` (a new class's test is a wrapper like this file).
-
-    python3 tests/golden/test_paladin_sensitivity.py              # rel 1e-9 on every compared value; exits 1 on any difference
-    python3 tests/golden/test_paladin_sensitivity.py -v --rtol 1e-6
-    python3 tests/golden/test_paladin_sensitivity.py --case "S/CH74"
-
-Besides the golden: the spec == the builder's tables (STAT_SWEEP, STATUS_REBUILD_KEYS, COMPANION_FULL_SEARCH_KEYS, SUMMON_TIME_KEYS, PASSIVE_DELTA_SLOT and the passive rows'
-Skills-sheet data), the engine-only direction-invariance of the equip toggles (CLAUDE.md item 15 / checklist 8c; the Paladin builder wires Reindeer's Spear, Athena's Gloves and
-Shamaness Marble correctly since 2026-11-22, so they are all in the list), the workbook-side chain I/WB140/* (both directions of five baked-in artifacts: Shamaness Marble,
-Athena's Gloves, Reindeer's Spear, Cursed Doll, Bottle of Emotion) and the API shape.
-"""
+"""Class-specific sensitivity tests of Paladin (the tests every class repeats - hooks are no-ops, API shape, the equip-toggle direction-invariance loop, the golden - are in
+``sens_test_common.py`` / ``test_sensitivity.py``; this module holds what only Paladin has: the spec == builder check, the baked-in artifact pairs and the DATA of the shared tests).
+Protocol: see ``sens_test_common.plan``."""
 import importlib.util
 import json
 import math
 import sys
 from pathlib import Path
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parent.parent
 REPO = HERE.parents[1]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(HERE))
@@ -29,13 +18,17 @@ from engine.data import artifacts as AD  # noqa: E402
 import sens_compare_generic as C  # noqa: E402
 import sens_test_common as SC  # noqa: E402
 
-GOLDEN = HERE / "paladin_sensitivity_golden.json"
-TEST = SC.SensTest("paladin", paladin, GOLDEN, "Paladin")
+TEST = SC.SensTest.from_registry("paladin")
+GOLDEN = TEST.GOLDEN
 SPEC = sens_specs.get("paladin")
 
 
 _builder, _inputs = TEST.builder, TEST.inputs
 
+
+# data of the shared test_api_shape
+API = dict(content="Breakthrough", shamaness="positive", naive_rows=28, keys_prefix=['flat_str', 'str_pct', 'dex', 'damage'], keys_absent=['defense'])
+FD_SWEEP = "strip_under"          # shared sweep (sens_test_common.final_damage_sweep)
 
 def test_static():
     """The spec reproduces the builder's tables (so a builder change that is not mirrored in the spec fails here)."""
@@ -81,16 +74,7 @@ def test_static():
 
 def test_baked_values():
     """The constants of the case matrix (plain data) are the artifact tables' values at the case stars."""
-    from engine import artifacts as art
-    from sens_cases import STARS
-    import paladin_sens_cases as K
-    assert art.sv("shamaness_marble_buff_duration_increase_pct", STARS["shamaness_marble"]) == K.SHAMANESS_BDI
-    assert art.sv("athena_gloves_attack_speed", STARS["athena_gloves"]) == K.ATHENA_AS
-    assert art.sv("athena_gloves_max_damage_pct_of_attack_speed", STARS["athena_gloves"]) == K.ATHENA_MAX_PCT
-    assert art.sv("reindeer_spear_def_pen", STARS["reindeer_spear"]) == K.REINDEER_DEF_PEN
-    assert art.sv("cursed_doll_final_damage", STARS["cursed_doll"]) == K.CURSED_DOLL_FD
-    assert art.sv("bottle_of_emotion_final_damage_per_3pct_as", STARS["bottle_of_emotion"]) == K.BOTTLE_PER_3PCT
-    assert art.sv("bottle_of_emotion_final_damage_cap", STARS["bottle_of_emotion"]) == K.BOTTLE_CAP
+    TEST.baked_values(full=True)
 
 
 class _no_passive_residual:
@@ -176,88 +160,9 @@ def test_toggle_direction_invariance():
                 assert math.isclose(r_off["pct_gain"], r_on["pct_gain"], rel_tol=1e-11), (key, r_off["pct_gain"], r_on["pct_gain"])
 
 
-def test_final_damage_sweep_is_exactly_one_percent():
-    """The +1% multiplicative Final Damage step bumps the FULL bucket (typed + Serpent Scale / Crossbones / Time Leap / Speed Infusion): the ratio is exactly 1.01 wherever
-    nothing else moves (Chapter Hunt, no companion: no timeline strip).  With the strip on (World Boss) Crossbones / Time Leap are TIME-VARYING terms of the engine's own bucket,
-    so the ratio is a little under 1.01 (the workbook does the same)."""
-    inp = _inputs("Chapter Hunt", [{"key": "bottle_of_emotion", "star": 5}], status_effect_damage=0)
-    inp.update(companion_choice="None", companion_level=0)
-    out = sensitivity.run(paladin, inp, which="stats")["stats"]["rows"]
-    r = next(x for x in out if x["key"] == "final_damage")
-    assert math.isclose(r["pct_gain"], 101.0, rel_tol=1e-12), r["pct_gain"]
-    assert r["current"] > 12.0 and r["new"] > r["current"]          # Current / New include the live Final Damage share (like the workbook's table)
-    wb = sensitivity.run(paladin, _inputs("World Boss", [{"key": "bottle_of_emotion", "star": 5}]), which="stats")["stats"]["rows"]
-    assert 100.9 < next(x for x in wb if x["key"] == "final_damage")["pct_gain"] < 101.0
-
-
 def test_baked_chain_golden():
-    """Workbook ground truth (cases I/WB140/*): state k has the first k chain artifacts equipped with their baked-in stats typed into the Inputs; the toggle row of artifact k
-    read in the state without it (adding) and in the state with it (removing) gives the identical gain and % Gain, equal to Summary Total(with) - Total(without) - for Shamaness
-    Marble (Buff Duration), Athena's Gloves (Attack Speed + Max Damage), Reindeer's Spear (Def Pen), Bottle of Emotion and Cursed Doll (Final Damage)."""
-    if not GOLDEN.exists():
-        return
-    import paladin_sens_cases as K
-    g = json.loads(GOLDEN.read_text())["cases"]
-    for art, add_s, rem_s in K.CHAIN_PAIRS:
-        u, e = f"I/WB140/{add_s}", f"I/WB140/{rem_s}"
-        if u not in g or e not in g:
-            continue
-        add, rem = g[u]["workbook"]["toggles"][art], g[e]["workbook"]["toggles"][art]
-        true = g[e]["workbook"]["summary"]["total"] - g[u]["workbook"]["summary"]["total"]
-        if art == "shamaness_marble":
-            # Buff Duration moves Combat Orders' uptime in the block, and with it Parashock Guard's / Paladin Expert's skill-level factor (baked-in passives: the block adds the
-            # delta, the typed toggled copy cannot): +2.8% / +2.7% of the gain, not direction-invariant (the engine test proves the residual is the ONLY difference)
-            assert 1.0 < add["dps_gain"] / true < 1.05 and 1.0 < rem["dps_gain"] / true < 1.05, (add["dps_gain"] / true, rem["dps_gain"] / true)
-            assert math.isclose(add["dps_gain"], rem["dps_gain"], rel_tol=5e-3), (art, add["dps_gain"], rem["dps_gain"])
-            continue
-        assert math.isclose(add["dps_gain"], rem["dps_gain"], rel_tol=1e-9), (art, add["dps_gain"], rem["dps_gain"])
-        assert math.isclose(add["pct_gain"], rem["pct_gain"], rel_tol=1e-11), (art, add["pct_gain"], rem["pct_gain"])
-        assert math.isclose(add["dps_gain"], true, rel_tol=1e-9), (art, add["dps_gain"], true)
+    TEST.baked_chain_golden("I/WB140", "CHAIN_PAIRS", shamaness_residual=True)
 
 
-def test_hooks_are_noops_without_sens():
-    TEST.test_hooks_are_noops_without_sens()
-
-
-def _class_without_spec():
-    import importlib
-    for cid in ("ice_lightning_mage", "bishop", "bowmaster", "marksman", "corsair", "night_lord", "shadower"):
-        if sens_specs.get(cid) is None:
-            return importlib.import_module(f"engine.classes.{cid}")
-    return None
-
-
-def test_api_shape():
-    """`which` selection, JSON-serialisable output, the no-effect flag, the potential-gain term, the live Shamaness row and the naive switch."""
-    inp = _inputs("Breakthrough", [{"key": "hexagon_necklace", "star": 5}])
-    out = sensitivity.run(paladin, inp, which=["artifacts", "cdr"])
-    assert set(out) >= {"artifacts", "cdr", "baseline_total"} and "stats" not in out and "companions" not in out and out["class_id"] == "paladin"
-    json.dumps(out)
-    rows = {r["key"]: r for r in out["artifacts"]["rows"]}
-    assert rows["pigs_ribbon"]["no_dps_effect"] and rows["pigs_ribbon"]["dps_gain"] == 0.0 and rows["pigs_ribbon"]["pct_gain"] == 100.0
-    assert rows["hexagon_necklace"]["equipped"] and rows["hexagon_necklace"]["dps_gain"] > 0
-    assert rows["shamaness_marble"]["dps_gain"] > 0 and not rows["shamaness_marble"]["no_dps_effect"]      # wired since 2026-11-22 (it was inert before the fix)
-    out2 = sensitivity.run(paladin, dict(inp, artifact_potential_gain={"pigs_ribbon": 1.0e9}), which="artifacts")
-    assert {r["key"]: r for r in out2["artifacts"]["rows"]}["pigs_ribbon"]["dps_gain"] == 1.0e9
-    naive = sensitivity.run(paladin, inp, which="stats", naive=True)
-    assert naive["semantics"] == "naive" and len(naive["stats"]["rows"]) == 28
-    keys = [r["key"] for r in naive["stats"]["rows"]]
-    assert keys[:4] == ["flat_str", "str_pct", "dex", "damage"] and "defense" not in keys
-    other = _class_without_spec()
-    if other is not None:
-        try:
-            sensitivity.run(other, inp)
-            raise AssertionError("a class without a spec must raise")
-        except NotImplementedError:
-            pass
-
-
-def test_golden():
-    TEST.test_golden()
-
-
-if __name__ == "__main__":
-    TEST.main([test_static, test_baked_values, test_hooks_are_noops_without_sens,
-               test_api_shape, test_final_damage_sweep_is_exactly_one_percent, test_toggle_direction_invariance],
-              [test_baked_chain_golden],
-              "ok: spec == builder, hooks are no-ops, API shape, Final Damage +1% exact, toggle direction invariance (engine + workbook golden)")
+EXTRA = [test_baked_values]            # engine-only tests of this class
+GOLDEN_EXTRA = [test_baked_chain_golden]      # checks of the golden file's own states (run when the file exists)

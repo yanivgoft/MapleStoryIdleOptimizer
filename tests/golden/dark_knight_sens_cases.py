@@ -35,7 +35,7 @@ assert len(ALL_STATS) == 30
 case = case_builder(make_inputs)
 
 
-# the baked-in artifact values at the stars of ``sens_cases.STARS`` (same artifact tables as Buccaneer's chain; checked by test_dark_knight_sensitivity.test_baked_values)
+# the baked-in artifact values at the stars of ``sens_cases.STARS`` (same artifact tables as Buccaneer's chain; checked by sens_extras/dark_knight.py::test_baked_values)
 SHAMANESS_BDI = 12.0            # star 5
 ATHENA_AS, ATHENA_MAX_PCT = 14.4, 45.0      # star 4: direct Attack Speed, Max Damage = 45% of the total Attack Speed
 REINDEER_DEF_PEN = 8.0          # star 3

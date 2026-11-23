@@ -39,7 +39,7 @@ ALL_STATS = ["flat_str", "str_pct", "dex", "damage", "damage_amp", "boss_damage"
              "companion_summon_time_increase_pct"]
 assert len(ALL_STATS) == 28
 
-# the baked-in artifact values at the stars of ``sens_cases.STARS`` (checked against the artifact tables by test_buccaneer_sensitivity.test_baked_values)
+# the baked-in artifact values at the stars of ``sens_cases.STARS`` (checked against the artifact tables by sens_extras/buccaneer.py::test_baked_values)
 SHAMANESS_BDI = 12.0            # star 5
 ATHENA_AS, ATHENA_MAX_PCT = 14.4, 45.0      # star 4: direct Attack Speed, Max Damage = 45% of the total Attack Speed
 REINDEER_DEF_PEN = 8.0          # star 3
