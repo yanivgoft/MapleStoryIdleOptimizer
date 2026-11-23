@@ -5,7 +5,11 @@ import { normalizePotentials } from "./artifactPotentials";
 import { normalizeCompanions } from "./companions";
 
 const KEY = "msi.profiles.v1";
-export const EXPORT_VERSION = 1;
+// 2: the equipped artifacts moved from one global `artifacts[key].equipped` flag to `state.equippedArtifacts` (slots per content type).  Version 1 files and old
+// localStorage / cloud profiles are still read: the shape (no `equippedArtifacts`) triggers the one-time migration in `normalizeState`.
+export const EXPORT_VERSION = 2;
+
+const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x);
 
 function read(): Profile[] {
   try {
@@ -44,11 +48,12 @@ export function isProfile(x: unknown): x is Profile {
   );
 }
 
-/** The Artifacts table is optional in stored / imported profiles and comes in two shapes: the current one (a record per artifact id) and the OLD one (a list of
+/** The Artifacts table is optional in stored / imported profiles and comes in two shapes: the current one (a record per artifact id; the equipped artifacts are
+ *  `equippedArtifacts`, slots per content type, or - in profiles saved before - an `equipped` flag per artifact) and the OLD one (a list of
  *  equipped slots `[{key, star}]` + a separate `potentials` state, saved before the table).  Here the state is only made well-formed; the OLD shape is kept
  *  as it is (a cleaned list) and migrated, with the engine's schema at hand, by `normalizeState` (lib/schemaForm.ts -> `normalizeArtifacts`). */
 export function withArtifacts(p: Profile): Profile {
-  const st = p.state as { artifacts?: unknown; cubes?: unknown; equipment?: unknown; potentials?: unknown; companions?: unknown };
+  const st = p.state as { artifacts?: unknown; cubes?: unknown; equipment?: unknown; potentials?: unknown; companions?: unknown; equippedArtifacts?: unknown };
   const raw = st.artifacts;
   let artifacts: unknown;
   if (Array.isArray(raw)) {
@@ -59,15 +64,22 @@ export function withArtifacts(p: Profile): Profile {
     artifacts = Object.fromEntries(Object.entries(raw as Record<string, unknown>).filter(([k, v]) => /^[a-z0-9_]+$/.test(k) && !!v && typeof v === "object" && !Array.isArray(v)));
   } else artifacts = {};
   // cube tabs' data is optional too (profiles saved before they existed); present ones are made well-formed
-  const extra: Pick<FormState, "cubes" | "equipment" | "potentials" | "companions"> = {};
+  const extra: Pick<FormState, "cubes" | "equipment" | "potentials" | "companions" | "equippedArtifacts"> = {};
+  // equipped artifacts per content type: kept when well-formed; anything else is dropped so that normalizeState migrates from the old global flags
+  if (isObj(st.equippedArtifacts)) {
+    extra.equippedArtifacts = Object.fromEntries(
+      Object.entries(st.equippedArtifacts).filter(([, v]) => Array.isArray(v)).map(([ct, v]) => [ct, (v as unknown[]).map((k) => (typeof k === "string" ? k : ""))]),
+    );
+  }
   // Companions tab data; profiles saved before it have none (normalizeState then migrates the old shared companion level)
   if (st.companions !== undefined) extra.companions = normalizeCompanions(st.companions);
   if (st.cubes !== undefined) extra.cubes = normalizeCubesState(st.cubes);
   if (st.equipment !== undefined) extra.equipment = normalizeEquip(st.equipment);
   // legacy: the old Artifact-potentials state only matters as long as the artifacts are still the old slots list (normalizeState migrates and drops it)
   if (st.potentials !== undefined && Array.isArray(raw)) extra.potentials = normalizePotentials(st.potentials);
-  const { potentials: _dropped, ...state } = p.state;
+  const { potentials: _dropped, equippedArtifacts: _eq, ...state } = p.state;
   void _dropped;
+  void _eq;
   return { ...p, state: { ...state, artifacts: artifacts as FormState["artifacts"], ...extra } };
 }
 

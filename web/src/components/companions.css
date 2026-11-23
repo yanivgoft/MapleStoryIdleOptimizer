@@ -4,8 +4,6 @@ button.link:disabled { color: var(--muted); cursor: default; text-decoration: no
 .companion-level-line { display: flex; flex-direction: column; gap: 2px; font-size: 0.85rem; }
 .companion-level-line .label { font-size: 0.8rem; color: var(--ink2); }
 .companion-level-line .companion-level-text { color: var(--ink); }
-.artifacts-summary { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 8px 12px; margin-bottom: 12px; font-size: 0.85rem; }
-.artifacts-summary .none { color: var(--muted); }
 .companions-tab .companion-select { width: auto; min-width: 7.5em; }
 .companions-tab .sens-table tr.best td { background: color-mix(in srgb, var(--ok) 10%, transparent); }
 .companions-tab .sens-table tr.chosen td:first-child { box-shadow: inset 3px 0 0 var(--accent); }

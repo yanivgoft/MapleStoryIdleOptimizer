@@ -4,7 +4,7 @@ import "./cubes.css";
 import "./artifacttable.css";
 import { api } from "../api";
 import {
-  NOT_UNLOCKED, STAR_TOOLTIP, badgesFor, canEquip, effectText, equipCapTitle, equippedCount, isBlankLine, isNoDps, lineCount, normalizeArtifacts, setEquipped, setLine,
+  NOT_UNLOCKED, STAR_TOOLTIP, badgesFor, effectText, equippedKeys, isBlankLine, isNoDps, lineCount, normalizeArtifacts, setLine,
   setStar, starIndex, starOptions, visibleArtifacts, type Badge,
 } from "../lib/artifacts";
 import {
@@ -52,6 +52,11 @@ interface ViewProps {
   pending?: boolean;
   onRetry?: () => void;
   onOpenCompanion: () => void;
+  /** artifact ids equipped in the CURRENT content type (read-only here: they are chosen in the Inputs tab's "Equipped artifacts" section) */
+  equipped: readonly string[];
+  contentType?: string;
+  /** link to that section (absent: no link) */
+  onOpenInputs?: () => void;
   /** initial filter state (tests; the controls own it afterwards) */
   initialText?: string;
   initialOnlyActive?: boolean;
@@ -60,8 +65,8 @@ interface ViewProps {
 const NOT_UNLOCKED_VALUE = NOT_UNLOCKED;
 
 /**
- * The Artifacts tab's one table (the workbook's ArtifactsInput sheet): a row per artifact with its Star Level, an Equipped checkbox (at most `art.max_slots` equipped)
- * and the 3 potential lines (rarity + stat; line 3 only for Legendary artifacts) with their DPS gain and the artifact's total.  Presentational: the container
+ * The Artifacts tab's one table (the workbook's ArtifactsInput sheet): a row per artifact with its Star Level, a read-only "equipped" marker (for the current content
+ * type; the slots are chosen on the Inputs tab, at most `art.max_slots`) and the 3 potential lines (rarity + stat; line 3 only for Legendary artifacts) with their DPS gain and the artifact's total.  Presentational: the container
  * (`ArtifactTable`) feeds it the potentials answer.
  */
 export function ArtifactTableView(p: ViewProps) {
@@ -70,9 +75,10 @@ export function ArtifactTableView(p: ViewProps) {
   const [text, setText] = useState(p.initialText ?? "");
   const [onlyActive, setOnlyActive] = useState(!!p.initialOnlyActive);
   const opts = starOptions(art);
-  const equipped = equippedCount(art, state);
+  const equippedIds = useMemo(() => equippedKeys(art, p.equipped), [art, p.equipped]);
+  const equipped = equippedIds.length;
   const rows = new Map<string, PotentialRow>((p.result?.rows ?? []).map((r) => [r.key, r]));
-  const shown = visibleArtifacts(art, state, { text, onlyActive });
+  const shown = visibleArtifacts(art, state, { text, onlyActive }, equippedIds);
   const groups: { rank: string; items: ArtifactInfo[] }[] = [];
   for (const a of shown) {
     const g = groups[groups.length - 1];
@@ -88,8 +94,17 @@ export function ArtifactTableView(p: ViewProps) {
     <section className="card artifacts art-table-card" aria-label="Artifacts table">
       <h2>Artifacts</h2>
       <p className="note">
-        One row per artifact, like the workbook&apos;s ArtifactsInput sheet: its star level, whether it is equipped (equip effects only, up to {art.max_slots} slots; the same artifact counts once) and its
-        potential lines. The star level and the lines are kept for every artifact, equipped or not, and saved with your profile.
+        One row per artifact, like the workbook&apos;s ArtifactsInput sheet: its star level and its potential lines, kept for every artifact and saved with your profile (the same for every content
+        type). Which artifacts are equipped (up to {art.max_slots} slots, an artifact once) is chosen per content type in the <strong>Equipped artifacts</strong> section of the Inputs tab
+        {p.onOpenInputs && (
+          <>
+            {" "}
+            <button type="button" className="link" onClick={p.onOpenInputs}>
+              (go to Equipped artifacts)
+            </button>
+          </>
+        )}
+        ; the rows marked &quot;equipped&quot; below are the ones equipped in {p.contentType ? <strong>{p.contentType}</strong> : "the current content type"}.
       </p>
       <div className="art-controls-row">
         <label htmlFor="art-filter">Filter</label>
@@ -98,7 +113,7 @@ export function ArtifactTableView(p: ViewProps) {
           <input id="art-only-active" type="checkbox" checked={onlyActive} onChange={(e) => setOnlyActive(e.target.checked)} /> Show only unlocked / equipped
         </label>
         <span className={`equip-count${equipped >= art.max_slots ? " full" : ""}`} role="status" data-testid="equip-count">
-          {equipped} / {art.max_slots} equipped
+          {equipped} / {art.max_slots} equipped{p.contentType ? ` in ${p.contentType}` : ""}
         </span>
       </div>
       {err && (
@@ -133,7 +148,7 @@ export function ArtifactTableView(p: ViewProps) {
               <th scope="col" title={STAR_TOOLTIP}>
                 Star level
               </th>
-              <th scope="col" title={`At most ${art.max_slots} artifacts can be equipped`}>
+              <th scope="col" title={`Read-only: the artifacts equipped in the current content type (chosen in the Inputs tab, at most ${art.max_slots})`}>
                 Equipped
               </th>
               {[0, 1, 2].map((i) => (
@@ -156,11 +171,11 @@ export function ArtifactTableView(p: ViewProps) {
                   const noDps = isNoDps(info);
                   const row = rows.get(info.key);
                   const n = lineCount(info);
-                  const canEq = canEquip(art, state, info.key);
+                  const isEq = equippedIds.includes(info.key);
                   const starNum = starIndex(e.star);
                   const rowTotal = row && e.lines.slice(0, n).some((l) => !isBlankLine(l)) ? row.total : null;
                   return (
-                    <tr key={info.key} data-artifact={info.key} className={`${e.equipped ? "equipped" : ""}${noDps ? " dim" : ""}`}>
+                    <tr key={info.key} data-artifact={info.key} className={`${isEq ? "equipped" : ""}${noDps ? " dim" : ""}`}>
                       <td className="art-name-cell">
                         <div className="art-name">
                           <strong>{info.name}</strong> <span className="pill">{info.rank}</span>
@@ -195,17 +210,14 @@ export function ArtifactTableView(p: ViewProps) {
                             </option>
                           ))}
                         </select>
-                        {e.equipped && e.star === null && <div className="note">acts as star 0</div>}
+                        {isEq && e.star === null && <div className="note">acts as star 0</div>}
                       </td>
                       <td className="equip-cell">
-                        <input
-                          type="checkbox"
-                          aria-label={`Equip ${info.name}`}
-                          checked={e.equipped}
-                          disabled={!canEq}
-                          title={canEq ? (e.equipped ? "Unequip" : "Equip") : equipCapTitle(art)}
-                          onChange={(ev) => p.onState(setEquipped(art, state, info.key, ev.target.checked))}
-                        />
+                        {isEq && (
+                          <span className="chip ok" title="Equipped in the current content type. Change it in the Equipped artifacts section of the Inputs tab.">
+                            equipped
+                          </span>
+                        )}
                       </td>
                       {[0, 1, 2].map((i) => {
                         if (i >= n) {
@@ -316,10 +328,13 @@ interface Props {
   state: ArtifactsState | undefined;
   onState: (s: ArtifactsState) => void;
   onOpenCompanion: () => void;
+  equipped: readonly string[];
+  contentType?: string;
+  onOpenInputs?: () => void;
 }
 
 /** The table with live potential gains: lazy (only while the Artifacts tab is open, only when some line is set), debounced, one request at a time. */
-export function ArtifactTable({ classId, inputs, supported, active, meta, metaStatus, art, state, onState, onOpenCompanion }: Props) {
+export function ArtifactTable({ classId, inputs, supported, active, meta, metaStatus, art, state, onState, onOpenCompanion, equipped, contentType, onOpenInputs }: Props) {
   const tables = potentialTables(meta);
   const payload = useMemo(() => potentialsRequest(art, state, tables), [art, state, tables]);
   const hasLines = Object.keys(payload).length > 0;
@@ -348,6 +363,9 @@ export function ArtifactTable({ classId, inputs, supported, active, meta, metaSt
       pending={live.pending}
       onRetry={live.retry}
       onOpenCompanion={onOpenCompanion}
+      equipped={equipped}
+      contentType={contentType}
+      onOpenInputs={onOpenInputs}
     />
   );
 }

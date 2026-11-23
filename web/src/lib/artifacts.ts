@@ -6,11 +6,12 @@
 // here is the human wording per artifact (EFFECTS below, mirroring the Equip effect code of engine/artifacts.py): which star-value keys belong to which
 // artifact, under which condition they apply, whether the stat is "baked into Inputs" (typed by the user) and whether the companion model reads it.
 import values from "./artifact_values.json";
-import type { ArtifactEntry, ArtifactInfo, ArtifactLine, ArtifactSchema, ArtifactsState, ClassInfo, ClassSchema, ComputeResult } from "../types";
+import type { ArtifactEntry, ArtifactInfo, ArtifactLine, ArtifactSchema, ArtifactsState, ClassInfo, ClassSchema, ComputeResult, EquippedState, FormState } from "../types";
 
 export const STAR_VALUES = values as Record<string, number[]>;
 export const NOT_UNLOCKED = "Not Unlocked";
 export const COMPANION_SECTION_ID = "companion-section";
+export const EQUIPPED_SECTION_ID = "equipped-artifacts-section"; // the Inputs page's "Equipped artifacts" section
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
 // capability
@@ -24,7 +25,7 @@ export function artifactsAvailable(schema: ClassSchema | null | undefined, info?
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
-// the table state: one record per artifact {star, equipped, lines}
+// the table state: one record per artifact {star, lines}; the equipped artifacts are per content type (further down)
 // ---------------------------------------------------------------------------------------------------------------------------------------
 export const NO_STAT = "(none)"; // an empty potential line (= cubes.ts NONE_STAT and the engine's potentials.NONE_STAT; tested)
 export const DEFAULT_LINE_RARITY = "Rare"; // = the engine's potentials.DEFAULT_RARITY (and `meta.artifact_potentials.default_rarity`; tested)
@@ -78,10 +79,10 @@ export function defaultTableStar(art: ArtifactSchema, key: string): number | nul
 }
 
 export function defaultEntry(art: ArtifactSchema, key: string): ArtifactEntry {
-  return { star: defaultTableStar(art, key), equipped: false, lines: Array.from({ length: LINE_SLOTS }, blankLine) };
+  return { star: defaultTableStar(art, key), lines: Array.from({ length: LINE_SLOTS }, blankLine) };
 }
 
-/** A fresh table: every artifact at its default star, nothing equipped, no lines. */
+/** A fresh table: every artifact at its default star, no lines. */
 export function emptyArtifacts(art: ArtifactSchema): ArtifactsState {
   return Object.fromEntries(art.artifacts.map((a) => [a.key, defaultEntry(art, a.key)]));
 }
@@ -99,10 +100,10 @@ function normalizeLines(raw: unknown, count: number): ArtifactLine[] {
 }
 
 /**
- * The table state for ``art`` from anything stored (current record shape, or the OLD shape: a list of equipped slots ``[{key, star}]`` plus - optionally - the
+ * The table state (stars + lines) for ``art`` from anything stored (current record shape, or the OLD shape: a list of equipped slots ``[{key, star}]`` plus - optionally - the
  * old Artifact-potentials state ``{key: {star?, lines}}``).  Junk is repaired, never thrown: unknown artifacts are dropped, a missing entry becomes the default
- * (star by rank, not equipped, no lines), stars outside Not Unlocked / 0-5 fall back to the default, at most ``max_slots`` artifacts stay equipped (schema order),
- * and an old equipped artifact keeps the star of its slot (the old UI used the slot's star for its potentials too).
+ * (star by rank, no lines), stars outside Not Unlocked / 0-5 fall back to the default, and an old equipped artifact keeps the star of its slot (the old UI used the
+ * slot's star for its potentials too).  An old per-artifact ``equipped`` flag is NOT kept here: ``normalizeEquipped`` reads it first (see ``legacyEquippedKeys``).
  */
 export function normalizeArtifacts(raw: unknown, art: ArtifactSchema | undefined, legacyPotentials?: unknown): ArtifactsState {
   if (!art) return isObj(raw) ? (raw as unknown as ArtifactsState) : {};
@@ -110,21 +111,11 @@ export function normalizeArtifacts(raw: unknown, art: ArtifactSchema | undefined
   const legacy = Array.isArray(raw);
   const rec = !legacy && isObj(raw) ? raw : {};
   const pot = legacy && isObj(legacyPotentials) ? legacyPotentials : {};
-  const slotStar = new Map<string, unknown>();
-  if (legacy) {
-    for (const s of raw as unknown[]) {
-      if (slotStar.size >= art.max_slots) break;
-      const k = isObj(s) && typeof s.key === "string" ? s.key : null;
-      const key = k === null ? null : art.artifacts.find((a) => a.key === k || a.name === k)?.key ?? null;
-      if (key && !slotStar.has(key)) slotStar.set(key, (s as Record<string, unknown>).star);
-    }
-  }
-  let equipped = 0;
+  const slotStar = legacy ? legacySlots(raw as unknown[], art) : new Map<string, unknown>();
   for (const info of art.artifacts) {
     const key = info.key;
     const d = defaultEntry(art, key);
     let star = d.star;
-    let isEq = false;
     let linesRaw: unknown;
     if (legacy) {
       const p = isObj(pot[key]) ? (pot[key] as Record<string, unknown>) : null;
@@ -132,42 +123,93 @@ export function normalizeArtifacts(raw: unknown, art: ArtifactSchema | undefined
       const own = slotStar.has(key) ? slotStar.get(key) : p && "star" in p ? p.star : undefined;
       const ps = own === undefined ? ({ ok: false } as const) : parseStar(own);
       if (ps.ok) star = ps.value;
-      isEq = slotStar.has(key);
     } else {
       const e = rec[key];
       if (isObj(e)) {
         const ps = "star" in e ? parseStar(e.star) : ({ ok: false } as const);
         if (ps.ok) star = ps.value;
-        isEq = e.equipped === true;
         linesRaw = e.lines;
       }
     }
-    if (isEq && equipped >= art.max_slots) isEq = false;
-    if (isEq) equipped++;
-    out[key] = { star, equipped: isEq, lines: normalizeLines(linesRaw, lineCount(info)) };
+    out[key] = { star, lines: normalizeLines(linesRaw, lineCount(info)) };
   }
   return out;
 }
 
-/** Equipped artifact ids in the schema's (workbook) order: the stable order of the engine request. */
-export function equippedKeys(art: ArtifactSchema, state: ArtifactsState | undefined): string[] {
-  return art.artifacts.filter((a) => state?.[a.key]?.equipped).map((a) => a.key);
+/** The OLD slots list ``[{key, star}]`` (key or display name): artifact id -> the slot's star, first ``max_slots`` distinct known artifacts, list order. */
+function legacySlots(list: unknown[], art: ArtifactSchema): Map<string, unknown> {
+  const slotStar = new Map<string, unknown>();
+  for (const s of list) {
+    if (slotStar.size >= art.max_slots) break;
+    const k = isObj(s) && typeof s.key === "string" ? s.key : null;
+    const key = k === null ? null : art.artifacts.find((a) => a.key === k || a.name === k)?.key ?? null;
+    if (key && !slotStar.has(key)) slotStar.set(key, (s as Record<string, unknown>).star);
+  }
+  return slotStar;
 }
-export const equippedCount = (art: ArtifactSchema, state: ArtifactsState | undefined): number => equippedKeys(art, state).length;
 
-/** May ``key`` be (un)equipped?  Unequipping is always possible; equipping needs a free slot (``max_slots``). */
-export function canEquip(art: ArtifactSchema, state: ArtifactsState | undefined, key: string): boolean {
-  return !!artifactInfo(art, key) && (!!state?.[key]?.equipped || equippedCount(art, state) < art.max_slots);
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// equipped artifacts: ``max_slots`` slots PER CONTENT TYPE (`FormState.equippedArtifacts`, the Inputs page's "Equipped artifacts" section)
+// ---------------------------------------------------------------------------------------------------------------------------------------
+export const EMPTY_SLOT = "";
+
+/** ``max_slots`` slot entries from anything stored: an artifact id or "" (empty); unknown ids, repeats (the first one counts) and junk become empty, extras are cut. */
+export function normalizeSlots(raw: unknown, art: ArtifactSchema): string[] {
+  const list = Array.isArray(raw) ? raw : [];
+  const seen = new Set<string>();
+  return Array.from({ length: art.max_slots }, (_v, i) => {
+    const k = list[i];
+    if (typeof k !== "string" || !artifactInfo(art, k) || seen.has(k)) return EMPTY_SLOT;
+    seen.add(k);
+    return k;
+  });
 }
 
-export const equipCapTitle = (art: ArtifactSchema): string => `All ${art.max_slots} artifact slots are used: unequip another artifact first.`;
+/** The slots of ``contentType`` (all empty when none are stored yet: a content type visited for the first time starts empty). */
+export function slotsFor(art: ArtifactSchema, equipped: EquippedState | undefined, contentType: string): string[] {
+  return normalizeSlots(equipped?.[contentType], art);
+}
 
-/** Equip / unequip ``key`` (no-op for an unknown artifact or when equipping with every slot used). */
-export function setEquipped(art: ArtifactSchema, state: ArtifactsState | undefined, key: string, on: boolean): ArtifactsState {
-  const cur = normalizeArtifacts(state, art);
-  if (!cur[key] || cur[key].equipped === on) return cur;
-  if (on && equippedCount(art, cur) >= art.max_slots) return cur;
-  return { ...cur, [key]: { ...cur[key], equipped: on } };
+/** The current content type's slots of a form state. */
+export const currentSlots = (art: ArtifactSchema, state: Pick<FormState, "equippedArtifacts" | "contentType">): string[] => slotsFor(art, state.equippedArtifacts, state.contentType);
+
+/** Equipped artifact ids of a slot list in the schema's (workbook) order: the stable order of the engine request.  Each artifact once, at most ``max_slots``. */
+export function equippedKeys(art: ArtifactSchema, slots: readonly string[] | undefined): string[] {
+  const picked = new Set(normalizeSlots(slots, art));
+  return art.artifacts.filter((a) => picked.has(a.key)).map((a) => a.key);
+}
+export const equippedCount = (art: ArtifactSchema, slots: readonly string[] | undefined): number => equippedKeys(art, slots).length;
+
+/** Put ``key`` ("" = empty) into slot ``index`` of ``contentType``.  An artifact can be in one slot only: choosing one that sits in ANOTHER slot is a no-op (the form disables
+ *  those options); unknown artifacts and slot numbers outside the slots are no-ops too. */
+export function setSlot(art: ArtifactSchema, equipped: EquippedState | undefined, contentType: string, index: number, key: string): EquippedState {
+  const cur = slotsFor(art, equipped, contentType);
+  const base = { ...(equipped ?? {}) };
+  if (!Number.isInteger(index) || index < 0 || index >= cur.length) return base;
+  if (key !== EMPTY_SLOT && (!artifactInfo(art, key) || cur.some((k, j) => j !== index && k === key))) return base;
+  const next = cur.slice();
+  next[index] = key;
+  return { ...base, [contentType]: next };
+}
+
+/** Keys equipped by the OLD global shape: the per-artifact ``equipped: true`` flags of the record, or the old slots list; schema order, at most ``max_slots``. */
+export function legacyEquippedKeys(raw: unknown, art: ArtifactSchema): string[] {
+  let picked: string[];
+  if (Array.isArray(raw)) picked = [...legacySlots(raw, art).keys()];
+  else if (isObj(raw)) picked = art.artifacts.filter((a) => isObj(raw[a.key]) && (raw[a.key] as Record<string, unknown>).equipped === true).map((a) => a.key);
+  else picked = [];
+  return art.artifacts.filter((a) => picked.slice(0, art.max_slots).includes(a.key)).map((a) => a.key);
+}
+
+/** The per-content slots of a stored state.  A stored ``equippedArtifacts`` is repaired (content types the schema does not know are dropped).  When it is absent (a profile saved
+ *  when equipping was one global flag per artifact) EVERY content type of the schema starts from the old equipped set (``legacyRaw`` = the old ``artifacts`` value), once. */
+export function normalizeEquipped(raw: unknown, art: ArtifactSchema | undefined, contentTypes: readonly string[], legacyRaw?: unknown): EquippedState {
+  if (!art) return isObj(raw) ? (raw as unknown as EquippedState) : {};
+  if (isObj(raw)) {
+    return Object.fromEntries(contentTypes.filter((ct) => ct in raw).map((ct) => [ct, normalizeSlots(raw[ct], art)]));
+  }
+  const seed = normalizeSlots(legacyEquippedKeys(legacyRaw, art), art);
+  return Object.fromEntries(contentTypes.map((ct) => [ct, seed.slice()]));
 }
 
 /** Star of ``key``: a table star (null = Not Unlocked), or the dropdown values "Not Unlocked" / 0..5. */
@@ -187,9 +229,9 @@ export function setLine(art: ArtifactSchema, state: ArtifactsState | undefined, 
   return { ...cur, [key]: { ...cur[key], lines } };
 }
 
-/** The ``artifacts`` list of the compute request: the equipped artifacts only, in the schema's order, at most ``max_slots`` (``null`` star = "Not Unlocked"). */
-export function requestSlots(art: ArtifactSchema, state: ArtifactsState | undefined): { key: string; star: number | string }[] {
-  return equippedKeys(art, normalizeArtifacts(state, art)).map((key) => ({ key, star: state?.[key]?.star ?? NOT_UNLOCKED }));
+/** The ``artifacts`` list of the compute request: the artifacts in the content type's slots, once each, in the schema's order, at most ``max_slots`` (``null`` star = "Not Unlocked"). */
+export function requestSlots(art: ArtifactSchema, state: ArtifactsState | undefined, slots: readonly string[] | undefined): { key: string; star: number | string }[] {
+  return equippedKeys(art, slots).map((key) => ({ key, star: state?.[key]?.star ?? NOT_UNLOCKED }));
 }
 
 /** ``artifact_stars`` of POST .../sensitivity: the star of EVERY artifact (what the equip ranking uses for the ones that are not equipped). */
@@ -203,13 +245,13 @@ export interface TableFilter {
   text: string; // case-insensitive substring of the artifact name
   onlyActive: boolean; // only unlocked or equipped artifacts
 }
-/** Artifacts the table shows, in schema order (equipped / unlocked: a star is set, or it is equipped). */
-export function visibleArtifacts(art: ArtifactSchema, state: ArtifactsState | undefined, f: TableFilter): ArtifactInfo[] {
+/** Artifacts the table shows, in schema order (equipped / unlocked: a star is set, or it is in ``equipped``, the current content type's equipped ids). */
+export function visibleArtifacts(art: ArtifactSchema, state: ArtifactsState | undefined, f: TableFilter, equipped: readonly string[] = []): ArtifactInfo[] {
   const q = f.text.trim().toLowerCase();
   return art.artifacts.filter((a) => {
     if (q && !a.name.toLowerCase().includes(q)) return false;
     const e = state?.[a.key];
-    return !f.onlyActive || !!e?.equipped || (e ? e.star !== null : defaultTableStar(art, a.key) !== null);
+    return !f.onlyActive || equipped.includes(a.key) || (e ? e.star !== null : defaultTableStar(art, a.key) !== null);
   });
 }
 
@@ -560,9 +602,9 @@ export function withoutArtifacts(inputs: Record<string, unknown>): Record<string
   return rest;
 }
 
-/** The equipped artifacts for the Calculator's compact summary: in the schema's order, with the star as shown ("\u26053", "not unlocked" for a locked one). */
-export function artifactsInUse(art: ArtifactSchema, state: ArtifactsState | undefined): { key: string; name: string; star: string }[] {
-  return equippedKeys(art, state).map((key) => {
+/** The artifacts of a content type's slots for the form's "Equipped artifacts" section: in the schema's order, with the star as shown ("\u26053", "not unlocked" for a locked one). */
+export function artifactsInUse(art: ArtifactSchema, state: ArtifactsState | undefined, slots: readonly string[] | undefined): { key: string; name: string; star: string }[] {
+  return equippedKeys(art, slots).map((key) => {
     const star = state?.[key]?.star ?? null;
     return { key, name: artifactInfo(art, key)?.name ?? key, star: star === null ? "not unlocked" : `\u2605${star}` };
   });

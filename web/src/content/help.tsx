@@ -63,7 +63,7 @@ export const HOW_TO_USE: HelpSection = {
       <h4>The tabs</h4>
       <ul>
         <li>
-          <strong>Calculator</strong> - the inputs and the result.
+          <strong>Calculator</strong> - the inputs and the result.  Like the content type's other values, its <strong>Equipped artifacts</strong> (up to 5 slots, one dropdown each, an artifact once) are set here and saved with the profile.
         </li>
         <li>
           <strong>Companions</strong> - set the level of each companion you own (Not unlocked, 1-18).  Compares them (DPS gain vs no companion, rank) and shows what boots lines of Summoning Time are worth.  The
@@ -77,9 +77,10 @@ export const HOW_TO_USE: HelpSection = {
           <strong>Stat values</strong> - what one more point of each stat is worth for your current build (DPS gain, % gain, and "units per +1% DPS").
         </li>
         <li>
-          <strong>Artifacts</strong> - one table with all 36 artifacts (like the workbook's ArtifactsInput sheet): set each artifact's star level (Not unlocked, 0-5), tick the ones you have equipped
-          (<strong>5 slots</strong>: once five are ticked the other boxes are disabled until you untick one) and, per artifact, up to three potential lines (rarity + stat; the third line only for Legendary
-          artifacts) with the DPS each line and the artifact's potential total would add.  Filter the table by name or show only unlocked / equipped artifacts.  Below it: what the equipped artifacts do in the
+          <strong>Artifacts</strong> - one table with all 36 artifacts (like the workbook's ArtifactsInput sheet): set each artifact's star level (Not unlocked, 0-5) and, per artifact, up to three potential
+          lines (rarity + stat; the third line only for Legendary artifacts) with the DPS each line and the artifact's potential total would add.  Stars and lines are the same for every content type.  The
+          artifacts you have <strong>equipped</strong> are chosen per content type in the <strong>Equipped artifacts</strong> section of the Calculator (the 5 slot dropdowns, like the workbook's Slot rows); here the
+          rows equipped in the current content type only carry an "equipped" marker.  Filter the table by name or show only unlocked / equipped artifacts.  Below it: what the equipped artifacts do in the
           calculation and the equip ranking.  "Not unlocked" acts as star 0 once the artifact is equipped.
         </li>
         <li>
@@ -103,12 +104,11 @@ export const HOW_TO_USE: HelpSection = {
         <li>
           <strong>What is read</strong>: the class (from the title of the Inputs sheet), the character level, every value of the Inputs sheet for each content type (columns C-L, found by their headers), the
           Chapter-Stage text, Boss/Normal emphasis, max enemies, PvP fight length, the companion chosen per content type and each companion's level (CompanionsInput), and the star level of EVERY artifact and its potential lines
-          (ArtifactsInput), the equipped artifacts and your cube gear (the PotentialCubes sheet: rarity, pity count and the three lines of each of the 15 slots, Potential and Bonus Potential; they appear on the Cubes tab).  A
+          (ArtifactsInput), the artifacts in the Slot rows of each content type's column (they become that content type's Equipped artifacts) and your cube gear (the PotentialCubes sheet: rarity, pity count and the three lines of each of the 15 slots, Potential and Bonus Potential; they appear on the Cubes tab).  A
           line whose stat is unknown is left empty, and a stat the slot cannot roll, a pity count above the cap or an unknown rarity is listed under Warnings.
         </li>
         <li>
-          <strong>What is not</strong>: anything the workbook computes (derived cells, DPS results, the Sensitivity / Skills / Calc sheets), and the Equipment Compare sheet.  The app keeps one equipped set while the workbook has one per content type: you choose which content type's artifact loadout to import (the workbook's selected
-          one by default).  The workbook has 4 artifact slots, the game (and this app) 5: the fifth is yours to fill after the import.  Potential-line stats the app does not know are listed under Warnings and left empty.  Formula cells are only read when the file holds a saved result for them.
+          <strong>What is not</strong>: anything the workbook computes (derived cells, DPS results, the Sensitivity / Skills / Calc sheets), and the Equipment Compare sheet.  Each content type keeps its own equipped artifacts, as in the workbook.  The workbook has 4 artifact slots, the game (and this app) 5: the fifth slot of every content type is yours to fill after the import.  Potential-line stats the app does not know are listed under Warnings and left empty.  Formula cells are only read when the file holds a saved result for them.
         </li>
         <li>
           <strong>Values outside the allowed range</strong> (a typo, a placeholder) are imported as typed and listed under Warnings; blank cells and values that cannot be read fall back to the defaults.

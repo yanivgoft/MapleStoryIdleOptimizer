@@ -13,13 +13,12 @@ import { ArtifactsPanel } from "./components/ArtifactsPanel";
 import { CubesPanel } from "./components/CubesPanel";
 import { EquipmentPanel } from "./components/EquipmentPanel";
 import { CompanionsPanel } from "./components/CompanionsPanel";
-import { ArtifactsSummary } from "./components/ArtifactsSummary";
 import { HelpPanel } from "./components/HelpPanel";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { useCubesMeta } from "./lib/useLive";
 import { CLOUD_ENABLED } from "./lib/cloud/config";
 import { noteLastProfile } from "./lib/cloud/bridge";
-import { COMPANION_SECTION_ID, artifactStarsExtra } from "./lib/artifacts";
+import { COMPANION_SECTION_ID, EQUIPPED_SECTION_ID, artifactStarsExtra } from "./lib/artifacts";
 
 // Accounts (Google sign-in + cloud-saved profiles): only when the VITE_FIREBASE_* variables are set; a separate lazy chunk, and the Firebase SDK is a further chunk
 const AccountRoot = CLOUD_ENABLED ? lazy(() => import("./components/account/AccountRoot")) : null;
@@ -46,7 +45,7 @@ export default function App() {
   useEffect(() => {
     if (tab === "cubes" || tab === "equip" || tab === "artifacts") setCubesWanted(true);
   }, [tab]);
-  const scrollToCompanion = useRef(false);
+  const scrollTarget = useRef<string | null>(null); // section id of the Calculator tab to scroll to once it is shown
 
   const selectClass = useCallback(async (id: string, restore?: FormState) => {
     const seq = ++loadSeq.current;
@@ -127,15 +126,18 @@ export default function App() {
     return () => ctl.abort();
   }, [debouncedKey, classId, schema]);
 
-  // Artifacts tab -> "go to Companion": switch to the calculator, then scroll to that section once it is rendered
-  const openCompanion = () => {
-    scrollToCompanion.current = true;
+  // Artifacts tab -> "go to Companion" / "go to Equipped artifacts": switch to the calculator, then scroll to that section once it is rendered
+  const openCalcSection = (id: string) => {
+    scrollTarget.current = id;
     setTab("calc");
   };
+  const openCompanion = () => openCalcSection(COMPANION_SECTION_ID);
+  const openEquipped = () => openCalcSection(EQUIPPED_SECTION_ID);
   useEffect(() => {
-    if (tab === "calc" && scrollToCompanion.current && schema && state) {
-      scrollToCompanion.current = false;
-      document.getElementById(COMPANION_SECTION_ID)?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    if (tab === "calc" && scrollTarget.current && schema && state) {
+      const id = scrollTarget.current;
+      scrollTarget.current = null;
+      document.getElementById(id)?.scrollIntoView?.({ behavior: "smooth", block: "start" });
     }
   }, [tab, schema, state]);
 
@@ -222,6 +224,7 @@ export default function App() {
           busy={busy}
           stale={stale}
           onOpenCompanion={openCompanion}
+          onOpenInputs={openEquipped}
           cubesMeta={cubesSupported === false ? undefined : cubesMeta}
           cubesMetaStatus={cubesMetaStatus}
         />
@@ -288,7 +291,6 @@ export default function App() {
       {schema && state && tab === "calc" && (
         <main className="layout">
           <div className="col-form">
-            <ArtifactsSummary schema={schema} classInfo={classInfo} state={state} onEdit={() => setTab("artifacts")} />
             <InputsForm
               schema={schema}
               state={state}
@@ -297,6 +299,8 @@ export default function App() {
               derived={result?.derived}
               loadDefaults={(ct) => void loadDefaults(ct)}
               onOpenCompanions={() => setTab("companions")}
+              classInfo={classInfo}
+              onOpenArtifacts={() => setTab("artifacts")}
             />
           </div>
           <div className="col-results">

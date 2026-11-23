@@ -124,9 +124,12 @@ export interface FormState {
   contentType: string;
   shared: Values;
   perContent: Record<string, Values>;
-  // Artifacts tab: ONE record per artifact (all 36, keyed by artifact id): star level, equipped, 3 potential lines.  Profiles saved before the table (a slots LIST +
-  // `potentials`) are migrated by normalizeState (lib/artifacts.ts `normalizeArtifacts`).
+  // Artifacts tab: ONE record per artifact (all 36, keyed by artifact id): star level + 3 potential lines (shared by every content type).  Profiles saved before the
+  // table (a slots LIST + `potentials`) are migrated by normalizeState (lib/artifacts.ts `normalizeArtifacts`).
   artifacts: ArtifactsState;
+  // Equipped artifacts PER CONTENT TYPE (the Inputs page's "Equipped artifacts" section, like the workbook's slot rows).  Absent in profiles saved before
+  // (those had one global `artifacts[key].equipped` flag per artifact): normalizeState seeds every content type from the old flags (lib/artifacts.ts `normalizeEquipped`).
+  equippedArtifacts?: EquippedState;
   // Companions tab: level of every companion owned + boots lines already in the summoning-time input (absent in profiles saved before the tab existed:
   // normalizeState migrates the old shared companion level)
   companions?: CompanionsState;
@@ -149,10 +152,12 @@ export interface ArtifactLine {
   stat: string;
 }
 
-/** One row of the Artifacts table (the workbook's ArtifactsInput row + its equipped state). */
+/** Equipped artifact slots per content type: content type -> `max_slots` entries, each an artifact key or "" (empty slot); an artifact appears at most once. */
+export type EquippedState = Record<string, string[]>;
+
+/** One row of the Artifacts table (the workbook's ArtifactsInput row; whether it is equipped is per content type, see `FormState.equippedArtifacts`). */
 export interface ArtifactEntry {
   star: number | null; // 0..5; null = "Not Unlocked" (acts as star 0 when equipped)
-  equipped: boolean;
   lines: ArtifactLine[]; // always 3 (line 3 only counts for Legendary artifacts; the others keep a blank one)
 }
 export type ArtifactsState = Record<string, ArtifactEntry>;

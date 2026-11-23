@@ -9,16 +9,17 @@ import type { CubesState } from "./cubes";
 import { buildInputs, isApplicable } from "./schemaForm";
 import { isProfile, withArtifacts } from "./profiles";
 import type { ArtifactsState, Values } from "../types";
-import { equippedKeys, emptyArtifacts, requestSlots } from "./artifacts";
+import { emptyArtifacts, equippedKeys, requestSlots, slotsFor } from "./artifacts";
+import { switchContentType } from "./schemaForm";
 
 interface Expected {
   level: number;
   contentType: string;
   perContent: Record<string, Values>;
   loadouts: Record<string, string[]>;           // content type -> equipped artifact keys
-  artifactsFrom: string;
+  slots: Record<string, string[]>;              // content type -> the app's slots (key or "" per slot, max_slots entries)
   stars: Record<string, number | string>;
-  tables: Record<string, ArtifactsState>;       // content type -> the whole table the import must give
+  table: ArtifactsState;                        // the whole table (stars + lines) the import must give
   linesRead: number;
   companionLevels: Record<string, number>;
   warnings: number;
@@ -115,21 +116,28 @@ describe.each(ALL.map((c) => c.schema.class_id))("import of the generated %s wor
       }
     }
   });
-  it("imports the star level of EVERY artifact, the equipped set of the selected content type and the potential lines", () => {
-    expect(res.summary.artifactsFrom).toBe(exp.artifactsFrom);
-    expect(res.state.artifacts).toEqual(exp.tables[exp.artifactsFrom]);
+  it("imports the star level of EVERY artifact, the potential lines and, PER CONTENT TYPE, the equipped artifacts", () => {
+    expect(res.state.artifacts).toEqual(exp.table);
     expect(Object.keys(res.state.artifacts)).toHaveLength(36);
     for (const [k, star] of Object.entries(exp.stars)) expect(res.state.artifacts[k].star, k).toBe(star === "Not Unlocked" ? null : star);
-    expect(equippedKeys(schema.artifacts!, res.state.artifacts).sort()).toEqual([...exp.loadouts[exp.artifactsFrom]].sort());
     expect(res.summary.starsRead).toBe(36);
     expect(res.summary.linesRead).toBe(exp.linesRead);
-    expect(res.summary.slots.map((s) => s.key).sort()).toEqual([...exp.loadouts[exp.artifactsFrom]].sort());
+    for (const ct of schema.content_types) {
+      expect(res.state.equippedArtifacts![ct], ct).toEqual(exp.slots[ct]);                                  // slot i of the workbook = slot i of the app
+      expect(equippedKeys(schema.artifacts!, res.state.equippedArtifacts![ct]).sort(), ct).toEqual([...exp.loadouts[ct]].sort());
+      expect(res.state.equippedArtifacts![ct]).toHaveLength(schema.artifacts!.max_slots);
+      expect(res.state.equippedArtifacts![ct].at(-1), "the 5th slot is free").toBe("");
+    }
+    expect(Object.keys(res.summary.loadouts).sort()).toEqual(schema.content_types.filter((ct) => exp.loadouts[ct].length).sort());
+    expect(new Set(schema.content_types.map((ct) => exp.loadouts[ct].join())).size).toBeGreaterThan(1);       // the workbook really has different sets per content type
   });
-  it("can import another content type's loadout (the stars and lines stay the same: they are per artifact)", () => {
-    const other = schema.content_types[0];
-    const r2 = importWorkbook(book, schema, { artifactsFrom: other });
-    expect(r2.summary.artifactsFrom).toBe(other);
-    expect(r2.state.artifacts).toEqual(exp.tables[other]);
+  it("the request follows the content type: switching content gives that content type's artifacts (with the shared stars)", () => {
+    for (const ct of schema.content_types) {
+      const st = switchContentType(res.state, schema, ct);
+      const keys = (buildInputs(schema, st).artifacts as { key: string; star: unknown }[]);
+      expect(keys.map((x) => x.key).sort(), ct).toEqual([...exp.loadouts[ct]].sort());
+      for (const x of keys) expect(x.star, `${ct} / ${x.key}`).toBe(res.state.artifacts[x.key].star ?? "Not Unlocked");
+    }
   });
   it("imports companion levels and drops choices of companions that are not unlocked", () => {
     expect(res.state.companions!.levels).toEqual(exp.companionLevels);
@@ -149,7 +157,7 @@ describe.each(ALL.map((c) => c.schema.class_id))("import of the generated %s wor
     expect(w).toMatch(/line 1: unknown potential stat "Bogus Stat %"; the line was left empty/);
     expect(w).toMatch(/line 1: unknown rarity "Godlike"; Rare used/);
     expect(ign).toMatch(/already in another slot/);
-    expect(ign).toMatch(/different loadout/);
+    expect(ign).not.toMatch(/different loadout/);                   // (the old "the app keeps one loadout" note is gone: every content type keeps its own)
   });
   it("imports the cube gear (PotentialCubes) into the same state the Cubes tab edits", () => {
     expect(res.state.cubes).toEqual(exp.cubes.state);
@@ -183,11 +191,12 @@ describe.each(ALL.map((c) => c.schema.class_id))("import of the generated %s wor
     const p = withArtifacts({ id: "x", name: "n", savedAt: "2026-01-01", state: res.state });
     expect(isProfile(p)).toBe(true);
     expect(p.state.artifacts).toEqual(res.state.artifacts);
+    expect(p.state.equippedArtifacts).toEqual(res.state.equippedArtifacts);
     const inputs = buildInputs(schema, res.state);
     expect(inputs.level).toBe(exp.level);
     expect(inputs.content_type).toBe(exp.contentType);
-    expect((inputs.artifacts as unknown[]).length).toBe(exp.loadouts[exp.artifactsFrom].length);
-    expect(requestSlots(schema.artifacts!, res.state.artifacts)).toEqual(inputs.artifacts);
+    expect((inputs.artifacts as unknown[]).length).toBe(exp.loadouts[exp.contentType].length);
+    expect(requestSlots(schema.artifacts!, res.state.artifacts, slotsFor(schema.artifacts!, res.state.equippedArtifacts, exp.contentType))).toEqual(inputs.artifacts);
   });
 });
 
@@ -215,6 +224,7 @@ describe("detection and robustness", () => {
     expect(r.summary.skippedContentTypes).toHaveLength(schema.content_types.length - 1);
     expect(r.warnings.map((w) => w.where).sort()).toEqual(["ArtifactsInput", "CompanionsInput", "PotentialCubes"]);
     expect(r.state.artifacts).toEqual(emptyArtifacts(schema.artifacts!));            // nothing read: the defaults, nothing equipped
+    expect(Object.values(r.state.equippedArtifacts ?? {}).every((l) => l.every((k) => k === ""))).toBe(true);
     expect(r.state.companions!.levels).toEqual({});
   });
   it("is deterministic and does not mutate the schema", () => {

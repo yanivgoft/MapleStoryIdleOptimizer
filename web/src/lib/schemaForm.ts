@@ -1,6 +1,6 @@
 // Pure logic that turns an engine schema into a form: grouping, applicability, per-content-type values, parsing, request building.
 import type { ClassSchema, Field, FormState, Scalar, Values } from "../types";
-import { emptyArtifacts, normalizeArtifacts, requestSlots } from "./artifacts";
+import { currentSlots, emptyArtifacts, normalizeArtifacts, normalizeEquipped, requestSlots } from "./artifacts";
 import { dropLockedChoices, effectiveCompanion, legacyCompanions, normalizeCompanions } from "./companions";
 
 export { getCompanionChoice } from "./companions";
@@ -40,8 +40,12 @@ export function groupFields(schema: ClassSchema): FieldGroup[] {
   if (companion) {
     companion.fields.sort((a, b) => COMPANION_GROUP_KEYS.indexOf(a.key) - COMPANION_GROUP_KEYS.indexOf(b.key));
   }
-  const rank = (n: string) => (GROUP_ORDER.includes(n) ? GROUP_ORDER.indexOf(n) : GROUP_ORDER.indexOf("PvP") - 0.5);
-  return groups.map((g, i) => ({ g, i })).sort((a, b) => rank(a.g.name) - rank(b.g.name) || a.i - b.i).map((x) => x.g);
+  return groups.map((g, i) => ({ g, i })).sort((a, b) => groupRank(a.g.name) - groupRank(b.g.name) || a.i - b.i).map((x) => x.g);
+}
+
+/** Position of a section in the form (sections not in GROUP_ORDER sit just before "PvP"). */
+export function groupRank(name: string): number {
+  return GROUP_ORDER.includes(name) ? GROUP_ORDER.indexOf(name) : GROUP_ORDER.indexOf("PvP") - 0.5;
 }
 
 export function computedFields(schema: ClassSchema): Field[] {
@@ -90,10 +94,11 @@ export function initialState(schema: ClassSchema, defaults: Values, contentType?
     (sk.has(k) ? shared : per)[k] = v;
   }
   // the defaults of a class carry the companion pick + level (the sample inputs do): the Companions tab starts with exactly that companion owned
-  return { classId: schema.class_id, contentType: ct, shared, perContent: { [ct]: per }, artifacts: schema.artifacts ? emptyArtifacts(schema.artifacts) : {}, companions: legacyCompanions(shared, { [ct]: per }, schema.companions) };
+  return { classId: schema.class_id, contentType: ct, shared, perContent: { [ct]: per }, artifacts: schema.artifacts ? emptyArtifacts(schema.artifacts) : {}, equippedArtifacts: {}, companions: legacyCompanions(shared, { [ct]: per }, schema.companions) };
 }
 
-/** Switch content type; a content type visited for the first time gets its own defaults (fetched or computed by the caller). */
+/** Switch content type; a content type visited for the first time gets its own defaults (fetched or computed by the caller).  Its equipped artifacts are
+ *  `state.equippedArtifacts[contentType]` (empty until set: like every per-content value they start from the defaults, they are not copied from the previous content type). */
 export function switchContentType(state: FormState, schema: ClassSchema, contentType: string, defaults?: Values): FormState {
   if (state.perContent[contentType]) return { ...state, contentType };
   const d = defaults ?? defaultsFromSchema(schema, contentType);
@@ -114,7 +119,9 @@ export function copyContentValues(state: FormState, schema: ClassSchema, from: s
     if (!isApplicable(f, to) || !isApplicable(f, from)) continue;
     next[f.key] = src[f.key] ?? null;
   }
-  return { ...state, perContent: { ...state.perContent, [to]: next } };
+  // the equipped artifacts are a per-content value too (the Inputs page's "Equipped artifacts" section)
+  const equippedArtifacts = schema.artifacts ? { ...(state.equippedArtifacts ?? {}), [to]: currentSlots(schema.artifacts, { equippedArtifacts: state.equippedArtifacts, contentType: from }) } : state.equippedArtifacts;
+  return { ...state, perContent: { ...state.perContent, [to]: next }, ...(equippedArtifacts ? { equippedArtifacts } : {}) };
 }
 
 export function getValue(state: FormState, field: Field): Scalar {
@@ -144,7 +151,7 @@ export function buildInputs(schema: ClassSchema, state: FormState): Record<strin
     out.companion_level = level;
   }
   if (schema.artifacts_modelled && schema.artifacts) {
-    out.artifacts = requestSlots(schema.artifacts, state.artifacts);       // the equipped artifacts only, schema order, <= max_slots (lib/artifacts.ts)
+    out.artifacts = requestSlots(schema.artifacts, state.artifacts, currentSlots(schema.artifacts, state));       // the CURRENT content type's equipped artifacts, schema order, <= max_slots (lib/artifacts.ts)
   }
   return out;
 }
@@ -229,6 +236,8 @@ export function normalizeState(schema: ClassSchema, state: FormState): FormState
   // artifacts: the per-artifact table; the OLD shape (a slots list + `potentials`) is migrated here and `potentials` is dropped
   const { potentials: legacyPotentials, ...rest } = state;
   const artifacts = schema.artifacts ? normalizeArtifacts(state.artifacts, schema.artifacts, legacyPotentials) : state.artifacts ?? {}; // (a class without artifact support keeps what it had; never sent)
-  const out: FormState = { ...rest, contentType: contentTypes, shared, perContent: dropLockedChoices(perContent, companions.levels), artifacts, companions };
+  // equipped artifacts: per content type; a profile saved before (one global `equipped` flag per artifact, or the old slots list) seeds EVERY content type from that set, once
+  const equippedArtifacts = schema.artifacts ? normalizeEquipped(state.equippedArtifacts, schema.artifacts, schema.content_types, state.artifacts) : state.equippedArtifacts ?? {};
+  const out: FormState = { ...rest, contentType: contentTypes, shared, perContent: dropLockedChoices(perContent, companions.levels), artifacts, equippedArtifacts, companions };
   return out.perContent[contentTypes] ? out : switchContentType(out, schema, contentTypes);
 }

@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import type { ClassSchema, FormState, Scalar } from "../types";
+import type { ClassInfo, ClassSchema, FormState, Scalar } from "../types";
 import { FormField } from "./FormField";
 import "./companions.css";
-import { COMPANION_GROUP, computedFields, copyContentValues, getValue, groupFields, setValue, switchContentType, visibleGroups } from "../lib/schemaForm";
+import { COMPANION_GROUP, computedFields, copyContentValues, getValue, groupFields, groupRank, setValue, switchContentType, visibleGroups } from "../lib/schemaForm";
 import { companionOptions, companionsOf, effectiveCompanion, unlockedCompanions } from "../lib/companions";
 import { formatNumber } from "../lib/format";
 import { COMPANION_SECTION_ID } from "../lib/artifacts";
+import { EquippedArtifacts } from "./EquippedArtifacts";
 
 interface Props {
   schema: ClassSchema;
@@ -15,15 +16,20 @@ interface Props {
   derived?: Record<string, unknown>;
   loadDefaults: (contentType: string) => void; // switch: resolves defaults (server) for a content type visited first time
   onOpenCompanions?: () => void; // "Edit companions" / "Set up your companions": switch to the Companions tab
+  classInfo?: ClassInfo | null;
+  onOpenArtifacts?: () => void; // "Artifacts tab" link of the Equipped artifacts section
 }
 
-export function InputsForm({ schema, state, onState, errors, derived, loadDefaults, onOpenCompanions }: Props) {
+export function InputsForm({ schema, state, onState, errors, derived, loadDefaults, onOpenCompanions, classInfo, onOpenArtifacts }: Props) {
   const groups = useMemo(() => groupFields(schema), [schema]);
   const shown = visibleGroups(groups, state.contentType);
   const computed = computedFields(schema);
   const owned = companionsOf(schema, state);
   const options = companionOptions(schema, owned);
   const { choice: chosen, level: chosenLevel } = effectiveCompanion(schema, state);
+  // the Equipped artifacts section sits where the workbook has it: after "Additional bonuses", just before the Companion section
+  const equippedAt = shown.findIndex((g) => groupRank(g.name) >= groupRank(COMPANION_GROUP));
+  const equippedSection = <EquippedArtifacts key="equipped-artifacts" schema={schema} classInfo={classInfo} state={state} onState={onState} onOpenArtifacts={onOpenArtifacts} />;
   const visited = Object.keys(state.perContent).filter((c) => c !== state.contentType);
 
   const onChange = (key: string, value: Scalar) => {
@@ -39,7 +45,8 @@ export function InputsForm({ schema, state, onState, errors, derived, loadDefaul
 
   return (
     <form className="inputs" onSubmit={(e) => e.preventDefault()} aria-label={`${schema.name} inputs`}>
-      {shown.map((g) => (
+      {shown.flatMap((g, gi) => [
+        ...(gi === equippedAt ? [equippedSection] : []),
         <fieldset key={g.name} id={g.name === COMPANION_GROUP ? COMPANION_SECTION_ID : undefined}>
           <legend>{g.name}</legend>
           {g.name === "Character" && visited.length > 0 && (
@@ -86,8 +93,9 @@ export function InputsForm({ schema, state, onState, errors, derived, loadDefaul
               ),
             )}
           </div>
-        </fieldset>
-      ))}
+        </fieldset>,
+      ])}
+      {equippedAt < 0 && equippedSection}
       <fieldset>
         <legend>Computed (read-only)</legend>
         <div className="grid">

@@ -242,7 +242,8 @@ def class_case(cid):
                 wa.cell(row=r["row"], column=lc[i][0], value="Rare")
                 wa.cell(row=r["row"], column=lc[i][1], value="(none)")
         lines[k] = got
-    loadouts = {}
+    loadouts, slots = {}, {}
+    max_slots = schema["artifacts"]["max_slots"]
     for i, ct in enumerate(cts):
         picks = [art_keys[(i * 5 + s * 7) % len(art_keys)] for s in range(4)]
         if i == 4:
@@ -250,19 +251,22 @@ def class_case(cid):
         names = [cm["artifacts"]["rows"][k]["name"] if k in cm["artifacts"]["rows"] else k for k in picks]
         for s, row in enumerate(inp["slotRows"]):
             ws.cell(row=row, column=inp["firstCol"] + i, value=names[s])
-        eq, seen = [], set()
+        eq, seen, pos = [], set(), []
         for k in picks:
             if k in cm["artifacts"]["rows"] and k not in seen:
                 seen.add(k)
                 eq.append(k)
+                pos.append(k)
+            else:
+                pos.append("")                                          # (none) / a repeat / an unknown name: that slot stays empty
         loadouts[ct] = eq
+        slots[ct] = pos + [""] * (max_slots - len(pos))                 # the app's slots of that content type: slot i = the workbook's Slot i, the 5th is free
     order = [a["key"] for a in schema["artifacts"]["artifacts"]]
-    def table(ct):
-        return {k: {"star": None if stars[k] == "Not Unlocked" else stars[k], "equipped": k in loadouts[ct], "lines": [{"rarity": r, "stat": st} for r, st in lines[k]]} for k in order}
+    table = {k: {"star": None if stars[k] == "Not Unlocked" else stars[k], "lines": [{"rarity": r, "stat": st} for r, st in lines[k]]} for k in order}
     expected["loadouts"] = loadouts                      # content type -> equipped artifact keys (schema order is applied by the app)
-    expected["artifactsFrom"] = selected
+    expected["slots"] = slots                            # content type -> the app's slots (artifact key or "" per slot, max_slots entries)
     expected["stars"] = stars
-    expected["tables"] = {ct: table(ct) for ct in cts}   # the whole table the app must hold after importing that content type's loadout
+    expected["table"] = table                            # the whole table (stars + lines) the app must hold after the import: shared by every content type
     expected["linesRead"] = sum(1 for k in order for r, st in lines[k] if st != "(none)")
     # companions: Hero 7, Dark Knight 18, Wind Archer "3", one "Not unlocked", the rest blank
     wc = wb.create_sheet("CompanionsInput")

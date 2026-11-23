@@ -6,7 +6,7 @@ import type { SensPart } from "../lib/sensitivity";
 import { EquipRanking } from "./EquipRanking";
 import { buildInputs } from "../lib/schemaForm";
 import { formatNumber } from "../lib/format";
-import { artifactStarsExtra, artifactsAvailable, breakdown, bucketTotals, dpsDelta, equippedCount, withoutArtifacts } from "../lib/artifacts";
+import { artifactStarsExtra, artifactsAvailable, breakdown, bucketTotals, currentSlots, dpsDelta, equippedKeys, withoutArtifacts } from "../lib/artifacts";
 import type { ClassInfo, ClassSchema, ComputeResult, FormState } from "../types";
 import { ArtifactTable } from "./ArtifactTable";
 import type { CubesMeta } from "../lib/cubes";
@@ -41,7 +41,7 @@ export function RankingSection({ classId, inputs, supported }: { classId: string
           ) : (
             !status.error && <p className="empty">{status.loading || pending ? "Computing the ranking..." : "Loading the ranking..."}</p>
           )}
-          <p className="note">What each artifact is worth in total DPS if equipped (a what-if per artifact: the unequipped ones at the star set in the table above, added to what you have equipped even when all slots are used; artifacts that are not unlocked are listed unranked). Equipped ones show what you would lose.</p>
+          <p className="note">What each artifact is worth in total DPS if equipped (a what-if per artifact: the unequipped ones at the star set in the table above, added to what you have equipped in this content type even when all slots are used; artifacts that are not unlocked are listed unranked). Equipped ones show what you would lose.</p>
         </div>
       )}
     </section>
@@ -57,6 +57,8 @@ interface Props {
   busy: boolean;
   stale: boolean;
   onOpenCompanion: () => void;
+  /** "go to Equipped artifacts": the Inputs tab's section (the equipped artifacts are chosen there, per content type) */
+  onOpenInputs?: () => void;
   /** GET .../cubes/meta (the potential-line tables of the Artifacts table; the app's static copy is used while it is null / undefined / unavailable) */
   cubesMeta?: CubesMeta | null;
   cubesMetaStatus?: RequestStatus;
@@ -184,10 +186,11 @@ function useBaseline(classId: string, inputs: Record<string, unknown> | null, en
   return { dps: debounced === key ? dps : null, status: debounced === key ? status : ("busy" as const) };
 }
 
-export function ArtifactsPanel({ schema, classInfo, state, onState, result, busy, stale, onOpenCompanion, cubesMeta, cubesMetaStatus }: Props) {
+export function ArtifactsPanel({ schema, classInfo, state, onState, result, busy, stale, onOpenCompanion, onOpenInputs, cubesMeta, cubesMetaStatus }: Props) {
   const art = schema.artifacts;
   const available = artifactsAvailable(schema, classInfo);
-  const equipped = art ? equippedCount(art, state.artifacts) : 0;
+  const equippedIds = useMemo(() => (art ? equippedKeys(art, currentSlots(art, state)) : []), [art, state]);
+  const equipped = equippedIds.length;
   const inputs = useMemo(() => (available ? buildInputs(schema, state) : null), [available, schema, state]);
   // the equip ranking also gets the star of EVERY artifact (the table's Star level column), not only of the equipped ones
   const rankingInputs = useMemo(() => (inputs && art ? { ...inputs, ...artifactStarsExtra(art, state.artifacts) } : inputs), [inputs, art, state.artifacts]);
@@ -209,6 +212,9 @@ export function ArtifactsPanel({ schema, classInfo, state, onState, result, busy
         state={state.artifacts}
         onState={(artifacts) => onState({ ...state, artifacts })}
         onOpenCompanion={onOpenCompanion}
+        equipped={equippedIds}
+        contentType={state.contentType}
+        onOpenInputs={onOpenInputs}
       />
 
       {equipped > 0 && hasResult && <ArtifactBreakdown result={result!} baselineDps={!busy && !stale ? baseline.dps : null} baselineState={baseline.status} />}

@@ -7,7 +7,7 @@ import { IDLE_STATUS } from "../lib/liveRequest";
 import { IDLE_RUN, type RunState } from "../lib/cubesRunner";
 import { blankEquip, compareEquip } from "../lib/equipment";
 import { gearKey, blankRow, type CubesState } from "../lib/cubes";
-import { emptyArtifacts, setEquipped, setLine, setStar } from "../lib/artifacts";
+import { emptyArtifacts, setLine, setStar } from "../lib/artifacts";
 import { STATIC_POTENTIAL_TABLES } from "../lib/artifactPotentials";
 import type { ArtifactSchema } from "../types";
 import type { FormState } from "../types";
@@ -199,8 +199,8 @@ describe("Artifacts table: potential lines (the old 'Artifact potentials' sectio
   const view = (over: Partial<Parameters<typeof ArtifactTableView>[0]> = {}) =>
     strip(
       renderToString(
-        <ArtifactTableView art={art} state={setLine(art, setEquipped(art, setStar(art, emptyArtifacts(art), "book_of_ancient", 5), "book_of_ancient", true), "pigs_ribbon", 0, { rarity: "Unique", stat: "Defense Penetration %" })}
-          onState={noop} tables={meta.artifact_potentials} result={fx.potentials.result} status={none} onOpenCompanion={noop} {...over} />,
+        <ArtifactTableView art={art} state={setLine(art, setStar(art, emptyArtifacts(art), "book_of_ancient", 5), "pigs_ribbon", 0, { rarity: "Unique", stat: "Defense Penetration %" })}
+          onState={noop} tables={meta.artifact_potentials} result={fx.potentials.result} status={none} onOpenCompanion={noop} equipped={["book_of_ancient"]} {...over} />,
       ),
     );
   it("every artifact is a row; line counts follow the rank; gains and totals come from the API answer", () => {
@@ -212,7 +212,7 @@ describe("Artifacts table: potential lines (the old 'Artifact potentials' sectio
     }
     expect(view()).not.toContain("Add an artifact");
     const book = rowHtml(html, "book_of_ancient");
-    expect(book).toContain('checked=""');
+    expect(book).toContain(">equipped</span>");           // read-only marker (the equipped set is chosen in the Inputs tab)
   });
   it("locked lines are marked with their unlock star", () => {
     const lockedRows = fx.potentials.result.rows.map((r) => (r.key === "pigs_ribbon" ? { ...r, star: 0, lines: r.lines.map((l) => ({ ...l, active: false })) } : r));
@@ -229,13 +229,13 @@ describe("Artifacts table: potential lines (the old 'Artifact potentials' sectio
   it("the container: a class without stat values shows the table (lines editable, no gains) and the note; nothing is requested", () => {
     const x = NO_STAT_VALUES[0];
     const xart = x.schema.artifacts as ArtifactSchema;
-    const html = strip(renderToString(<ArtifactTable classId={x.info.id} inputs={{}} supported={false} active meta={null} metaStatus={IDLE_STATUS} art={xart} state={undefined} onState={noop} onOpenCompanion={noop} />));
+    const html = strip(renderToString(<ArtifactTable classId={x.info.id} inputs={{}} supported={false} active meta={null} metaStatus={IDLE_STATUS} art={xart} state={undefined} onState={noop} onOpenCompanion={noop} equipped={[]} />));
     expect(html).toContain(POTENTIALS_UNSUPPORTED_TEXT);
     expect(html.match(/<tr data-artifact="/g)).toHaveLength(36);
     expect(html).toContain("line 1 stat");
   });
   it("without the cube meta the static tables fill the dropdowns (the same data)", () => {
-    const html = strip(renderToString(<ArtifactTable classId="fp_mage" inputs={{}} supported active meta={null} metaStatus={IDLE_STATUS} art={art} state={undefined} onState={noop} onOpenCompanion={noop} />));
+    const html = strip(renderToString(<ArtifactTable classId="fp_mage" inputs={{}} supported active meta={null} metaStatus={IDLE_STATUS} art={art} state={undefined} onState={noop} onOpenCompanion={noop} equipped={[]} />));
     expect(rowHtml(html, "candle")).toContain(`>${STATIC_POTENTIAL_TABLES.stats[0]}</option>`);
   });
 });

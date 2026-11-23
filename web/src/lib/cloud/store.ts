@@ -8,7 +8,7 @@
 // recomputed and retried, so IndexedDB would only leave a copy of the user's data behind on a shared computer.
 import { MAX_NAME_CHARS, clipName, type ProfileRec, type SavePlan, type SettingsRec, type ThemeSetting } from "./merge";
 
-export const USER_SCHEMA = 1; // users/{uid}.schema; bump together with lib/profiles.ts EXPORT_VERSION when the stored profile format changes
+export const USER_SCHEMA = 1; // users/{uid}.schema (the Firestore layout, not the profile shape: the profile state is opaque here and migrated on load by lib/schemaForm.ts normalizeState)
 export const COMMIT_CHUNK = 400; // Firestore allows 500 operations per batch
 
 export interface RawDoc {

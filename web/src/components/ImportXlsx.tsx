@@ -165,15 +165,14 @@ function ImportFlow({
   onCancel: () => void;
   onApplied: (p: Profile, load: boolean) => void;
 }) {
-  const [artifactsFrom, setArtifactsFrom] = useState<string | undefined>(undefined);
   const result = useMemo<ImportResult | { error: string } | null>(() => {
     if (!opened.schema) return null;
     try {
-      return lib.importWorkbook(opened.loaded.book, opened.schema, { classChosen: opened.chosen, artifactsFrom });
+      return lib.importWorkbook(opened.loaded.book, opened.schema, { classChosen: opened.chosen });
     } catch (e) {
       return { error: describeLoadError(e) };
     }
-  }, [lib, opened, artifactsFrom]);
+  }, [lib, opened]);
   const ok = result && !("error" in result) ? result : null;
   return (
     <ImportDialog
@@ -185,9 +184,7 @@ function ImportFlow({
       detected={!!opened.loaded.classId && !opened.chosen}
       result={ok}
       problem={opened.schemaError ?? (result && "error" in result ? result.error : null)}
-      onArtifactsFrom={setArtifactsFrom}
       onClass={(id) => {
-        setArtifactsFrom(undefined);
         void loadSchema(opened.loaded, id, true);
       }}
       onCancel={onCancel}
@@ -209,7 +206,6 @@ export interface DialogProps {
   detected: boolean; // the class was recognised from the workbook title
   result: ImportResult | null;
   problem: string | null;
-  onArtifactsFrom: (ct: string | undefined) => void;
   onClass: (id: string) => void;
   onCancel: () => void;
   onApply: (profileName: string, loadNow: boolean) => void;
@@ -257,6 +253,7 @@ export function ImportDialog(p: DialogProps) {
   const warnGroups = r ? p.lib.groupNotes(r.warnings) : [];
   const ignoredGroups = r ? p.lib.groupNotes(r.ignored) : [];
   const loadoutCts = s ? Object.keys(s.loadouts) : [];
+  const nContents = s ? Object.keys(s.valuesPerContent).length + s.skippedContentTypes.length : 0;
   const cubesTabMissing = p.classes.find((c) => c.id === p.classId)?.status?.stat_values === false;
   const nImported = s ? Object.keys(s.valuesPerContent).length : 0;
 
@@ -313,10 +310,10 @@ export function ImportDialog(p: DialogProps) {
                 </dd>
                 <dt>Artifacts</dt>
                 <dd>
-                  {s.artifactsFrom ? (
+                  {loadoutCts.length ? (
                     <>
-                      {(s.loadouts[s.artifactsFrom] ?? []).join(", ")}
-                      <span className="note"> (loadout of {s.artifactsFrom})</span>
+                      equipped artifacts set for {loadoutCts.length} of {nContents} content types
+                      <span className="note"> ({loadoutCts.map((ct) => `${ct}: ${s.loadouts[ct].join(", ")}`).join("; ")})</span>
                     </>
                   ) : (
                     "none equipped"
@@ -344,20 +341,6 @@ export function ImportDialog(p: DialogProps) {
                   )}
                 </dd>
               </dl>
-
-              {loadoutCts.length > 1 && (
-                <div className="field-row">
-                  <label htmlFor={`${id}-art`}>Artifact loadout of</label>
-                  <select id={`${id}-art`} value={s.artifactsFrom ?? ""} onChange={(e) => p.onArtifactsFrom(e.target.value || undefined)}>
-                    {loadoutCts.map((ct) => (
-                      <option key={ct} value={ct}>
-                        {ct}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="note">The app keeps one artifact loadout; the workbook has one per content type.</span>
-                </div>
-              )}
 
               <details>
                 <summary>Values read per content type</summary>

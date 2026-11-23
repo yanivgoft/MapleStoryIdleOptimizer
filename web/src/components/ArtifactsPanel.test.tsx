@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
-import { initialState } from "../lib/schemaForm";
-import { blankLine, emptyArtifacts, setEquipped, setLine, setStar } from "../lib/artifacts";
+import { initialState, switchContentType } from "../lib/schemaForm";
+import { blankLine, emptyArtifacts, normalizeSlots, setLine, setStar } from "../lib/artifacts";
 import { STATIC_POTENTIAL_TABLES, potentialsRequest, type PotentialsResult } from "../lib/artifactPotentials";
 import { ALL, fixtureFor } from "../test/fixtures";
 import type { ArtifactSchema, ArtifactsState, ComputeResult, FormState } from "../types";
@@ -13,16 +13,22 @@ const MODELLED = ALL.filter((c) => c.schema.artifacts_modelled);
 const UNMODELLED = ALL.filter((c) => !c.schema.artifacts_modelled);
 
 /** the fixture case (real engine output): Alliance Badge 4, Arwen's Glass Shoes 2, Book of Ancient 5, Pig's Ribbon Not Unlocked equipped */
+const CASE_KEYS = ["alliance_badge", "arwens_glass_shoes", "book_of_ancient", "pigs_ribbon"];
 function caseTable(art: ArtifactSchema): ArtifactsState {
   let t = emptyArtifacts(art);
-  for (const [k, star] of [["alliance_badge", 4], ["arwens_glass_shoes", 2], ["book_of_ancient", 5], ["pigs_ribbon", "Not Unlocked"]] as const) t = setEquipped(art, setStar(art, t, k, star), k, true);
+  for (const [k, star] of [["alliance_badge", 4], ["arwens_glass_shoes", 2], ["book_of_ancient", 5], ["pigs_ribbon", "Not Unlocked"]] as const) t = setStar(art, t, k, star);
   return t;
 }
 
-async function render(id: string, artifacts: (art: ArtifactSchema) => ArtifactsState, withResult = true) {
+/** ``equipped`` = the artifact ids in the slots of the content type the panel shows (World Boss); ``others`` = slots of other content types */
+async function render(id: string, artifacts: (art: ArtifactSchema) => ArtifactsState, withResult = true, equipped: string[] = [], others: Record<string, string[]> = {}) {
   const c = fixtureFor(id);
   const art = c.schema.artifacts as ArtifactSchema | undefined;
-  const state: FormState = { ...initialState(c.schema, c.defaults["World Boss"], "World Boss"), artifacts: art ? artifacts(art) : {} };
+  const state: FormState = {
+    ...initialState(c.schema, c.defaults["World Boss"], "World Boss"),
+    artifacts: art ? artifacts(art) : {},
+    equippedArtifacts: art ? { ...Object.fromEntries(Object.entries(others).map(([ct, k]) => [ct, normalizeSlots(k, art)])), "World Boss": normalizeSlots(equipped, art) } : {},
+  };
   const kase = art ? ((await import(`../fixtures/${id}.artifacts_case.json`)).default as { result: ComputeResult }) : null;
   return strip(
     renderToString(
@@ -32,15 +38,14 @@ async function render(id: string, artifacts: (art: ArtifactSchema) => ArtifactsS
 }
 
 const rowHtml = (html: string, key: string) => html.match(new RegExp(`<tr data-artifact="${key}"[\\s\\S]*?</tr>`))?.[0] ?? "";
-const tag = (html: string, label: string) => html.match(new RegExp(`<[^>]*aria-label="${label}"[^>]*>`))?.[0] ?? "";
 
 describe("Artifacts tab render (server-side): one table", () => {
   it.each(MODELLED.map((c) => [c.info.id] as const))("%s: 36 rows by rank, effect text, badges, equip count, breakdown, ranking section", async (id) => {
-    const html = await render(id, caseTable);
+    const html = await render(id, caseTable, true, CASE_KEYS);
     expect(html).toContain('aria-label="Artifacts table"');
     expect(html.match(/<tr data-artifact="/g)).toHaveLength(36);
     for (const rank of ["Epic", "Unique", "Legendary"]) expect(html).toContain(`<th scope="rowgroup" colSpan="7">${rank}</th>`.replace("colSpan", "colSpan"));
-    expect(html).toContain("4 / 5 equipped");
+    expect(html).toContain("4 / 5 equipped in World Boss");
     expect(html).toContain("+18% Attack");                                   // Alliance Badge star 4
     expect(html).toContain("+28% Companion Summoning Time Increase");        // Arwen's star 2
     expect(html).toContain("Baked into your stats");
@@ -58,7 +63,7 @@ describe("Artifacts tab render (server-side): one table", () => {
     expect(html).not.toContain("pot-card");
   });
   it("columns: Artifact, Star level (with the Not unlocked tooltip), Equipped, Line 1-3, Potential total; sticky-header table in its own scroll box", async () => {
-    const html = await render("fp_mage", caseTable, false);
+    const html = await render("fp_mage", caseTable, false, CASE_KEYS);
     for (const h of ["Artifact", "Star level", "Equipped", "Line 1", "Line 2", "Line 3 (Legendary)", "Potential total"]) expect(html).toContain(h);
     expect(html).toContain("Not unlocked acts as star 0 when the artifact is equipped");
     expect(html).toContain('class="art-table-wrap"');
@@ -66,8 +71,8 @@ describe("Artifacts tab render (server-side): one table", () => {
     expect(html).toContain('placeholder="filter by name"');
     expect(html).toContain("Show only unlocked / equipped");
   });
-  it("star select shows 'Not unlocked' + Star 0-5 and the engine default by rank; equipped rows are marked", async () => {
-    const html = await render("fp_mage", caseTable, false);
+  it("star select shows 'Not unlocked' + Star 0-5 and the engine default by rank; equipped rows (of the current content type) are marked", async () => {
+    const html = await render("fp_mage", caseTable, false, CASE_KEYS);
     const pig = rowHtml(html, "pigs_ribbon");
     expect(pig).toContain('<option value="Not Unlocked" selected="">Not unlocked</option>');
     expect(pig).toContain("acts as star 0");
@@ -85,22 +90,36 @@ describe("Artifacts tab render (server-side): one table", () => {
     expect(rowHtml(html, "candle")).not.toContain('class="line-na"');
     expect(html.match(/line 3 stat/g)).toHaveLength(art36Legendary(fixtureFor("fp_mage").schema.artifacts!));
   });
-  it("at most 5 equipped: with 5 the other checkboxes are disabled with the reason, the equipped ones stay clickable", async () => {
+  it("the Equipped column is read-only: a marker for the current content type's artifacts, no checkbox, a hint to the Inputs tab", async () => {
     const keys = ["alliance_badge", "candle", "horn_flute", "secret_map", "flaming_lava"];
-    const html = await render("hero", (art) => keys.reduce((t, k) => setEquipped(art, t, k, true), emptyArtifacts(art)), false);
-    expect(html).toContain("5 / 5 equipped");
-    expect(tag(html, "Equip Candle")).toContain('checked=""');
-    expect(tag(html, "Equip Candle")).not.toContain("disabled");
-    expect(tag(html, "Equip Chalice")).toContain("disabled");
-    expect(tag(html, "Equip Chalice")).toContain("All 5 artifact slots are used: unequip another artifact first.");
-    expect(html.match(/aria-label="Equip [^"]*"[^>]*disabled/g)).toHaveLength(36 - 5);
-    // with 4 equipped nothing is disabled
-    const html4 = await render("hero", (art) => keys.slice(0, 4).reduce((t, k) => setEquipped(art, t, k, true), emptyArtifacts(art)), false);
-    expect(html4).toContain("4 / 5 equipped");
-    expect(html4.match(/aria-label="Equip [^"]*"[^>]*disabled/g)).toBeNull();
+    const html = await render("hero", emptyArtifacts, false, keys);
+    expect(html).toContain("5 / 5 equipped in World Boss");
+    expect(html).not.toContain('aria-label="Equip ');
+    expect(html).not.toMatch(/<td class="equip-cell"><input/);
+    expect(html.match(/<span class="chip ok" title="Equipped in the current content type[^>]*>equipped<\/span>/g)).toHaveLength(5);
+    expect(rowHtml(html, "candle")).toContain(">equipped</span>");
+    expect(rowHtml(html, "chalice")).not.toContain(">equipped</span>");
+    expect(html).toContain("Equipped artifacts</strong> section of the Inputs tab");
+    // other content types' slots do not show here; only the current one counts
+    const other = await render("hero", emptyArtifacts, false, ["candle"], { "Chapter Boss": ["chalice", "horn_flute"] });
+    expect(other).toContain("1 / 5 equipped in World Boss");
+    expect(rowHtml(other, "chalice")).not.toContain(">equipped</span>");
+  });
+  it("switching the content type changes which rows are marked and the count", async () => {
+    const c = fixtureFor("fp_mage");
+    const art = c.schema.artifacts as ArtifactSchema;
+    const base: FormState = { ...initialState(c.schema, c.defaults["World Boss"], "World Boss"), equippedArtifacts: { "World Boss": normalizeSlots(["candle"], art), "Chapter Boss": normalizeSlots(["chalice", "horn_flute"], art) } };
+    const html = (st: FormState) => strip(renderToString(<ArtifactsPanel schema={c.schema} classInfo={c.info} state={st} onState={() => undefined} result={null} busy={false} stale={false} onOpenCompanion={() => undefined} />));
+    const wb = html(base);
+    expect(wb).toContain("1 / 5 equipped in World Boss");
+    expect(rowHtml(wb, "candle")).toContain(">equipped</span>");
+    const cb = html(switchContentType(base, c.schema, "Chapter Boss", c.defaults["Chapter Boss"]));
+    expect(cb).toContain("2 / 5 equipped in Chapter Boss");
+    expect(rowHtml(cb, "candle")).not.toContain(">equipped</span>");
+    expect(rowHtml(cb, "chalice")).toContain(">equipped</span>");
   });
   it("equipped but no result yet: no breakdown, a waiting note; nothing equipped: no breakdown at all", async () => {
-    const html = await render("fp_mage", caseTable, false);
+    const html = await render("fp_mage", caseTable, false, CASE_KEYS);
     expect(html).not.toContain("What the equipped artifacts do");
     expect(html).toContain("appears after the next calculation");
     const none = await render("fp_mage", emptyArtifacts, false);
@@ -123,7 +142,7 @@ describe("the table view: filter, potential lines, gains", () => {
   const art = fp.schema.artifacts as ArtifactSchema;
   const none = { loading: false, unsupported: false, error: null, fieldErrors: [] };
   const view = (state: ArtifactsState, extra: Partial<Parameters<typeof ArtifactTableView>[0]> = {}) =>
-    strip(renderToString(<ArtifactTableView art={art} state={state} onState={() => undefined} tables={STATIC_POTENTIAL_TABLES} result={null} status={none} onOpenCompanion={() => undefined} {...extra} />));
+    strip(renderToString(<ArtifactTableView art={art} state={state} onState={() => undefined} tables={STATIC_POTENTIAL_TABLES} result={null} status={none} onOpenCompanion={() => undefined} equipped={[]} {...extra} />));
 
   it("filter by name: only matching rows, a note when nothing matches", () => {
     const html = view(emptyArtifacts(art), { initialText: "badge" });
@@ -134,8 +153,7 @@ describe("the table view: filter, potential lines, gains", () => {
     expect(view(emptyArtifacts(art), { initialText: "zzz" })).toContain("No artifact matches &quot;zzz&quot;");
   });
   it("show only unlocked / equipped: Epic + Unique defaults are unlocked, locked Legendary ones are hidden unless equipped", () => {
-    const t = setEquipped(art, emptyArtifacts(art), "candle", true);
-    const html = view(t, { initialOnlyActive: true });
+    const html = view(emptyArtifacts(art), { initialOnlyActive: true, equipped: ["candle"] });
     expect(html.match(/<tr data-artifact="/g)).toHaveLength(4 + 9 + 1);
     expect(html).toContain('data-artifact="candle"');
     expect(html).not.toContain('data-artifact="chalice"');

@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
 import { sensFixture } from "../test/sensFixture";
-import { ALL, fixtureFor, withoutArtifactSupport } from "../test/fixtures";
+import { ALL, fixtureFor } from "../test/fixtures";
 import { initialState, setValue } from "../lib/schemaForm";
 import { setCompanionLevel, setPotentialLinesPct } from "../lib/companions";
-import { emptyArtifacts, setEquipped, setStar } from "../lib/artifacts";
 import { IDLE } from "../lib/sensitivityLoader";
 import type { SensitivityResult } from "../lib/sensitivity";
 import type { FormState } from "../types";
-import { ArtifactsSummary } from "./ArtifactsSummary";
 import { CompanionsView, companionRequestInputs, GAIN_UNAVAILABLE } from "./CompanionsPanel";
 
 const strip = (h: string) => h.replace(/<!-- -->/g, "");
@@ -126,27 +124,6 @@ describe("request inputs of the page", () => {
     expect(Object.keys(req.companion_levels as object)).toHaveLength(16);
     expect(req.companion_potential_lines_pct).toBe(8);
     expect(companionRequestInputs(fp.schema, state, null)).toBeNull();
-  });
-});
-
-describe("artifacts summary on the Calculator", () => {
-  const info = fp.info;
-  const render = (state: FormState, schema = fp.schema, i = info) => strip(renderToString(<ArtifactsSummary schema={schema} classInfo={i} state={state} onEdit={() => undefined} />));
-  it("lists the equipped artifacts with their stars and an Edit link; 'none' when empty", () => {
-    expect(render(fresh())).toContain("Artifacts in use:");
-    expect(render(fresh())).toContain("none");
-    const a = fp.schema.artifacts!;
-    let t = setEquipped(a, setStar(a, emptyArtifacts(a), "alliance_badge", 4), "alliance_badge", true);
-    t = setEquipped(a, setStar(a, t, "pigs_ribbon", "Not Unlocked"), "pigs_ribbon", true);
-    const s = { ...fresh(), artifacts: t };
-    const html = render(s);
-    expect(html).toContain("Alliance Badge ★4");
-    expect(html).toContain("Pig&#x27;s Ribbon not unlocked");
-    expect(html).toContain("Edit artifacts");
-  });
-  it("renders nothing for classes without artifact support", () => {
-    const c = withoutArtifactSupport(fp);       // synthetic: no class lacks artifacts any more
-    expect(render(initialState(c.schema, c.defaults["World Boss"], "World Boss"), c.schema, c.info)).toBe("");
   });
 });
 

@@ -24,12 +24,13 @@ function stubStorage() {
 }
 const unstub = () => delete (globalThis as unknown as { localStorage?: unknown }).localStorage;
 
+const schemaContents = (id: string) => fixtureFor(id).schema.content_types.length;
 const importOf = (id: string) => importWorkbook(XlsxBook.open(xlsxBytes(`class_${id}.xlsx`)), fixtureFor(id).schema);
 const dialog = (over: Partial<Parameters<typeof ImportDialog>[0]> = {}) => {
   const result = importOf("shadower");
   return strip(
     renderToString(
-      <ImportDialog lib={lib} fileName="Shadower-DPS-Calculator.xlsx" fileTitle="Shadower — DPS Calculator Inputs" classes={classList} classId="shadower" detected result={result} problem={null} onArtifactsFrom={() => undefined} onClass={() => undefined} onCancel={() => undefined} onApply={() => undefined} {...over} />,
+      <ImportDialog lib={lib} fileName="Shadower-DPS-Calculator.xlsx" fileTitle="Shadower — DPS Calculator Inputs" classes={classList} classId="shadower" detected result={result} problem={null} onClass={() => undefined} onCancel={() => undefined} onApply={() => undefined} {...over} />,
     ),
   );
 };
@@ -74,7 +75,8 @@ describe("preview dialog", () => {
     expect(h).toContain(`Warnings (${r.warnings.length})`);
     expect(h).toContain(`Ignored (${r.ignored.length})`);
     expect(h).toContain("Wind Archer Lv 3");
-    expect(h).toContain("Artifact loadout of"); // the workbook has several loadouts: the user can pick
+    expect(h).toContain(`equipped artifacts set for ${Object.keys(r.summary.loadouts).length} of ${schemaContents("shadower")} content types`); // one set per content type, like the workbook
+    expect(h).not.toContain("Artifact loadout of");               // (the old "choose one loadout" selector is gone)
     expect(h).toContain("New profile name");
     expect(h).toContain("Shadower (Excel import)");
   });
