@@ -166,6 +166,21 @@
    }
   },
   {
+   "id": "night_walker",
+   "name": "Night Walker",
+   "family": "Thief",
+   "stat_identity": {
+    "main": "LUK",
+    "sub": "DEX"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": true
+   }
+  },
+  {
    "id": "paladin",
    "name": "Paladin",
    "family": "Warrior",

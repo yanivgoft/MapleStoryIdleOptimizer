@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 2.74995272053311e+16,
+  "total_dps": 2.762934080230984e+16,
   "artifacts": {
    "equipped": [
     {
@@ -130,81 +130,81 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 2.055210212559905e+16,
-  "boss_dps": 2.74995272053311e+16,
-  "normal_dps": 5652381919976496.0,
-  "player_boss_dps": 2.055210212559905e+16,
+  "player_dps": 2.067200166081436e+16,
+  "boss_dps": 2.762934080230984e+16,
+  "normal_dps": 5656870276165153.0,
+  "player_boss_dps": 2.067200166081436e+16,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "RAGING_BLOW",
     "name": "Raging Blow",
-    "dps": 9174447623527664.0,
-    "share": 0.33362201302679456,
-    "boss_dps": 9174447623527664.0,
+    "dps": 9230227700069350.0,
+    "share": 0.3340733956018847,
+    "boss_dps": 9230227700069350.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "PUNCTURE",
     "name": "Puncture",
-    "dps": 1245322514342896.0,
-    "share": 0.04528523363490685,
-    "boss_dps": 1245322514342896.0,
+    "dps": 1253746176759816.0,
+    "share": 0.04537734670292972,
+    "boss_dps": 1253746176759816.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "PUNCTURE_WOUND",
     "name": "Puncture (wound DoT)",
-    "dps": 348050658297969.44,
-    "share": 0.012656605173578977,
-    "boss_dps": 348050658297969.44,
+    "dps": 350404957056500.94,
+    "share": 0.01268234951979769,
+    "boss_dps": 350404957056500.94,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "ENHANCED_RAGING_BLOW",
     "name": "Enhanced Raging Blow",
-    "dps": 5184272380617091.0,
-    "share": 0.18852223683365946,
-    "boss_dps": 5184272380617091.0,
+    "dps": 5219053290418779.0,
+    "share": 0.188895324277243,
+    "boss_dps": 5219053290418779.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "MAGIC_CRASH",
     "name": "Magic Crash",
-    "dps": 1022408063877333.2,
-    "share": 0.03717911425324897,
-    "boss_dps": 1022408063877333.2,
+    "dps": 1029323879084435.5,
+    "share": 0.03725473895484264,
+    "boss_dps": 1029323879084435.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BEAM_BLADE",
     "name": "Beam Blade",
-    "dps": 1549799269295642.2,
-    "share": 0.05635730599016247,
-    "boss_dps": 1549799269295642.2,
+    "dps": 1554348314619551.8,
+    "share": 0.056257162475972164,
+    "boss_dps": 1554348314619551.8,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "RUSH",
     "name": "Rush",
-    "dps": 979649434684849.8,
-    "share": 0.035624228277456836,
-    "boss_dps": 979649434684849.8,
+    "dps": 982817708495992.4,
+    "share": 0.03557152215567256,
+    "boss_dps": 982817708495992.4,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "FLASH_SLASH",
     "name": "Flash Slash",
-    "dps": 1048152180955602.5,
-    "share": 0.03811528006024795,
-    "boss_dps": 1048152180955602.5,
+    "dps": 1052079634309936.4,
+    "share": 0.03807834728441952,
+    "boss_dps": 1052079634309936.4,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -212,19 +212,19 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 6947425079732051.0,
-   "boss_dps": 6947425079732051.0,
-   "normal_dps": 5652381919976496.0,
-   "share": 0.25263798274994387,
-   "damage": 4.210240061339767e+17,
-   "uplift": 6.529574944726686e+16,
+   "dps": 6957339141495479.0,
+   "boss_dps": 6957339141495479.0,
+   "normal_dps": 5656870276165153.0,
+   "share": 0.251809813027238,
+   "damage": 4.21341616977147e+17,
+   "uplift": 6.567212292753653e+16,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 6947425079732051.0,
-    "comp_norm_dps": 5652381919976496.0,
-    "comp_blend_dps": 6947425079732051.0,
+    "comp_boss_dps": 6957339141495479.0,
+    "comp_norm_dps": 5656870276165153.0,
+    "comp_blend_dps": 6957339141495479.0,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -236,9 +236,9 @@
     "stunfracB": 0.24285714285714285,
     "stunfracN": 0.24285714285714285,
     "hasstun": 1,
-    "dmg_b": 4.210240061339767e+17,
-    "dmg_n": 3.956667343983547e+17,
-    "upl_b": 6.529574944726686e+16,
+    "dmg_b": 4.21341616977147e+17,
+    "dmg_n": 3.959809193315607e+17,
+    "upl_b": 6.567212292753653e+16,
     "upl_n": 0.0
    }
   },
@@ -259,10 +259,10 @@
     "PUNCTURE": 1.1467084091108857,
     "PUNCTURE_WOUND": 1.0301443741426242,
     "ENHANCED_RAGING_BLOW": 1.1467084091108857,
-    "MAGIC_CRASH": 1.3239084652257114,
-    "BEAM_BLADE": 1.166291581874687,
+    "MAGIC_CRASH": 1.3239084652257116,
+    "BEAM_BLADE": 1.1662915818746875,
     "RUSH": 1.1645786993529912,
-    "FLASH_SLASH": 1.3116877717005508
+    "FLASH_SLASH": 1.311687771700551
    }
   },
   "derived": {
@@ -275,14 +275,14 @@
    "as_bonus": 6.070714285714286,
    "attack_bucket_mult": 1.893260799999998,
    "attack_bucket_sum": 71.55636571428572,
-   "skill_coefficient_base": 638.0,
+   "skill_coefficient_base": 641.48,
    "buff_cast_startup_time": 0.0,
-   "crit_damage_bonus": 20.8962,
-   "final_damage_extra": 93.59696,
-   "monster_dmg_bonus": 34.48047932773109,
+   "crit_damage_bonus": 20.995182000000003,
+   "final_damage_extra": 93.6761456,
+   "monster_dmg_bonus": 34.609867563025205,
    "def_pen_effective": 54.0,
    "combo_stacks": 8,
-   "maple_hero_pct": 176.0,
+   "maple_hero_pct": 176.6,
    "stunned_share_boss": 0.24285714285714285,
    "stunned_share_normal": 0.24285714285714285,
    "monster_type": "boss",

@@ -83,9 +83,11 @@ MSI_RATE_LIMIT_PER_MINUTE: "${RATE_LIMIT_PER_MINUTE}"
 MSI_LOG_LEVEL: "${LOG_LEVEL}"
 YAML
 # Any other MSI_* variable exported in the environment / deploy/.env (e.g. MSI_SENS_TIMEOUT_S, MSI_RATE_LIMIT_SENS_PER_MIN, MSI_MAX_BODY_BYTES)
-# is passed through to the service unchanged.
+# is passed through to the service unchanged - EXCEPT MSI_INCLUDE_UNPUBLISHED: the publish gate (classes with PUBLISHED = False stay off the live site) must never be
+# opened by a stray variable of the deploying shell.
 while IFS= read -r name; do
-  case "$name" in MSI_CORS_ORIGINS|MSI_PROXY_HOPS|MSI_RATE_LIMIT_PER_MINUTE|MSI_LOG_LEVEL) continue ;; esac
+  case "$name" in MSI_CORS_ORIGINS|MSI_PROXY_HOPS|MSI_RATE_LIMIT_PER_MINUTE|MSI_LOG_LEVEL) continue ;;
+    MSI_INCLUDE_UNPUBLISHED) log "ignoring MSI_INCLUDE_UNPUBLISHED from the environment: never deployed (unpublished classes stay off the live site)"; continue ;; esac
   printf '%s: "%s"\n' "$name" "${!name}" >> "$ENV_FILE"
 done < <(compgen -e | grep '^MSI_' || true)
 

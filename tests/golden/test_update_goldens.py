@@ -25,6 +25,10 @@ sys.path.insert(0, str(HERE))
 import registry  # noqa: E402
 import snapshot_common as SN  # noqa: E402
 import update_goldens as U  # noqa: E402
+import factor_mode  # noqa: E402
+from engine.common import factors  # noqa: E402
+
+FACTOR_MODE = factor_mode.pin("legacy")        # hero & co. are workbook classes here (the hero-as-native test switches to extended inside its own context)
 
 TAMPER = 1e-6
 
@@ -157,9 +161,12 @@ def hero_as_native():
     entry = registry.native_entry("hero", "Hero")
     saved = dict(registry.NATIVE), dict(registry.ALL)
     registry.NATIVE["hero"] = registry.ALL["hero"] = entry
+    prev = factors.legacy_clamp_enabled()
+    factors.set_legacy_clamp(False)          # a native class runs in production mode (update_goldens / test_snapshots do the same for it); the rest of this module is legacy
     try:
         yield entry
     finally:
+        factors.set_legacy_clamp(prev)
         registry.NATIVE.clear()
         registry.NATIVE.update(saved[0])
         registry.ALL.clear()
@@ -167,7 +174,8 @@ def hero_as_native():
 
 
 def test_engine_native_snapshot_create_refresh_and_noop():
-    import test_snapshots as TS
+    with factors.legacy_clamp(True):                 # (importing test_snapshots pins the extended mode; this module stays legacy)
+        import test_snapshots as TS
     with tempfile.TemporaryDirectory(prefix="snap_") as tmp, hero_as_native() as entry:
         gdir = Path(tmp)
         jobs = dict(registry.all_jobs("hero"))

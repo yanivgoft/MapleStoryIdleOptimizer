@@ -9,6 +9,10 @@ of the matched pairs and Arwen's Glass Shoes' equivalence pairs.  A class passes
 import json
 import sys
 
+import factor_mode
+
+FACTOR_MODE = factor_mode.pin("legacy")        # compared with the workbook: it clamps skill levels at 300 (engine/common/factors.py)
+
 # engine report bucket -> Artifacts-sheet AGG row of the workbook
 BUCKETS = {"attack_pct": "AGG_ATTACK_PCT", "final_damage": "AGG_FINAL_DAMAGE", "damage": "AGG_DAMAGE", "skill_damage": "AGG_SKILL_DAMAGE",
            "basic_attack_damage": "AGG_BASIC_ATTACK_DAMAGE", "crit_rate": "AGG_CRIT_RATE", "crit_damage": "AGG_CRIT_DAMAGE",

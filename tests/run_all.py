@@ -15,7 +15,8 @@ Golden jobs come from ``tests/golden/registry.py``: per class its class golden (
 ``test_sensitivity.py --class <id>`` (three jobs, run in parallel like the old per-class scripts), plus every global ``test_*.py`` (cubes, equipment, potentials,
 artifact five-slots).  ``--class <id>`` selects that class's three jobs.  An ENGINE-NATIVE class (every ``engine/classes/<id>.py`` without a workbook, e.g. dawn_warrior) has
 ``test_snapshots.py --class <id>`` + ``test_engine_native.py --class <id>`` instead (plus its own ``test_<id>_*.py`` scripts, run once in a full run and under ``--class <id>``);
-``--class <id>`` also selects the API tests whose name contains the id.
+``--class <id>`` also selects the API tests whose name contains the id.  An UNPUBLISHED native class (module exports ``PUBLISHED = False``) needs no snapshot: its snapshot job is
+skipped with a printed note until the file exists.  Every subprocess gets ``MSI_INCLUDE_UNPUBLISHED=1`` (``child_env``) so the API registry serves such classes to the tests.
 
 The golden scripts compare the engine to the workbooks' verify scripts bit-exactly and need Python 3.11 with PYTHONHASHSEED=0 (3.12 changes sum() rounding);
 this runner sets the seed itself and refuses to run on another Python minor version (override: --allow-any-python).  Golden scripts read only JSON files, so they
@@ -40,11 +41,18 @@ CLASSES = list(registry.ALL)             # the 12 workbook classes + the engine-
 SLOW_FIRST = ("test_cubes.py",)          # start the longest script first so the pool finishes sooner
 
 
+def child_env(extra=None, base=None):
+    """The environment of EVERY subprocess run_all starts (golden jobs, API pytest, web group, git): PYTHONHASHSEED=0 (the goldens' set-order sums) and
+    ``MSI_INCLUDE_UNPUBLISHED=1`` so a class that exports ``PUBLISHED = False`` (under development, hidden on the live site) is still served by the API registry and tested."""
+    e = dict(os.environ if base is None else base, PYTHONHASHSEED="0", MSI_INCLUDE_UNPUBLISHED="1")
+    e.update(extra or {})
+    return e
+
+
 def run(cmd, cwd=ROOT, env=None, timeout=1800):
     """(returncode, combined output, seconds)."""
     t0 = time.time()
-    e = dict(os.environ, PYTHONHASHSEED="0")
-    e.update(env or {})
+    e = child_env(env)
     try:
         p = subprocess.run(cmd, cwd=cwd, env=e, capture_output=True, text=True, timeout=timeout)
         return p.returncode, (p.stdout or "") + (p.stderr or ""), time.time() - t0
@@ -91,6 +99,9 @@ def last_line(text):
 
 def run_golden(args, results):
     jobs = golden_jobs(args.cls)
+    for label, note in registry.skipped_jobs():
+        if not args.cls or label.split(":")[0] == args.cls:
+            print(f"note: {label} skipped ({note})")
     if not jobs:
         results.append(("golden", False, f"no golden jobs match --class {args.cls}", []))
         return

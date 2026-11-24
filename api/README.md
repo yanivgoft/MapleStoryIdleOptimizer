@@ -110,6 +110,7 @@ The code is `api/features.py` (validation, meta, pricing caches, the three compu
 | `MSI_CUBES_WORKERS` | 2 | cube evaluations running at the same time |
 | `MSI_PROXY_HOPS` | 0 | trusted reverse proxies in front; >0 reads the client IP from `X-Forwarded-For` (verify the right count on Cloud Run before relying on it) |
 | `MSI_LOG_LEVEL` | INFO | one JSON line per request (`event`, `id`, `method`, `path`, `status`, `ms`, `ip`) on stdout |
+| `MSI_INCLUDE_UNPUBLISHED` | unset | `1` = also serve the classes whose engine module exports `PUBLISHED = False` (classes under development). Unset (production, the Docker image, `deploy/`) = they are hidden: not in `GET /api/classes`, every `/api/classes/<id>/...` route answers 404 `unknown class`, `/api/health` does not count them. `tests/run_all.py` and `api/tests/conftest.py` set it so such a class is still tested; `web/scripts/gen_fixtures.py --include-unpublished` sets it for fixture generation |
 
 ## Run / test
 

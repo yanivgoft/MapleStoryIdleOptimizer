@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 3.267938576772724e+16,
+  "total_dps": 3.286907843321426e+16,
   "artifacts": {
    "equipped": [
     {
@@ -130,72 +130,72 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 2.602476896973238e+16,
-  "boss_dps": 3.267938576772724e+16,
-  "normal_dps": 4925747364052736.0,
-  "player_boss_dps": 2.602476896973238e+16,
+  "player_dps": 2.619843198780293e+16,
+  "boss_dps": 3.286907843321426e+16,
+  "normal_dps": 4934178544255634.0,
+  "player_boss_dps": 2.619843198780293e+16,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "EMPOWERED_PIERCING_ARROW",
     "name": "Empowered Piercing Arrow",
-    "dps": 1.048119087874798e+16,
-    "share": 0.32072790331018874,
-    "boss_dps": 1.048119087874798e+16,
+    "dps": 1.0555737895809894e+16,
+    "share": 0.32114493009768424,
+    "boss_dps": 1.0555737895809894e+16,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "COVERING_FIRE",
     "name": "Covering Fire",
-    "dps": 1898275973059797.0,
-    "share": 0.05808787186368885,
-    "boss_dps": 1898275973059797.0,
+    "dps": 1907464510688658.8,
+    "share": 0.05803218713796255,
+    "boss_dps": 1907464510688658.8,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BOLT_BURST",
     "name": "Bolt Burst",
-    "dps": 1378244067835012.0,
-    "share": 0.04217472377330013,
-    "boss_dps": 1378244067835012.0,
+    "dps": 1383924800440910.2,
+    "share": 0.04210415583305347,
+    "boss_dps": 1383924800440910.2,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "FROSTPREY",
     "name": "Frostprey",
-    "dps": 2871979883946937.5,
-    "share": 0.08788353319612212,
-    "boss_dps": 2871979883946937.5,
+    "dps": 2884187875859072.0,
+    "share": 0.0877477560473553,
+    "boss_dps": 2884187875859072.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SNIPE",
     "name": "Snipe",
-    "dps": 4218780597005489.0,
-    "share": 0.12909607992607303,
-    "boss_dps": 4218780597005489.0,
+    "dps": 4251621495982273.0,
+    "share": 0.1293501886467861,
+    "boss_dps": 4251621495982273.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "ARROW_ILLUSION",
     "name": "Arrow Illusion",
-    "dps": 3169049080851920.5,
-    "share": 0.09697394875706439,
-    "boss_dps": 3169049080851920.5,
+    "dps": 3193718394252715.5,
+    "share": 0.09716482927082791,
+    "boss_dps": 3193718394252715.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BOLT_SURPLUS",
     "name": "Bolt Surplus",
-    "dps": 2007248488285243.8,
-    "share": 0.06142246682823262,
-    "boss_dps": 2007248488285243.8,
+    "dps": 2021777014769405.2,
+    "share": 0.06151000001041697,
+    "boss_dps": 2021777014769405.2,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -203,19 +203,19 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 6654616797994858.0,
-   "boss_dps": 6654616797994858.0,
-   "normal_dps": 4925747364052736.0,
-   "share": 0.20363347234533008,
-   "damage": 3.9198938393877466e+17,
-   "uplift": 7.383379192086538e+16,
+   "dps": 6670646445411333.0,
+   "boss_dps": 6670646445411333.0,
+   "normal_dps": 4934178544255634.0,
+   "share": 0.20294595295591353,
+   "damage": 3.9266033453557734e+17,
+   "uplift": 7.428491664321597e+16,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 6654616797994858.0,
-    "comp_norm_dps": 4925747364052736.0,
-    "comp_blend_dps": 6654616797994858.0,
+    "comp_boss_dps": 6670646445411333.0,
+    "comp_norm_dps": 4934178544255634.0,
+    "comp_blend_dps": 6670646445411333.0,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -227,9 +227,9 @@
     "stunfracB": 0.26428571428571423,
     "stunfracN": 0.26428571428571423,
     "hasstun": 1,
-    "dmg_b": 3.9198938393877466e+17,
-    "dmg_n": 3.448023154836915e+17,
-    "upl_b": 7.383379192086538e+16,
+    "dmg_b": 3.9266033453557734e+17,
+    "dmg_n": 3.453924980978944e+17,
+    "upl_b": 7.428491664321597e+16,
     "upl_n": 0.0
    }
   },
@@ -245,11 +245,11 @@
    },
    "phi_unif": 1.0730000000000006,
    "phi_rows": {
-    "COVERING_FIRE": 1.3000000000000018,
-    "BOLT_BURST": 1.3000000000000016,
-    "FROSTPREY": 1.071666666666668,
-    "SNIPE": 1.2033333333333347,
-    "ARROW_ILLUSION": 1.0734000000000015
+    "COVERING_FIRE": 1.3000000000000007,
+    "BOLT_BURST": 1.300000000000001,
+    "FROSTPREY": 1.0716666666666674,
+    "SNIPE": 1.2033333333333343,
+    "ARROW_ILLUSION": 1.0734000000000006
    }
   },
   "derived": {
@@ -258,17 +258,17 @@
    "actions_per_second": 1.5932455,
    "cast_rate": 0.32857142857142857,
    "basic_attacks_per_second": 1.2646740714285716,
-   "avg_buff_mult": 2.2643999999999975,
+   "avg_buff_mult": 2.2661324999999986,
    "as_bonus": 6.070714285714286,
-   "attack_bucket_mult": 2.2643999999999975,
-   "attack_bucket_sum": 108.44,
-   "skill_coefficient_base": 638.0,
+   "attack_bucket_mult": 2.2661324999999986,
+   "attack_bucket_sum": 108.61325,
+   "skill_coefficient_base": 641.48,
    "buff_cast_startup_time": 0.0,
-   "crit_damage_bonus": 82.95634285714286,
+   "crit_damage_bonus": 83.408832,
    "crit_rate_bonus": 0.0,
-   "mortal_blow_bonus": 28.664,
+   "mortal_blow_bonus": 28.709000000000003,
    "monster_dmg_bonus": 0,
-   "maple_hero_pct": 220.00000000000003,
+   "maple_hero_pct": 220.75,
    "blink_bolt_pct": 39.925,
    "bolt_surplus_trigger_rate": 1.3503883571428572,
    "snipe_attack_rate": 0.08571428571428572,

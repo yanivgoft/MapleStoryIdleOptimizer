@@ -14,6 +14,8 @@ sys.path.insert(0, str(HERE))
 from engine.classes import hero  # noqa: E402
 import golden_harness as GH  # noqa: E402
 
+FACTOR_MODE = GH.FACTOR_MODE        # legacy 300-clamp (workbook golden)
+
 GOLDEN = HERE / "hero_golden.json"
 
 

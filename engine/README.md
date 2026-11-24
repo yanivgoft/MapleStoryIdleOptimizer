@@ -5,13 +5,14 @@ Excel workbooks and their builders stay maintained alongside it.
 
 ```
 engine/
-  __init__.py        CLASSES = ("fp_mage",)
+  __init__.py        CLASSES (every known class id, published or not), published_classes() / is_published(module) (the publish gate), INCLUDE_UNPUBLISHED_ENV
   _src.py            path shim: puts the repo's src/ on sys.path so the already-pure shared modules
                      companion_kits, companion_python_model, status_timeline are imported (not copied) from src/
   common/            class-agnostic pieces extracted from the verify scripts
     content.py       content types, monster type / defense / fight duration / boss-normal weight, chapter-stage parsing,
                      Breakthrough stage index, KO windows, per-content applicability of inputs  (class Content)
-    factors.py       data/factor_table.json loader (json), get_factor, input_level, SkillLevels.coeff_pct, level_gated_sum
+    factors.py       growth curves: linear formulas extended past skill level 300 (LINEAR_CURVES / get_factor; data/factor_table.json for the other columns, held at 300), input_level,
+                     SkillLevels.coeff_pct, level_gated_sum; LEGACY CLAMP mode (set_legacy_clamp / legacy_clamp() / MSI_FACTOR_LEGACY_CLAMP=1, default off, tests only: the workbook goldens)
     fight.py         ticks / eff_cooldown / eff_duration / exact_casts / exact_total_hits / exact_buff_uptime (pure functions)
                      + class Fight binding them to one fight (CDR, Buff Duration, PvP length, startup delay, enemy cap)
     damage.py        defense reduction, min/max + crit expectation, actions/s, per-enemy proc roll q_roll
@@ -162,12 +163,16 @@ python3 tests/golden/artifact_reference.py --run-all   # (re)evaluate the workbo
 The first 12 classes were ported from workbooks and are checked against them.  A class WITHOUT a workbook / builder / verify script (engine-native; its numbers are validated
 against the user's in-game text) has the same engine layout and a different test set:
 
+0. **Publish gate**: a class module exports `PUBLISHED` (bool, missing = True).  Start every new class with `PUBLISHED = False`: it is discovered, tested and snapshot-optional, but the API hides it
+   (404 `unknown class`) unless `MSI_INCLUDE_UNPUBLISHED=1` (set by `tests/run_all.py` and `api/tests/conftest.py`), `gen_fixtures.py` skips it (unless `--include-unpublished`) and `deploy/redeploy.sh` counts
+   `engine.published_classes()`.  Flip it to True only after the user confirmed the skill scaling in game, then create the snapshot (step 3), regenerate the fixtures and deploy.  `engine.CLASSES` stays the full
+   list of known ids (a new class is added there either way).
 1. `engine/data/<id>.py` (`UNLOCK_LEVEL`, skill / mastery data), `engine/classes/<id>.py` (`CLASS_ID`, `CLASS_NAME`, `compute / defaults / schema` through `classapi.make`), `engine/sens_specs/<id>.py` (required:
    stat values and the cube / equipment / potential tabs read it) + the registrations in `engine/__init__.py` CLASSES, `engine/sens_specs/__init__.py` CLASS_IDS, `api/registry.py` FAMILIES.
 2. `tests/golden/registry.py` discovers it (`registry.NATIVE`: every `engine/classes/<id>.py` that is not a workbook class).  Its golden jobs: `test_snapshots.py --class <id>` (the engine against
    `tests/golden/<id>_snapshot.json`, every numeric leaf of a generic case matrix, `snapshot_common.py`), `test_engine_native.py --class <id>` (engine-only invariants + content sweep + level sweep, reusing
    `sens_test_common.SensTest`) and the class's own `test_<id>_*.py` scripts (the in-game displayed-value test).
-3. `python3 tests/golden/update_goldens.py --create --class <id> --reason "..."` writes the snapshot from the CURRENT engine (it pins the engine, there is no independent source; logged in
+3. `python3 tests/golden/update_goldens.py --create --class <id> --reason "..."` (OPTIONAL while the class is unpublished - the snapshot job is skipped with a note until the file exists; REQUIRED once published) writes the snapshot from the CURRENT engine (it pins the engine, there is no independent source; logged in
    `golden_refresh_log.md`); later `update_goldens.py --class <id>` is the dry-run diff and `--write --reason` the refresh.
 4. Level-sweep decreases that are understood go into `tests/golden/native_level_allowlist.json` (level, optional content type / companion, mandatory reason; stale entries fail).
 5. `web/scripts/gen_fixtures.py` takes the sample inputs from `snapshot_common.sample_inputs(<id>)` when there is no `<id>_golden.json`; `web/scripts/gen_xlsx_map.py` skips a class without

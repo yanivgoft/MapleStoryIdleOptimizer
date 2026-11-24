@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 7.57146657700352e+16,
+  "total_dps": 7.632731814356362e+16,
   "artifacts": {
    "equipped": [
     {
@@ -130,63 +130,63 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 5.293515715018247e+16,
-  "boss_dps": 7.57146657700352e+16,
-  "normal_dps": 1.826979252523541e+16,
-  "player_boss_dps": 5.293515715018247e+16,
+  "player_dps": 5.343430969007893e+16,
+  "boss_dps": 7.632731814356362e+16,
+  "normal_dps": 1.8351933843804316e+16,
+  "player_boss_dps": 5.343430969007893e+16,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "BIG_BANG",
     "name": "Big Bang",
-    "dps": 2.4456756997034424e+16,
-    "share": 0.32301215026578667,
-    "boss_dps": 2.4456756997034424e+16,
+    "dps": 2.4688611299562064e+16,
+    "share": 0.32345707801662044,
+    "boss_dps": 2.4688611299562064e+16,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "ANGEL_RAY",
     "name": "Angel Ray",
-    "dps": 6494388040154454.0,
-    "share": 0.08577450582532545,
-    "boss_dps": 6494388040154454.0,
+    "dps": 6559629032543100.0,
+    "share": 0.08594077706497077,
+    "boss_dps": 6559629032543100.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "ANGEL_RAY_BOSS_PROC",
     "name": "Angel Ray - Boss Monster Damage (Mastery Lv.122)",
-    "dps": 721598671128272.4,
-    "share": 0.00953050064725838,
-    "boss_dps": 721598671128272.4,
+    "dps": 728847670282566.5,
+    "share": 0.009548975229441195,
+    "boss_dps": 728847670282566.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "GENESIS",
     "name": "Genesis",
-    "dps": 6685399453100170.0,
-    "share": 0.08829728540842322,
-    "boss_dps": 6685399453100171.0,
+    "dps": 6752559298206133.0,
+    "share": 0.08846844697864639,
+    "boss_dps": 6752559298206133.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BAHAMUT",
     "name": "Bahamut",
-    "dps": 8886820667611366.0,
-    "share": 0.11737251399356252,
-    "boss_dps": 8886820667611366.0,
+    "dps": 8975817356287352.0,
+    "share": 0.11759639372373583,
+    "boss_dps": 8975817356287352.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "TRIUMPH_FEATHER",
     "name": "Triumph Feather",
-    "dps": 5690193321153784.0,
-    "share": 0.07515311945556699,
-    "boss_dps": 5690193321153784.0,
+    "dps": 5728845033197707.0,
+    "share": 0.07505628617033754,
+    "boss_dps": 5728845033197707.0,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -194,19 +194,19 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 2.2779508619852724e+16,
-   "boss_dps": 2.2779508619852724e+16,
-   "normal_dps": 1.826979252523541e+16,
-   "share": 0.3008599244040767,
-   "damage": 1.4373153918041172e+18,
-   "uplift": 1.5725021158557338e+17,
+   "dps": 2.2893008453484696e+16,
+   "boss_dps": 2.2893008453484696e+16,
+   "normal_dps": 1.8351933843804316e+16,
+   "share": 0.29993204281624786,
+   "damage": 1.4437775878755346e+18,
+   "uplift": 1.587330038683941e+17,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 2.2779508619852724e+16,
-    "comp_norm_dps": 1.826979252523541e+16,
-    "comp_blend_dps": 2.2779508619852724e+16,
+    "comp_boss_dps": 2.2893008453484696e+16,
+    "comp_norm_dps": 1.8351933843804316e+16,
+    "comp_blend_dps": 2.2893008453484696e+16,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -218,9 +218,9 @@
     "stunfracB": 0.1357142857142857,
     "stunfracN": 0.1357142857142857,
     "hasstun": 1,
-    "dmg_b": 1.4373153918041172e+18,
-    "dmg_n": 1.2788854767664786e+18,
-    "upl_b": 1.5725021158557338e+17,
+    "dmg_b": 1.4437775878755346e+18,
+    "dmg_n": 1.2846353690663022e+18,
+    "upl_b": 1.587330038683941e+17,
     "upl_n": 0.0
    }
   },
@@ -238,12 +238,12 @@
     "GENESIS": 5,
     "BAHAMUT": 2
    },
-   "phi_unif": 1.0398670879081542,
+   "phi_unif": 1.039865561232738,
    "phi_rows": {
-    "ANGEL_RAY": 1.3210484151284523,
-    "ANGEL_RAY_BOSS_PROC": 1.3210484151284523,
-    "GENESIS": 1.321048415128452,
-    "BAHAMUT": 1.026265141735276
+    "ANGEL_RAY": 1.321069935971976,
+    "ANGEL_RAY_BOSS_PROC": 1.321069935971976,
+    "GENESIS": 1.321069935971976,
+    "BAHAMUT": 1.026250065899265
    }
   },
   "derived": {
@@ -252,18 +252,18 @@
    "actions_per_second": 1.7318455,
    "cast_rate": 0.5285714285714286,
    "basic_attacks_per_second": 1.2032740714285715,
-   "avg_buff_mult": 3.269154326739751,
+   "avg_buff_mult": 3.2755529650933006,
    "as_bonus": 28.070714285714285,
    "element_amp_pct": 23.955,
-   "arcane_aim_pct": 5.699999999999999,
-   "buff_mastery_pct": 19.0,
-   "skill_coefficient_base": 638.0,
+   "arcane_aim_pct": 5.727,
+   "buff_mastery_pct": 19.09,
+   "skill_coefficient_base": 641.48,
    "buff_cast_startup_time": 0.0,
    "attack_bucket_sum": 92.49197165714287,
    "monster_dmg_bonus": 12.219999999999999,
    "normal_dmg_bonus": 22.354805999999996,
    "damage_bonus": 25,
-   "crit_damage_bonus": 38.0,
+   "crit_damage_bonus": 38.18,
    "big_bang_hits": 6,
    "total_defense": 94503.14589246428,
    "divine_protection_bonus": 37.06751071428571,

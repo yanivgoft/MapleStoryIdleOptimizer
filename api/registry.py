@@ -2,9 +2,13 @@
 
 Done once at startup (``discover()``); a module that fails to import is logged and skipped so one half-finished class never takes the API
 down.
+
+PUBLISH GATE: a class module that exports ``PUBLISHED = False`` is hidden (not listed, 404 "unknown class" everywhere) unless the environment variable
+``MSI_INCLUDE_UNPUBLISHED=1`` is set; tests/run_all.py sets it so unpublished classes are still tested.  A missing ``PUBLISHED`` means published.
 """
 import importlib
 import logging
+import os
 import pkgutil
 import sys
 from pathlib import Path
@@ -19,9 +23,9 @@ log = logging.getLogger("msi.registry")
 # job family per class id (presentation only; an unknown class falls under "Other")
 FAMILIES = {
     "hero": "Warrior", "paladin": "Warrior", "dark_knight": "Warrior", "dawn_warrior": "Warrior",
-    "fp_mage": "Mage", "ice_lightning_mage": "Mage", "bishop": "Mage",
+    "fp_mage": "Mage", "ice_lightning_mage": "Mage", "blaze_wizard": "Mage", "bishop": "Mage",
     "bowmaster": "Archer", "marksman": "Archer",
-    "night_lord": "Thief", "shadower": "Thief",
+    "night_lord": "Thief", "shadower": "Thief", "night_walker": "Thief",
     "buccaneer": "Pirate", "corsair": "Pirate",
 }
 
@@ -119,9 +123,17 @@ class ClassEntry:
         return self.module.compute(inputs)
 
 
+def include_unpublished():
+    """Does the environment ask for classes that are still ``PUBLISHED = False``?  (``MSI_INCLUDE_UNPUBLISHED=1``; anything else = no)"""
+    from engine import INCLUDE_UNPUBLISHED_ENV
+    return os.environ.get(INCLUDE_UNPUBLISHED_ENV, "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def discover():
-    """``{class id: ClassEntry}`` in alphabetical order."""
+    """``{class id: ClassEntry}`` in alphabetical order; classes with ``PUBLISHED = False`` only when ``MSI_INCLUDE_UNPUBLISHED=1``."""
     import engine.classes as pkg
+    from engine import is_published
+    with_unpublished = include_unpublished()
 
     found = {}
     for info in sorted(pkgutil.iter_modules(pkg.__path__), key=lambda m: m.name):
@@ -133,6 +145,9 @@ def discover():
             log.exception("class module %s failed to import; skipped", info.name)
             continue
         if not all(callable(getattr(mod, attr, None)) for attr in ("compute", "defaults", "schema")):
+            continue
+        if not with_unpublished and not is_published(mod):
+            log.info("class %s is unpublished (PUBLISHED = False): hidden (set MSI_INCLUDE_UNPUBLISHED=1 to serve it)", info.name)
             continue
         try:
             found[info.name] = ClassEntry(info.name, mod)

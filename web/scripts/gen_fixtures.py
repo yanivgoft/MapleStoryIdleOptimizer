@@ -27,9 +27,12 @@ late-game stat set (level 140) in Chapter Boss with a Blaze Wizard Lv10 companio
 
 Options (any order):  ``--out DIR`` writes the fixtures to DIR (and the two web/src/lib JSON files to DIR/lib) instead of web/src/fixtures (a dry run into a temp directory);
 ``--class ID`` (repeatable) restricts the per-class files to those classes (classes.json always lists every class the API serves).
+PUBLISH GATE: only PUBLISHED classes get fixtures (a class module that exports ``PUBLISHED = False`` is hidden from the API, see engine/__init__.py); ``--include-unpublished`` also
+generates the unpublished ones (a local preview - never commit those fixtures before the class is published).  Without the flag the script ignores ``MSI_INCLUDE_UNPUBLISHED`` in the environment.
 """
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -154,6 +157,10 @@ def main():
         LIB = OUT / "lib"
         LIB.mkdir(parents=True, exist_ok=True)
     ONLY = {args[i + 1] for i, a in enumerate(args) if a == "--class"} or None
+    if "--include-unpublished" in args:      # (before create_app: the registry reads the variable when it discovers the classes)
+        os.environ["MSI_INCLUDE_UNPUBLISHED"] = "1"
+    else:
+        os.environ.pop("MSI_INCLUDE_UNPUBLISHED", None)
     client = TestClient(create_app(Settings(rate_limit_per_minute=0, rate_limit_sens_per_minute=0, rate_limit_cubes_per_minute=0, rate_limit_compare_per_minute=0)))
     OUT.mkdir(parents=True, exist_ok=True)
     if "--sensitivity-only" in sys.argv:    # keep every other fixture; refresh only the stat_values flags and the sensitivity dumps

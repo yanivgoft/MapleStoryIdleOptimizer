@@ -27,7 +27,7 @@ Files in this directory:
 
 ---------------------------------------------------------------------------------------------------------------------------------------
 
-> **Shortcut (this project):** `deploy/redeploy.sh` does the whole redeploy in one command and verifies every step: preflight (tools, gcloud + Firebase logins, git state), the local regression run, the API deploy + Cloud Run revision check, the API smoke test (all classes, CORS), the web build + Firebase Hosting + Firestore rules, and live-site checks (the page serves the new build, its bundle points at the API, the API lists as many classes as this checkout). It stops at the first failing step. Options: `--yes`, `--skip-tests`, `--api-only`, `--web-only`, `--no-rules`, `--dry-run` (stages and builds, sends nothing). The numbered sections below describe each step it runs.
+> **Shortcut (this project):** `deploy/redeploy.sh` does the whole redeploy in one command and verifies every step: preflight (tools, gcloud + Firebase logins, git state), the local regression run, the API deploy + Cloud Run revision check, the API smoke test (all classes, CORS), the web build + Firebase Hosting + Firestore rules, and live-site checks (the page serves the new build, its bundle points at the API, the API lists as many classes as this checkout PUBLISHES - `engine.published_classes()`: a class whose module says `PUBLISHED = False` is in the repo and tested but hidden from the deployed API, because `MSI_INCLUDE_UNPUBLISHED` is never set there; `redeploy.sh` unsets it and `deploy_api.sh` refuses to forward it). It stops at the first failing step. Options: `--yes`, `--skip-tests`, `--api-only`, `--web-only`, `--no-rules`, `--dry-run` (stages and builds, sends nothing). The numbered sections below describe each step it runs.
 
 ## 1. What you need on your machine
 
@@ -231,7 +231,7 @@ and not needed; a load balancer adds a standing monthly charge - skip it.
 ## 9. Smoke test
 
 ```bash
-deploy/smoke_test.sh https://msi-api-xxxx-uc.a.run.app          # SMOKE_ORIGIN=... adds the CORS checks; EXPECT_CLASSES=<n> pins the class count (default: every class listed, at least 12)
+deploy/smoke_test.sh https://msi-api-xxxx-uc.a.run.app          # SMOKE_ORIGIN=... adds the CORS checks; EXPECT_CLASSES=<n> pins the class count (default: every class listed, at least 12; `redeploy.sh` passes the number of PUBLISHED classes)
 ```
 
 ~35 requests (health, class list, per class `defaults` -> `compute` and `sensitivity` where modelled, the `{}` minimal body, a 422, a 404).  Exit code 0 only if everything passed.

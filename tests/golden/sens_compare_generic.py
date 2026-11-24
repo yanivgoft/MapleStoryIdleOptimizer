@@ -15,6 +15,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))
 from engine import sensitivity  # noqa: E402
+sys.path.insert(0, str(HERE))
+from factor_mode import legacy_scoped  # noqa: E402   (the workbooks clamp skill levels at 300: compare in the legacy mode)
 
 # Workbook numerics: the companion chain's elementwise MIN is written (a+b-ABS(a-b))/2 and a permanent kit effect has the 1e9 "NEVER" sentinel as one operand,
 # which loses ~5e-8 absolute of the other operand in double precision.  For a window of whole seconds (D = 30 s, 45 s ...) that is exact, for a FRACTIONAL
@@ -42,6 +44,7 @@ def engine_inputs(case):
     return d
 
 
+@legacy_scoped
 def compare_case(class_module, cid, case, rtol):
     wb = case["workbook"]
     inputs = engine_inputs(case)
@@ -153,6 +156,7 @@ def compare_case(class_module, cid, case, rtol):
     return n[0], diffs
 
 
+@legacy_scoped
 def run_golden(class_module, golden_path, rtol=1e-9, verbose=False, only=None):
     golden = json.loads(Path(golden_path).read_text())
     bad, total = {}, 0

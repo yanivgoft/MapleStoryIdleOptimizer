@@ -54,6 +54,7 @@ def test_unknown_class_404(client):
 GOLDEN_IDS = list(GOLDEN)[:6] + [k for k in GOLDEN if "PvP" in k][:1] + [k for k in GOLDEN if "Breakthrough" in k][:2]
 
 
+@pytest.mark.workbook_golden
 @pytest.mark.parametrize("case_id", GOLDEN_IDS)
 def test_compute_matches_golden(client, case_id):
     case = GOLDEN[case_id]

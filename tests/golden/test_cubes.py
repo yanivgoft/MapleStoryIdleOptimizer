@@ -28,6 +28,9 @@ sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 import cubes_cases as cc  # noqa: E402
 from engine import cubes  # noqa: E402
+import factor_mode  # noqa: E402
+
+FACTOR_MODE = factor_mode.pin("legacy")        # workbook-derived golden: skill levels clamp at 300 (engine/common/factors.py)
 
 GOLDEN = HERE / "cubes_golden.json"
 TINY = HERE / "tiny_golden.json"

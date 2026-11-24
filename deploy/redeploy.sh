@@ -16,6 +16,7 @@ set -uo pipefail
 # shellcheck source=deploy/_common.sh
 . "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
 load_env_file
+unset MSI_INCLUDE_UNPUBLISHED   # the publish gate: this script deploys PUBLISHED classes only (tests/run_all.py sets the variable itself for its own processes)
 
 ASSUME_YES=0; SKIP_TESTS=0; API_ONLY=0; WEB_ONLY=0; NO_RULES=0; DRY_RUN="${DRY_RUN:-0}"
 while [ $# -gt 0 ]; do
@@ -85,8 +86,9 @@ DIRTY="$(git status --porcelain 2>/dev/null | grep -v '^??' | wc -l | tr -d ' ')
 ok "git: $BRANCH @ $SHA, $DIRTY modified tracked file(s)"
 [ "$DIRTY" != 0 ] && warn "you are deploying uncommitted changes (the deployed code will not match any commit)"
 git status -sb 2>/dev/null | head -1 | grep -q 'ahead' && warn "this branch has commits that are not pushed yet"
-EXPECT_CLASSES="$("$PY" -c 'import engine; print(len(engine.CLASSES))' 2>/dev/null)" || EXPECT_CLASSES=""
-[ -n "$EXPECT_CLASSES" ] && ok "this checkout has $EXPECT_CLASSES classes (the live API must report the same)" || warn "could not count the classes of this checkout"
+# PUBLISHED classes only: a class whose module says PUBLISHED = False is in the repo and tested, but the deployed API (MSI_INCLUDE_UNPUBLISHED unset) does not list it.
+EXPECT_CLASSES="$("$PY" -c 'import engine; print(len(engine.published_classes()))' 2>/dev/null)" || EXPECT_CLASSES=""
+[ -n "$EXPECT_CLASSES" ] && ok "this checkout publishes $EXPECT_CLASSES classes (the live API must report the same)" || warn "could not count the published classes of this checkout"
 
 printf '\nPlan:  %s\n' "project=$PROJECT_ID region=$REGION service=$SERVICE site=$SITE_URL"
 printf '       tests=%s  api=%s  web=%s  firestore-rules=%s\n' "$WANT_TESTS" "$WANT_API" "$WANT_WEB" "$((WANT_WEB * (1 - NO_RULES)))"

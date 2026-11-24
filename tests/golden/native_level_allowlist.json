@@ -1,4 +1,8 @@
 {
   "_comment": "Understood, intended Total DPS DECREASES as the character level rises (tests/golden/test_engine_native.py, check level_sweep), per engine-native class: {\"level\": the level whose total is LOWER than at level-1, \"content_type\": optional, \"companion\": optional bool, \"reason\": mandatory}. A stale entry (no such decrease any more) fails the test.",
-  "classes": {}
+  "classes": {
+    "night_walker": [
+      {"level": 49, "content_type": "World Boss", "companion": false, "reason": "Shadow Spark's Lv49 stun makes it a player stun skill: the Status/KO timeline then casts it on cooldown from t = 0 (fixed schedule, project convention shared with Hero's Rush / Dawn's Sol Rush) instead of letting the optimiser place the casts inside the 24-34 s / 59-69 s KO windows (timing factor 1.8 -> 1.3 on the only damage row below level 100: 4 -> 5 casts, Spark 8.57e6 -> 7.74e6 of 9.48e6 -> 8.89e6 total).  Level 48 has the same skill with free placement."}
+    ]
+  }
 }

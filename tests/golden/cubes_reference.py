@@ -32,6 +32,9 @@ sys.path.insert(0, str(REPO))
 
 import cubes_cases as cc  # noqa: E402
 from engine import cubes  # noqa: E402
+import factor_mode  # noqa: E402
+
+factor_mode.pin("legacy")        # reference numbers of the workbook path: skill levels clamp at 300
 
 ORIGINAL = REPO / "src" / "potential_cubes_ev.py"
 BUILDER = REPO / "src" / "build_fp_mage_workbook.py"

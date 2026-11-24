@@ -27,7 +27,7 @@
  },
  "result": {
   "class_id": "dark_knight",
-  "baseline_total": 4.926808599463422e+16,
+  "baseline_total": 4.952602456642536e+16,
   "rows": [
    {
     "key": "charm_of_the_undead",
@@ -62,7 +62,7 @@
       "rarity": "Unique",
       "stat": "Defense Penetration %",
       "active": true,
-      "gain": 518287579634245.25
+      "gain": 521001026998223.2
      },
      {
       "rarity": "Rare",
@@ -71,7 +71,7 @@
       "gain": 0.0
      }
     ],
-    "total": 518287579634245.2
+    "total": 521001026998217.7
    },
    {
     "key": "shamaness_marble",
@@ -438,7 +438,7 @@
       "rarity": "Legendary",
       "stat": "Damage %",
       "active": true,
-      "gain": 639489341669760.8
+      "gain": 642837329807232.0
      },
      {
       "rarity": "Epic",
@@ -453,7 +453,7 @@
       "gain": 0.0
      }
     ],
-    "total": 639489341669760.8
+    "total": 642837329807232.0
    },
    {
     "key": "lunar_dew",
@@ -964,11 +964,11 @@
  "rate_by_stat": {
   "Main Stat %": 0.0,
   "Critical Rate %": 0.0,
-  "Min Damage Multiplier %": 83138855880251.89,
-  "Max Damage Multiplier %": 83138855880251.89,
-  "Boss Monster Damage %": 99737877666965.73,
+  "Min Damage Multiplier %": 83574121779325.72,
+  "Max Damage Multiplier %": 83574121779325.72,
+  "Boss Monster Damage %": 100259309856255.52,
   "Normal Monster Damage %": 0.0,
-  "Damage %": 45677810119268.625,
-  "Defense Penetration %": 115175017696498.94
+  "Damage %": 45916952129088.0,
+  "Defense Penetration %": 115778005999605.16
  }
 }

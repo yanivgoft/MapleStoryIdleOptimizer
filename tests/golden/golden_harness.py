@@ -8,6 +8,10 @@ import json
 import math
 import sys
 
+import factor_mode
+
+FACTOR_MODE = factor_mode.pin("legacy")        # compared with the verify scripts' numbers: the workbooks clamp skill levels at 300 (engine/common/factors.py)
+
 
 def eq(a, b, rtol):
     if isinstance(a, float) or isinstance(b, float):

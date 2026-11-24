@@ -20,6 +20,8 @@ sys.path.insert(0, str(HERE))
 import artifacts_harness as AH  # noqa: E402
 import registry  # noqa: E402
 
+FACTOR_MODE = AH.FACTOR_MODE        # legacy 300-clamp (workbook golden)
+
 
 def make_test(cid):
     """The ``ArtifactsTest`` of one class (options from the registry entry)."""

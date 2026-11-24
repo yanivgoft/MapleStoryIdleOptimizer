@@ -27,7 +27,7 @@
  },
  "result": {
   "class_id": "ice_lightning_mage",
-  "baseline_total": 3.758707750199964e+16,
+  "baseline_total": 3.784662970668795e+16,
   "rows": [
    {
     "key": "charm_of_the_undead",
@@ -62,7 +62,7 @@
       "rarity": "Unique",
       "stat": "Defense Penetration %",
       "active": true,
-      "gain": 395406377795069.94
+      "gain": 398136800161653.06
      },
      {
       "rarity": "Rare",
@@ -71,7 +71,7 @@
       "gain": 0.0
      }
     ],
-    "total": 395406377795074.1
+    "total": 398136800161653.0
    },
    {
     "key": "shamaness_marble",
@@ -438,7 +438,7 @@
       "rarity": "Legendary",
       "stat": "Damage %",
       "active": true,
-      "gain": 468333112342326.06
+      "gain": 471567119876828.94
      },
      {
       "rarity": "Epic",
@@ -453,7 +453,7 @@
       "gain": 0.0
      }
     ],
-    "total": 468333112342326.06
+    "total": 471567119876828.94
    },
    {
     "key": "lunar_dew",
@@ -962,13 +962,13 @@
   ]
  },
  "rate_by_stat": {
-  "Main Stat %": 93481697854915.11,
+  "Main Stat %": 94127222391239.05,
   "Critical Rate %": 0.0,
-  "Min Damage Multiplier %": 63427400442122.79,
-  "Max Damage Multiplier %": 63427400442122.79,
-  "Boss Monster Damage %": 84183173035255.42,
+  "Min Damage Multiplier %": 63865389312673.46,
+  "Max Damage Multiplier %": 63865389312673.46,
+  "Boss Monster Damage %": 84763791060707.94,
   "Normal Monster Damage %": 0.0,
-  "Damage %": 33452365167309.004,
-  "Defense Penetration %": 87868083954459.98
+  "Damage %": 33683365705487.78,
+  "Defense Penetration %": 88474844480367.34
  }
 }

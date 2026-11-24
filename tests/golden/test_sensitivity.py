@@ -22,6 +22,9 @@ sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 import registry  # noqa: E402
 import sens_test_common as SC  # noqa: E402
+import factor_mode  # noqa: E402
+
+FACTOR_MODE = factor_mode.pin("legacy")        # workbook golden + engine-only checks of the workbook classes: the workbooks clamp skill levels at 300
 
 _PLANS = {}
 

@@ -37,26 +37,26 @@
     {
      "stat": "Attack (flat)",
      "value": 1500.0,
-     "gain": 33035096013771.324,
+     "gain": 34150299894420.77,
      "first": true,
-     "group": 33035096013771.324,
-     "factor": 1.0012404906055696
+     "group": 34150299894420.77,
+     "factor": 1.0012404906062358
     },
     {
      "stat": "Damage %",
      "value": 14.0,
-     "gain": 345660467887057.5,
+     "gain": 357329327232221.94,
      "first": true,
-     "group": 345660467887057.5,
-     "factor": 1.0129797886148704
+     "group": 357329327232221.94,
+     "factor": 1.0129797886148735
     },
     {
      "stat": "Critical Rate %",
      "value": 3.0,
-     "gain": 169838456934673.44,
+     "gain": 175571889737899.94,
      "first": true,
-     "group": 169838456934673.44,
-     "factor": 1.006377551020408
+     "group": 175571889737899.94,
+     "factor": 1.0063775510204087
     },
     {
      "stat": "(none)",
@@ -83,42 +83,42 @@
      "factor": 1
     }
    ],
-   "total_gain": 551380694299549.7,
-   "pct": 2.0704724789839313
+   "total_gain": 569994288770454.2,
+   "pct": 2.070472479052232
   },
   "new": {
    "rows": [
     {
      "stat": "Attack (flat)",
      "value": 2200.0,
-     "gain": 48451474153531.28,
+     "gain": 50087106511817.13,
      "first": true,
-     "group": 48451474153531.28,
-     "factor": 1.0018193862215021
+     "group": 50087106511817.13,
+     "factor": 1.0018193862224791
     },
     {
      "stat": "Final Damage %",
      "value": 6.0,
-     "gain": 1589586911113832.0,
+     "gain": 1643175877297286.5,
      "first": true,
-     "group": 1589586911113832.0,
-     "factor": 1.0596900832118408
+     "group": 1643175877297286.5,
+     "factor": 1.0596874477378604
     },
     {
      "stat": "Min Damage %",
      "value": 15.0,
-     "gain": 674080409568564.8,
+     "gain": 696836119918209.1,
      "first": true,
-     "group": 674080409568564.8,
-     "factor": 1.0253121835977033
+     "group": 696836119918209.1,
+     "factor": 1.0253121835977066
     },
     {
      "stat": "Damage %",
      "value": 5.0,
-     "gain": 123450167102520.53,
+     "gain": 127617616868650.69,
      "first": true,
-     "group": 123450167102520.53,
-     "factor": 1.0046356387910251
+     "group": 127617616868650.69,
+     "factor": 1.0046356387910262
     },
     {
      "stat": "(none)",
@@ -137,38 +137,38 @@
      "factor": 1
     }
    ],
-   "total_gain": 2490920665387529.5,
-   "pct": 9.353578640559657
+   "total_gain": 2574934678071210.5,
+   "pct": 9.353306675763328
   },
-  "delta_pct": 7.283106161575726,
-  "delta_dps": 1939539971087979.8,
+  "delta_pct": 7.282834196711096,
+  "delta_dps": 2004940389300756.2,
   "better": "new",
   "class_id": "paladin",
-  "baseline_total": 2.663067004735729e+16,
+  "baseline_total": 2.7529672310900344e+16,
   "crit_rate_total": 152.5,
   "crit_priced_as_crit_damage": true,
   "rate_by_stat": {
-   "Main Stat (flat)": 476915397515.6901,
-   "Main Stat %": 72984752294581.58,
-   "Attack (flat)": 22023397342.514217,
-   "Min Damage %": 44938693971237.65,
-   "Max Damage %": 44938693971237.65,
-   "Damage %": 24690033420504.105,
-   "Critical Rate %": 56612818978224.484,
-   "Critical Damage %": 56612818978224.484,
-   "Boss Monster Damage %": 58333276282938.26,
+   "Main Stat (flat)": 493015181009.13916,
+   "Main Stat %": 75448582810321.64,
+   "Attack (flat)": 22766866596.280514,
+   "Min Damage %": 46455741327880.61,
+   "Max Damage %": 46455741327880.61,
+   "Damage %": 25523523373730.137,
+   "Critical Rate %": 58523963245966.65,
+   "Critical Damage %": 58523963245966.65,
+   "Boss Monster Damage %": 60279975514588.93,
    "Normal Monster Damage %": 0.0,
-   "Defense Penetration %": 62255064958434.86,
+   "Defense Penetration %": 64356681035510.234,
    "Defense (flat)": 0.0,
    "Skill Level Bonus \u2014 1st Job": 0.0,
-   "Skill Level Bonus \u2014 2nd Job": 20237792507934.824,
-   "Skill Level Bonus \u2014 3rd Job": 23398278627471.41,
-   "Skill Level Bonus \u2014 4th Job": 0.0,
-   "Skill Level Bonus \u2014 All Skills": 43647790428175.64,
-   "Final Damage %": 264931151852305.34,
-   "Basic Attack Damage %": 81764229369029.92,
-   "Skill Damage %": 67616556024394.93,
-   "Attack Speed %": 63747813114725.68
+   "Skill Level Bonus \u2014 2nd Job": 20873179210903.59,
+   "Skill Level Bonus \u2014 3rd Job": 24100554385346.74,
+   "Skill Level Bonus \u2014 4th Job": 54293361312235.05,
+   "Skill Level Bonus \u2014 All Skills": 99360329538508.5,
+   "Final Damage %": 273862646216214.4,
+   "Basic Attack Damage %": 84515886463559.8,
+   "Skill Damage %": 69935548501462.58,
+   "Attack Speed %": 65923706580633.4
   }
  }
 }

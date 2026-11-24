@@ -19,7 +19,7 @@ describe("class picker logic (every class of the API fixture)", () => {
       const names = grp.classes.map((c) => c.name);
       expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
     }
-    expect(g.find((x) => x.family === "Thief")!.classes.map((c) => c.id).sort()).toEqual(["night_lord", "shadower"]);
+    expect(g.find((x) => x.family === "Thief")!.classes.map((c) => c.id).sort()).toEqual(["night_lord", "night_walker", "shadower"]);
     expect(g.find((x) => x.family === "Mage")!.classes).toHaveLength(3);
   });
   it("puts unknown families after the known ones", () => {

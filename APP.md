@@ -11,7 +11,7 @@ python3 -m venv .venv
 # http://localhost:8000/api/health   http://localhost:8000/api/docs
 ```
 
-Every class listed by `/api/classes` is served (engine/__init__.py `CLASSES`; the first 12 are workbook-verified, the Cygnus classes are engine-native: no workbook, validated against the user's in-game numbers).  Classes appear automatically: every `engine/classes/<id>.py` exposing `compute` / `defaults` / `schema` is served.  Config via `MSI_*`
+Every class listed by `/api/classes` is served (engine/__init__.py `CLASSES` = all known ids; a class whose module exports `PUBLISHED = False` is under development and hidden - not listed, 404 on every route - unless `MSI_INCLUDE_UNPUBLISHED=1`, see CLAUDE.md "Publish gate"; the first 12 are workbook-verified, the Cygnus classes are engine-native: no workbook, validated against the user's in-game numbers).  Classes appear automatically: every `engine/classes/<id>.py` exposing `compute` / `defaults` / `schema` is served.  Config via `MSI_*`
 environment variables (CORS origins, rate limits, body-size cap, stat-values cache / timeout): see `api/README.md`.
 
 Stat values: `POST /api/classes/{id}/sensitivity` (+ `GET .../sensitivity/meta`) is served for every class (`registry.SENSITIVITY_CLASSES`; a class outside that list would answer 501 and show `status.stat_values: false`).  It costs ~0.5-1 s, so it has its own per-IP limit (`MSI_RATE_LIMIT_SENS_PER_MIN`, 20), an in-memory LRU+TTL cache (`MSI_SENS_CACHE_ENTRIES` 128,

@@ -25,6 +25,9 @@ REPO = HERE.parents[1]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(HERE))
 from engine import CLASSES, artifacts as art, sensitivity  # noqa: E402
+import factor_mode  # noqa: E402
+
+FACTOR_MODE = factor_mode.pin("legacy")        # workbook classes against workbook-derived expectations: skill levels clamp at 300 (engine/common/factors.py)
 
 # live artifacts with non-negative, slot-independent effects that exist in every class's model (Attack%, boss / normal damage, Final Damage, Crit Damage)
 LIVE5 = ["alliance_badge", "sayrams_necklace", "flaming_lava", "icy_soul_rock", "secret_map"]

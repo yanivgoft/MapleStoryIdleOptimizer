@@ -60,6 +60,7 @@ sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(HERE))
 import registry  # noqa: E402
 import snapshot_common as SN  # noqa: E402
+import factor_mode  # noqa: E402
 
 LOG_NAME = "golden_refresh_log.md"
 LOG_HEADER = """# Golden refresh log
@@ -263,6 +264,13 @@ def set_path(root, path, value):
 
 
 def refresh_one(entry, kind, gdir, only=None, exact=False, write=False, verify=True, max_cases=None):
+    """Skill-level growth mode per class: a WORKBOOK class is refreshed in the legacy 300-clamp mode (its goldens are compared in that mode, engine/common/factors.py),
+    an engine-native class in the production (extended) mode."""
+    with factor_mode.scope(entry.engine_native):
+        return _refresh_one(entry, kind, gdir, only, exact, write, verify, max_cases)
+
+
+def _refresh_one(entry, kind, gdir, only, exact, write, verify, max_cases):
     if kind == SNAPSHOT:
         return refresh_snapshot(entry, gdir, only, exact, write, verify, max_cases)
     runner = KindRunner(entry, kind)
@@ -432,7 +440,8 @@ def create_snapshot(entry, gdir, reason, head):
         print(f"{path.name} already exists: refresh it with  update_goldens.py --class {entry.id}  (dry run) and then  --write --reason \"...\"")
         return 2
     t0 = time.time()
-    data = SN.generate(entry.id)
+    with factor_mode.scope(True):                  # engine-native: production (extended) growth curves
+        data = SN.generate(entry.id)
     text = SN.dumps(data)
     size = len(text.encode("utf-8"))
     if size > MAX_SNAPSHOT_BYTES:
@@ -593,6 +602,10 @@ def main(argv=None):
         print(f"golden dir not found: {gdir}")
         return 2
     classes = list(registry.CLASSES) if a.cls == "all" else list(registry.NATIVE) if a.cls == "native" else [a.cls]
+    if a.cls == "native" and not a.create:        # an UNPUBLISHED class without a snapshot has nothing to refresh (name it with --class <id> for the --create hint)
+        for cid in [c for c in classes if not registry.ALL[c].published and not SN.snapshot_path(c, gdir).exists()]:
+            print(f"{cid}: unpublished: no snapshot required (skipped)")
+            classes.remove(cid)
     if a.create:
         print(f"update_goldens: CREATE | golden dir {gdir} | {a.cls} (engine-native)")
         return create_snapshot(registry.ALL[a.cls], gdir, a.reason, git_head())

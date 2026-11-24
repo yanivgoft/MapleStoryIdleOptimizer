@@ -21,6 +21,10 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1]))
 from engine import potentials  # noqa: E402
 from engine.data import artifacts as AD  # noqa: E402
+sys.path.insert(0, str(HERE))
+import factor_mode  # noqa: E402
+
+FACTOR_MODE = factor_mode.pin("legacy")        # workbook-derived golden: skill levels clamp at 300 (engine/common/factors.py)
 
 TINY = HERE / "tiny_golden.json"
 

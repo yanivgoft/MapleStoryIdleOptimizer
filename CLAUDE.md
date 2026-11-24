@@ -57,7 +57,25 @@ frozen reference (not extended: e.g. the 5th artifact slot exists only in the ap
   difference, the 10 most-changed fields, untracked / unrefreshable checks; `--kind class|artifacts|sensitivity`, `--case <substr>`, `--class all`); review it, then re-run with
   `--write --reason "<why the model changed>"` (refused without a reason; appends a line to `tests/golden/golden_refresh_log.md`; a no-op refresh is byte-identical). A refreshed golden PINS THE
   ENGINE's behaviour (it is no longer an independent workbook / verify-script value) - say so in `KNOWN_GAPS.md`, never hand-edit a golden, never loosen a tolerance. Tests: `tests/golden/test_update_goldens.py`.
+- **Skill-level growth past 300** (2026-11-24): the growth curves (`engine/common/factors.py`: `LINEAR_CURVES`, `linear_factor`, `get_factor`) are exact piecewise-linear formulas that CONTINUE past level 300 with their
+  last slope (the user's Night Walker readings at total level 322 match the straight-line continuation of curves 12, 21, 22, 23); `data/factor_table.json` (levels 1..300) is only used for the columns
+  without a formula and as the check of the formulas (`tests/golden/test_factor_formulas.py`). The engine therefore INTENTIONALLY differs from the frozen workbooks for characters whose skill total level exceeds 300
+  (4th job: `(char level - 100) x 3 + skill4 + all`, common at level 200). A LEGACY CLAMP mode (`factors.set_legacy_clamp(True)` / `with factors.legacy_clamp():` / env `MSI_FACTOR_LEGACY_CLAMP=1`, default OFF,
+  production never sets it) clamps every curve at 300 bit-exactly like the old code; it exists ONLY to keep the workbook-derived goldens (`<id>_golden` / `_artifacts_golden` / `_sensitivity_golden`, cubes, equipment, potentials)
+  independent and unedited. Every test module declares its mode through `tests/golden/factor_mode.py` (`FACTOR_MODE = pin("legacy"|"extended")` at import, so it holds however the script is started; the
+  autouse fixture of `tests/golden/conftest.py` re-applies it per test in a shared pytest session): workbook-golden modules are legacy, engine-native classes (snapshots, `test_engine_native.py`,
+  `test_<id>_displayed.py`) and the factor tests (`test_factor_formulas.py`, `test_factor_extension.py`: below 300 extended == legacy bit-exact, above 300 extended >= legacy) are extended; `update_goldens.py` refreshes a
+  workbook class in legacy and a native class in extended mode; in `api/tests` only tests marked `@pytest.mark.workbook_golden` run legacy. A new test that compares with a workbook golden must pin legacy, anything else stays extended.
+- **Publish gate** (a class under development must exist in the repo and be tested but NOT reach the live site): an engine class module may export `PUBLISHED` (bool); a missing attribute means
+  published, so the 13 shipped classes have none. A NEW class starts with `PUBLISHED = False` in `engine/classes/<id>.py` and flips to `True` (or the line is deleted) ONLY after the user has confirmed the
+  skill scaling. Effects: `api.registry.discover()` hides it (not in `/api/classes`, every route 404 `unknown class`) unless `MSI_INCLUDE_UNPUBLISHED=1`; `tests/run_all.py` exports that variable to every
+  subprocess (`child_env`) and `api/tests/conftest.py` does a `setdefault`, so it is still tested (engine goldens, `test_engine_native.py`, `test_<id>_*.py`, the generic API tests); its snapshot is OPTIONAL
+  (`registry.skipped_jobs()`: the job is skipped with the note "unpublished: no snapshot required" until `<id>_snapshot.json` exists, then it is compared like any other; a PUBLISHED native class
+  REQUIRES it); `web/scripts/gen_fixtures.py` writes fixtures for published classes only (`--include-unpublished` for a local preview); `engine.published_classes()` (not `engine.CLASSES`, the full list of
+  known ids) is what `deploy/redeploy.sh` expects the live API to list; `deploy/deploy_api.sh` / `redeploy.sh` never forward `MSI_INCLUDE_UNPUBLISHED` to Cloud Run. Tests: `api/tests/test_publish_gate.py`,
+  `tests/golden/test_publish_gate.py`.
 - **Adding an engine-native class** (no workbook / builder / verify script / workbook goldens: the Cygnus classes, `dawn_warrior` first; the first 12 classes are the workbook-verified ones):
+  0. Start the class module with `PUBLISHED = False` (publish gate above); nothing of it reaches the live site until step 6.
   1. Write `engine/data/<id>.py` (`UNLOCK_LEVEL`, skill and mastery tables - the level sweep reads its thresholds from them), `engine/classes/<id>.py` (`CLASS_ID`, `CLASS_NAME`, `compute/defaults/schema`
      through `classapi.make`) and `engine/sens_specs/<id>.py` (without a spec the stat values AND the cube / equipment / potential tabs are off: `test_engine_native.py` and the API tests fail).
   2. Register the class in `engine/__init__.py` CLASSES, `engine/sens_specs/__init__.py` CLASS_IDS and `api/registry.py` FAMILIES (+ the SENSITIVITY_CLASSES fallback). `tests/golden/registry.py` needs
@@ -70,6 +88,9 @@ frozen reference (not extended: e.g. the 5th artifact slot exists only in the ap
      LEVEL SWEEP 1-200 that flags every DPS decrease; an understood one goes into `tests/golden/native_level_allowlist.json` with a reason, a stale entry fails) + its API tests. Then regenerate the web fixtures
      (`.venv/bin/python web/scripts/gen_fixtures.py`; sample inputs come from `tests/golden/snapshot_common.py::sample_inputs`, no golden needed), check `python3 web/scripts/gen_xlsx_map.py --check` (it skips a class
      without a builder; the Excel import says "No Excel layout is known for this class" and does not list it) and run the full `python3 tests/run_all.py`.
+  6. PUBLISHING (only after the user confirmed the skill scaling in game): flip `PUBLISHED = True` (or delete the line), run `update_goldens.py --create --class <id> --reason "..."` (the snapshot is now required),
+     regenerate the fixtures with `web/scripts/gen_fixtures.py` (published classes only; use `--include-unpublished` beforehand if you want to preview them locally), run the full `tests/run_all.py`, then
+     `deploy/redeploy.sh` (it expects `engine.published_classes()` classes live).
 - **Blank numeric inputs**: the engine reads a missing/None value as 0 (an empty Excel cell; the goldens pin this) - the one exception is typed by the user: "Max Enemies In Range" blank/0
   means uncapped (999), applied in `api/validation.py` (`validate_inputs`) only for content where the field applies. "0 enemies hit" was a bug (0 DPS in Chapter Hunt,
   ZeroDivisionError in Ice/Lightning Mage and Bishop). Do NOT put such a rule inside `engine/common/fight.py`: it changes the intermediate normal-branch numbers of boss content and

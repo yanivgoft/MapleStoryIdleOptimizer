@@ -218,6 +218,7 @@ for _cid in GOLDEN_IDS:
 SKIPPED = []                                                              # (class, case, reason) filled while the tests run
 
 
+@pytest.mark.workbook_golden
 @pytest.mark.parametrize("cid,case_id,case", GOLDEN_CASES, ids=[f"{c}:{k}" for c, k, _ in GOLDEN_CASES])
 def test_compute_matches_golden(client, cid, case_id, case):
     if "reference_error" in case["out"]:

@@ -306,6 +306,7 @@ From the repository root (engine output changes -> refresh these so mock mode an
 ```bash
 .venv/bin/python web/scripts/gen_fixtures.py --sensitivity-only   # only <id>.sensitivity(.meta).json (classes whose status.stat_values is true) + that flag in classes.json
 .venv/bin/python web/scripts/gen_fixtures.py     # every class: schema, defaults, sample inputs, result (through the real API app, TestClient); a class without a workbook golden uses tests/golden/snapshot_common.py::sample_inputs; --out DIR / --class ID for a dry run
+.venv/bin/python web/scripts/gen_fixtures.py --include-unpublished   # also the classes whose module says PUBLISHED = False (hidden from the API by default; local preview only, never commit them before the class is published)
 .venv/bin/python web/scripts/gen_fixtures.py --artifacts   # only the Artifacts tab data: <id>.artifacts_case.json (classes marked artifacts_modelled in classes.json) + lib/artifact_values.json + lib/artifact_potential_tables.json
 .venv/bin/python web/scripts/gen_fixtures.py --cubes-only  # only the cube tabs' fixtures: <id>.cubes_meta / cubes_case / equipment_case / potentials_case .json (classes whose status.stat_values is true; ~7 s)
 ```

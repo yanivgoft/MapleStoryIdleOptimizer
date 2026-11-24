@@ -10,3 +10,5 @@ table is the only provenance.  `HEAD` is the git commit the engine was built on;
 | date | class | kind | HEAD | cases changed | values changed | max rel diff | reason |
 |---|---|---|---|---|---|---|---|
 | 2026-11-23 | dawn_warrior | snapshot | 40ab345+dirty | 320 | 320 | 0.000e+00 | engine-native snapshot: pins the engine, no independent source; CREATED; initial engine-native snapshot of Dawn Warrior (in-game numbers verified by the displayed-value test); pins the engine |
+| 2026-11-24 | night_walker | snapshot | 474f927+dirty | 330 | 330 | 0.000e+00 | engine-native snapshot: pins the engine, no independent source; CREATED; initial snapshot after scaling confirmed by the user's readings |
+| 2026-11-24 | dawn_warrior | snapshot | 474f927+dirty | 3 | 82 | 1.000e+00 | engine-native snapshot: pins the engine, no independent source; growth curves extended past level 300 (linear continuation, confirmed by Night Walker readings at total level 322) |

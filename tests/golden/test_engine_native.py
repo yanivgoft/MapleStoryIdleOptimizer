@@ -35,6 +35,9 @@ sys.path.insert(0, str(HERE))
 import registry  # noqa: E402
 import snapshot_common as SN  # noqa: E402
 import sens_test_common as SC  # noqa: E402
+import factor_mode  # noqa: E402
+
+FACTOR_MODE = factor_mode.pin("extended")        # engine-native classes: production mode (growth curves continue past level 300)
 from engine import sensitivity, sens_specs  # noqa: E402
 
 ALLOWLIST = HERE / "native_level_allowlist.json"

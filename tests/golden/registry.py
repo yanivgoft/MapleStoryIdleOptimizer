@@ -14,6 +14,9 @@ ENGINE-NATIVE classes (``NATIVE``; no workbook, builder, verify script or workbo
 jobs are two generic scripts plus any ``test_<id>_*.py`` of that class:
   snapshot      ``test_snapshots.py --class <id>``      engine == ``<id>_snapshot.json`` (a generic case matrix; created by ``update_goldens.py --create``)
   engine        ``test_engine_native.py --class <id>``  engine-only invariants (toggle direction, Final Damage +1%, hooks, API shape) + content sweep + level sweep
+UNPUBLISHED engine-native classes (the module exports ``PUBLISHED = False``: a class under development that the live site must not serve): still discovered and tested, but the
+snapshot is OPTIONAL - the snapshot job is left out (``skipped_jobs()``; run_all prints "unpublished: no snapshot required") while ``<id>_snapshot.json`` does not exist and is
+compared as usual once it does.  A PUBLISHED native class REQUIRES its snapshot.  ``PUBLISHED`` is read from the module's source (like ``CLASS_NAME``), without importing it.
 ``MSI_NATIVE_CLASSES=a,b`` (environment) additionally treats those ids as engine-native: a test hook that lets a workbook class (e.g. hero) stand in for one.
 
 ``python3 tests/golden/registry.py`` prints the table and checks that every file named here exists.
@@ -97,10 +100,21 @@ class Entry:
         ``--class <id>``; never mistaken for a per-class golden script (an engine-native class has no ``test_<id>.py``)."""
         return sorted(p.name for p in HERE.glob(f"test_{self.id}_*.py"))
 
+    @property
+    def published(self):
+        """Is the class served on the live site (its module does not say ``PUBLISHED = False``)?  Read from the source, no import; a workbook class is always published."""
+        return not self.engine_native or is_published_source(self.id)
+
+    @property
+    def snapshot_optional(self):
+        """An UNPUBLISHED engine-native class has no snapshot requirement until the file exists (then it is compared like any other)."""
+        return self.engine_native and not self.published and not self.snapshot_path.exists()
+
     def jobs(self):
         """[(kind, argv relative to tests/golden)] - what run_all.py runs for this class."""
         if self.engine_native:
-            return [("snapshot", ["test_snapshots.py", "--class", self.id]), ("engine", ["test_engine_native.py", "--class", self.id])]
+            jobs = [("snapshot", ["test_snapshots.py", "--class", self.id]), ("engine", ["test_engine_native.py", "--class", self.id])]
+            return jobs[1:] if self.snapshot_optional else jobs
         return [("class", [self.class_script]), ("artifacts", ["test_artifacts.py", "--class", self.id]),
                 ("sensitivity", ["test_sensitivity.py", "--class", self.id])]
 
@@ -121,6 +135,12 @@ def _e(cid, name, sens_spec=True, prefixed_tooling=True, **artifacts):
 
 def _engine_class_file(cid):
     return REPO / "engine" / "classes" / f"{cid}.py"
+
+
+def is_published_source(cid):
+    """False when ``engine/classes/<id>.py`` has a top-level ``PUBLISHED = False`` (the publish gate, see engine/__init__.py); a missing attribute / file = published."""
+    f = _engine_class_file(cid)
+    return not (f.exists() and re.search(r"^PUBLISHED\s*(?::\s*bool\s*)?=\s*False\b", f.read_text(encoding="utf-8"), re.M))
 
 
 def native_entry(cid, name=None):
@@ -205,6 +225,11 @@ def all_jobs(only_class=None):
     return jobs
 
 
+def skipped_jobs():
+    """[(label, note)] of the jobs that are left out on purpose: an unpublished engine-native class without a snapshot file."""
+    return [(f"{cid}:snapshot", "unpublished: no snapshot required") for cid, e in ALL.items() if e.engine_native and e.snapshot_optional]
+
+
 def check():
     """Every file named by the registry exists; returns the list of problems."""
     bad = []
@@ -219,7 +244,7 @@ def check():
         for rel in (f"engine/classes/{cid}.py", f"engine/data/{cid}.py", f"engine/sens_specs/{cid}.py"):
             if not (REPO / rel).exists():
                 bad.append(f"{cid} (engine-native): missing {rel}")
-        if not e.snapshot_path.exists():
+        if not e.snapshot_path.exists() and not e.snapshot_optional:
             bad.append(f"{cid} (engine-native): missing {e.snapshot} - python3 tests/golden/update_goldens.py --create --class {cid} --reason \"...\"")
     return bad
 
@@ -228,7 +253,8 @@ if __name__ == "__main__":
     for cid, e in CLASSES.items():
         print(f"{cid:20s} {e.name:20s} spec={e.sens_spec!s:20s} {e.class_golden}, {e.artifacts_golden}, {e.sens_golden}")
     for cid, e in NATIVE.items():
-        print(f"{cid:20s} {e.name:20s} engine-native: {e.snapshot} + test_engine_native.py" + ("".join(f", {x}" for x in e.extra_scripts())))
+        print(f"{cid:20s} {e.name:20s} engine-native: {e.snapshot if not e.snapshot_optional else '(no snapshot: unpublished)'} + test_engine_native.py"
+              + ("".join(f", {x}" for x in e.extra_scripts())) + ("" if e.published else "  [PUBLISHED = False]"))
     problems = check()
     print("\n".join(problems) or f"registry OK: {len(CLASSES)} workbook classes + {len(NATIVE)} engine-native, {len(global_scripts())} global scripts")
     raise SystemExit(1 if problems else 0)

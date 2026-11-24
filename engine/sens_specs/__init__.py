@@ -4,7 +4,7 @@ Adding a class: write ``engine/sens_specs/<class_id>.py`` exposing ``SPEC`` and 
 sensitivity engine")."""
 import importlib
 
-CLASS_IDS = ("fp_mage", "dark_knight", "hero", "ice_lightning_mage", "bishop", "buccaneer", "marksman", "bowmaster", "corsair", "paladin", "shadower", "night_lord", "dawn_warrior")
+CLASS_IDS = ("fp_mage", "dark_knight", "hero", "ice_lightning_mage", "blaze_wizard", "bishop", "buccaneer", "marksman", "bowmaster", "corsair", "paladin", "shadower", "night_lord", "dawn_warrior", "night_walker")
 _cache = {}
 
 

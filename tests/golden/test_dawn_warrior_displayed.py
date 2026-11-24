@@ -15,6 +15,10 @@ sys.path.insert(0, str(HERE.parents[1]))
 from engine.classes import dawn_warrior as DW  # noqa: E402
 from engine.common import factors  # noqa: E402
 from engine.data import dawn_warrior as D  # noqa: E402
+sys.path.insert(0, str(HERE))
+import factor_mode  # noqa: E402
+
+FACTOR_MODE = factor_mode.pin("extended")        # production mode: growth curves continue past level 300
 
 LEVEL = 120
 BONUS = dict(skill_lvl_1st=67, skill_lvl_2nd=67, skill_lvl_3rd=81, skill_lvl_4th=121, skill_lvl_all=0)

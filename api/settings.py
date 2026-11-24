@@ -2,6 +2,9 @@
 import os
 from dataclasses import dataclass
 
+# Not a Settings field: MSI_INCLUDE_UNPUBLISHED=1 (read by api/registry.py ``discover()``) makes the API serve the classes whose engine module exports
+# ``PUBLISHED = False``; unset = they are hidden (the publish gate, see engine/__init__.py).
+
 DEFAULT_CORS = "http://localhost:5173,http://127.0.0.1:5173"
 
 

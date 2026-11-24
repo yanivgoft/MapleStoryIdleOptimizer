@@ -1,0 +1,333 @@
+{
+ "artifacts": [
+  {
+   "key": "alliance_badge",
+   "star": 4
+  },
+  {
+   "key": "arwens_glass_shoes",
+   "star": 2
+  },
+  {
+   "key": "book_of_ancient",
+   "star": 5
+  },
+  {
+   "key": "pigs_ribbon",
+   "star": "Not Unlocked"
+  }
+ ],
+ "result": {
+  "total_dps": 14641711752.900663,
+  "artifacts": {
+   "equipped": [
+    {
+     "key": "alliance_badge",
+     "name": "Alliance Badge",
+     "star": 4,
+     "rank": "Legendary",
+     "effect": "live",
+     "no_dps_effect": false,
+     "reason": null
+    },
+    {
+     "key": "arwens_glass_shoes",
+     "name": "Arwen's Glass Shoes",
+     "star": 2,
+     "rank": "Unique",
+     "effect": "live",
+     "no_dps_effect": false,
+     "reason": null
+    },
+    {
+     "key": "book_of_ancient",
+     "name": "Book of Ancient",
+     "star": 5,
+     "rank": "Legendary",
+     "effect": "reference_only",
+     "no_dps_effect": false,
+     "reason": null
+    },
+    {
+     "key": "pigs_ribbon",
+     "name": "Pig's Ribbon",
+     "star": 0,
+     "rank": "Epic",
+     "effect": "no_dps_effect",
+     "no_dps_effect": true,
+     "reason": "stat not used by the DPS model (no attacking effect)"
+    }
+   ],
+   "buckets": {
+    "attack_pct": 18,
+    "final_damage": 0.0,
+    "damage": 0,
+    "skill_damage": 0.0,
+    "basic_attack_damage": 0,
+    "crit_rate": 0.0,
+    "crit_damage": 0,
+    "boss_damage": 0,
+    "normal_damage": 0,
+    "enemy_damage_taken": 0,
+    "final_damage_normal_only": 0,
+    "final_damage_boss_only": 0,
+    "soul_contract_cooldown_decrease_pct": 0,
+    "contract_of_darkness_boss_crit_rate": 0,
+    "reindeer_spear_extra_def_pen_unit": 0,
+    "companion_summon_time_increase_pct": 28
+   },
+   "rows": {
+    "rainbow_crit_rate": 0,
+    "rainbow_crit_damage": 0,
+    "icy_soul_rock": 0,
+    "roc_threshold_cr": 60.0,
+    "roc_crit_rate": 0.0,
+    "roc_skill_damage": 0.0,
+    "roc_excess_points": 0,
+    "roc_basic_attack_damage": 0,
+    "candle_final_damage": 0,
+    "candle_boss_damage": 0,
+    "peach_enemy_dmg_taken": 0,
+    "silver_enemy_dmg_taken": 0,
+    "hexagon_avg_stacks": 1.2857142857142858,
+    "hexagon_damage": 0,
+    "charm_of_the_undead": 0,
+    "old_music_box_attack_pct": 0,
+    "secret_map_attack_pct": 0,
+    "reindeer_spear_attack_pct": 0,
+    "alliance_badge": 18,
+    "bottle_of_emotion_attack_pct": 0,
+    "secret_map_final_dmg_normal": 0,
+    "flaming_lava": 0,
+    "horn_flute": 0,
+    "fire_flower_normal": 0,
+    "fire_flower_boss": 0,
+    "chalice_normal": 0,
+    "chalice_boss": 0,
+    "sayrams_necklace_normal": 0,
+    "sayrams_necklace_boss": 0,
+    "contract_of_darkness_crit_rate_bonus": 0,
+    "reindeer_spear_base_def_pen_reference": 0,
+    "soul_contract_pct": 0,
+    "arwens_glass_shoes_summon_time_increase_pct": 28
+   },
+   "reference_only": {
+    "book_of_ancient_crit_damage": 36.0,
+    "book_of_ancient_crit_rate": 20
+   },
+   "notes": [
+    "reference_only artifacts: their stat is entered by hand in Inputs (workbook convention); equipping changes nothing live"
+   ],
+   "horn_flute_uptime": 0.5561681598897315,
+   "extra_boss_multiplier": 1.0,
+   "extra_normal_multiplier": 1.0,
+   "hexagon_charm": {
+    "hex_per_stack": 0,
+    "hex_average": 0,
+    "charm_full": 0,
+    "charm_average": 0,
+    "phase_factor_boss": 1.0,
+    "phase_factor_normal": 1.0
+   }
+  },
+  "player_dps": 10810785902.488604,
+  "boss_dps": 14641711752.900663,
+  "normal_dps": 2929994437.7280846,
+  "player_boss_dps": 10810785902.488604,
+  "player_normal_dps": 0.0,
+  "skills": [
+   {
+    "key": "QUINTUPLE_STAR",
+    "name": "Quintuple Star (basic attack)",
+    "dps": 3443419296.531587,
+    "share": 0.23517873829536445,
+    "boss_dps": 3443419296.531587,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "SHADOW_DOUBLE",
+    "name": "Shadow Double (clone's extra damage)",
+    "dps": 823373154.14904,
+    "share": 0.05623476052831882,
+    "boss_dps": 823373154.14904,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "SHADOW_SPARK",
+    "name": "Shadow Spark",
+    "dps": 332065371.5633186,
+    "share": 0.022679409154297364,
+    "boss_dps": 332065371.5633186,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "SHADOW_SPARK_EXPLOSION",
+    "name": "Shadow Spark (explosion)",
+    "dps": 498098057.3449783,
+    "share": 0.034019113731446074,
+    "boss_dps": 498098057.3449783,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "SHADOW_STITCH",
+    "name": "Shadow Stitch",
+    "dps": 1007902426.9399899,
+    "share": 0.06883774547332656,
+    "boss_dps": 1007902426.9399899,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "SHADOW_BAT",
+    "name": "Shadow Bat (attacks)",
+    "dps": 2409360318.867524,
+    "share": 0.16455455205845088,
+    "boss_dps": 2409360318.867524,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "BAT_EXPLOSION",
+    "name": "Bat Affinity II (first-attack explosion)",
+    "dps": 1387716018.4557524,
+    "share": 0.09477826376283036,
+    "boss_dps": 1387716018.4557524,
+    "normal_dps": 0.0,
+    "unlocked": true
+   },
+   {
+    "key": "MARK_OF_DARKNESS",
+    "name": "Mark of Darkness (Dark Elemental)",
+    "dps": 908851258.6364133,
+    "share": 0.06207274627274104,
+    "boss_dps": 908851258.6364133,
+    "normal_dps": 0.0,
+    "unlocked": true
+   }
+  ],
+  "companion": {
+   "choice": "Blaze Wizard",
+   "level": 10,
+   "dps": 3830925850.4120603,
+   "boss_dps": 3830925850.4120603,
+   "normal_dps": 2929994437.7280846,
+   "share": 0.2616446707232245,
+   "damage": 212560283820.30313,
+   "uplift": 55604525708.54108,
+   "best_candidate": 1,
+   "summon_time_s": 31.6,
+   "window_s": 38.4,
+   "details": {
+    "comp_boss_dps": 3830925850.4120603,
+    "comp_norm_dps": 2929994437.7280846,
+    "comp_blend_dps": 3830925850.4120603,
+    "best": 1,
+    "s": 31.6,
+    "W": 38.4,
+    "E": 0.0,
+    "ext": 0.0,
+    "horn_uptime": 0.5485714285714286,
+    "s0": 31.6,
+    "W0": 38.4,
+    "stunfracB": 0.12142857142857141,
+    "stunfracN": 0.12142857142857141,
+    "hasstun": 1,
+    "dmg_b": 212560283820.30313,
+    "dmg_n": 205099610640.9659,
+    "upl_b": 55604525708.54108,
+    "upl_n": 0.0
+   }
+  },
+  "engine_on": true,
+  "engine": {
+   "casts": {
+    "SHADOW_SPARK": 4,
+    "SHADOW_SPARK_EXPLOSION": 4,
+    "SHADOW_STITCH": 3
+   },
+   "phi_unif": 1.0364285714285717,
+   "phi_rows": {
+    "SHADOW_SPARK": 1.3000000000000014,
+    "SHADOW_SPARK_EXPLOSION": 1.3000000000000014,
+    "SHADOW_STITCH": 1.3000000000000012
+   }
+  },
+  "derived": {
+   "attack": 4750000.0,
+   "stat_damage": 72.0,
+   "actions_per_second": 1.2802580308980087,
+   "cast_rate": 0.31428571428571433,
+   "basic_attacks_per_second": 0.9659723166122944,
+   "avg_buff_mult": 1.6274134161695042,
+   "as_bonus": 9.26054202669333,
+   "attack_bucket_mult": 1.6274134161695042,
+   "attack_bucket_sum": 44.741341616950564,
+   "skill_coefficient_base": 469.8,
+   "buff_cast_startup_time": 0.0,
+   "crit_rate_bonus": 0.0,
+   "crit_damage_bonus": 0.0,
+   "final_damage_extra": 23.952857142857145,
+   "monster_dmg_bonus": 0.0,
+   "weaken_boss": 2.672995855447076,
+   "weaken_normal": 3.7168234789624255,
+   "def_pen_effective": 35.0,
+   "dark_elemental_uptime": 0.82,
+   "darkness_ascending_uptime": 0.7392857142857143,
+   "dark_evasion_uptime": 0.7392857142857142,
+   "shadow_double_uptime": 0.812142857142857,
+   "shadow_double_share": 0.29,
+   "shadow_momentum_mean_stacks": 0.552925965193431,
+   "shadow_momentum_uptime": 0.424751304552199,
+   "dark_elemental_attack": 13.32,
+   "darkness_ascending_attack": 40.0,
+   "dark_evasion_final_damage": 32.400000000000006,
+   "shadow_bat_attacks": 6,
+   "shadow_bat_attack_sum": 3.0,
+   "shadow_bat_rates": {
+    "proc_boss": 0.2717157843703988,
+    "proc_normal": 0.0,
+    "omen": 0.39999999999999997,
+    "boss": 0.6717157843703987,
+    "normal": 0.39999999999999997
+   },
+   "bat_explosion_targets": 4,
+   "bat_explosion_final_damage_pct": 364.50000000000006,
+   "mark_max_stacks": 4,
+   "mark_damage_pct": 380.625,
+   "mark_final_damage_pct": 364.50000000000006,
+   "mark_ticks_per_second_boss": 0.8321717178113115,
+   "mark_ticks_per_second_normal": 1.6072150882094909,
+   "mark_marked_share_boss": 0.5345991710894152,
+   "mark_marked_share_normal": 0.7433646957924851,
+   "attack_rates": [
+    [
+     0.9659723166122944,
+     8
+    ],
+    [
+     0.05714285714285714,
+     7
+    ],
+    [
+     0.04285714285714286,
+     15
+    ]
+   ],
+   "stunned_share_boss": 0.12142857142857141,
+   "stunned_share_normal": 0.12142857142857141,
+   "monster_type": "boss",
+   "chapter": 28.0,
+   "stage": 28.0,
+   "breakthrough_normal_weight_pct": 60,
+   "breakthrough_stage_index": 19.0,
+   "monster_defense": 3200.0,
+   "fight_duration": 70,
+   "normal_weight": 0.0,
+   "fixed_duration_active": true
+  }
+ }
+}

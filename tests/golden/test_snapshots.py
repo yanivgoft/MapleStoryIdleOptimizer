@@ -24,6 +24,9 @@ sys.path.insert(0, str(HERE.parents[1]))
 sys.path.insert(0, str(HERE))
 import registry  # noqa: E402
 import snapshot_common as SN  # noqa: E402
+import factor_mode  # noqa: E402
+
+FACTOR_MODE = factor_mode.pin("extended")        # engine-native classes: production mode (growth curves continue past level 300)
 
 
 def compare_snapshot(cid, rtol=SN.DEFAULT_RTOL, verbose=False, gdir=None, only=None, max_cases=None):
@@ -61,11 +64,17 @@ def pytest_generate_tests(metafunc):
 
 
 def test_snapshot_matches_engine(cid):
+    if registry.ALL[cid].snapshot_optional:
+        import pytest
+        pytest.skip("unpublished: no snapshot required")
     n, _leaves, bad = compare_snapshot(cid)
     assert n > 0 and not bad, f"{len(bad)} of {n} snapshot cases differ: " + "; ".join(f"{k}: {SN.fmt_path(v[0][0])}" for k, v in list(bad.items())[:5])
 
 
 def test_case_matrix_is_current(cid):
+    if registry.ALL[cid].snapshot_optional:
+        import pytest
+        pytest.skip("unpublished: no snapshot required")
     added, removed = matrix_problems(cid)
     assert not added and not removed, f"case matrix changed (run update_goldens.py --class {cid}, then --write): +{added[:5]} -{removed[:5]}"
 
@@ -86,6 +95,9 @@ def main(argv=None):
     for cid in classes:
         if len(classes) > 1:
             print(f"--- {cid}")
+        if not registry.ALL[cid].published and not SN.snapshot_path(cid, a.golden_dir).exists():
+            print(f"{cid}: unpublished: no snapshot required (create it with update_goldens.py --create once the class is published)")
+            continue
         try:
             n, leaves, bad = compare_snapshot(cid, a.rtol, a.verbose, a.golden_dir, a.case)
             added, removed = ([], []) if a.case else matrix_problems(cid, a.golden_dir)
