@@ -293,16 +293,18 @@ describe("ranking and formatting", () => {
     expect(linesText(mkRow({ lines: [["Damage %", 12], [NONE_STAT, 0]] }))).toBe("Damage % 12");
     expect(linesText(mkRow({ lines: [] }))).toBe("no lines");
   });
-  it("CSV keeps the preset-milestone columns and the right number of cells, also for rows with the full per-count curve", () => {
+  it("CSV keeps the preset-milestone % columns (no absolute DPS columns) and the right number of cells, also for rows with the full per-count curve", () => {
     const text = cubesCsv(fx.cubes.result.rows.slice(0, 2), meta.milestones, meta.csv_columns);
     const lines = text.trim().split("\n");
     expect(lines).toHaveLength(3);
     const header = lines[0].split(",");
-    expect(header.slice(0, 9)).toEqual(["Slot", "PotentialType", "Rarity", "Pity", "CurrentValue", "CurrentValue%", "SmallestNPositive", "NFor50PctChance", "NFor75PctChance"]);
-    expect(header).toHaveLength(57);
-    expect(lines[1].split(",")).toHaveLength(57);
+    const nCols = meta.csv_columns.length - 1 - meta.milestones.length; // without CurrentValue and the EV@n columns
+    expect(header.slice(0, 8)).toEqual(["Slot", "PotentialType", "Rarity", "Pity", "CurrentValue%", "SmallestNPositive", "NFor50PctChance", "NFor75PctChance"]);
+    expect(header).toHaveLength(nCols);
+    expect(header.some((h) => h === "CurrentValue" || h.startsWith("EV@"))).toBe(false);
+    expect(lines[1].split(",")).toHaveLength(nCols);
     expect(lines[1].split(",")[0]).toBe(fx.cubes.result.rows[0].slot);
-    expect(Number(lines[1].split(",")[9])).toBeCloseTo(fx.cubes.result.rows[0].milestone_ev["5"], 6);
+    expect(Number(lines[1].split(",")[8])).toBeCloseTo(fx.cubes.result.rows[0].milestone_ev_pct["5"], 6);
     expect(cubesCsv([mkRow({ smallest_n: null, slot: 'we"ird' })], [100], ["a"])).toContain('"we""ird"');
   });
 });
@@ -379,9 +381,10 @@ describe("the exact cube count", () => {
   it("CSV columns stay the preset milestones even when the row has the curve", () => {
     const text = cubesCsv([A], meta.milestones, meta.csv_columns).trim().split("\n");
     const cells = text[1].split(",");
-    const i = meta.csv_columns.indexOf("EV%@100");
+    const header = text[0].split(",");
+    const i = header.indexOf("EV%@100");
     expect(Number(cells[i])).toBeCloseTo(1, 12);
-    expect(cells).toHaveLength(57);
+    expect(cells).toHaveLength(meta.csv_columns.length - 1 - meta.milestones.length);
   });
   it("the real FP-Mage fixture rows carry ev_pct_by_cubes: length 1001, equal to the milestone % at every preset milestone", () => {
     for (const r of fx.cubes.result.rows) {

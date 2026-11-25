@@ -2126,3 +2126,40 @@ Orbital Explosion, Cinder Maelstrom's weaken, Elemental Harmony (Attack Speed), 
 extra: level sweep 1..200 over all 10 content types x 3 stat sets x with / without companion (12000 runs): the only decrease is the Chapter Boss Lv35 startup-delay cast drop of item 18; 400-case random fuzz (all fields, content types, companions, 0-5 artifacts) without NaN / negative / error; Sensitivity "New Total" equals a plain re-run with the swept value for every stat except the main-stat / skill-level / crit-rate / attack-speed
 blocks (block-only terms by design) and Final Damage (bumps the whole bucket by design) with Bottle of Emotion + Reindeer's Spear at star 5 in World Boss, Chapter Hunt and Breakthrough; `engine.sensitivity.run` (stats / artifacts / companions / summon_time / cdr), the cube / equipment pricing (`snapshot_common.run_cubes`) and the API through TestClient with `MSI_INCLUDE_UNPUBLISHED=1`
 (`/api/classes` lists it, schema, defaults, compute, sensitivity, sensitivity/meta, cubes/meta answer 200) answer; without the variable the API lists 13 classes and every route 404s.
+
+## Typed stats include the equipped artifacts + equip toggles in blended content (2026-11-25, engine / API only; the workbooks keep their convention)
+
+**Convention change (user decision, 2026-11-25).**  The values on the in-game PRESET page - what the Calculator asks for - already contain every equipped artifact's bonus ("the 40% came from the glass shoes").  The workbooks
+(and the engine until now) assumed the opposite for the LIVE artifacts and added their effects on top of the typed values: every equipped live artifact was counted twice.  New engine input `typed_includes_artifacts`
+(`engine/typed_artifacts.py`, `ModelBase.__init__`): engine default **False** = the workbook convention (all workbook-pinned goldens unchanged, bit-exact), API default **True** (`api/validation.py` fills it when the request omits it;
+`false` is accepted).  True = the engine first derives the character WITHOUT the equipped artifacts' effects from the typed values (exact inverse of how each effect composes into its typed stat), then runs the unchanged pipeline,
+which adds them back live.  Equip toggles of Sensitivity are what-ifs on that stripped base; Current / New of the stat table keep showing the typed numbers.  Excel is NOT changed (frozen reference): the workbooks still add live
+artifacts on top of the typed values.
+
+Verification (`tests/golden/test_typed_includes_artifacts.py`, engine-only, 5 classes x 5 contents): for each of the 20 live artifacts (+ Bottle of Emotion's live Attack%) x star 0..5, base stats B -> `D_live = model(B + artifact)` (workbook
+convention) == `compute(T + artifact, flag on)` with T = B composed by the model's own aggregate buckets, max relative error 5.8e-16 (rtol 1e-12 asserted), 3450 single round trips + 860 random 1-5 slot sets, the strip recovers B; unequipped and
+no-typed-counterpart artifacts are bit-identical with the flag; where the effect sits in one typed bucket the class composes identically (Icy Soul Rock, Sayram's, Rainbow Snail Shell, Ring of Cycles in both modes, Arwen's Glass Shoes, Flaming Lava,
+Candle in FP-Mage / Night Lord) the DPS of "T + artifact equipped" equals the DPS of T with NOTHING equipped to 1e-12 (equipping an artifact the preset already includes changes nothing), and the Sensitivity rows (artifacts + stats) agree
+between the two conventions to 1e-9.
+
+Known limits of the inverse (each is a decision or a model property, not a bug of the strip):
+* **Attack% artifacts (Old Music Box, Secret Map, Reindeer's Spear, Alliance Badge, Bottle of Emotion, Charm of the Undead) are NOT stripped** (user, 2026-11-26): artifact and buff Attack% stack together in their own
+  bucket (`(1 + (buffs + artifact)/100)`), which is unrelated to the ATTACK % shown on the preset page, so the typed ATTACK % never contains them and they are always added live on top.
+* **During-the-fight artifacts are NOT stripped** (user, 2026-11-26: "only during the fight, those don't show it in the input page"): Hexagon Necklace (stacks), Charm of the Undead (duty cycle), Candle (window), Horn Flute
+  (companion uptime), Old Music Box (content-type uptime), Rainbow-colored Snail Shell (first 15 s) and Ring of Cycles (5 s start-up) are in `typed_artifacts.STRIP_EXEMPT`: their bonus is always added on top of the typed value (the
+  crit-rate pair Rainbow / Ring is exempt together).  The other live artifacts with a typed stat (Arwen's Glass Shoes, Icy Soul Rock, Sayram's Necklace, Flaming Lava) are inside the preset page and stripped.
+* Final Damage classes whose typed value shares an additive bucket with class buffs (Hero, Paladin, Bowmaster, ...: `(1 + (typed + extra)/100)(1 + artifact/100)`) are inverted on the typed value alone (`(1+T)/(1+a) - 1`), the way the preset page composes
+  its own FD sources; the class buffs stay inside the factor.
+* **Typed below the effect** (e.g. typed Summoning Time 0 with Arwen's Glass Shoes equipped): the base clamps at 0 and the result's `artifacts.typed.notes` carries `typed_below_artifact:<id>` (the artifact is then added on top of 0).
+* **Ring of Cycles window**: a typed crit rate whose crit-rate-mode and skill-damage-mode readings are both consistent (threshold `B + live crit bonus + rainbow` in [100, 100 + the ring's crit bonus)) has two preimages; the crit-rate reading is taken
+  (note `typed_ambiguous:ring_of_cycles`).  The base DPS is identical in both readings (the totals coincide); only what-ifs that move crit rate (Crit Rate sweep, the ring's own toggle) differ.
+* Without a typed counterpart, so unchanged by the flag: Chalice, Fire Flower, Secret Map's normal-monster Final Damage, Contract of Darkness (boss / normal-branch-only terms), Peach Tree, Silver Pendant (enemy damage taken), Soul Contract
+  (a % cooldown decrease; the typed field is in seconds), Reindeer's Spear's boss / PvP extra Defense Penetration (its base Def Pen is already baked into the typed value), the reference-only artifacts (the user types their stat) and the 7 no-effect ones.
+* UI consequence (decision for the web copy): with the default, equipping an artifact the preset already contains changes nothing in the Calculator total (both directions of the equip toggle are what-ifs), which is what the baked-in artifacts
+  already did; Help / Artifacts-tab texts that say live artifacts are "added on top of the value you type" (Arwen's Glass Shoes note in `web/src/lib/artifacts.ts`, Help "How the numbers are calculated") describe the OLD convention.
+
+**Equip toggles in blended content (Breakthrough / Hero Dungeon).**  Same real pair, two readings: the unequipped row measured ADDING the artifact, the equipped row REMOVING it, and the time-weighted blend of the per-branch removal ratios
+(CLAUDE.md bug 9) is not the inverse of the adding blend (up to 3.2 percentage points of % gain across FP-Mage / Hero / Night Lord / Bowmaster, e.g. Candle 127.96% vs 130.89% in FP-Mage Breakthrough).  `sensitivity.artifact_row` now inverts each
+branch ratio before blending for equipped rows when 0 < w < 1, so both directions report identical dollar and % gain; pure boss / pure normal content is unchanged bit for bit.  Test `tests/golden/test_equip_blended.py` (19 live artifacts + the
+baked-in ones, 5 classes, both contents).  **The frozen workbooks keep the old asymmetric numbers**: only the equipped toggle rows of the Breakthrough sensitivity-golden cases moved (24 values in 10 `*_sensitivity_golden.json` files, refreshed from the
+engine with `update_goldens.py --kind sensitivity`, see `golden_refresh_log.md`; they now pin the engine, no longer the workbook, for those rows).

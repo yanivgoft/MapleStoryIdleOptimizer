@@ -801,6 +801,11 @@ def pricing_from_sensitivity(sens_result, inputs=None, class_module=None, *, lev
     from . import sens_specs
     if class_module is None:
         from .classes import fp_mage as class_module
+    if inputs is not None:
+        # typed stats that include the equipped artifacts (``typed_includes_artifacts``, the API default): every read below is of the character WITHOUT their effects
+        # (the model adds them back live, like the Sensitivity result this pricing is built from)
+        from . import typed_artifacts
+        inputs, _info = typed_artifacts.strip_if_flagged(class_module, inputs)
     spec = sens_specs.get(getattr(class_module, "CLASS_ID", None))
     main_keys = dict(main_stat_key=spec.mainstat.flat, main_stat_pct_key=spec.mainstat.pct) if spec is not None else {}
     if inputs is not None:

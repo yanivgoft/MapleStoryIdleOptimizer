@@ -45,8 +45,8 @@ def _inputs_for_invariance(content, artifacts, **over):
 def test_toggle_direction_invariance():
     """CLAUDE.md item 15 / checklist 8c, engine-only: the same real state reached from the two directions (artifact equipped with its baked-in stat typed
     into the Inputs, or unequipped with the stat removed) reports the IDENTICAL DPS gain and % gain (to full precision) - in a pure-boss content (World
-    Boss), where the time-weighted ratio blend collapses to the dollar delta.  (Breakthrough / Hero Dungeon blend RELATIVE gains by the time weight, so
-    the two directions legitimately differ there.)
+    Boss), where the time-weighted ratio blend collapses to the dollar delta.  (Breakthrough / Hero Dungeon blend RELATIVE gains by the time weight; since
+    2026-11-25 the equipped row inverts the per-branch removal ratios first, so the two directions agree there too: ``tests/golden/test_equip_blended.py``.)
 
     The baked-in FINAL DAMAGE artifacts (Cursed Doll, Lit Lamp, Clear Spring Water, Soul Pouch, Bottle of Emotion's Final Damage) were once removed ADDITIVELY
     inside the artifact Final Damage bucket (removal gain = (1 + x/100) x adding gain); since 2026-11-19 removal is the exact inverse step of adding

@@ -43,7 +43,6 @@ describe("About this tab: collapsed, at the bottom", () => {
     expect(tabs.companions.indexOf("Damage multiplier by level")).toBeGreaterThan(tabs.companions.indexOf(about));
     expect(tabs.artifacts.indexOf("Potential lines are a reference calculator")).toBeGreaterThan(tabs.artifacts.indexOf(about));
     expect(tabs.equipment.indexOf("priced against your Total DPS")).toBeGreaterThan(tabs.equipment.indexOf(about));
-    expect(tabs.stats.indexOf("in the order of the in-game stat pages")).toBeGreaterThan(tabs.stats.indexOf(about));
   });
 });
 
@@ -74,12 +73,12 @@ describe("Not available for this class yet: one line and a See Help link", () =>
 
 describe("Companions table", () => {
   const h = strip(renderToString(<CompanionsView schema={fp.schema} state={state} onState={noop} result={sens.result} status={IDLE} supported />));
-  it("no duplicate 'Resolved' level column; columns 'DPS it adds' and '% DPS it adds'", () => {
+  it("no duplicate 'Resolved' level column; one column 'DPS it adds' showing % only", () => {
     expect(h).not.toContain("Resolved");
     expect(h).toContain(">DPS it adds<");
-    expect(h).toContain(">% DPS it adds<");
+    expect(h).not.toContain(">% DPS it adds<");
     const row = h.match(/<tr class="[^"]*" data-companion="Hero"[\s\S]*?<\/tr>/)![0];
-    expect((row.match(/<td/g) ?? []).length).toBe(6);                                           // rank, name, level select, DPS, %, use
+    expect((row.match(/<td/g) ?? []).length).toBe(5);                                           // rank, name, level select, DPS it adds (%), use
     expect(h).toMatch(/<th scope="col"[^>]*>Level<\/th>/);
   });
 });

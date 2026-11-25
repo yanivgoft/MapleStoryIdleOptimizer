@@ -6,10 +6,12 @@
 // here is the human wording per artifact (EFFECTS below, mirroring the Equip effect code of engine/artifacts.py): which star-value keys belong to which
 // artifact, under which condition they apply, whether the stat is "baked into Inputs" (typed by the user) and whether the companion model reads it.
 import values from "./artifact_values.json";
+import potentialTables from "./artifact_potential_tables.json";
 import { plainText } from "./plainText";
 import type { ArtifactEntry, ArtifactInfo, ArtifactLine, ArtifactSchema, ArtifactsState, ClassInfo, ClassSchema, ComputeResult, EquippedState, FormState } from "../types";
 
 export const STAR_VALUES = values as Record<string, number[]>;
+const POTENTIAL_TABLES = potentialTables as { stats: string[]; rarities: string[] }; // the static copy of the engine's potential tables (artifactPotentials.ts exposes it as STATIC_POTENTIAL_TABLES)
 export const NOT_UNLOCKED = "Not Unlocked";
 export const COMPANION_SECTION_ID = "companion-section";
 export const EQUIPPED_SECTION_ID = "equipped-artifacts-section"; // the Inputs page's "Equipped artifacts" section
@@ -235,11 +237,30 @@ export function requestSlots(art: ArtifactSchema, state: ArtifactsState | undefi
   return equippedKeys(art, slots).map((key) => ({ key, star: state?.[key]?.star ?? NOT_UNLOCKED }));
 }
 
-/** ``artifact_stars`` of POST .../sensitivity: the star of EVERY artifact (what the equip ranking uses for the ones that are not equipped). */
-export function artifactStarsExtra(art: ArtifactSchema | undefined, state: ArtifactsState | undefined): { artifact_stars: Record<string, number | string> } | Record<string, never> {
+/** ``artifact_lines`` of POST .../sensitivity: the potential lines the user entered on the Artifacts table, per artifact that has at least one rolled line (the engine
+ *  prices them and adds their value to that artifact's ranking row: what equipping it brings besides its effect / what removing it loses besides its effect).  A line the
+ *  potential tables do not know is sent as "(none)" (same repair as ``potentialsRequest`` of artifactPotentials.ts, which is tested equal); no line at all = no key. */
+export function artifactLinesRequest(art: ArtifactSchema, state: ArtifactsState | undefined): Record<string, { star: number | string; lines: { rarity: string; stat: string }[] }> {
+  const cur = normalizeArtifacts(state, art);
+  const out: Record<string, { star: number | string; lines: { rarity: string; stat: string }[] }> = {};
+  for (const info of art.artifacts) {
+    const e = cur[info.key];
+    const lines = e.lines
+      .slice(0, lineCount(info))
+      .map((l) => (l.stat !== NO_STAT && POTENTIAL_TABLES.stats.includes(l.stat) && POTENTIAL_TABLES.rarities.includes(l.rarity) ? { rarity: l.rarity, stat: l.stat } : { rarity: DEFAULT_LINE_RARITY, stat: NO_STAT }));
+    if (lines.some((l) => l.stat !== NO_STAT)) out[info.key] = { star: e.star ?? NOT_UNLOCKED, lines };
+  }
+  return out;
+}
+
+/** The artifact extras of POST .../sensitivity (the equip ranking): ``artifact_stars`` = the star of EVERY artifact (what the ranking uses for the ones that are not
+ *  equipped) and, when any potential line is entered, ``artifact_lines`` (see ``artifactLinesRequest``). */
+export function artifactStarsExtra(art: ArtifactSchema | undefined, state: ArtifactsState | undefined):
+  { artifact_stars: Record<string, number | string>; artifact_lines?: ReturnType<typeof artifactLinesRequest> } | Record<string, never> {
   if (!art) return {};
   const cur = normalizeArtifacts(state, art);
-  return { artifact_stars: Object.fromEntries(art.artifacts.map((a) => [a.key, cur[a.key].star ?? NOT_UNLOCKED])) };
+  const lines = artifactLinesRequest(art, state);
+  return { artifact_stars: Object.fromEntries(art.artifacts.map((a) => [a.key, cur[a.key].star ?? NOT_UNLOCKED])), ...(Object.keys(lines).length ? { artifact_lines: lines } : {}) };
 }
 
 export interface TableFilter {
@@ -296,7 +317,7 @@ export const EFFECTS: Record<string, EffectSpec> = {
   },
   arwens_glass_shoes: {
     live: ["+{arwens_glass_shoes_summon_time_increase_pct}% Companion Summoning Time Increase"],
-    note: "Added on top of the Summoning Time Increase you type, wherever the companion uses it.",
+    note: "Already part of the Summoning Time Increase you type.",
     rows: ["arwens_glass_shoes_summon_time_increase_pct"], bucket: "Companion Summoning Time Increase %", companion: "companion",
   },
   mushmoms_cap: { live: [] },

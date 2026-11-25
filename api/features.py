@@ -355,6 +355,15 @@ def validate_potentials_extras(extras):
     return (None if errors else state), errors
 
 
+def validate_artifact_lines(raw):
+    """``(state, errors)`` of the ``artifact_lines`` extra of POST .../sensitivity: the same shape as ``potentials`` of ``/artifact-potentials`` ({artifact id: {star?,
+    lines: [{rarity, stat}]}}), the lines the user entered on the Artifacts tab; the engine prices them and adds them to the artifact's equip / removal row."""
+    state, errors = validate_potentials_extras({"potentials": raw})
+    for e in errors or []:
+        e["field"] = e["field"].replace("potentials", "artifact_lines", 1)
+    return state, errors
+
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------
 # Pricing (expensive, cached)
 # ----------------------------------------------------------------------------------------------------------------------------------------------

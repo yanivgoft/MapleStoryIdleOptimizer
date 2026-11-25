@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 3.0597817210082744e+16,
+  "total_dps": 3.0581840396397016e+16,
   "artifacts": {
    "equipped": [
     {
@@ -118,6 +118,28 @@
    "notes": [
     "reference_only artifacts: their stat is entered by hand in Inputs (workbook convention); equipping changes nothing live"
    ],
+   "typed": {
+    "includes_artifacts": true,
+    "notes": [
+     "typed_below_artifact:arwens_glass_shoes"
+    ],
+    "typed": {
+     "companion_summon_time_increase_pct": 0.0,
+     "attack_pct": 34372.5
+    },
+    "base": {
+     "companion_summon_time_increase_pct": 0.0,
+     "attack_pct": 34354.5
+    },
+    "amounts": {
+     "companion_summon_time_increase_pct": {
+      "arwens_glass_shoes": 28
+     },
+     "attack_pct": {
+      "alliance_badge": 18
+     }
+    }
+   },
    "horn_flute_uptime": 0.5534377127297486,
    "extra_boss_multiplier": 1.0,
    "extra_normal_multiplier": 1.0,
@@ -130,126 +152,126 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 2.5985087176890508e+16,
-  "boss_dps": 3.0597817210082744e+16,
-  "normal_dps": 2554407722685588.5,
-  "player_boss_dps": 2.5985087176890508e+16,
+  "player_dps": 2.5971518924829184e+16,
+  "boss_dps": 3.0581840396397016e+16,
+  "normal_dps": 2553073925049551.0,
+  "player_boss_dps": 2.5971518924829184e+16,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "EIGHT_LEGS_EASTON",
     "name": "Eight-Legs Easton",
-    "dps": 4524270254704536.0,
-    "share": 0.14786251658545355,
-    "boss_dps": 4524270254704536.0,
+    "dps": 4521907882825946.0,
+    "share": 0.14786251658545352,
+    "boss_dps": 4521907882825946.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SWIFT_FIRE",
     "name": "Swift Fire",
-    "dps": 626820246182579.1,
-    "share": 0.02048578308311569,
-    "boss_dps": 626820246182579.1,
+    "dps": 626492948643053.9,
+    "share": 0.020485783083115685,
+    "boss_dps": 626492948643053.9,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SCURVY_SUMMONS",
     "name": "Scurvy Summons",
-    "dps": 1596034199280752.5,
-    "share": 0.05216170121948501,
-    "boss_dps": 1596034199280752.5,
+    "dps": 1595200821498838.0,
+    "share": 0.052161701219485004,
+    "boss_dps": 1595200821498838.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "ALL_ABOARD",
     "name": "All Aboard",
-    "dps": 1139158520686746.0,
-    "share": 0.037230058368718046,
-    "boss_dps": 1139158520686746.0,
+    "dps": 1138563702980680.0,
+    "share": 0.03723005836871804,
+    "boss_dps": 1138563702980680.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BLACKBOOT_BILL",
     "name": "Blackboot Bill",
-    "dps": 455404729492102.1,
-    "share": 0.014883569189439921,
-    "boss_dps": 455404729492102.1,
+    "dps": 455166937480183.8,
+    "share": 0.014883569189439923,
+    "boss_dps": 455166937480183.8,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SIEGE_BOMBER",
     "name": "Siege Bomber",
-    "dps": 917552722006648.5,
-    "share": 0.02998752217214671,
-    "boss_dps": 917552722006648.5,
+    "dps": 917073616952006.9,
+    "share": 0.029987522172146692,
+    "boss_dps": 917073616952006.9,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BRAIN_SCRAMBLER",
     "name": "Brain Scrambler",
-    "dps": 1787038302091328.2,
-    "share": 0.05840411065343754,
-    "boss_dps": 1787038302091328.2,
+    "dps": 1786105190496937.2,
+    "share": 0.058404110653437535,
+    "boss_dps": 1786105190496937.2,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "NAUTILUS_STRIKE",
     "name": "Nautilus Strike",
-    "dps": 1393824539284858.5,
+    "dps": 1393096746356956.0,
     "share": 0.04555307098264377,
-    "boss_dps": 1393824539284858.5,
+    "boss_dps": 1393096746356956.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "NAUTILUS_FINAL_ATTACK",
     "name": "Nautilus Strike - Final Attack",
-    "dps": 396268925851482.5,
-    "share": 0.012950888722902168,
-    "boss_dps": 396268925851482.5,
+    "dps": 396062011915291.8,
+    "share": 0.012950888722902159,
+    "boss_dps": 396062011915291.8,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "RAPID_FIRE",
     "name": "Rapid Fire",
-    "dps": 3299858657827264.0,
-    "share": 0.10784621122384763,
-    "boss_dps": 3299858657827264.0,
+    "dps": 3298135619003828.0,
+    "share": 0.1078462112238476,
+    "boss_dps": 3298135619003828.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BROADSIDE_BURST",
     "name": "Broadside (initial burst)",
-    "dps": 1065179202786071.5,
+    "dps": 1064623013775986.9,
     "share": 0.03481226113198259,
-    "boss_dps": 1065179202786071.5,
+    "boss_dps": 1064623013775986.9,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BROADSIDE_SUSTAINED",
     "name": "Broadside (sustained turret)",
-    "dps": 7271667033105783.0,
-    "share": 0.2376531300641141,
-    "boss_dps": 7271667033105783.0,
+    "dps": 7267870093324917.0,
+    "share": 0.23765313006411404,
+    "boss_dps": 7267870093324917.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "MAJESTIC_PRESENCE",
     "name": "Majestic Presence",
-    "dps": 1512009843590356.2,
-    "share": 0.04941561135583591,
-    "boss_dps": 1512009843590356.2,
+    "dps": 1511220339574558.2,
+    "share": 0.04941561135583593,
+    "boss_dps": 1511220339574558.2,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -257,19 +279,19 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 4612730033192238.0,
-   "boss_dps": 4612730033192238.0,
-   "normal_dps": 2554407722685588.5,
+   "dps": 4610321471567830.0,
+   "boss_dps": 4610321471567830.0,
+   "normal_dps": 2553073925049551.0,
    "share": 0.15075356524687744,
-   "damage": 2.0232871698701056e+17,
-   "uplift": 1.2056238533644608e+17,
+   "damage": 2.0222306996675494e+17,
+   "uplift": 1.2049943304299315e+17,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 4612730033192238.0,
-    "comp_norm_dps": 2554407722685588.5,
-    "comp_blend_dps": 4612730033192238.0,
+    "comp_boss_dps": 4610321471567830.0,
+    "comp_norm_dps": 2553073925049551.0,
+    "comp_blend_dps": 4610321471567830.0,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -281,9 +303,9 @@
     "stunfracB": 0.17857142857142855,
     "stunfracN": 0.17857142857142855,
     "hasstun": 1,
-    "dmg_b": 2.0232871698701056e+17,
-    "dmg_n": 1.788085405879912e+17,
-    "upl_b": 1.2056238533644608e+17,
+    "dmg_b": 2.0222306996675494e+17,
+    "dmg_n": 1.7871517475346858e+17,
+    "upl_b": 1.2049943304299315e+17,
     "upl_n": 0.0
    }
   },
@@ -307,9 +329,9 @@
     "SWIFT_FIRE": 1.1249774656396345,
     "SCURVY_SUMMONS": 1.092779828778297,
     "ALL_ABOARD": 1.092779828778297,
-    "BLACKBOOT_BILL": 1.2771903598225123,
-    "SIEGE_BOMBER": 1.0527735363835717,
-    "BRAIN_SCRAMBLER": 1.2674152768035247,
+    "BLACKBOOT_BILL": 1.2771903598225125,
+    "SIEGE_BOMBER": 1.0527735363835713,
+    "BRAIN_SCRAMBLER": 1.267415276803525,
     "NAUTILUS_STRIKE": 1.3067847180005987,
     "RAPID_FIRE": 1.2674152768035247,
     "BROADSIDE_BURST": 1.095407618974154,
@@ -317,7 +339,7 @@
    }
   },
   "derived": {
-   "attack": 416841125.27500004,
+   "attack": 416623469.45500004,
    "stat_damage": 3020.49016,
    "actions_per_second": 1.5932455,
    "cast_rate": 0.5,

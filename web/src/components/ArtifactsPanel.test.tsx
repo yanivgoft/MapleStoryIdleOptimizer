@@ -57,7 +57,7 @@ describe("Artifacts tab render (server-side): one table", () => {
     expect(html).toContain("What the equipped artifacts do in this calculation");
     expect(html).toContain("Total DPS with these artifacts vs. none");
     expect(html).toContain("calculating...");                                // baseline compute has not run (server render)
-    expect(html).toContain('aria-label="Artifact ranking (DPS gain if equipped)"');
+    expect(html).toContain('aria-label="Artifact ranking (% DPS gain if equipped)"');
     // the old slots design is gone
     expect(html).not.toContain("art-slot-");
     expect(html).not.toContain("Add an artifact");
@@ -196,8 +196,9 @@ describe("the table view: filter, potential lines, gains", () => {
     };
     const html = view(t, { result });
     const row = rowHtml(html, "alliance_badge");
-    expect(row).toContain("= 123 DPS");
+    expect(row).toContain("= +12.3%");                                         // each line as a % of Total DPS
     expect(row).toContain("+12.30%");
+    expect(row).not.toMatch(/\d\s*DPS/);
     expect(rowHtml(html, "candle")).not.toContain("DPS)");
     const off = view(t, { result: null, gainsUnsupported: true });
     expect(off).toContain('data-testid="gains-unsupported"');

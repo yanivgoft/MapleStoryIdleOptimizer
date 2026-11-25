@@ -3,7 +3,7 @@ import "./sensitivity.css";
 import "./companions.css";
 import { useSensitivity, type SensStatus } from "../lib/useSensitivity";
 import type { SensPart, SensitivityResult } from "../lib/sensitivity";
-import { gainPct, signedNumber } from "../lib/sensitivity";
+import { gainPct } from "../lib/sensitivity";
 import { bestSummary, companionsOf, companionViews, LEVEL_OPTIONS, sensitivityExtras, setCompanionLevel, effectiveCompanion } from "../lib/companions";
 import { setValue } from "../lib/schemaForm";
 import type { ClassSchema, FormState } from "../types";
@@ -103,7 +103,6 @@ export function CompanionsView({ schema, state, onState, result, status, support
                 <th scope="col">Companion</th>
                 <th scope="col">Level</th>
                 <th scope="col" className="num">DPS it adds</th>
-                <th scope="col" className="num">% DPS it adds</th>
                 <th scope="col" aria-label="Use"></th>
               </tr>
             </thead>
@@ -132,7 +131,6 @@ export function CompanionsView({ schema, state, onState, result, status, support
                         ))}
                       </select>
                     </td>
-                    <td className={`num${v.gain && v.gain.dps_gain < 0 ? " neg" : ""}`}>{unsupported ? <span className="sub">n/a</span> : v.gain ? signedNumber(v.gain.dps_gain) : unlocked ? "…" : "–"}</td>
                     <td className="num">{unsupported ? <span className="sub">n/a</span> : v.gain ? gainPct(v.gain.pct_gain) : unlocked ? "…" : "–"}</td>
                     <td>
                       {unlocked && !v.chosen && choiceField && (

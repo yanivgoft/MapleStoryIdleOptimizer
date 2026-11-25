@@ -6,7 +6,6 @@ import {
   CUBE_SORTS,
   NONE_STAT,
   cubesCsv,
-  evAt,
   effectiveCubeCount,
   evPctAt,
   formatCubes,
@@ -44,7 +43,6 @@ import {
   type GearRowState,
 } from "../lib/cubes";
 import { CubesRunner, IDLE_RUN, type RunState } from "../lib/cubesRunner";
-import { formatFull, formatNumber } from "../lib/format";
 import { groupedStatChoices } from "../lib/statGroups";
 import type { RequestStatus } from "../lib/liveRequest";
 import { NumInput } from "./NumInput";
@@ -261,13 +259,11 @@ export function CubeResults({
   meta,
   cubes,
   sort,
-  baseline,
 }: {
   rows: CubeRow[];
   meta: CubesMeta | null;
   cubes: number;
   sort: CubeSort;
-  baseline: number | null;
 }) {
   const groups = useMemo(() => groupByPotentialType(rankRows(rows, sort, cubes, meta)), [rows, sort, cubes, meta]);
   const [openWhy, setOpenWhy] = useState<string | null>(null);
@@ -292,7 +288,7 @@ export function CubeResults({
             <th scope="col" className="num" title="N for 75%: cubes needed for a 75% chance that at least one reroll beats your current lines">
               Cubes for 75% chance of an upgrade
             </th>
-            <th scope="col" className="num" title={`EV @ ${cubes} cubes: the expected DPS gained by spending up to ${cubes} cubes, stopping at the best moment`}>
+            <th scope="col" className="num" title={`EV @ ${cubes} cubes: the expected gain in % of Total DPS from spending up to ${cubes} cubes, stopping at the best moment`}>
               Average gain after {cubes} {cubes === 1 ? "cube" : "cubes"}
             </th>
             <th scope="col" title="A plain rule on the average gain at your cube count; see About this tab below">
@@ -328,16 +324,11 @@ export function CubeResults({
                       pity {Math.round(r.pity)} | {linesText(r)}
                     </span>
                   </td>
-                  <td className="num" title={baseline ? `${formatFull(r.current_value)} DPS` : undefined}>
-                    {formatEvPct(r.current_value_pct)}
-                  </td>
+                  <td className="num">{formatEvPct(r.current_value_pct)}</td>
                   <td className="num">{formatUntilPositive(r.smallest_n)}</td>
                   <td className="num">{formatCubes(r.n_for_50pct, meta?.max_cubes)}</td>
                   <td className="num">{formatCubes(r.n_for_75pct, meta?.max_cubes)}</td>
-                  <td className="num" title={`${formatFull(evAt(r, cubes, baseline))} DPS`}>
-                    {formatEvPct(evPctAt(r, cubes))}
-                    <span className="sub">{formatNumber(evAt(r, cubes, baseline))}</span>
-                  </td>
+                  <td className="num">{formatEvPct(evPctAt(r, cubes))}</td>
                   <td>
                     <button
                       type="button"
@@ -495,18 +486,14 @@ export function CubesView(p: ViewProps) {
                   Your inputs changed since this was calculated - press Calculate again to refresh.
                 </p>
               )}
-              <p className="note">
-                Total DPS now: <strong title={run.baseline ? formatFull(run.baseline) : undefined}>{formatNumber(run.baseline)}</strong>.
-                {p.onCsv && (
-                  <>
-                    {" "}
-                    <button type="button" onClick={p.onCsv}>
-                      Download CSV
-                    </button>
-                  </>
-                )}
-              </p>
-              <CubeResults rows={run.rows} meta={meta} cubes={cubes} sort={sort} baseline={run.baseline} />
+              {p.onCsv && (
+                <p className="note">
+                  <button type="button" onClick={p.onCsv}>
+                    Download CSV
+                  </button>
+                </p>
+              )}
+              <CubeResults rows={run.rows} meta={meta} cubes={cubes} sort={sort} />
               {run.notes.length > 0 && (
                 <ul className="note">
                   {run.notes.map((n) => (

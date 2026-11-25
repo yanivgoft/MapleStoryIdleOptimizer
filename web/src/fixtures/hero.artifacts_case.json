@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 2.762934080230984e+16,
+  "total_dps": 2.761491399443569e+16,
   "artifacts": {
    "equipped": [
     {
@@ -118,6 +118,28 @@
    "notes": [
     "reference_only artifacts: their stat is entered by hand in Inputs (workbook convention); equipping changes nothing live"
    ],
+   "typed": {
+    "includes_artifacts": true,
+    "notes": [
+     "typed_below_artifact:arwens_glass_shoes"
+    ],
+    "typed": {
+     "companion_summon_time_increase_pct": 0.0,
+     "attack_pct": 34372.5
+    },
+    "base": {
+     "companion_summon_time_increase_pct": 0.0,
+     "attack_pct": 34354.5
+    },
+    "amounts": {
+     "companion_summon_time_increase_pct": {
+      "arwens_glass_shoes": 28
+     },
+     "attack_pct": {
+      "alliance_badge": 18
+     }
+    }
+   },
    "horn_flute_uptime": 0.5549919914575547,
    "extra_boss_multiplier": 1.0,
    "extra_normal_multiplier": 1.0,
@@ -130,81 +152,81 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 2.067200166081436e+16,
-  "boss_dps": 2.762934080230984e+16,
-  "normal_dps": 5656870276165153.0,
-  "player_boss_dps": 2.067200166081436e+16,
+  "player_dps": 2.0661207664733576e+16,
+  "boss_dps": 2.761491399443569e+16,
+  "normal_dps": 5653916511135900.0,
+  "player_boss_dps": 2.0661207664733576e+16,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "RAGING_BLOW",
     "name": "Raging Blow",
-    "dps": 9230227700069350.0,
+    "dps": 9225408087375136.0,
     "share": 0.3340733956018847,
-    "boss_dps": 9230227700069350.0,
+    "boss_dps": 9225408087375136.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "PUNCTURE",
     "name": "Puncture",
-    "dps": 1253746176759816.0,
-    "share": 0.04537734670292972,
-    "boss_dps": 1253746176759816.0,
+    "dps": 1253091526497094.2,
+    "share": 0.04537734670292973,
+    "boss_dps": 1253091526497094.2,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "PUNCTURE_WOUND",
     "name": "Puncture (wound DoT)",
-    "dps": 350404957056500.94,
-    "share": 0.01268234951979769,
-    "boss_dps": 350404957056500.94,
+    "dps": 350221991236586.06,
+    "share": 0.012682349519797693,
+    "boss_dps": 350221991236586.06,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "ENHANCED_RAGING_BLOW",
     "name": "Enhanced Raging Blow",
-    "dps": 5219053290418779.0,
-    "share": 0.188895324277243,
-    "boss_dps": 5219053290418779.0,
+    "dps": 5216328133867104.0,
+    "share": 0.18889532427724295,
+    "boss_dps": 5216328133867104.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "MAGIC_CRASH",
     "name": "Magic Crash",
-    "dps": 1029323879084435.5,
-    "share": 0.03725473895484264,
-    "boss_dps": 1029323879084435.5,
+    "dps": 1028786412123132.5,
+    "share": 0.037254738954842645,
+    "boss_dps": 1028786412123132.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BEAM_BLADE",
     "name": "Beam Blade",
-    "dps": 1554348314619551.8,
-    "share": 0.056257162475972164,
-    "boss_dps": 1554348314619551.8,
+    "dps": 1553536703344964.5,
+    "share": 0.05625716247597211,
+    "boss_dps": 1553536703344964.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "RUSH",
     "name": "Rush",
-    "dps": 982817708495992.4,
+    "dps": 982304524980061.4,
     "share": 0.03557152215567256,
-    "boss_dps": 982817708495992.4,
+    "boss_dps": 982304524980061.4,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "FLASH_SLASH",
     "name": "Flash Slash",
-    "dps": 1052079634309936.4,
+    "dps": 1051530285309498.9,
     "share": 0.03807834728441952,
-    "boss_dps": 1052079634309936.4,
+    "boss_dps": 1051530285309498.9,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -212,19 +234,19 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 6957339141495479.0,
-   "boss_dps": 6957339141495479.0,
-   "normal_dps": 5656870276165153.0,
-   "share": 0.251809813027238,
-   "damage": 4.21341616977147e+17,
-   "uplift": 6.567212292753653e+16,
+   "dps": 6953706329702112.0,
+   "boss_dps": 6953706329702112.0,
+   "normal_dps": 5653916511135900.0,
+   "share": 0.2518098130272381,
+   "damage": 4.211216112013668e+17,
+   "uplift": 6.563783187778104e+16,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 6957339141495479.0,
-    "comp_norm_dps": 5656870276165153.0,
-    "comp_blend_dps": 6957339141495479.0,
+    "comp_boss_dps": 6953706329702112.0,
+    "comp_norm_dps": 5653916511135900.0,
+    "comp_blend_dps": 6953706329702112.0,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -236,9 +258,9 @@
     "stunfracB": 0.24285714285714285,
     "stunfracN": 0.24285714285714285,
     "hasstun": 1,
-    "dmg_b": 4.21341616977147e+17,
-    "dmg_n": 3.959809193315607e+17,
-    "upl_b": 6.567212292753653e+16,
+    "dmg_b": 4.211216112013668e+17,
+    "dmg_n": 3.95774155779513e+17,
+    "upl_b": 6.563783187778104e+16,
     "upl_n": 0.0
    }
   },
@@ -256,17 +278,17 @@
    },
    "phi_unif": 1.0702646958547473,
    "phi_rows": {
-    "PUNCTURE": 1.1467084091108857,
+    "PUNCTURE": 1.1467084091108855,
     "PUNCTURE_WOUND": 1.0301443741426242,
-    "ENHANCED_RAGING_BLOW": 1.1467084091108857,
+    "ENHANCED_RAGING_BLOW": 1.1467084091108855,
     "MAGIC_CRASH": 1.3239084652257116,
-    "BEAM_BLADE": 1.1662915818746875,
+    "BEAM_BLADE": 1.166291581874687,
     "RUSH": 1.1645786993529912,
     "FLASH_SLASH": 1.311687771700551
    }
   },
   "derived": {
-   "attack": 416841125.27500004,
+   "attack": 416623469.45500004,
    "stat_damage": 3020.49016,
    "actions_per_second": 1.5932455,
    "cast_rate": 0.5285714285714286,

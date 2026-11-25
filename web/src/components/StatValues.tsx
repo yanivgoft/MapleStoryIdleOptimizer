@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import "./sensitivity.css";
 import { api } from "../api";
-import type { SensitivityMeta, SensitivityResult, SensPart, StatSort } from "../lib/sensitivity";
-import { STAT_SORTS } from "../lib/sensitivity";
+import type { SensitivityMeta, SensitivityResult, SensPart } from "../lib/sensitivity";
 import { useSensitivity, type SensStatus } from "../lib/useSensitivity";
-import { formatFull, formatNumber } from "../lib/format";
 import { StatTable } from "./StatTable";
 import { ARTIFACT_RANKING_TITLE, EquipRanking } from "./EquipRanking";
 import { CdrTable, CompanionTable, SummonTable } from "./SensitivitySections";
@@ -15,11 +13,13 @@ export const UNSUPPORTED_TEXT = NOT_AVAILABLE_TEXT;
 interface SectionDef {
   part: SensPart;
   title: string;
+  /** only for the step-like stats: the threshold line that tells the player what to aim for */
+  hint?: string;
 }
 const SECTIONS: SectionDef[] = [
   { part: "companions", title: "Companion comparison" },
-  { part: "summon_time", title: "Companion summoning time potential" },
-  { part: "cdr", title: "Cooldown decrease milestones" },
+  { part: "summon_time", title: "Companion summoning time potential", hint: "Gain at each total of Summoning Time Increase. It rises in steps: aim for the totals where it jumps (Step gain)." },
+  { part: "cdr", title: "Cooldown decrease milestones", hint: "Gain at each Skill Cooldown Decrease total. It rises in steps (fixed-duration content only): aim for the totals where it jumps, not for a smooth slope." },
 ];
 
 /** Presentational part of the tab: everything given, nothing fetched (used by the render tests). */
@@ -36,7 +36,6 @@ export function StatValuesView(props: {
   onOpenHelp?: () => void;
 }) {
   const { result, status, stale = false, pending = false, meta, open, onToggle, onRetry, onOpenHelp } = props;
-  const [sort, setSort] = useState<StatSort>("value");
 
   if (status.unsupported) {
     return <Unavailable onOpenHelp={onOpenHelp} text={UNSUPPORTED_TEXT} />;
@@ -70,25 +69,9 @@ export function StatValuesView(props: {
       {result?.stats ? (
         <>
           <div className="sens-head">
-            <div>
-              <div className="label">Total DPS now</div>
-              <div className="big" title={formatFull(result.baseline_total)}>
-                {formatNumber(result.baseline_total)}
-              </div>
-            </div>
             <div className="note">{result.content_type}</div>
           </div>
-          <div className="sens-controls">
-            <label htmlFor="stat-sort">Sort by</label>
-            <select id="stat-sort" value={sort} onChange={(e) => setSort(e.target.value as StatSort)}>
-              {STAT_SORTS.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <StatTable rows={result.stats.rows} sort={sort} meta={meta} />
+          <StatTable rows={result.stats.rows} meta={meta} />
         </>
       ) : (
         !status.error && (
@@ -114,17 +97,23 @@ export function StatValuesView(props: {
         return (
           <details key={s.part} className="sens-section" open={open.includes(s.part)} onToggle={(e) => onToggle?.(s.part, (e.currentTarget as HTMLDetailsElement).open)}>
             <summary>{s.title}</summary>
+            {s.hint && <p className="hint">{s.hint}</p>}
             {!data && <p className="empty">{status.loading ? "Loading..." : "Not loaded yet."}</p>}
             {s.part === "companions" && result?.companions && <CompanionTable part={result.companions} />}
             {s.part === "summon_time" && result?.summon_time && <SummonTable part={result.summon_time} />}
-            {s.part === "cdr" && result?.cdr && <CdrTable part={result.cdr} />}
+            {s.part === "cdr" && result?.cdr && (
+              <>
+                <CdrTable part={result.cdr} />
+                {result.cdr.note && <p className="hint">{result.cdr.note}</p>}
+              </>
+            )}
           </details>
         );
       })}
 
       <AboutTab>
         <ul>
-          <li>Each stat is raised by one step on its own (the Step column) and the table shows the new Total DPS.</li>
+          <li>Each stat is raised by one step on its own (the Step column) and the table shows the % of Total DPS it adds.</li>
           <li>
             &quot;Units per +1% DPS&quot; is how many units of a stat give +1% Total DPS: lower means each unit is worth more, n/a means one step gives no gain. Units differ between stats, so compare the % gained per
             step, or the units against what a unit costs you in game.
@@ -135,7 +124,6 @@ export function StatValuesView(props: {
           </li>
           <li>Cooldown decrease milestones are a step function and only apply to fixed-duration content: read the jumps, not the slope.</li>
           <li>The artifact ranking shows the gain of equipping each artifact; for an equipped one it is what you lose by removing it. &quot;Typed in Calculator&quot; means its bonus is already in the stats you typed, so the gain is a what-if.</li>
-          <li>&quot;Game stat order&quot; lists the stats in the order of the in-game stat pages.</li>
         </ul>
       </AboutTab>
     </div>

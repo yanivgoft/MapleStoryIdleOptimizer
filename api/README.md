@@ -9,7 +9,7 @@ GET  /api/classes                                  [{id, name, family, stat_iden
 GET  /api/classes/{id}/schema                      engine schema(): fields (label/group/type/unit/default/applicable/options/computed), dps_rows, artifacts
 GET  /api/classes/{id}/defaults?content_type=...   workbook defaults resolved for a content type
 POST /api/classes/{id}/compute                     body: inputs dict -> engine result (total_dps, boss_dps, normal_dps, skills, companion, derived, ...)
-POST /api/classes/{id}/sensitivity                 body: the compute inputs + optional which / companion_comparison_level / artifact_stars -> stat values (below); 501 for classes without them
+POST /api/classes/{id}/sensitivity                 body: the compute inputs + optional which / companion_comparison_level / artifact_stars / artifact_lines -> stat values (below); 501 for classes without them
 GET  /api/classes/{id}/sensitivity/meta            stat list (key, label, type, step, semantic note), artifact toggle list, parts, CDR milestones, metric definitions
 GET  /api/classes/{id}/cubes/meta                  slots, rarities, stat options per slot, pity caps (Potential vs Bonus Potential), milestones + the equipment-compare and artifact-potential tables
 POST /api/classes/{id}/cubes                       body: the compute inputs + gear (+ only) -> cube optimizer rows (below); 501 for classes without stat values
@@ -34,6 +34,11 @@ schema says `artifacts_modelled`; for every other class `artifacts` gets a clear
 422 {"detail": "Invalid inputs", "errors": [{"field": "level", "message": "must be between 1 and 300"}, ...]}
 ```
 
+An optional boolean `"typed_includes_artifacts"` (not a schema field, like `artifacts`; every compute-input endpoint takes it) says that the typed stats are the in-game preset page values, which already contain the equipped artifacts' bonus.
+**The API fills it `true` when a request omits it** (the web never sends it); `false` asks for the workbooks' convention (live artifacts added on top of the typed values); anything but a boolean is `422 {field: "typed_includes_artifacts", message: "must be true or false"}`.
+With `true` the result's `artifacts.typed` = `{includes_artifacts, notes, typed, base, amounts}` (what was stripped; `notes` e.g. `typed_below_artifact:<id>`); Calculator, Stat values, Cubes, Equipment compare and Artifact potentials all price the same
+character (their `baseline_total` is the Calculator's Total DPS).  See `engine/README.md` "Typed stats include the equipped artifacts".
+
 An engine failure is `500 {"detail": "computation failed for these inputs"}` (the traceback goes to the log only).  Other statuses: 404 unknown
 class, 413 body too large, 429 rate limited (+ `Retry-After`).
 
@@ -51,7 +56,7 @@ inside `companion_summon_time_increase_pct`; the `summon_time` table measures ag
 * `501 {"detail": "stat values are not modelled for this class yet"}` for classes without a sensitivity module (checked before validation; `GET .../sensitivity/meta` too).  The
   capability is `engine.sensitivity.supports(class_module)` if the engine grows one, else `registry.SENSITIVITY_CLASSES` (today `("fp_mage",)`; the single place to extend);
   it also drives `status.stat_values` in `GET /api/classes`.
-* Validation errors are the same `422 {"detail": "Invalid inputs", "errors": [{field, message}]}` (extra keys included: `which`, `companion_comparison_level`, `companion_levels.<name>`, `companion_potential_lines_pct`, `artifact_stars.<id>`).
+* Validation errors are the same `422 {"detail": "Invalid inputs", "errors": [{field, message}]}` (extra keys included: `which`, `companion_comparison_level`, `companion_levels.<name>`, `companion_potential_lines_pct`, `artifact_stars.<id>`, `artifact_lines.<id>...`).
 * A call costs ~0.5-1 s, so: its own per-IP limit (`MSI_RATE_LIMIT_SENS_PER_MIN`, default 20 per window, on top of the general limit; cache hits count too), an in-memory LRU+TTL result
   cache keyed by a hash of (class, canonical validated inputs, extras) - response header `X-Cache: HIT | MISS` -, at most `MSI_SENS_WORKERS` (2) evaluations at a time and a
   `504 {"detail": "stat values took longer than N s; try again"}` guard after `MSI_SENS_TIMEOUT_S` (the worker thread cannot be killed; it finishes in the background and its result is
@@ -81,8 +86,7 @@ The code is `api/features.py` (validation, meta, pricing caches, the three compu
 * `POST .../artifact-potentials`: extra key `potentials` = `{artifact id: {star?: 0..5 | "Not Unlocked" | null, lines: [{rarity: Rare|Epic|Unique|Legendary|Mystic|Mystic (Prime), stat}]}}` (<= 2 lines for Epic /
   Unique artifacts, 3 for Legendary; line n counts from star 1 / 2 / 5; an artifact in `artifacts` takes its slot's star unless the entry has its own `star`; unlisted artifacts are at the workbook default).  Answer:
   `{class_id, baseline_total, rows: [engine.potentials.potential_table row for all 36 artifacts: key, label, rank, equipped, star, lines [{rarity, stat, active, gain}], total]}`.  The `total`s are exactly what
-  `engine.sensitivity` takes as `inputs["artifact_potential_gain"]`.  **`include_potentials` on `/sensitivity` was deliberately NOT added**: it would need a second stats run inside every sensitivity call and change
-  that endpoint's cache key; the client can show both numbers side by side instead (`/sensitivity` stays byte-for-byte as before; an unknown key there is still a 422).
+  `engine.sensitivity` takes as `inputs["artifact_potential_gain"]`.  **`include_potentials` on `/sensitivity` was deliberately NOT added** (a boolean flag would need the potentials state anyway); 2026-11-25 the ranking got the lines through an explicit optional extra instead: `POST .../sensitivity` takes `artifact_lines` (the same `{artifact id: {star?, lines: [{rarity, stat}]}}` shape as `potentials` above, errors reported as `artifact_lines.<id>...`).  The engine prices them at the character's own stat rates (one extra ~30 ms stats pass when only `artifacts` is asked) and adds them to that artifact's equip / removal row (`potential_gain` on the row); the key is part of the cache key, absent = byte-for-byte the old answer.  Reason: an EQUIPPED artifact's value is what removing it loses, and its lines are real stats of the preset (Arwen's Glass Shoes read 0% once its +40% summoning time was past the companion's last step, although it carried lines).
 * Protections: `/cubes` has its own per-IP limit (`MSI_RATE_LIMIT_CUBES_PER_MIN`, 20: a full UI Calculate is 5 requests; cache hits count), its own worker pool (`MSI_CUBES_WORKERS`, 2 evaluations at a time, the rest queue)
   and `504 {"detail": "cube optimizer took longer than N s; try again"}` after `MSI_CUBES_TIMEOUT_S` (45; the worker thread finishes in the background, a timed-out chunk is not cached).  `equipment-compare` and
   `artifact-potentials` are cheap once the character's stat prices are cached (the live UI calls them while you type), so they share a looser per-IP limit (`MSI_RATE_LIMIT_COMPARE_PER_MIN`, 60); a cache miss runs one

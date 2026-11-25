@@ -4,7 +4,7 @@ import "./cubes.css";
 import { api } from "../api";
 import { NONE_STAT, type CubesMeta } from "../lib/cubes";
 import { ATTACK_STAT, blankEquip, equipPayload, equipVerdict, pctLabel, sideHasContent, type EquipResult, type EquipSide, type EquipSideResult, type EquipState } from "../lib/equipment";
-import { formatFull, formatNumber } from "../lib/format";
+import { formatNumber } from "../lib/format";
 import type { RequestStatus } from "../lib/liveRequest";
 import { useLive } from "../lib/useLive";
 import { NumInput } from "./NumInput";
@@ -39,16 +39,15 @@ function SideResult({ title, r, total }: { title: string; r: EquipSideResult; to
   return (
     <div className="card" aria-label={`${title} result`}>
       <h2>{title}</h2>
-      <div className="equip-total" title={`${formatFull(r.total_gain)} DPS`}>
+      <div className="equip-total">
         {r.pct >= 0.01 ? "+" : r.pct <= -0.01 ? "-" : ""}{pct(r.pct)} of Total DPS
       </div>
-      <div className="note">= {formatNumber(r.total_gain)} DPS on top of {formatNumber(total)} without it</div>
       <table className="sens-table" aria-label={`${title} lines`}>
         <thead>
           <tr>
             <th scope="col">Line</th>
             <th scope="col" className="num">Value</th>
-            <th scope="col" className="num">DPS</th>
+            <th scope="col" className="num">% of Total DPS</th>
           </tr>
         </thead>
         <tbody>
@@ -61,9 +60,7 @@ function SideResult({ title, r, total }: { title: string; r: EquipSideResult; to
                   {!x.first && <span className="sub">same stat</span>}
                 </td>
                 <td className="num">{formatNumber(x.value)}</td>
-                <td className="num" title={`${formatFull(x.gain)} DPS`}>
-                  {formatNumber(x.gain)}
-                </td>
+                <td className="num">{total > 0 ? `${x.gain >= 0 ? "+" : "-"}${pct((x.gain / total) * 100)}` : "–"}</td>
               </tr>
             ))}
         </tbody>
@@ -140,8 +137,7 @@ export function EquipmentView(p: {
                     {result.better === "equal" ? "No difference" : `${Math.abs(result.delta_pct) >= 0.01 ? (result.delta_pct > 0 ? "+" : "-") : ""}${pct(result.delta_pct)}`} of Total DPS
                   </div>
                   <div className="note">
-                    {equipVerdict(result)} ({result.delta_dps >= 0 ? "+" : "-"}
-                    {formatNumber(Math.abs(result.delta_dps))} DPS on {formatNumber(result.baseline_total)}.)
+                    {equipVerdict(result)}
                   </div>
                   {result.crit_priced_as_crit_damage && <p className="note">Your live crit rate is at or above 100%, so Critical Rate lines are priced as Critical Damage (nothing gained from more crit rate).</p>}
                   {!sideHasContent(p.state.current) && !sideHasContent(p.state.new) && <p className="note">Both equips are empty - fill in some lines.</p>}

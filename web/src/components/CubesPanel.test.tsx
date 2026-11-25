@@ -108,19 +108,17 @@ describe("Cubes tab: 'Cubes you have' (typed count)", () => {
       return { ...rows[0], slot, potential_type: "Potential", smallest_n: 1, ev_pct_by_cubes: c, milestone_ev_pct: Object.fromEntries(ms.map((n) => [String(n), c[n]])), milestone_ev: Object.fromEntries(ms.map((n) => [String(n), c[n] * 100])) };
     };
     const two = [curveRow("head", (n) => n * 0.01), curveRow("cape", (n) => Math.min(n, 85) * 0.0115)];
-    const html = (n: number) => strip(renderToString(<CubeResults rows={two} meta={meta} cubes={n} sort="ev" baseline={1_000_000} />));
+    const html = (n: number) => strip(renderToString(<CubeResults rows={two} meta={meta} cubes={n} sort="ev" />));
     expect(order(html(86), "Potential")).toEqual(["cape|Potential", "head|Potential"]);
     expect(order(html(100), "Potential")).toEqual(["head|Potential", "cape|Potential"]);
     expect(html(86)).toContain("+0.978%"); // cape at 86 cubes: 85 x 0.0115
     expect(html(86)).toContain("+0.860%"); // head at 86 cubes
     expect(html(100)).toContain("+1.00%");
-    // absolute DPS next to the %, derived from the % and the baseline Total DPS: 0.86% of 1,000,000 = 8,600
-    expect(html(86)).toContain("8.6K");
-    expect(strip(renderToString(<CubeResults rows={two} meta={meta} cubes={86} sort="ev" baseline={null} />))).toContain("+0.860%");
+    expect(html(86)).not.toContain("8.6K"); // no absolute DPS under the %
   });
   it("falls back to the preset milestones when a row has no per-count curve (old cached rows, mock fixtures)", () => {
     const plain = rows.map(({ ev_pct_by_cubes: _drop, ...r }) => r as CubeRow);
-    const html = strip(renderToString(<CubeResults rows={plain} meta={meta} cubes={86} sort="ev" baseline={baseline} />));
+    const html = strip(renderToString(<CubeResults rows={plain} meta={meta} cubes={86} sort="ev" />));
     expect((html.match(/data-verdict="/g) ?? []).length).toBe(30);
     expect(html).toContain("Average gain after 86 cubes");
     const p = plain.find((r) => r.potential_type === "Potential")!;
@@ -131,12 +129,12 @@ describe("Cubes tab: 'Cubes you have' (typed count)", () => {
 describe("Cubes tab: results table wording and the verdict reason", () => {
   it("'never (already near the best)' for a row whose gain never turns positive", () => {
     const never = rows.map((r, i) => (i === 0 ? { ...r, smallest_n: null } : r));
-    const html = strip(renderToString(<CubeResults rows={never} meta={meta} cubes={100} sort="ev" baseline={baseline} />));
+    const html = strip(renderToString(<CubeResults rows={never} meta={meta} cubes={100} sort="ev" />));
     expect(html).toContain("never (already near the best)");
     expect(html).not.toContain(">never<");
   });
   it("the verdict chip is a focusable button that keeps its short label; its reason is reachable without hovering", () => {
-    const html = strip(renderToString(<CubeResults rows={rows} meta={meta} cubes={100} sort="ev" baseline={baseline} />));
+    const html = strip(renderToString(<CubeResults rows={rows} meta={meta} cubes={100} sort="ev" />));
     const chips = [...html.matchAll(/<button type="button" class="verdict (yes|maybe|marginal|no)"[^>]*aria-expanded="false"[^>]*>(Yes|Maybe|Marginal|No)<\/button>/g)];
     expect(chips).toHaveLength(30);
     for (const c of chips) expect(c[1].charAt(0).toUpperCase() + c[1].slice(1)).toBe(c[2]);

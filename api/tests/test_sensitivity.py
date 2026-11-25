@@ -267,3 +267,59 @@ def test_companion_levels_validation(client):
         r = client.post(URL, json={**CASE, "which": ["companions"], **bad})
         assert r.status_code == 422, bad
         assert field in {e["field"] for e in r.json()["errors"]}
+
+
+# ---- artifact_lines: the potential lines entered on the Artifacts tab value the equip / removal row ---------------------------------------------
+# (``typed_includes_artifacts`` False = the workbooks' convention these cases were written for: typed 40 EXCLUDES the shoes, so equipped means 40 + 40 = 80 and the effect is
+# saturated.  With the API default True the typed 40 already contains the shoes: see api/tests/test_typed_includes_artifacts.py)
+ARWEN_CASE = {"content_type": "Breakthrough", "companion_choice": "Blaze Wizard", "companion_level": 10, "companion_summon_time_increase_pct": 40,
+              "artifacts": [{"key": "arwens_glass_shoes", "star": 5}], "which": ["artifacts"], "artifact_stars": {"arwens_glass_shoes": 5},
+              "typed_includes_artifacts": False}
+ARWEN_LINES = {"arwens_glass_shoes": {"star": 5, "lines": [{"rarity": "Legendary", "stat": "Damage %"}, {"rarity": "Epic", "stat": "Boss Monster Damage %"}]}}
+
+
+def _arwen(out):
+    return next(r for r in out["artifacts"]["rows"] if r["key"] == "arwens_glass_shoes")
+
+
+def test_artifact_lines_value_an_equipped_row(client):
+    """Reported: Arwen's Glass Shoes equipped (+40% summoning time already past Blaze Wizard's last step) showed 0% although it carries potential lines.  Without lines
+    the row stays 0 (the effect is saturated); with them it is the lines' value, computed like the Artifacts tab's own numbers (same engine, same rates)."""
+    plain = client.post(URL, json=ARWEN_CASE)
+    assert plain.status_code == 200, plain.text
+    row0 = _arwen(plain.json())
+    assert row0["equipped"] is True and row0["dps_gain"] == 0.0 and row0["pct_gain"] == 100.0 and row0["potential_gain"] == 0.0
+    r = client.post(URL, json={**ARWEN_CASE, "artifact_lines": ARWEN_LINES})
+    assert r.status_code == 200, r.text
+    row = _arwen(r.json())
+    assert row["equipped"] is True and row["potential_gain"] > 0 and row["dps_gain"] == pytest.approx(row["potential_gain"], rel=1e-12) and row["pct_gain"] > 100
+    # the same number the Artifacts tab shows as "Potential total" (POST .../artifact-potentials)
+    pot = client.post("/api/classes/fp_mage/artifact-potentials", json={k: v for k, v in ARWEN_CASE.items() if k not in ("which", "artifact_stars")}
+                      | {"potentials": ARWEN_LINES})
+    assert pot.status_code == 200, pot.text
+    total = next(x for x in pot.json()["rows"] if x["key"] == "arwens_glass_shoes")["total"]
+    assert row["potential_gain"] == pytest.approx(total, rel=1e-9)
+    # engine parity
+    direct = sensitivity.run(fp_mage, dict(engine_inputs({k: v for k, v in ARWEN_CASE.items() if k not in ("which", "artifact_stars")}),
+                                           artifact_stars={"arwens_glass_shoes": 5}, artifact_lines=ARWEN_LINES), which=["artifacts"])
+    assert _arwen(direct)["dps_gain"] == pytest.approx(row["dps_gain"], rel=1e-12)
+
+
+def test_artifact_lines_unequipped_row_and_cache_key(client):
+    body = {**ARWEN_CASE, "artifacts": [], "companion_summon_time_increase_pct": 10}
+    plain = _arwen(client.post(URL, json=body).json())
+    with_lines = client.post(URL, json={**body, "artifact_lines": ARWEN_LINES})
+    assert with_lines.headers["x-cache"] == "MISS"                 # the lines are part of the cache key
+    row = _arwen(with_lines.json())
+    assert row["equipped"] is False and plain["potential_gain"] == 0 and row["potential_gain"] > 0
+    assert row["dps_gain"] == pytest.approx(plain["dps_gain"] + row["potential_gain"], rel=1e-12)
+    assert client.post(URL, json={**body, "artifact_lines": ARWEN_LINES}).headers["x-cache"] == "HIT"
+
+
+def test_artifact_lines_validation(client):
+    for bad, field in (({"artifact_lines": []}, "artifact_lines"), ({"artifact_lines": {"nobody": {"lines": []}}}, "artifact_lines.nobody"),
+                       ({"artifact_lines": {"arwens_glass_shoes": {"lines": [{"rarity": "Legendary", "stat": "Bogus %"}]}}}, "artifact_lines.arwens_glass_shoes.lines[0].stat"),
+                       ({"artifact_lines": {"arwens_glass_shoes": {"lines": [{"rarity": "Nope", "stat": "Damage %"}]}}}, "artifact_lines.arwens_glass_shoes.lines[0].rarity")):
+        r = client.post(URL, json={**ARWEN_CASE, **bad})
+        assert r.status_code == 422, bad
+        assert field in {e["field"] for e in r.json()["errors"]}, (field, r.json())

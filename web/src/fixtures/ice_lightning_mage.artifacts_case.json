@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 4.546303527655556e+16,
+  "total_dps": 4.543929650985811e+16,
   "artifacts": {
    "equipped": [
     {
@@ -118,6 +118,28 @@
    "notes": [
     "reference_only artifacts: their stat is entered by hand in Inputs (workbook convention); equipping changes nothing live"
    ],
+   "typed": {
+    "includes_artifacts": true,
+    "notes": [
+     "typed_below_artifact:arwens_glass_shoes"
+    ],
+    "typed": {
+     "companion_summon_time_increase_pct": 0.0,
+     "attack_pct": 34372.5
+    },
+    "base": {
+     "companion_summon_time_increase_pct": 0.0,
+     "attack_pct": 34354.5
+    },
+    "amounts": {
+     "companion_summon_time_increase_pct": {
+      "arwens_glass_shoes": 28
+     },
+     "attack_pct": {
+      "alliance_badge": 18
+     }
+    }
+   },
    "horn_flute_uptime": 0.5554359526372438,
    "extra_boss_multiplier": 1.0,
    "extra_normal_multiplier": 1.0,
@@ -130,90 +152,90 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 3.3271737567548104e+16,
-  "boss_dps": 4.546303527655556e+16,
-  "normal_dps": 9256041803673476.0,
-  "player_boss_dps": 3.3271737567548104e+16,
+  "player_dps": 3.325436455206574e+16,
+  "boss_dps": 4.543929650985811e+16,
+  "normal_dps": 9251208712007186.0,
+  "player_boss_dps": 3.325436455206574e+16,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "CHAIN_LIGHTNING",
     "name": "Chain Lightning",
-    "dps": 1.2142763306325668e+16,
-    "share": 0.2670909065455087,
-    "boss_dps": 1.2142763306325668e+16,
+    "dps": 1.2136422897608176e+16,
+    "share": 0.26709090654550877,
+    "boss_dps": 1.2136422897608176e+16,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "THUNDER_BOLT",
     "name": "Thunder Bolt",
-    "dps": 2716136187297155.5,
-    "share": 0.05974383740053133,
-    "boss_dps": 2716136187297155.5,
+    "dps": 2714717942279493.5,
+    "share": 0.059743837400531324,
+    "boss_dps": 2714717942279493.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "GLACIER_WALL",
     "name": "Glacier Wall",
-    "dps": 2377152407589743.0,
-    "share": 0.05228758689624043,
-    "boss_dps": 2377152407589743.0,
+    "dps": 2375911164763240.5,
+    "share": 0.052287586896240426,
+    "boss_dps": 2375911164763240.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "THUNDER_SPHERE",
     "name": "Thunder Sphere",
-    "dps": 2021527265417684.0,
+    "dps": 2020471714158636.8,
     "share": 0.044465294785545215,
-    "boss_dps": 2021527265417684.0,
+    "boss_dps": 2020471714158636.8,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "FREEZING_BREATH",
     "name": "Freezing Breath",
-    "dps": 2564453491114101.5,
+    "dps": 2563114448026421.5,
     "share": 0.05640744124351377,
-    "boss_dps": 2564453491114101.5,
+    "boss_dps": 2563114448026421.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BLIZZARD",
     "name": "Blizzard",
-    "dps": 938523973607062.5,
-    "share": 0.020643671675195912,
-    "boss_dps": 938523973607062.5,
+    "dps": 938033918301385.9,
+    "share": 0.0206436716751959,
+    "boss_dps": 938033918301385.9,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BLIZZARD_FINAL_ATTACK",
     "name": "Blizzard - Final Attack",
-    "dps": 2331178141050762.0,
-    "share": 0.0512763419087618,
-    "boss_dps": 2331178141050762.0,
+    "dps": 2329960903933091.0,
+    "share": 0.05127634190876179,
+    "boss_dps": 2329960903933091.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "FROZEN_ORB",
     "name": "Frozen Orb",
-    "dps": 4174216958412600.0,
-    "share": 0.0918156241223332,
-    "boss_dps": 4174216958412600.0,
+    "dps": 4172037368732378.0,
+    "share": 0.09181562412233317,
+    "boss_dps": 4172037368732378.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "ELQUINES",
     "name": "Elquines",
-    "dps": 4005785836733329.0,
-    "share": 0.08811083141206452,
-    "boss_dps": 4005785836733329.5,
+    "dps": 4003694194262918.5,
+    "share": 0.0881108314120645,
+    "boss_dps": 4003694194262918.5,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -221,19 +243,19 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 1.2191297709007458e+16,
-   "boss_dps": 1.2191297709007458e+16,
-   "normal_dps": 9256041803673476.0,
-   "share": 0.2681584640103052,
-   "damage": 7.326293570524268e+17,
-   "uplift": 1.207614825780954e+17,
+   "dps": 1.218493195779237e+16,
+   "boss_dps": 1.218493195779237e+16,
+   "normal_dps": 9251208712007186.0,
+   "share": 0.26815846401030513,
+   "damage": 7.322468107205115e+17,
+   "uplift": 1.2069842632495435e+17,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 1.2191297709007458e+16,
-    "comp_norm_dps": 9256041803673476.0,
-    "comp_blend_dps": 1.2191297709007458e+16,
+    "comp_boss_dps": 1.218493195779237e+16,
+    "comp_norm_dps": 9251208712007186.0,
+    "comp_blend_dps": 1.218493195779237e+16,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -245,9 +267,9 @@
     "stunfracB": 0.20714285714285713,
     "stunfracN": 0.20714285714285713,
     "hasstun": 1,
-    "dmg_b": 7.326293570524268e+17,
-    "dmg_n": 6.479229262571433e+17,
-    "upl_b": 1.207614825780954e+17,
+    "dmg_b": 7.322468107205115e+17,
+    "dmg_n": 6.47584609840503e+17,
+    "upl_b": 1.2069842632495435e+17,
     "upl_n": 0.0
    }
   },
@@ -267,8 +289,8 @@
    },
    "phi_unif": 1.0668689259319293,
    "phi_rows": {
-    "THUNDER_BOLT": 1.332679099604936,
-    "GLACIER_WALL": 1.3036272991888809,
+    "THUNDER_BOLT": 1.3326790996049358,
+    "GLACIER_WALL": 1.303627299188881,
     "THUNDER_SPHERE": 1.2117908365298737,
     "FREEZING_BREATH": 1.3280686993154316,
     "BLIZZARD": 1.4401154429471428,
@@ -277,7 +299,7 @@
    }
   },
   "derived": {
-   "attack": 416841125.27500004,
+   "attack": 416623469.45500004,
    "stat_damage": 3655.7947000000004,
    "actions_per_second": 1.6373455,
    "cast_rate": 0.4714285714285714,

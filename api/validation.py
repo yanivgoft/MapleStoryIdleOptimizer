@@ -7,11 +7,14 @@ valid).  Rules:
 * a key missing from the body takes the workbook default for that content type; ``None`` is allowed for numeric fields (reads as 0, like a
   blank cell) unless the schema's ``min`` is above 0 (level, PvP fight length); fields that do not apply to the content type are forced to ``None``; computed fields are ignored.
 * unknown keys are rejected (typos must not silently do nothing); ``artifacts`` is accepted when the class models artifacts (others get a clear 422).
+* ``typed_includes_artifacts`` (optional boolean, not a schema field like ``artifacts``): the typed stats already contain the equipped artifacts' effects (the values of
+  the in-game preset page).  The API fills it TRUE when a request omits it; ``false`` asks for the workbooks' convention (artifacts added on top of the typed values).
 * numeric ranges are the schema's own ``min`` / ``max``.
 """
 import math
 import re
 
+TYPED_FLAG = "typed_includes_artifacts"       # engine.typed_artifacts.FLAG (not imported: the validation module stays engine-free)
 CHAPTER_STAGE_RE = re.compile(r"^\d{1,3}(-\d{1,2})?$")
 # Ranges come from the schema (``field["min"]`` / ``field["max"]``, engine/common/schema.py).  A schema snapshot without them (older engine)
 # falls back to these permissive limits.
@@ -104,8 +107,12 @@ def validate_inputs(schema, defaults_for, body):
     for key in body:
         if key == "artifacts" and not art_schema:
             errors.append({"field": key, "message": "artifacts are not modelled for this class yet"})
-        elif key not in fields and key != "artifacts":
+        elif key not in fields and key not in ("artifacts", TYPED_FLAG):
             errors.append({"field": key, "message": "unknown field"})
+    typed_flag = body.get(TYPED_FLAG, True)
+    if not isinstance(typed_flag, bool):
+        errors.append({"field": TYPED_FLAG, "message": "must be true or false"})
+        typed_flag = True
 
     ct_field = fields["content_type"]
     ct = body.get("content_type", ct_field["default"])
@@ -149,11 +156,12 @@ def validate_inputs(schema, defaults_for, body):
         errors.extend({"field": f, "message": m} for f, m in art_errors)
         if not art_errors:
             clean["artifacts"] = value
+    clean[TYPED_FLAG] = typed_flag
     return (clean if not errors else None), errors
 
 
 # ---- extra keys of POST /api/classes/{id}/sensitivity (everything else in the body is a normal compute input) ----------------------------------
-SENSITIVITY_EXTRA_KEYS = ("which", "companion_comparison_level", "artifact_stars", "companion_levels", "companion_potential_lines_pct")
+SENSITIVITY_EXTRA_KEYS = ("which", "companion_comparison_level", "artifact_stars", "companion_levels", "companion_potential_lines_pct", "artifact_lines")
 
 
 def split_sensitivity_body(body):
@@ -167,7 +175,8 @@ def split_sensitivity_body(body):
 def validate_sensitivity_extras(schema, extras, parts):
     """``(clean extras, errors)``: ``which`` (list of ``parts`` names, canonical order, de-duplicated), ``companion_comparison_level`` (whole number
     within the companion level's own bounds), ``artifact_stars`` ({artifact id: 0..5 | 'Not Unlocked' | None}, classes that model artifacts), ``companion_levels`` ({companion name: 0..18}, 0 = not
-    unlocked) and ``companion_potential_lines_pct`` (>= 0: summoning-time % of boots lines already inside the Inputs value)."""
+    unlocked) and ``companion_potential_lines_pct`` (>= 0: summoning-time % of boots lines already inside the Inputs value).  ``artifact_lines`` is checked by the
+    caller (``features.validate_artifact_lines``: it needs the engine's potential tables)."""
     clean, errors = {}, []
     if "which" in extras:
         w = extras["which"]

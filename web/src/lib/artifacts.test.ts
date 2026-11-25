@@ -1,11 +1,12 @@
 import { plainText } from "./plainText";
+import { potentialsRequest, STATIC_POTENTIAL_TABLES } from "./artifactPotentials";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ALL, fixtureFor, withoutArtifactSupport } from "../test/fixtures";
 import type { ArtifactSchema, ArtifactSlot, ArtifactsState, ComputeResult, FormState, Profile } from "../types";
 import { buildInputs, copyContentValues, initialState, normalizeState, switchContentType } from "./schemaForm";
 import { listProfiles, parseImport, saveProfile, exportJson, withArtifacts } from "./profiles";
 import {
-  artifactStarsExtra, artifactsAvailable, artifactsInUse, badgesFor, BAKED_DETAIL, BAKED_LABEL, blankLine, breakdown, bucketTotals, currentSlots, defaultEntry, defaultStarFor, defaultTableStar,
+  artifactLinesRequest, artifactStarsExtra, artifactsAvailable, artifactsInUse, badgesFor, BAKED_DETAIL, BAKED_LABEL, blankLine, breakdown, bucketTotals, currentSlots, defaultEntry, defaultStarFor, defaultTableStar,
   dpsDelta, EFFECTS, effectText, EMPTY_SLOT, emptyArtifacts, equippedCount, equippedKeys, fillTemplate, legacyEquippedKeys, lineCount, normalizeArtifacts, normalizeEquipped, normalizeSlots,
   parseStar, placeholders, requestSlots, setLine, setSlot, setStar, slotsFor, starIndex, starOptions, STAR_TOOLTIP, STAR_VALUES, visibleArtifacts, withoutArtifacts,
 } from "./artifacts";
@@ -249,6 +250,22 @@ describe("request building and capability", () => {
     expect(x.artifact_stars.candle).toBe("Not Unlocked");
     expect(x.artifact_stars.charm_of_the_undead).toBe(5);
     expect(artifactStarsExtra(undefined, t)).toEqual({});
+  });
+  it("artifact_lines (equip ranking): the rolled lines of the table go with the ranking request, none = no key (an equipped artifact's removal value includes them)", () => {
+    expect(artifactStarsExtra(art, emptyArtifacts(art))).not.toHaveProperty("artifact_lines");
+    let t = setStar(art, emptyArtifacts(art), "arwens_glass_shoes", 5);
+    t = setLine(art, t, "arwens_glass_shoes", 0, { rarity: "Legendary", stat: "Damage %" });
+    t = setLine(art, t, "arwens_glass_shoes", 1, { rarity: "Epic", stat: "Boss Monster Damage %" });
+    const x = artifactStarsExtra(art, t) as { artifact_stars: Record<string, unknown>; artifact_lines: Record<string, unknown> };
+    expect(Object.keys(x.artifact_lines)).toEqual(["arwens_glass_shoes"]);
+    expect(x.artifact_lines.arwens_glass_shoes).toEqual({ star: 5, lines: [{ rarity: "Legendary", stat: "Damage %" }, { rarity: "Epic", stat: "Boss Monster Damage %" }] });
+    expect(x.artifact_stars.arwens_glass_shoes).toBe(5);
+    // the same body as the Artifacts table's own potentials request (so both tables value the same lines), unknown stats repaired to "(none)"
+    expect(artifactLinesRequest(art, t)).toEqual(potentialsRequest(art, t, STATIC_POTENTIAL_TABLES));
+    const junk = { ...t, arwens_glass_shoes: { ...t.arwens_glass_shoes, lines: [{ rarity: "Rare", stat: "Not A Stat" }, { rarity: "Epic", stat: "Damage %" }, blankLine()] } };
+    expect(artifactLinesRequest(art, junk).arwens_glass_shoes.lines).toEqual([{ rarity: "Rare", stat: "(none)" }, { rarity: "Epic", stat: "Damage %" }]);
+    // a locked artifact's lines are sent too (the engine ignores them below their unlock star)
+    expect(artifactLinesRequest(art, setLine(art, emptyArtifacts(art), "candle", 0, { rarity: "Rare", stat: "Damage %" })).candle.star).toBe("Not Unlocked");
   });
   it.each(UNMODELLED.map((c) => [c.info.id, c] as const))("%s: artifacts are not sent when the schema says not modelled", (_id, c) => {
     const s: FormState = { ...initialState(c.schema, c.defaults["World Boss"], "World Boss"), artifacts: { candle: { star: 1, lines: [] } } as unknown as ArtifactsState, equippedArtifacts: { "World Boss": ["candle"] } };

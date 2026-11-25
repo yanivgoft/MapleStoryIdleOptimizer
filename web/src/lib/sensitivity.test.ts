@@ -10,11 +10,9 @@ import {
   rankEquip,
   relativeValues,
   sensitivityBody,
-  signedNumber,
   signedPct,
   sig,
   sortCompanions,
-  sortStats,
   statFlags,
   statLabel,
   type ArtifactRow,
@@ -56,11 +54,7 @@ describe("formatting", () => {
     expect(signedPct(0.0001)).toBe("≈0%");
     expect(signedPct(null)).toBe("–");
   });
-  it("signed DPS amounts and stat values", () => {
-    expect(signedNumber(190.798)).toBe("+190.8");
-    expect(signedNumber(-2178.85)).toBe("−2.18K");
-    expect(signedNumber(0)).toBe("0");
-    expect(signedNumber(5.4e16)).toBe("+54Qa");
+  it("stat values", () => {
     expect(formatStatValue(55.5)).toBe("55.5");
     expect(formatStatValue(1.0000000000000064)).toBe("1");
     expect(formatStatValue(1209199)).toBe("1.209M");
@@ -68,21 +62,12 @@ describe("formatting", () => {
   });
 });
 
-describe("stat ranking", () => {
+describe("stat values", () => {
   const rows = [stat("a", 50), stat("b", null), stat("c", 1), stat("d", 5), stat("e", null), stat("f", 20)];
-  it("value order: fewest units first, n/a last in workbook order", () => {
-    expect(sortStats(rows).map((r) => r.key)).toEqual(["c", "d", "f", "a", "b", "e"]);
-  });
-  it("workbook order and name order; the input is not mutated", () => {
-    const before = rows.map((r) => r.key).join();
-    expect(sortStats(rows, "order").map((r) => r.key)).toEqual(["a", "b", "c", "d", "e", "f"]);
-    expect(sortStats([stat("z", 1, { label: "Zed" }), stat("y", 2, { label: "Alpha" })], "name").map((r) => r.key)).toEqual(["y", "z"]);
-    expect(rows.map((r) => r.key).join()).toBe(before);
-  });
-  it("a stat that lowers DPS (negative units) has no value and sinks", () => {
+  it("a stat that lowers DPS (negative units) has no value", () => {
     const harmful = stat("h", -2, { pct_gain: 99.5 });
     expect(hasValue(harmful)).toBe(false);
-    expect(sortStats([harmful, stat("x", 9)]).map((r) => r.key)).toEqual(["x", "h"]);
+    expect(hasValue(stat("x", 9))).toBe(true);
   });
   it("relative bar lengths: best = 1, proportional, none = 0", () => {
     const rel = relativeValues(rows);
@@ -162,15 +147,6 @@ describe("the real FP-Mage fixture (dumped from the engine through the API)", ()
       expect(Number.isFinite(r.pct_gain) && Number.isFinite(r.dps_gain)).toBe(true);
       expect(r.units_per_1pct === null || Number.isFinite(r.units_per_1pct)).toBe(true);
     }
-  });
-  it("value order is monotone in units per +1% and equals the % gain order", () => {
-    const sorted = sortStats(fx.result.stats!.rows);
-    const valued = sorted.filter(hasValue);
-    for (let i = 1; i < valued.length; i++) {
-      expect(valued[i].units_per_1pct!).toBeGreaterThanOrEqual(valued[i - 1].units_per_1pct!);
-      expect(valued[i].pct_gain).toBeLessThanOrEqual(valued[i - 1].pct_gain + 1e-9);
-    }
-    expect(sorted.slice(valued.length).every((r) => !hasValue(r))).toBe(true);
   });
   it("equip ranking agrees with the engine's own ranking", () => {
     const ranked = rankEquip(fx.result.artifacts!.rows).filter((e) => e.group === "ranked").map((e) => e.row);

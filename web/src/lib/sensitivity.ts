@@ -178,13 +178,6 @@ export function gainPct(pct100: number | null | undefined): string {
   return pct100 === null || pct100 === undefined ? "–" : signedPct(pct100 - 100);
 }
 
-/** Signed compact DPS amount: "+190", "-2.18K". */
-export function signedNumber(v: number | null | undefined): string {
-  if (v === null || v === undefined || !Number.isFinite(v)) return "–";
-  if (v === 0) return "0";
-  return `${v < 0 ? MINUS : "+"}${formatNumber(Math.abs(v))}`;
-}
-
 /** A stat's current / new value for the table (flat values compact, percentages with up to 2 decimals). */
 export function formatStatValue(v: number | null | undefined): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return "–";
@@ -209,13 +202,6 @@ export function statLabel(raw: string): string {
   return s;
 }
 
-export type StatSort = "value" | "order" | "name";
-export const STAT_SORTS: { id: StatSort; label: string }[] = [
-  { id: "value", label: "Best value first" },
-  { id: "order", label: "Game stat order" },
-  { id: "name", label: "Name" },
-];
-
 /** Percentage points one step adds (pct_gain - 100); this is what "units per +1%" inverts. */
 export function stepGainPp(r: Pick<StatRow, "pct_gain">): number {
   return r.pct_gain - 100;
@@ -224,25 +210,6 @@ export function stepGainPp(r: Pick<StatRow, "pct_gain">): number {
 /** A row's value per unit is meaningful only when one step helps. */
 export function hasValue(r: Pick<StatRow, "pct_gain" | "units_per_1pct">): boolean {
   return r.units_per_1pct !== null && r.units_per_1pct > 0 && stepGainPp(r) > 0;
-}
-
-/**
- * Rows in display order.  "value": fewest units for +1% DPS first (units_per_1pct ascending == % gain per step descending); stats without any gain
- * (n/a) sink to the bottom in workbook order.  The input is not mutated.
- */
-export function sortStats(rows: StatRow[], sort: StatSort = "value"): StatRow[] {
-  const idx = new Map(rows.map((r, i) => [r.key, i]));
-  const byOrder = (a: StatRow, b: StatRow) => idx.get(a.key)! - idx.get(b.key)!;
-  const out = [...rows];
-  if (sort === "order") return out.sort(byOrder);
-  if (sort === "name") return out.sort((a, b) => statLabel(a.label).localeCompare(statLabel(b.label)) || byOrder(a, b));
-  return out.sort((a, b) => {
-    const ha = hasValue(a);
-    const hb = hasValue(b);
-    if (ha !== hb) return ha ? -1 : 1;
-    if (!ha) return byOrder(a, b);
-    return (a.units_per_1pct as number) - (b.units_per_1pct as number) || byOrder(a, b);
-  });
 }
 
 /** Bar length 0..1 per stat key: the step gain relative to the best stat's (0 for stats without gain). */
@@ -308,7 +275,7 @@ export function equipNote(r: ArtifactRow): string {
   if (!r.unlocked) parts.push("not unlocked: what-if at star 0, not ranked");
   if (r.equipped) parts.push("equipped: the gain is what you lose if you remove it (same % either direction)");
   if (r.baked_into_inputs) parts.push("its bonus is already in the stats you typed: the gain is a what-if on top of your typed values");
-  if (r.potential_gain) parts.push(`includes ${formatNumber(r.potential_gain)} DPS from its potential lines`);
+  if (r.potential_gain) parts.push("includes the gain from its potential lines");
   return parts.join(". ");
 }
 

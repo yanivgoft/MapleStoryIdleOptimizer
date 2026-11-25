@@ -5,7 +5,7 @@ GET  /api/classes
 GET  /api/classes/{id}/schema
 GET  /api/classes/{id}/defaults?content_type=...
 POST /api/classes/{id}/compute          body: inputs dict (missing keys take the content type's defaults)
-POST /api/classes/{id}/sensitivity      body: the same inputs + optional ``which`` / ``companion_comparison_level`` / ``artifact_stars`` -> stat values
+POST /api/classes/{id}/sensitivity      body: the same inputs + optional ``which`` / ``companion_comparison_level`` / ``artifact_stars`` / ``artifact_lines`` -> stat values
 GET  /api/classes/{id}/sensitivity/meta labels / types / notes of the stats and artifact toggles
 GET  /api/classes/{id}/cubes/meta       slots, rarities, stat options, pity caps, milestones (+ equipment-compare / artifact-potential tables)
 POST /api/classes/{id}/cubes            inputs + ``gear`` (+ ``only``) -> cube optimizer rows (engine.cubes.recommend)
@@ -164,6 +164,14 @@ def create_app(settings=None):
         clean, errors = validation.validate_inputs(entry.schema, entry.defaults, compute_body)
         extra_clean, extra_errors = validation.validate_sensitivity_extras(entry.schema, extras, registry.SENSITIVITY_PARTS)
         errors = (errors or []) + extra_errors
+        if extras.get("artifact_lines") is not None:
+            if not entry.schema.get("artifacts_modelled") or not features.available():
+                errors.append({"field": "artifact_lines", "message": "artifacts are not modelled for this class yet"})
+            else:
+                lines_state, line_errors = features.validate_artifact_lines(extras["artifact_lines"])
+                errors += line_errors
+                if not line_errors:
+                    extra_clean["artifact_lines"] = lines_state
         if errors:
             return JSONResponse(status_code=422, content={"detail": "Invalid inputs", "errors": errors})
         which = extra_clean.get("which")
@@ -171,6 +179,8 @@ def create_app(settings=None):
         inputs = dict(clean)
         if "artifact_stars" in extra_clean:
             inputs["artifact_stars"] = extra_clean["artifact_stars"]
+        if extra_clean.get("artifact_lines"):
+            inputs["artifact_lines"] = extra_clean["artifact_lines"]
         for k in ("companion_levels", "companion_potential_lines_pct"):
             if k in extra_clean:
                 inputs[k] = extra_clean[k]

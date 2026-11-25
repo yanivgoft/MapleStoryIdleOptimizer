@@ -32,7 +32,7 @@ describe("Help tab render", () => {
   });
   it("covers every tab and the key conventions", () => {
     for (const t of ["Calculator", "Companions", "Profiles", "Stat values", "Artifacts", "Cubes", "Equipment compare"]) expect(html, t).toContain(`<strong>${t}</strong>`);
-    for (const t of ["Book of Ancient", "Bottle of Emotion", "Reindeer", "time-weighted", "second-by-second", "90 s cooldown", "7 s", "0.3 s", "13.667%", "Arwen", "+20%", "Lower is better".toLowerCase(), "Seven artifacts"])
+    for (const t of ["already include every artifact", "what-if", "time-weighted", "second-by-second", "90 s cooldown", "7 s", "0.3 s", "13.667%", "Arwen", "+20%", "Lower is better".toLowerCase(), "Seven artifacts"])
       expect(html.toLowerCase(), t).toContain(t.toLowerCase());
   });
   it("shows the selected class's schema help text per field, grouped", () => {

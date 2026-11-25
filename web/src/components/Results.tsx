@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { ComputeResult } from "../types";
 import { BarChart, type Bar } from "./BarChart";
-import { formatFull, formatNumber, formatPercent } from "../lib/format";
+import { formatNumber, formatPercent } from "../lib/format";
 
 const HIDDEN_DERIVED = new Set(["monster_type", "chapter", "stage", "breakthrough_normal_weight_pct", "breakthrough_stage_index", "monster_defense", "fight_duration"]);
 
@@ -34,45 +34,45 @@ export function Results({ result, busy, stale }: { result: ComputeResult; busy: 
   }, [result]);
 
   const sortedSkills = useMemo(() => [...result.skills].sort((a, b) => b.dps - a.dps), [result]);
+  const ofTotal = (v: number) => (result.total_dps > 0 ? v / result.total_dps : null);
+  const branchShare = (v: number, branchTotal: number) => (branchTotal > 0 ? formatPercent(v / branchTotal) : "–");
   const derivedRows = Object.entries(result.derived).filter(([k]) => !HIDDEN_DERIVED.has(k));
 
   return (
     <section className={`results${busy || stale ? " busy" : ""}`} aria-busy={busy}>
       <span className="sr-only" aria-live="polite" role="status">
-        Total DPS {formatNumber(result.total_dps)}
+        Total DPS updated
       </span>
       <div className="total card">
         <div className="label">
           Total DPS
           {busy && <span className="updating"> Updating...</span>}
         </div>
-        <div className="big" title={formatFull(result.total_dps)}>
-          {formatNumber(result.total_dps)}
-        </div>
+        <div className="big">{formatNumber(result.total_dps)}</div>
         <div className="sub">
           {result.engine_on && (
             <span className="pill on" title="Buffs, stuns and KO phases are placed second by second over the fight">
               Detailed simulation
             </span>
           )}
-          <span>Player {formatNumber(result.player_dps)}</span>
-          {c && c.dps > 0 && <span>{hasCompanion ? "Companion" : "Stun effect"} {formatNumber(c.dps)}</span>}
+          <span>Player {formatPercent(ofTotal(result.player_dps), 0)}</span>
+          {c && c.dps > 0 && <span>{hasCompanion ? "Companion" : "Stun effect"} {formatPercent(ofTotal(c.dps), 0)}</span>}
         </div>
       </div>
       <div className="split">
         <div className="card">
-          <div className="label">Boss only</div>
-          <div className="mid" title={formatFull(result.boss_dps)}>{formatNumber(result.boss_dps)}</div>
+          <div className="label">Boss only (% of Total DPS)</div>
+          <div className="mid">{formatPercent(ofTotal(result.boss_dps), 0)}</div>
         </div>
         <div className="card">
-          <div className="label">Normal monsters only</div>
-          <div className="mid" title={formatFull(result.normal_dps)}>{result.normal_dps > 0 ? formatNumber(result.normal_dps) : result.derived.monster_type === "pvp" ? "n/a (PvP)" : "n/a (boss fight)"}</div>
+          <div className="label">Normal monsters only (% of Total DPS)</div>
+          <div className="mid">{result.normal_dps > 0 ? formatPercent(ofTotal(result.normal_dps), 0) : result.derived.monster_type === "pvp" ? "n/a (PvP)" : "n/a (boss fight)"}</div>
         </div>
       </div>
 
       <div className="card">
-        <h2>DPS by skill</h2>
-        <BarChart bars={bars} title="DPS by skill, highest first" />
+        <h2>Share of Total DPS by skill</h2>
+        <BarChart bars={bars} title="Share of Total DPS by skill, highest first" />
       </div>
 
       <div className="card">
@@ -82,10 +82,9 @@ export function Results({ result, busy, stale }: { result: ComputeResult; busy: 
             <thead>
               <tr>
                 <th scope="col">Skill</th>
-                <th scope="col" className="num">DPS</th>
                 <th scope="col" className="num">Share</th>
-                <th scope="col" className="num">Boss</th>
-                <th scope="col" className="num">Normal</th>
+                <th scope="col" className="num">Boss share</th>
+                <th scope="col" className="num">Normal share</th>
               </tr>
             </thead>
             <tbody>
@@ -95,10 +94,9 @@ export function Results({ result, busy, stale }: { result: ComputeResult; busy: 
                     {s.name}
                     {!s.unlocked && <span className="tag">locked</span>}
                   </th>
-                  <td className="num" title={formatFull(s.dps)}>{formatNumber(s.dps)}</td>
                   <td className="num">{formatPercent(s.share)}</td>
-                  <td className="num">{formatNumber(s.boss_dps)}</td>
-                  <td className="num">{formatNumber(s.normal_dps)}</td>
+                  <td className="num">{branchShare(s.boss_dps, result.boss_dps)}</td>
+                  <td className="num">{branchShare(s.normal_dps, result.normal_dps)}</td>
                 </tr>
               ))}
               {c && (hasCompanion || c.dps > 0) && (
@@ -112,10 +110,9 @@ export function Results({ result, busy, stale }: { result: ComputeResult; busy: 
                       "Stun effect (no companion)"
                     )}
                   </th>
-                  <td className="num" title={formatFull(c.dps)}>{formatNumber(c.dps)}</td>
                   <td className="num">{formatPercent(c.share)}</td>
-                  <td className="num">{formatNumber(c.boss_dps)}</td>
-                  <td className="num">{formatNumber(c.normal_dps)}</td>
+                  <td className="num">{branchShare(c.boss_dps, result.boss_dps)}</td>
+                  <td className="num">{branchShare(c.normal_dps, result.normal_dps)}</td>
                 </tr>
               )}
             </tbody>
@@ -123,8 +120,7 @@ export function Results({ result, busy, stale }: { result: ComputeResult; busy: 
         </div>
         {c && hasCompanion && (
           <p className="note">
-            Companion summoned every {formatNumber(c.summon_time_s)}s for {formatNumber(c.window_s)}s; it adds {formatNumber(c.uplift)} damage uplift to the
-            player's own skills over the fight.
+            Companion summoned every {formatNumber(c.summon_time_s)}s for {formatNumber(c.window_s)}s.
           </p>
         )}
       </div>

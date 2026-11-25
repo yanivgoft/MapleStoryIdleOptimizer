@@ -1,9 +1,9 @@
 import "./sensitivity.css";
 import type { ArtifactRow } from "../lib/sensitivity";
-import { gainPct, rankEquip, signedNumber } from "../lib/sensitivity";
+import { gainPct, rankEquip } from "../lib/sensitivity";
 
 /** The one name of this table everywhere (Artifacts tab, Stat values tab). */
-export const ARTIFACT_RANKING_TITLE = "Artifact ranking (DPS gain if equipped)";
+export const ARTIFACT_RANKING_TITLE = "Artifact ranking (% DPS gain if equipped)";
 
 interface Props {
   rows: ArtifactRow[];
@@ -34,7 +34,6 @@ export function EquipRanking({ rows, limit, showLocked = true, showNoEffect = tr
           <tr>
             <th scope="col">#</th>
             <th scope="col">Artifact</th>
-            <th scope="col" className="num">DPS gain</th>
             <th scope="col" className="num">% gain</th>
             <th scope="col">Relative</th>
           </tr>
@@ -54,7 +53,6 @@ export function EquipRanking({ rows, limit, showLocked = true, showNoEffect = tr
                   {group === "no_effect" && <span className="sub">no DPS effect</span>}
                   {group === "locked" && <span className="sub">not unlocked</span>}
                 </td>
-                <td className={`num${row.dps_gain < 0 ? " neg" : ""}`}>{group === "no_effect" ? "–" : signedNumber(row.dps_gain)}</td>
                 <td className={`num${pp < 0 ? " neg" : ""}`}>{group === "no_effect" ? "–" : gainPct(row.pct_gain)}</td>
                 <td>
                   {!dim && (

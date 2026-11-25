@@ -50,7 +50,9 @@ and removing a baked-in Final Damage artifact was additive in the artifact bucke
 
 The reported gain blends the two branches' RELATIVE growth by the time weight (CLAUDE.md bug 9): ``ratio = (1-w) boss_new/boss_base + w normal_new/normal_base``,
 ``DPS gain = Total x (ratio - 1)``, ``% gain = ratio x 100``, ``units per +1% = 1 / (% gain - 100)``.  Equip toggles use the direction-invariant convention of
-CLAUDE.md item 15.  ``naive=True`` evaluates every block as a plain re-run instead (for documenting the differences; ``semantic_differences``).
+CLAUDE.md item 15 (in blended content the equipped row inverts the per-branch removal ratios before blending: ``artifact_row``).
+``inputs['typed_includes_artifacts']`` (the API default): the typed stats already contain the equipped artifacts, ``_Base`` evaluates every block on the character WITHOUT them
+(``engine/typed_artifacts.py``), so the equip toggles are what-ifs on that base and Current / New of the stat table still show the typed numbers.  ``naive=True`` evaluates every block as a plain re-run instead (for documenting the differences; ``semantic_differences``).
 """
 import math
 
@@ -59,6 +61,8 @@ from .common import companion as comp_mod
 from .common import factors
 from .data import artifacts as AD
 from . import artifacts as art_mod
+from . import potentials
+from . import typed_artifacts
 from . import sens_specs
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------
@@ -163,6 +167,32 @@ def _ratio_div(new, base):
     return new / base if base != 0 else 1.0
 
 
+def resolve_stars(inputs):
+    """``({artifact id: resolved star 0..5}, {artifact id: unlocked?})`` for ALL artifacts: the equipped slots' stars, else ``inputs['artifact_stars']``
+    ({id: 0..5 | None | 'Not Unlocked'}), else the workbook's default by rank (Epic 5, Unique 3, Legendary Not Unlocked)."""
+    raw_slots = {}
+    for a in inputs.get("artifacts") or []:
+        if a is None:
+            continue
+        key = a.get("key") if isinstance(a, dict) else a
+        key = art_mod.LABEL_TO_KEY.get(key, key)
+        if key in AD.ARTIFACT_LABELS and key not in raw_slots:
+            raw_slots[key] = a.get("star") if isinstance(a, dict) else None
+    given = inputs.get("artifact_stars") or {}
+    stars, unlocked = {}, {}
+    for key in AD.ARTIFACT_LABELS:
+        if key in raw_slots:
+            s = raw_slots[key]
+        elif key in given:
+            s = given[key]
+        else:
+            s = art_mod.default_star(key)
+        nu = s is None or s == "Not Unlocked"
+        stars[key] = 0 if nu else int(s)
+        unlocked[key] = not nu
+    return stars, unlocked
+
+
 class _Base:
     """The evaluated main model + everything the blocks read from it (``class_module`` defaults to FP-Mage)."""
 
@@ -171,6 +201,10 @@ class _Base:
         self.spec = _spec_of(self.module)
         self.inputs = dict(inputs)
         self.inputs.pop("_sens", None)
+        # typed stats that already include the equipped artifacts (inputs["typed_includes_artifacts"]): the blocks are what-ifs on the character WITHOUT them, derived
+        # ONCE here (the flag is cleared in ``self.inputs`` so no block strips again); ``typed_inputs`` keeps what the user typed (the tables' Current / New columns)
+        self.typed_inputs = self.inputs
+        self.inputs, self.typed_info = typed_artifacts.strip_if_flagged(self.module, self.inputs)
         self.naive = naive
         self.model = self.module.model(dict(self.inputs, _sens={"want_comp_host": True}))
         m = self.model
@@ -186,29 +220,7 @@ class _Base:
 
     # ---- artifact stars (ArtifactsInput) ----
     def _resolve_stars(self):
-        """{artifact id: resolved star 0..5} and {artifact id: unlocked?} for ALL artifacts: the equipped slots' stars, else ``inputs['artifact_stars']``
-        ({id: 0..5 | None | 'Not Unlocked'}), else the workbook's default by rank (Epic 5, Unique 3, Legendary Not Unlocked)."""
-        raw_slots = {}
-        for a in self.inputs.get("artifacts") or []:
-            if a is None:
-                continue
-            key = a.get("key") if isinstance(a, dict) else a
-            key = art_mod.LABEL_TO_KEY.get(key, key)
-            if key in AD.ARTIFACT_LABELS and key not in raw_slots:
-                raw_slots[key] = a.get("star") if isinstance(a, dict) else None
-        given = self.inputs.get("artifact_stars") or {}
-        stars, unlocked = {}, {}
-        for key in AD.ARTIFACT_LABELS:
-            if key in raw_slots:
-                s = raw_slots[key]
-            elif key in given:
-                s = given[key]
-            else:
-                s = art_mod.default_star(key)
-            nu = s is None or s == "Not Unlocked"
-            stars[key] = 0 if nu else int(s)
-            unlocked[key] = not nu
-        return stars, unlocked
+        return resolve_stars(self.inputs)
 
     # ---- block evaluation ----
     def block(self, overrides=None, sens=None, rebuild=False, full_search=False):
@@ -238,6 +250,15 @@ class _Base:
     def weighted_ratio(self, new_boss, new_normal):
         w = self.w
         return ((1 - w) * _ratio_div(new_boss, self.boss_only) + w * _ratio_div(new_normal, self.normal_only))
+
+    def inverse_weighted_ratio(self, new_boss, new_normal):
+        """The time-weighted blend of the INVERSE per-branch ratios (base / new): for an equip toggle measured as a REMOVAL (``new`` = the model without the artifact)
+        this is the growth blend of the matching ADDING view, ``(1-w) boss_with / boss_without + w normal_with / normal_without``."""
+        w = self.w
+
+        def inv(new, base):
+            return base / new if (base != 0 and new != 0) else 1.0
+        return (1 - w) * inv(new_boss, self.boss_only) + w * inv(new_normal, self.normal_only)
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------
@@ -321,7 +342,10 @@ def stat_table(base):
         total, boss, normal = base.block({key: new}, sens, rebuild=key in spec.status_rebuild_keys, full_search=key in spec.companion_full_search_keys)
         ratio, gain, pct = _gain_fields(base, total, boss, normal)
         d = pct - 100
-        rows.append(dict(key=key, label=label, type=kind, current=cur + extra, new=new + extra, baseline_total=base.total, new_total=total, dps_gain=gain,
+        # Current / New show what the user TYPED and would type (the model steps the stripped base; with the flag off the two are the same number)
+        typed_cur = _num(base.typed_inputs.get(key))
+        typed_new = new if typed_cur == cur else _new_value(kind, typed_cur, extra)
+        rows.append(dict(key=key, label=label, type=kind, current=typed_cur + extra, new=typed_new + extra, baseline_total=base.total, new_total=total, dps_gain=gain,
                          pct_gain=pct, dps_per_1=gain, units_per_1pct=(1 / d if d != 0 else None), new_boss_total=boss, new_normal_total=normal,
                          boss_ratio=_ratio_div(boss, base.boss_only), normal_ratio=_ratio_div(normal, base.normal_only),
                          semantics=spec.semantics.get(key),
@@ -382,32 +406,75 @@ def _toggle_sens(base, art, equipped, star):
     return eq, sens
 
 
-def artifact_table(base):
-    potential = base.inputs.get("artifact_potential_gain") or {}
-    rows = []
-    for art, label in AD.ARTIFACT_LABELS.items():
-        equipped = art in base.eq
-        star = base.stars[art]
-        pot = potential.get(art, 0.0)
-        no_effect = art in AD.ARTIFACT_NO_DPS_EFFECT
-        row = dict(key=art, label=label, rank=AD.ARTIFACT_RANK[art], effect=art_mod.effect_kind(art), no_dps_effect=no_effect,
-                   reason=AD.ARTIFACT_NO_DPS_EFFECT.get(art), equipped=equipped, star=star, unlocked=base.unlocked[art], potential_gain=pot,
-                   baked_into_inputs=art in art_mod.REFERENCE_ONLY or art == "reindeer_spear")
-        if no_effect:
-            # the stat is not used by the model: the block is bit-for-bit the baseline; skip the evaluation
-            ratio, new_total, dollar = 1.0, base.total, 0.0 + pot
-            row.update(new_total=base.total, ratio=1.0)
+def lines_potential_gains(base, lines, stats=None):
+    """``{artifact id: Total Potential DPS Gain}`` of the potential lines in ``lines`` (``inputs["artifact_lines"]``: ``{artifact id: {"star"?, "lines": [(rarity, stat) |
+    {rarity, stat}, ...]}}``): each line is priced at the character's own stat rates (this class's stats part at the current inputs, ``stats`` = that part when the caller
+    has it already), the artifact's lines unlock with its RESOLVED star (equip slot, else ``artifact_stars``, else the default by rank; an entry's own ``star`` wins), the
+    class's own ``potentials`` stat map applies.  This is the value ``artifact_table`` adds to the artifact's equip row (``artifact_potential_gain``): for an UNEQUIPPED
+    artifact what equipping it brings besides its effect, for an EQUIPPED one what removing it loses besides its effect (its lines are real stats of the preset)."""
+    stats = stats if stats is not None else stat_table(base)
+    rates = {r["key"]: r["dps_gain"] for r in stats["rows"]}
+    s2k = (base.spec.stat_to_key or {}).get("potentials")
+    state = {}
+    for art, entry in (lines or {}).items():
+        if art not in AD.ARTIFACT_LABELS or not isinstance(entry, dict):
+            continue
+        norm = []
+        for ln in entry.get("lines") or []:
+            if isinstance(ln, dict):
+                norm.append((ln.get("rarity") or potentials.DEFAULT_RARITY, ln.get("stat") or potentials.NONE_STAT))
+            else:
+                norm.append(tuple(ln))
+        state[art] = {"star": entry["star"] if "star" in entry else base.stars[art], "lines": norm}
+    if not state or not base.total > 0:
+        return {}
+    return {art: g for art, g in potentials.potential_gains(state, rates, base.total, s2k).items() if art in state}
+
+
+def artifact_row(base, art, pot=0.0):
+    """One row of the artifact table: the equip toggle of ``art`` (adding when unequipped, removing when equipped) with ``pot`` = the DPS of its potential lines."""
+    label = AD.ARTIFACT_LABELS[art]
+    equipped = art in base.eq
+    star = base.stars[art]
+    no_effect = art in AD.ARTIFACT_NO_DPS_EFFECT
+    row = dict(key=art, label=label, rank=AD.ARTIFACT_RANK[art], effect=art_mod.effect_kind(art), no_dps_effect=no_effect,
+               reason=AD.ARTIFACT_NO_DPS_EFFECT.get(art), equipped=equipped, star=star, unlocked=base.unlocked[art], potential_gain=pot,
+               baked_into_inputs=art in art_mod.REFERENCE_ONLY or art == "reindeer_spear")
+    hyp = None
+    if no_effect:
+        # the stat is not used by the model: the block is bit-for-bit the baseline; skip the evaluation
+        ratio, new_total, dollar = 1.0, base.total, 0.0 + pot
+        row.update(new_total=base.total, ratio=1.0)
+    else:
+        _eq, sens = _toggle_sens(base, art, equipped, star)
+        key = f"{art}_equipped"
+        total, boss, normal = base.block(None, sens, rebuild=key in base.spec.status_rebuild_keys, full_search=key in base.spec.companion_full_search_keys)
+        ratio = base.weighted_ratio(boss, normal)
+        if equipped and 0.0 < base.w < 1.0:
+            # Blended content (Breakthrough / Hero Dungeon): the row measures REMOVAL, whose per-branch ratios r' = without / with are not invertible by the
+            # time-weighted blend (bug 9: (1-w) r'_boss + w r'_normal is not 1 / the adding blend).  Invert each branch first, then blend: exactly the adding view
+            # of the same real pair, so both directions report the SAME gain and % gain (2026-11-25).  Pure boss / pure normal content (w = 0 / 1) is unchanged
+            # bit for bit (the two forms are algebraically equal there).
+            ratio_add = base.inverse_weighted_ratio(boss, normal)
+            hyp = total                                  # the hypothetical-UNEQUIPPED blended total (the block without the artifact)
+            dollar = hyp * (ratio_add - 1) + pot
+            row.update(new_total=total, ratio=ratio, ratio_adding=ratio_add)
         else:
-            _eq, sens = _toggle_sens(base, art, equipped, star)
-            key = f"{art}_equipped"
-            total, boss, normal = base.block(None, sens, rebuild=key in base.spec.status_rebuild_keys, full_search=key in base.spec.companion_full_search_keys)
-            ratio = base.weighted_ratio(boss, normal)
             dollar = (-1 if equipped else 1) * base.total * (ratio - 1) + pot
             row.update(new_total=total, ratio=ratio)
-        # direction-invariant % (CLAUDE.md item 15): divide by the HYPOTHETICAL-UNEQUIPPED total in both directions
+    # direction-invariant % (CLAUDE.md item 15): divide by the HYPOTHETICAL-UNEQUIPPED total in both directions
+    if equipped and hyp is not None:
+        h = hyp - pot                                    # without the artifact its potential lines are gone too (pot = 0 when none are entered)
+        pct = (h + dollar) / h * 100
+    else:
         pct = base.total / (base.total - dollar) * 100 if equipped else (base.total + dollar) / base.total * 100
-        row.update(dps_gain=dollar, pct_gain=pct)
-        rows.append(row)
+    row.update(dps_gain=dollar, pct_gain=pct)
+    return row
+
+
+def artifact_table(base):
+    potential = base.inputs.get("artifact_potential_gain") or {}
+    rows = [artifact_row(base, art, potential.get(art, 0.0)) for art in AD.ARTIFACT_LABELS]
     # ranking: unlocked artifacts only, best % gain first, ties by table position (the sheet's SUMPRODUCT + COUNTIFS rank)
     order = sorted((i for i, r in enumerate(rows) if r["unlocked"]), key=lambda i: (-rows[i]["pct_gain"], i))
     for pos, i in enumerate(order, 1):
@@ -515,7 +582,8 @@ PARTS = ("stats", "artifacts", "companions", "summon_time", "cdr")
 
 def run(class_module, inputs, which=None, naive=False, companion_level=None):
     """Sensitivity tables of ``inputs`` (the ``<class>.compute`` input dict; extra optional keys: ``artifact_stars`` {id: star}, ``artifact_potential_gain``
-    {id: DPS}, ``companion_levels`` {name: level}, ``companion_potential_lines_pct``).  ``which``: iterable of PARTS (default all).  JSON-serialisable.
+    {id: DPS}, ``artifact_lines`` {id: {star?, lines}} (the potential lines entered on the Artifacts tab: priced here and added to that artifact's equip / removal row, see
+    ``lines_potential_gains``), ``companion_levels`` {name: level}, ``companion_potential_lines_pct``).  ``which``: iterable of PARTS (default all).  JSON-serialisable.
     NotImplementedError for a class without a spec (``engine/sens_specs``)."""
     _spec_of(class_module)
     which = list(PARTS) if which is None else ([which] if isinstance(which, str) else list(which))
@@ -525,9 +593,15 @@ def run(class_module, inputs, which=None, naive=False, companion_level=None):
     base = _Base(inputs, naive=naive, class_module=class_module)
     out = dict(class_id=class_module.CLASS_ID, content_type=base.model.content_type, baseline_total=base.total, baseline_boss_total=base.boss_only,
                baseline_normal_total=base.normal_only, normal_weight=base.w, semantics="naive" if naive else "workbook")
+    if base.typed_info is not None and base.typed_info["notes"]:
+        out["typed_notes"] = list(base.typed_info["notes"])        # e.g. typed_below_artifact:<id>: the typed value is smaller than that equipped artifact's effect
     if "stats" in which:
         out["stats"] = stat_table(base)
     if "artifacts" in which:
+        lines = base.inputs.get("artifact_lines")
+        if lines:
+            gains = lines_potential_gains(base, lines, out.get("stats"))
+            base.inputs["artifact_potential_gain"] = dict(base.inputs.get("artifact_potential_gain") or {}, **gains)
         out["artifacts"] = artifact_table(base)
     if "companions" in which:
         out["companions"] = companion_table(base, companion_level)

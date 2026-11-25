@@ -58,7 +58,7 @@ export function ArtifactsAbout({ art, meta, contentType }: { art: ArtifactSchema
           {contentType ? <strong>{contentType}</strong> : "the current content type"}. &quot;Not unlocked&quot; counts as star 0 once the artifact is equipped.
         </li>
         <li>
-          Potential lines are a reference calculator: the gains do not change your Total DPS (type a roll you keep into the Calculator yourself). Epic / Unique artifacts have 2 lines, Legendary 3; lines unlock at star{" "}
+          Potential lines are a reference calculator: they do not change your Total DPS (type a roll you keep into the Calculator yourself), but the artifact ranking counts them. Epic / Unique artifacts have 2 lines, Legendary 3; lines unlock at star{" "}
           {tables.line_min_star.join(" / ")}, locked lines count 0. Same-stat lines add, different stats multiply. A stat marked with a warning is not rollable on artifacts: it is kept from an old profile or an import,
           valued at 0 and sent as empty.
         </li>
@@ -155,15 +155,7 @@ export function ArtifactBreakdown({ result, baselineDps, baselineState }: { resu
       <p className="art-delta" role="status">
         <strong>Total DPS with these artifacts vs. none</strong>:{" "}
         {delta ? (
-          <>
-            {formatNumber(result.total_dps)} vs {formatNumber(baselineDps as number)}
-            {" = "}
-            <strong>
-              {delta.abs >= 0 ? "+" : ""}
-              {formatNumber(delta.abs)}
-              {delta.pct !== null && ` (${delta.pct >= 0 ? "+" : ""}${delta.pct.toFixed(2)}%)`}
-            </strong>
-          </>
+          <strong>{delta.pct !== null ? `${delta.pct >= 0 ? "+" : ""}${delta.pct.toFixed(2)}%` : "–"}</strong>
         ) : baselineState === "error" ? (
           "not available (the comparison failed)"
         ) : (

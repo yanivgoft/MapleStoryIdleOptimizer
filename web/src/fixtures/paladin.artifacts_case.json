@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 3.175722259488168e+16,
+  "total_dps": 3.1740640391481644e+16,
   "artifacts": {
    "equipped": [
     {
@@ -118,6 +118,28 @@
    "notes": [
     "reference_only artifacts: their stat is entered by hand in Inputs (workbook convention); equipping changes nothing live"
    ],
+   "typed": {
+    "includes_artifacts": true,
+    "notes": [
+     "typed_below_artifact:arwens_glass_shoes"
+    ],
+    "typed": {
+     "companion_summon_time_increase_pct": 0.0,
+     "attack_pct": 34372.5
+    },
+    "base": {
+     "companion_summon_time_increase_pct": 0.0,
+     "attack_pct": 34354.5
+    },
+    "amounts": {
+     "companion_summon_time_increase_pct": {
+      "arwens_glass_shoes": 28
+     },
+     "attack_pct": {
+      "alliance_badge": 18
+     }
+    }
+   },
    "horn_flute_uptime": 0.5549919914575552,
    "extra_boss_multiplier": 1.0,
    "extra_normal_multiplier": 1.0,
@@ -130,90 +152,90 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 2.417810344530908e+16,
-  "boss_dps": 3.175722259488168e+16,
-  "normal_dps": 5775708273078950.0,
-  "player_boss_dps": 2.417810344530908e+16,
+  "player_dps": 2.416547871945469e+16,
+  "boss_dps": 3.1740640391481644e+16,
+  "normal_dps": 5772692456154870.0,
+  "player_boss_dps": 2.416547871945469e+16,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "BLAST",
     "name": "Blast",
-    "dps": 1.0320943878282764e+16,
-    "share": 0.3249951675542997,
-    "boss_dps": 1.0320943878282764e+16,
+    "dps": 1.0315554742310348e+16,
+    "share": 0.32499516755429964,
+    "boss_dps": 1.0315554742310348e+16,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "CLOSE_COMBAT",
     "name": "Close Combat",
-    "dps": 1124358234180621.8,
-    "share": 0.0354048037677525,
-    "boss_dps": 1124358234180621.8,
+    "dps": 1123771144523206.6,
+    "share": 0.035404803767752506,
+    "boss_dps": 1123771144523206.6,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "NOBLE_DEMAND",
     "name": "Noble Demand",
-    "dps": 1513365360733628.2,
-    "share": 0.04765421019461374,
-    "boss_dps": 1513365360733628.2,
+    "dps": 1512575148927313.2,
+    "share": 0.047654210194613744,
+    "boss_dps": 1512575148927313.2,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "HEAVENS_HAMMER",
     "name": "Heaven's Hammer",
-    "dps": 2501601600841148.0,
-    "share": 0.07877268213135023,
-    "boss_dps": 2501601600841148.0,
+    "dps": 2500295376203679.0,
+    "share": 0.07877268213135022,
+    "boss_dps": 2500295376203679.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "DIVINE_MARK_MAIN",
     "name": "Divine Mark (main hit)",
-    "dps": 1596052856193649.2,
-    "share": 0.050257948453303516,
-    "boss_dps": 1596052856193649.2,
+    "dps": 1595219468669928.5,
+    "share": 0.05025794845330353,
+    "boss_dps": 1595219468669928.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "DIVINE_MARK_DETONATION",
     "name": "Divine Mark (detonation)",
-    "dps": 925248032576028.8,
-    "share": 0.029135042581625234,
-    "boss_dps": 925248032576028.8,
+    "dps": 924764909373871.6,
+    "share": 0.029135042581625237,
+    "boss_dps": 924764909373871.6,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "DIVINE_JUDGMENT",
     "name": "Divine Judgment (detonation)",
-    "dps": 3925958176298321.0,
+    "dps": 3923908216267184.5,
     "share": 0.12362410360568082,
-    "boss_dps": 3925958176298321.0,
+    "boss_dps": 3923908216267184.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "MAGIC_CRASH",
     "name": "Magic Crash",
-    "dps": 1107304260611671.8,
+    "dps": 1106726075777644.5,
     "share": 0.03486779290296426,
-    "boss_dps": 1107304260611671.8,
+    "boss_dps": 1106726075777644.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "RUSH",
     "name": "Rush",
-    "dps": 1163271045591248.8,
-    "share": 0.036630125386932715,
-    "boss_dps": 1163271045591248.8,
+    "dps": 1162663637401514.0,
+    "share": 0.03663012538693272,
+    "boss_dps": 1162663637401514.0,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -221,19 +243,19 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 7579119149572599.0,
-   "boss_dps": 7579119149572599.0,
-   "normal_dps": 5775708273078950.0,
-   "share": 0.23865812342147727,
-   "damage": 4.563574466024296e+17,
-   "uplift": 7.418089386765234e+16,
+   "dps": 7575161672026955.0,
+   "boss_dps": 7575161672026955.0,
+   "normal_dps": 5772692456154870.0,
+   "share": 0.23865812342147735,
+   "damage": 4.5611915712418355e+17,
+   "uplift": 7.41421599177033e+16,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 7579119149572599.0,
-    "comp_norm_dps": 5775708273078950.0,
-    "comp_blend_dps": 7579119149572599.0,
+    "comp_boss_dps": 7575161672026955.0,
+    "comp_norm_dps": 5772692456154870.0,
+    "comp_blend_dps": 7575161672026955.0,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -245,9 +267,9 @@
     "stunfracB": 0.24285714285714285,
     "stunfracN": 0.24285714285714285,
     "hasstun": 1,
-    "dmg_b": 4.563574466024296e+17,
-    "dmg_n": 4.042995791155265e+17,
-    "upl_b": 7.418089386765234e+16,
+    "dmg_b": 4.5611915712418355e+17,
+    "dmg_n": 4.040884719308409e+17,
+    "upl_b": 7.41421599177033e+16,
     "upl_n": 0.0
    }
   },
@@ -270,15 +292,15 @@
    "phi_rows": {
     "CLOSE_COMBAT": 1.2199008680268941,
     "NOBLE_DEMAND": 1.142687488494782,
-    "HEAVENS_HAMMER": 1.2199008680268941,
-    "DIVINE_MARK_MAIN": 1.2868332360041521,
+    "HEAVENS_HAMMER": 1.219900868026894,
+    "DIVINE_MARK_MAIN": 1.2868332360041523,
     "DIVINE_MARK_DETONATION": 1.2868332360041521,
-    "MAGIC_CRASH": 1.28336391500425,
-    "RUSH": 1.181823039840481
+    "MAGIC_CRASH": 1.2833639150042497,
+    "RUSH": 1.1818230398404812
    }
   },
   "derived": {
-   "attack": 416841125.27500004,
+   "attack": 416623469.45500004,
    "stat_damage": 3020.49016,
    "actions_per_second": 1.5932455,
    "cast_rate": 0.5428571428571428,

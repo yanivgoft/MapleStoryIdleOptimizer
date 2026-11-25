@@ -116,7 +116,7 @@ describe("Cubes tab", () => {
     expect(html).toMatch(/data-verdict="(yes|maybe|marginal|no)"/);
     expect(html).toMatch(/<button type="button" class="verdict (yes|maybe|marginal|no)"/);
     expect(html).toContain("Download CSV");
-    expect(html).toContain("Total DPS now");
+    expect(html).not.toContain("Total DPS now");                                   // the only absolute DPS is the Calculator's Total DPS
     expect(html).toContain("no cube count up to 1000 has a positive average gain"); // the legend lives in the About block
     expect(html).toContain("Some Skill Cooldown Decrease values are above the table");
     expect(html).not.toContain("changed since this was calculated");

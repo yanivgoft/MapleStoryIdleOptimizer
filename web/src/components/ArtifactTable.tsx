@@ -11,8 +11,8 @@ import {
   lineKnown, lineValue, potentialTables, potentialsRequest, type PotentialRow, type PotentialsResult, type PotentialTables,
 } from "../lib/artifactPotentials";
 import { NONE_STAT, NOT_ROLLABLE_ON_ARTIFACTS, type CubesMeta } from "../lib/cubes";
-import { formatFull, formatNumber } from "../lib/format";
 import type { RequestStatus } from "../lib/liveRequest";
+import { signedPct } from "../lib/sensitivity";
 import { useLive } from "../lib/useLive";
 import type { ArtifactInfo, ArtifactSchema, ArtifactsState } from "../types";
 import { StatSelect } from "./CubesPanel";
@@ -223,7 +223,7 @@ export function ArtifactTableView(p: ViewProps) {
                             />
                             <span className="note line-gain">
                               {l.stat === NONE_STAT ? "" : known ? `+${v}` : "not valued"}
-                              {l.stat !== NONE_STAT && showGains && res && active && known ? ` = ${formatNumber(res.gain)} DPS` : ""}
+                              {l.stat !== NONE_STAT && showGains && res && active && known && total ? ` = ${signedPct((res.gain / total) * 100)}` : ""}
                               {l.stat !== NONE_STAT && !active ? ` (locked: star ${unlock})` : ""}
                             </span>
                           </td>
@@ -231,10 +231,7 @@ export function ArtifactTableView(p: ViewProps) {
                       })}
                       <td className="num total-cell">
                         {showGains && rowTotal !== null && row ? (
-                          <span title={`${formatFull(row.total)} DPS`} data-total={row.total}>
-                            +{total ? ((row.total / total) * 100).toFixed(2) : "0.00"}%
-                            <span className="note"> ({formatNumber(row.total)} DPS)</span>
-                          </span>
+                          <span>+{total ? ((row.total / total) * 100).toFixed(2) : "0.00"}%</span>
                         ) : (
                           <span className="note">-</span>
                         )}

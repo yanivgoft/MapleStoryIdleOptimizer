@@ -66,6 +66,15 @@ frozen reference (not extended: e.g. the 5th artifact slot exists only in the ap
   autouse fixture of `tests/golden/conftest.py` re-applies it per test in a shared pytest session): workbook-golden modules are legacy, engine-native classes (snapshots, `test_engine_native.py`,
   `test_<id>_displayed.py`) and the factor tests (`test_factor_formulas.py`, `test_factor_extension.py`: below 300 extended == legacy bit-exact, above 300 extended >= legacy) are extended; `update_goldens.py` refreshes a
   workbook class in legacy and a native class in extended mode; in `api/tests` only tests marked `@pytest.mark.workbook_golden` run legacy. A new test that compares with a workbook golden must pin legacy, anything else stays extended.
+- **Typed stats include the equipped artifacts** (user decision 2026-11-25: "when an artifact is equipped it means it is already in your stats": the preset page numbers contain every equipped artifact's bonus).  Engine input
+  `typed_includes_artifacts` (optional boolean outside the schema fields, like `artifacts`; **engine default False** = the workbook convention, so every workbook-pinned golden stays bit-exact; **the API fills it True** when a request omits it:
+  `api/validation.py`).  True = `engine/typed_artifacts.py::strip` (called once, in `ModelBase.__init__`; `sensitivity._Base` and `cubes.pricing_from_sensitivity` strip once and clear the flag) derives the character WITHOUT the equipped artifacts'
+  effects from the typed values - the exact inverse of how each effect composes into its typed stat: additive buckets subtract, Final Damage / Hexagon Damage divide, Arwen's Glass Shoes subtract from Summoning Time, Rainbow Snail Shell + Ring of
+  Cycles jointly from Crit Rate (the ring's mode follows the base value) - and the unchanged pipeline adds them back live; equip toggles are what-ifs on that base.  A typed value below an effect clamps at 0 with
+  `artifacts.typed.notes` `typed_below_artifact:<id>`.  Artifacts without a typed counterpart (Chalice, Fire Flower, Peach Tree, Silver Pendant, Soul Contract, Contract of Darkness, the baked-in and no-effect ones) are untouched.  A NEW live artifact
+  with a typed counterpart needs a row in `typed_artifacts.ADD_ROWS` / `FACTOR_ROWS` (`tests/golden/test_typed_includes_artifacts.py` fails otherwise), and a class that composes an artifact bucket differently needs
+  `TYPED_DAMAGE_COMPOSITION`-style data on its `_Model`.  Tests that compare with a workbook golden pass nothing (engine default False); API tests that do must send `typed_includes_artifacts: false`.  Attack% artifacts are NOT stripped (their Attack% stacks with the buffs in its own bucket, unrelated to the preset page ATTACK %; user, 2026-11-26).  Seven during-the-fight artifacts (Hexagon, Charm, Candle, Horn Flute, Old Music Box, Rainbow Snail Shell, Ring of Cycles) are also NOT stripped (`STRIP_EXEMPT`; user, 2026-11-26).  Limits (time-averaged
+  effects, Ring of Cycles window): KNOWN_GAPS "Typed stats include the equipped artifacts".
 - **Publish gate** (a class under development must exist in the repo and be tested but NOT reach the live site): an engine class module may export `PUBLISHED` (bool); a missing attribute means
   published, so the 13 shipped classes have none. A NEW class starts with `PUBLISHED = False` in `engine/classes/<id>.py` and flips to `True` (or the line is deleted) ONLY after the user has confirmed the
   skill scaling. Effects: `api.registry.discover()` hides it (not in `/api/classes`, every route 404 `unknown class`) unless `MSI_INCLUDE_UNPUBLISHED=1`; `tests/run_all.py` exports that variable to every
@@ -100,6 +109,7 @@ frozen reference (not extended: e.g. the 5th artifact slot exists only in the ap
   normal-monster-only stat (Basic Attack Target Increase, Normal Damage, ...) because Sensitivity blends the two branches' growth ratios by that time weight (bug 9).
 - Deploy: **`deploy/redeploy.sh`** (one command: tests -> API -> smoke test -> web + rules -> live checks, stops at the first failure; `--dry-run` to rehearse); it wraps `deploy/deploy_api.sh` (Cloud Run, Python 3.11 image) and `deploy/deploy_web.sh` (Firebase Hosting); keep `api/Dockerfile`'s COPY list in sync when the API or
   engine gains a new file/data dependency (a missing COPY only shows up in the container, not in the tests).
+- **DPS display rule** (user, 2026-11-25): the ONLY absolute DPS figure in the app is the Total DPS of the Calculator results, shown once (no title / aria / second header; the live region says "Total DPS updated"). Every other DPS amount (per-skill, boss / normal, stat gains, artifacts, companions, cubes, equipment, CSV) is a % of the current Total DPS. The API keeps sending absolute values; only the display changes. Guard: `web/src/dps-display.test.tsx`.
 - Web conventions: tests are data-driven (no hard-coded per-class lists); prettier is NOT configured for `web/` (do not run it with defaults — it reflows whole files).
 
 ## Ground truth sourcing
@@ -384,6 +394,11 @@ you're building a new class, check for all of these *before* your first build, n
     `Summary!TOTAL_DPS` before/after against the Sensitivity row's own reported numbers — the same
     technique as the Book of Ancient/Reindeer's Spear hand-spot-checks in the Verification
     checklist below, just run in BOTH toggle directions instead of one.
+    **Engine addendum (2026-11-25, blended content):** in Breakthrough / Hero Dungeon the dollar delta is NOT direction-invariant
+    under bug 9's time-weighted ratio blend (the removal ratios `without/with` are not inverted by `(1-w) r_boss + w r_normal`: up to 3 pp of
+    % gain between the two sides).  `engine/sensitivity.py::artifact_row` therefore inverts each branch's removal ratio BEFORE blending for equipped
+    rows (`G = (1-w)/r'_boss + w/r'_normal`, hypothetical-unequipped total = the block total); `w` = 0 / 1 is unchanged.  The frozen workbooks keep the
+    old asymmetric equipped rows in the Breakthrough cases (KNOWN_GAPS).  Test: `tests/golden/test_equip_blended.py`.
 16. **A "carry over the user's real values on rebuild" migration fix must be scoped to ONE
     rebuild, never left as a standing rule, or it silently re-breaks the exact thing it was
     migrating away from, forever.** `build_inputs_sheet`'s own `load_existing_workbook_state`

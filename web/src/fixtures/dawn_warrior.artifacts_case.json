@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 16757203046.927279,
+  "total_dps": 16598450597.009018,
   "artifacts": {
    "equipped": [
     {
@@ -118,6 +118,28 @@
    "notes": [
     "reference_only artifacts: their stat is entered by hand in Inputs (workbook convention); equipping changes nothing live"
    ],
+   "typed": {
+    "includes_artifacts": true,
+    "notes": [
+     "typed_below_artifact:arwens_glass_shoes"
+    ],
+    "typed": {
+     "companion_summon_time_increase_pct": 0.0,
+     "attack_pct": 1800.0
+    },
+    "base": {
+     "companion_summon_time_increase_pct": 0.0,
+     "attack_pct": 1782.0
+    },
+    "amounts": {
+     "companion_summon_time_increase_pct": {
+      "arwens_glass_shoes": 28
+     },
+     "attack_pct": {
+      "alliance_badge": 18
+     }
+    }
+   },
    "horn_flute_uptime": 0.5561471108032341,
    "extra_boss_multiplier": 1.0,
    "extra_normal_multiplier": 1.0,
@@ -130,117 +152,117 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 11652700243.968502,
-  "boss_dps": 16757203046.927279,
-  "normal_dps": 3989184565.9168983,
-  "player_boss_dps": 11652700243.968502,
+  "player_dps": 11542306241.65722,
+  "boss_dps": 16598450597.009018,
+  "normal_dps": 3951392291.0818954,
+  "player_boss_dps": 11542306241.65722,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "CELESTIAL_VISION",
     "name": "Celestial Vision III (basic attack)",
-    "dps": 3270796515.311016,
-    "share": 0.1951874967529723,
-    "boss_dps": 3270796515.311016,
+    "dps": 3239810022.00807,
+    "share": 0.19518749675297237,
+    "boss_dps": 3239810022.00807,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "LUNA_DIVIDE",
     "name": "Luna Divide (Equinox Cycle basic-attack effect)",
-    "dps": 1030675616.4203767,
+    "dps": 1020911321.1069204,
     "share": 0.06150642285195493,
-    "boss_dps": 1030675616.4203767,
+    "boss_dps": 1020911321.1069204,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "COSMIC_MATTER",
     "name": "Cosmic Matter (single-target hits)",
-    "dps": 276152239.5108086,
-    "share": 0.016479614094157907,
-    "boss_dps": 276152239.5108086,
+    "dps": 273536060.3996534,
+    "share": 0.016479614094157897,
+    "boss_dps": 273536060.3996534,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "COSMIC_MATTER_BLAST",
     "name": "Cosmic Matter (explosion)",
-    "dps": 538496867.0460767,
+    "dps": 533395317.7793243,
     "share": 0.03213524748360791,
-    "boss_dps": 538496867.0460767,
+    "boss_dps": 533395317.7793243,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SOL_RUSH",
     "name": "Sol Rush",
-    "dps": 69581180.44545709,
-    "share": 0.004152314694200474,
-    "boss_dps": 69581180.44545709,
+    "dps": 68921990.31492114,
+    "share": 0.004152314694200472,
+    "boss_dps": 68921990.31492114,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SOL_RUSH_ENHANCED",
     "name": "Sol Rush (enhanced, during Equinox Cycle)",
-    "dps": 442441904.00859,
-    "share": 0.02640308784046866,
-    "boss_dps": 442441904.00859,
+    "dps": 438250349.1285087,
+    "share": 0.026403087840468666,
+    "boss_dps": 438250349.1285087,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "TRUE_SIGHT",
     "name": "True Sight",
-    "dps": 174773353.09638107,
-    "share": 0.010429744904739862,
-    "boss_dps": 174773353.09638107,
+    "dps": 173117605.54073116,
+    "share": 0.010429744904739864,
+    "boss_dps": 173117605.54073116,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "COSMIC_SHOWER",
     "name": "Cosmic Shower",
-    "dps": 1630330163.098884,
+    "dps": 1614884929.9747891,
     "share": 0.09729130562739306,
-    "boss_dps": 1630330163.098884,
+    "boss_dps": 1614884929.9747891,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "EQUINOX_SLASH",
     "name": "Equinox Slash",
-    "dps": 1574036838.4929416,
+    "dps": 1559124910.549324,
     "share": 0.09393195475909498,
-    "boss_dps": 1574036838.4929416,
+    "boss_dps": 1559124910.549324,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "IMPALING_RAYS",
     "name": "Impaling Rays",
-    "dps": 1090893017.1290596,
-    "share": 0.06509994621859604,
-    "boss_dps": 1090893017.1290596,
+    "dps": 1080558241.1773107,
+    "share": 0.06509994621859606,
+    "boss_dps": 1080558241.1773107,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "IMPALING_RAYS_PIERCE",
     "name": "Impaling Rays (delayed pierce on stun-immune enemies)",
-    "dps": 531810345.85041684,
+    "dps": 526772142.57393914,
     "share": 0.03173622378156559,
-    "boss_dps": 531810345.85041684,
+    "boss_dps": 526772142.57393914,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "COSMIC_BURST",
     "name": "Cosmic Burst",
-    "dps": 1022712203.5584937,
-    "share": 0.06103119957993381,
-    "boss_dps": 1022712203.5584937,
+    "dps": 1013023351.1037285,
+    "share": 0.06103119957993379,
+    "boss_dps": 1013023351.1037285,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -248,19 +270,19 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 5104502802.958776,
-   "boss_dps": 5104502802.958776,
-   "normal_dps": 3989184565.9168983,
+   "dps": 5056144355.351798,
+   "boss_dps": 5056144355.351798,
+   "normal_dps": 3951392291.0818954,
    "share": 0.30461544141131447,
-   "damage": 299529513584.0459,
-   "uplift": 57785682623.06849,
+   "damage": 296691865560.618,
+   "uplift": 57238239314.00784,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 5104502802.958776,
-    "comp_norm_dps": 3989184565.9168983,
-    "comp_blend_dps": 5104502802.958776,
+    "comp_boss_dps": 5056144355.351798,
+    "comp_norm_dps": 3951392291.0818954,
+    "comp_blend_dps": 5056144355.351798,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -272,9 +294,9 @@
     "stunfracB": 0.2504336734693878,
     "stunfracN": 0.2504336734693878,
     "hasstun": 1,
-    "dmg_b": 299529513584.0459,
-    "dmg_n": 279242919614.18286,
-    "upl_b": 57785682623.06849,
+    "dmg_b": 296691865560.618,
+    "dmg_n": 276597460375.73267,
+    "upl_b": 57238239314.00784,
     "upl_n": 0.0
    }
   },
@@ -293,19 +315,19 @@
    },
    "phi_unif": 1.0635326530612248,
    "phi_rows": {
-    "COSMIC_MATTER": 1.1500000000000012,
+    "COSMIC_MATTER": 1.150000000000001,
     "COSMIC_MATTER_BLAST": 1.1500000000000012,
-    "SOL_RUSH": 1.1920000000000022,
-    "SOL_RUSH_ENHANCED": 1.192000000000002,
-    "TRUE_SIGHT": 1.3000000000000016,
-    "COSMIC_SHOWER": 1.0774127747252757,
-    "IMPALING_RAYS": 1.3000000000000012,
+    "SOL_RUSH": 1.192000000000002,
+    "SOL_RUSH_ENHANCED": 1.1920000000000022,
+    "TRUE_SIGHT": 1.3000000000000014,
+    "COSMIC_SHOWER": 1.077412774725276,
+    "IMPALING_RAYS": 1.3000000000000014,
     "IMPALING_RAYS_PIERCE": 1.0400000000000016,
     "COSMIC_BURST": 1.3000000000000014
    }
   },
   "derived": {
-   "attack": 4750000.0,
+   "attack": 4705000.0,
    "stat_damage": 72.0,
    "actions_per_second": 1.2524642857142858,
    "cast_rate": 0.6428571428571429,

@@ -58,7 +58,7 @@ export const HOW_TO_USE: HelpSection = {
           <strong>Type the values your in-game preset page shows</strong> (see "Which stats to type" below).  The result updates a moment after you stop typing.
         </li>
         <li>
-          <strong>Read the result</strong>: Total DPS, the boss / normal-monster split, a per-skill breakdown and, when a companion is chosen, its share.
+          <strong>Read the result</strong>: Total DPS, the boss / normal-monster split, each skill's share of it and, when a companion is chosen, its share.
         </li>
         <li>
           <strong>See what to improve next</strong> on Companions, Artifacts, Stat values, Cubes and Equipment compare, and keep your setup on Profiles.
@@ -75,12 +75,12 @@ export const HOW_TO_USE: HelpSection = {
         </li>
         <li>
           <strong>Artifacts</strong> - one table with all 36 artifacts: set each artifact's star level (Not unlocked, 0-5) and, per artifact, up to three potential lines (rarity + stat; the third line only
-          for Legendary artifacts) with the DPS each line and the artifact's potential total would add.  Stars and lines are the same for every content type.  The artifacts you have <strong>equipped</strong> are
+          for Legendary artifacts) with the % of Total DPS each line and the artifact's potential total would add.  Stars and lines are the same for every content type.  The artifacts you have <strong>equipped</strong> are
           chosen per content type in the <strong>Equipped artifacts</strong> section of the Calculator; in the table the rows equipped in the current content type carry an "equipped" marker.  Filter the table by
-          name or show only unlocked / equipped artifacts.  Below it: what the equipped artifacts do in the calculation and the artifact ranking (DPS gain if equipped).  "Not unlocked" counts as star 0 once the artifact is equipped.
+          name or show only unlocked / equipped artifacts.  Below it: what the equipped artifacts do in the calculation and the artifact ranking (% DPS gain if equipped).  "Not unlocked" counts as star 0 once the artifact is equipped.
         </li>
         <li>
-          <strong>Stat values</strong> - what one more step of each stat is worth for your current build (DPS gained per step, % gained per step, and "units per +1% DPS").
+          <strong>Stat values</strong> - what one more step of each stat is worth for your current build (% gained per step and "units per +1% DPS").
         </li>
         <li>
           <strong>Cubes</strong> - enter the potential and bonus-potential lines of your 15 equipment slots (each line's stat list shows only what that piece can roll) and press Calculate: for each slot, how many cubes until rolling is expected to pay off, and whether it is
@@ -116,7 +116,7 @@ export const GLOSSARY: HelpSection = {
       </div>
       <div>
         <dt>Stat values</dt>
-        <dd>What one more step of each stat is worth for your build: the DPS and the % of Total DPS it adds, and how many units of the stat give +1% DPS.</dd>
+        <dd>What one more step of each stat is worth for your build: the % of Total DPS it adds, and how many units of the stat give +1% DPS.</dd>
       </div>
       <div>
         <dt>pp</dt>
@@ -132,7 +132,7 @@ export const GLOSSARY: HelpSection = {
       </div>
       <div>
         <dt>EV (expected value)</dt>
-        <dd>The average result over many tries.  On the Cubes tab: the average DPS gain after a number of cubes when you keep a roll only if it is better than what you have.</dd>
+        <dd>The average result over many tries.  On the Cubes tab: the average gain (in % of Total DPS) after a number of cubes when you keep a roll only if it is better than what you have.</dd>
       </div>
       <div>
         <dt>Pity</dt>
@@ -166,13 +166,12 @@ export const CONVENTIONS: HelpSection = {
       <h4>Artifacts and your typed stats</h4>
       <ul>
         <li>
-          <strong>Stats you type already include these artifacts</strong>: Book of Ancient, Athena Pierce's Old Gloves, Clear Spring Water, Soul Pouch, Lit Lamp, Star Rock, Cursed Doll and Shamaness Marble,
-          plus Reindeer's Spear's base Defense Penetration and Bottle of Emotion's Final Damage.  Do not add them again.  The Artifacts tab marks them "baked into your stats".
+          <strong>Stats you type already include every artifact you have equipped</strong>: the preset page shows the totals.  Do not subtract anything.  Equipping or unequipping an artifact in the Calculator
+          changes nothing in the total, because the numbers you type are the truth.
         </li>
         <li>
-          The artifact ranking is a <strong>what-if</strong>: for those baked-in artifacts the gain is computed on top of the typed stats (equipping it, or removing it, from your current state), so it tells you
-          what it is worth even though it does not change the main result.  The effects that are not baked in (for example Reindeer's Spear's Attack % and its extra boss / PvP effect, Bottle of Emotion's Attack %) are
-          live and do change your Total DPS.
+          The artifact ranking is a <strong>what-if</strong>: for an artifact you wear it is what you would lose by removing it, for the others what you would gain by equipping it (its potential lines are
+          counted too).
         </li>
         <li>
           <strong>Five artifact slots</strong>: up to five artifacts can be equipped per content type.  Order does not matter, an artifact counts once, and nothing in an effect depends on which slot it sits in.
@@ -205,7 +204,7 @@ export const CONVENTIONS: HelpSection = {
           +13.667% Summoning Time, so +13% gains almost nothing over +12% and +15% gains a lot.
         </li>
         <li>
-          <strong>Arwen's Glass Shoes</strong> adds +20% (star 0) up to +40% (star 5) Summoning Time while equipped; it is added on top of the value you type.
+          <strong>Arwen's Glass Shoes</strong> gives +20% (star 0) up to +40% (star 5) Summoning Time while equipped; that is already part of the value you type.
         </li>
         <li>
           A companion uses your stats at the moment of the summon, scaled by its level multiplier; it does not benefit from skill levels, Basic Attack Target Increase, Buff Duration or cooldown decrease.

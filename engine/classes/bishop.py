@@ -64,6 +64,7 @@ _MAIN_STAT_FIELDS = [
 
 class _Model(model_mod.ModelBase):
     DATA = D
+    TYPED_DAMAGE_COMPOSITION = "additive"      # Damage% is ONE additive bucket here (typed + Holy Symbol + Hexagon + enemy damage taken): see engine/typed_artifacts.py
 
     # ------------------------------------------------------------------------------------------------------------------
     def buff_pct(self, key):

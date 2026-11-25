@@ -368,6 +368,8 @@ export function evAt(row: CubeRow, n: number, baseline?: number | null): number 
 }
 
 /** The preset-milestone values exactly as the API sends them (the CSV keeps these columns). */
+/** Columns of the API's CSV that are absolute DPS amounts: not exported. */
+const ABSOLUTE_CSV_COLUMN = /^(CurrentValue|EV@\d+)$/;
 const msEv = (row: CubeRow, n: number): number => row.milestone_ev[String(n)] ?? 0;
 const msEvPct = (row: CubeRow, n: number): number => row.milestone_ev_pct[String(n)] ?? 0;
 
@@ -481,10 +483,17 @@ export function potentialExplainer(meta: CubesMeta | null): string[] {
   ];
 }
 
-/** The result as CSV with the preset-milestone columns (the API's csv_columns): Slot, PotentialType, Rarity, Pity, CurrentValue, CurrentValue%, SmallestNPositive, ... */
+/**
+ * The result as CSV, in % of Total DPS only: the API's csv_columns without the absolute-DPS ones ("CurrentValue", "EV@n"); what is left is Slot, PotentialType,
+ * Rarity, Pity, CurrentValue%, SmallestNPositive, NFor50PctChance, NFor75PctChance and EV%@n for each preset milestone.
+ */
 export function cubesCsv(rows: CubeRow[], milestones: number[], columns: string[]): string {
   const cell = (v: unknown) => (v === null || v === undefined ? "" : typeof v === "number" ? String(v) : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+  const keep = columns.map((c) => !ABSOLUTE_CSV_COLUMN.test(c));
   const line = (r: CubeRow) =>
-    [r.slot, r.potential_type, r.rarity, r.pity, r.current_value, r.current_value_pct, r.smallest_n, r.n_for_50pct, r.n_for_75pct, ...milestones.map((n) => msEv(r, n)), ...milestones.map((n) => msEvPct(r, n))].map(cell).join(",");
-  return [columns.join(","), ...rows.map(line)].join("\n") + "\n";
+    [r.slot, r.potential_type, r.rarity, r.pity, r.current_value, r.current_value_pct, r.smallest_n, r.n_for_50pct, r.n_for_75pct, ...milestones.map((n) => msEv(r, n)), ...milestones.map((n) => msEvPct(r, n))]
+      .filter((_v, i) => keep[i] !== false)
+      .map(cell)
+      .join(",");
+  return [columns.filter((_c, i) => keep[i]).join(","), ...rows.map(line)].join("\n") + "\n";
 }

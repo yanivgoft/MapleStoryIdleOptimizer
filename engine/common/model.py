@@ -5,6 +5,7 @@ status-engine row sets) and implements ``_build(inp)`` / ``result()``.
 from . import companion as comp_mod
 from . import content as content_mod
 from . import factors
+from .. import typed_artifacts
 
 
 class Inputs:
@@ -24,7 +25,16 @@ class Inputs:
 class ModelBase:
     DATA = None          # the class's engine/data module: UNLOCK_LEVEL, STATUS_PHI_ROWS, STATUS_UNIFORM_ROWS
 
+    # how the class composes the artifact Damage% (Hexagon Necklace) with the typed Damage: "factor" = its own multiplicative term, "additive" = one bucket
+    # (Bishop); only read by ``typed_artifacts`` (the typed-includes-artifacts convention)
+    TYPED_DAMAGE_COMPOSITION = "factor"
+
     def __init__(self, inputs):
+        # ``typed_includes_artifacts`` (engine default False = the workbooks' convention): the typed stats already contain the equipped artifacts' effects, so derive
+        # the character without them first; the pipeline below then adds the effects back live (engine/typed_artifacts.py)
+        self.typed_info = None
+        if inputs.get(typed_artifacts.FLAG):
+            inputs, self.typed_info = typed_artifacts.strip(type(self), inputs)
         self._build(Inputs(inputs))
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -123,6 +133,9 @@ class ModelBase:
         boss = self.pb_total + (companion["boss_dps"] if companion else 0.0)
         normal = self.pn_total + (companion["normal_dps"] if companion else 0.0)
         art = self.art_effects.report()
+        if self.typed_info is not None and (self.typed_info["base"] or self.typed_info["notes"]):
+            art["typed"] = dict(includes_artifacts=True, notes=list(self.typed_info["notes"]), typed=dict(self.typed_info["typed"]),
+                                base=dict(self.typed_info["base"]), amounts={k: dict(v) for k, v in self.typed_info["amounts"].items()})
         art.update(horn_flute_uptime=self.art_ctx.horn_uptime, extra_boss_multiplier=self.extra_boss, extra_normal_multiplier=self.extra_norm,
                    hexagon_charm=dict(hex_per_stack=self.art_pre.hex_v, hex_average=self.art_pre.hex_avg, charm_full=self.art_pre.charm_val,
                                       charm_average=self.art_pre.charm_avg, phase_factor_boss=self.ph_b, phase_factor_normal=self.ph_n))

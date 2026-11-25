@@ -14,17 +14,15 @@ const fx = sensFixture();
 
 describe("stat table", () => {
   const html = strip(renderToString(<StatTable rows={fx.result.stats!.rows} meta={fx.meta} />));
-  it("renders all 27 stats with the columns, best value first", () => {
+  it("renders all 27 stats in game stat order with the columns (no rank column, no sorting)", () => {
     expect((html.match(/data-stat=/g) ?? []).length).toBe(27);
-    for (const h of ["Units per +1% DPS", "DPS gained per step", "% gained per step", "Relative value", "After one step", "Current"]) expect(html).toContain(h);
-    expect((html.match(/<th scope="col"/g) ?? []).length).toBe(9);
+    for (const h of ["Units per +1% DPS", "% gained per step", "Relative value", "After one step", "Current"]) expect(html).toContain(h);
+    expect((html.match(/<th scope="col"/g) ?? []).length).toBe(7);
+    expect(html).not.toContain("DPS gained per step");
+    expect(html).not.toContain('<th scope="col">#</th>');
     expect(html).not.toContain(">Notes<");
     const keys = [...html.matchAll(/data-stat="([a-z_0-9]+)"/g)].map((m) => m[1]);
-    const rows = fx.result.stats!.rows;
-    const units = keys.map((k) => rows.find((r) => r.key === k)!.units_per_1pct);
-    const real = units.filter((u): u is number => u !== null && u > 0);
-    expect([...real].sort((a, b) => a - b)).toEqual(real); // ascending
-    expect(units.slice(real.length).every((u) => u === null || u <= 0)).toBe(true); // n/a rows last
+    expect(keys).toEqual(fx.result.stats!.rows.map((r) => r.key));   // exactly the order the API sends = the game's stat order
     expect(html).toContain("n/a");
   });
   it("shows a compact step per row and NO prose notes (no semantics, no timing chips, no tooltips with sentences)", () => {
@@ -72,7 +70,7 @@ describe("sections", () => {
   it("summoning time and CDR tables", () => {
     const st = strip(renderToString(<SummonTable part={fx.result.summon_time!} />));
     expect((st.match(/<tr/g) ?? []).length).toBe(fx.result.summon_time!.rows.length + 1);
-    expect(st).toContain(formatNumber(fx.result.summon_time!.rows[1].companion_dps));
+    expect(st).not.toContain(formatNumber(fx.result.summon_time!.rows[1].companion_dps)); // no absolute DPS: only the % changes
     const cdr = strip(renderToString(<CdrTable part={fx.result.cdr!} />));
     expect((cdr.match(/<tr/g) ?? []).length).toBe(11);
     expect(cdr).toContain("5");
@@ -82,18 +80,24 @@ describe("sections", () => {
 describe("tab view states", () => {
   const view = (over: Partial<Parameters<typeof StatValuesView>[0]> = {}) =>
     strip(renderToString(<StatValuesView result={fx.result} status={IDLE} meta={fx.meta} open={[]} {...over} />));
-  it("full result: header total, stat table, artifact ranking, three collapsed sections", () => {
+  it("full result: content type, stat table, artifact ranking, three collapsed sections", () => {
     const html = view();
-    expect(html).toContain(formatNumber(fx.result.baseline_total));
+    expect(html).not.toContain(formatNumber(fx.result.baseline_total)); // the Total DPS figure lives on the Calculator only
+    expect(html).not.toContain("Total DPS now");
     expect(html).toContain("Units per +1% DPS");
-    expect(html).toContain("Artifact ranking (DPS gain if equipped)");
+    expect(html).toContain("Artifact ranking (% DPS gain if equipped)");
     expect(html).toContain("About this tab");
-    expect(html).toContain("Sort by");
+    // no sorting: stats come in different quantities, the table always follows the game stat order
+    expect(html).not.toMatch(/Sort by|stat-sort|Best value first|Game stat order|<select/);
+    expect([...html.matchAll(/data-stat="([^"]+)"/g)].map((m) => m[1])).toEqual(fx.result.stats!.rows.map((r) => r.key));
     for (const t of ["Companion comparison", "Companion summoning time potential", "Cooldown decrease milestones"]) expect(html).toContain(t);
     expect(html).not.toMatch(/<details[^>]* open/);
-    expect(html).not.toContain('class="hint"');                               // no per-section prose in the working area
+    // only the two step-like stats keep a threshold line (the player needs to know where DPS jumps); the companion comparison and the stat table have none
+    expect((html.match(/class="hint"/g) ?? []).length).toBe(2 + (fx.result.cdr?.note ? 1 : 0));   // + the cooldown table's own note
+    expect(html).toMatch(/Summoning Time Increase\. It rises in steps: aim for the totals where it jumps/);
+    expect(html).toMatch(/Skill Cooldown Decrease total\. It rises in steps \(fixed-duration content only\)/);
     const working = html.split('class="about-tab"')[0];
-    expect(working).not.toMatch(/diminishing|factor 1[05]0|combined by|Every companion at your companion level|step function/);
+    expect(working).not.toMatch(/diminishing|factor 1[05]0|combined by|Every companion at your companion level/);
     expect(view({ open: ["cdr"] })).toMatch(/<details[^>]* open/);
   });
   it("loading shows a spinner and a skeleton when nothing is loaded yet", () => {

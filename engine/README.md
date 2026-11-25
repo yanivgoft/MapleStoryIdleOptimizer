@@ -25,6 +25,7 @@ engine/
     classapi.py      `make(...)` -> a class module's `fields` / `schema` / `defaults`, `artifact_schema`, the shared `INCOMING_HIT_RATE` field
     status.py        Status Effect / KO timeline pass 2: `build_groups`, `solve_groups`
     sens.py          (also) `COMMON_STATS` / `stat_list` and `standard_stat_to_key` that the `engine/sens_specs/<class>.py` files build their stat tables from
+  typed_artifacts.py the typed-stats-include-the-artifacts convention (`strip`): the character without the equipped artifacts' effects, derived from the typed values; used by `ModelBase.__init__`, `sensitivity._Base`, `cubes.pricing_from_sensitivity`
   artifacts.py       the 36 artifacts' EQUIP effects (ports of the artifact_*_expr generators): Pre (Attack% bucket / Hexagon / Charm, needed by the
                      timeline strip), Effects (all buckets, per-artifact rows, reference-only values, boss/normal extra multipliers),
                      time-dependent shapes (Hexagon ramp, Charm duty, Ring of Cycles uptime, Chalice, Peach/Silver Erlang ...), Horn Flute's uptime
@@ -80,6 +81,23 @@ Companion Summoning Time Increase % (star 0 = +20 .. star 5 = +40 in linear step
 input everywhere the companion model reads it (stun probe, Horn Flute window, companion run); reported as `artifacts.buckets.companion_summon_time_increase_pct`
 and `artifacts.rows.arwens_glass_shoes_summon_time_increase_pct`.  Golden: artifact at Inputs x == no artifact at Inputs x + star value, exactly
 (`tests/golden/artifact_cases.py` `EQUIV_PAIRS`, checked in the workbook and the engine by `test_artifacts.py --class fp_mage`).
+
+**Typed stats include the equipped artifacts** (`inputs["typed_includes_artifacts"]`, 2026-11-25; `engine/typed_artifacts.py`).  The in-game preset page numbers the user types already contain every equipped artifact's bonus ("the 40% came from the
+glass shoes"), but the workbooks (and so the engine's historical behaviour) add each LIVE artifact's effect on top of the typed value, which counted every equipped artifact twice.  The flag is an optional boolean of the engine inputs
+(outside the schema fields like `artifacts`; **engine default False = exactly the workbook convention**, so every workbook-pinned golden stays bit-exact; the API fills it **True** when a request omits it, `api/validation.py`).
+When True, `ModelBase.__init__` first calls `typed_artifacts.strip(model_class, inputs)`: it derives the character WITHOUT the equipped artifacts' effects from the typed values (the exact inverse of how each effect composes into
+its typed stat, table in the module docstring) and the pipeline then runs unchanged, adding the effects back live.  So Total DPS of an equipped artifact is the DPS implied by the typed stats, and every equip toggle of Sensitivity is
+a what-if on that stripped base (removing = the model without the artifact, adding = with it).  Where it lives: ONE place, `ModelBase.__init__` (all 15 classes: `compute` / `model`); `sensitivity._Base` strips once and clears the flag
+(its blocks never strip again; the stat table's Current / New columns keep showing the TYPED numbers: `_Base.typed_inputs`), `cubes.pricing_from_sensitivity` strips its `inputs` the same way (so cubes pricing, Equipment compare,
+Artifact potentials and the Companions tab - which all price through `sensitivity._Base` / `class_module.model` - share it).  Inverses: additive buckets `B = max(0, T - a)` (Arwen's Glass Shoes -> `companion_summon_time_increase_pct`,
+Attack% artifacts -> `attack_pct`, Rainbow Snail Shell / Icy Soul Rock -> `crit_damage`, Candle / Sayram's -> `boss_damage` / `normal_damage`, Ring of Cycles -> `skill_damage` / `basic_attack_damage`), Final Damage (Candle x Flaming Lava x Horn
+Flute, a separate multiplicative factor in every class) and Hexagon's Damage% `B = (1 + T/100) / (1 + a/100) - 1` (Bishop's one additive Damage bucket: `T - a`, `TYPED_DAMAGE_COMPOSITION`), crit rate jointly for Rainbow Snail
+Shell + Ring of Cycles (the ring's crit-rate / skill-damage mode follows the BASE value; the class's live crit source, e.g. Dark Sight, is in the threshold).  The effect values come from one probe run of the class model (time-averaged
+effects are stripped at the value the model adds).  No typed counterpart, so unchanged: Chalice, Fire Flower, Secret Map's normal-monster Final Damage, Contract of Darkness (branch-only), Peach Tree, Silver Pendant (enemy damage taken), Soul
+Contract (a % cooldown decrease vs the typed seconds), the reference-only (baked) artifacts and the 7 no-effect ones.  A typed value below an effect clamps the base at 0 and the result's `artifacts.typed.notes` has
+`typed_below_artifact:<id>`; Ring of Cycles' ambiguous window `typed_ambiguous:ring_of_cycles`.  `STRIP_EXEMPT` (empty) lists artifacts to keep adding on top.  Tests: `tests/golden/test_typed_includes_artifacts.py` (round trip of all 20 live
+artifacts x star 0..5 x 5 contents x 5 classes, random 5-slot sets, "no double count" equalities, Sensitivity agreement, clamps; `--table` prints the per-artifact table), `api/tests/test_typed_includes_artifacts.py` (API default, every tab
+prices the same character).  See KNOWN_GAPS "Typed stats include the equipped artifacts".
 
 **Fifth artifact slot** (2026-11-23): the game now has 5 artifact slots, so `engine/artifacts.py` `MAX_SLOTS` = 5 and every class's `schema()["artifacts"]["max_slots"]` / `resolve_slots` / the API's validation follow it (a 6th entry is
 rejected: `ValueError "at most 5 artifact slots"` / API 422 `at most 5 slots`).  The 12 workbooks keep **4** slot rows on their Inputs sheet (`WORKBOOK_SLOTS` = 4; changing 12 builders is a separate task), so everything
@@ -429,7 +447,12 @@ sensitivity.STAT_SWEEP / STAT_LIST / ARTIFACT_TOGGLES                      # met
 * **artifacts**: the 36 equip toggles, the workbook's direction-invariant % rule (item 15), ranking among unlocked artifacts (`rank_position`, `ranking`);
   `no_dps_effect` artifacts report gain 0 (+ their potential gain) with the flag.  Baked-into-Inputs artifacts get the what-if gain exactly as the blocks compute it
   (signed: adding when unequipped, removing when equipped).  Extra optional input keys: `artifact_stars` {id: 0..5 | None} (the ArtifactsInput Star Levels of artifacts
-  that are not equipped; default = the workbook's default by rank), `artifact_potential_gain` {id: DPS} (the ArtifactsInput "Total Potential DPS Gain", added to the equip gain).
+  that are not equipped; default = the workbook's default by rank), `artifact_potential_gain` {id: DPS} (the ArtifactsInput "Total Potential DPS Gain", added to the equip gain).  `artifact_lines` {id: {star?, lines: [(rarity, stat) | {rarity, stat}]}} (2026-11-25: the lines entered on the Artifacts tab; `run()` prices them at this character's own stat rates
+  (`lines_potential_gains`, class stat map = `spec.stat_to_key["potentials"]`, star = the entry's own else the resolved slot / `artifact_stars` star) and fills `artifact_potential_gain`
+  for those artifacts: an UNEQUIPPED artifact's row = its effect + its lines, an EQUIPPED one's = what removing it loses (effect + lines: the lines are real stats of the preset);
+  rates are measured at the current total, so for an additive bucket the removal value is exact and the % is the same as seen from the unequipped state).  Caveat (pre-existing, workbook
+  convention, pinned by the goldens): in blended content (Breakthrough, Hero Dungeon) the EFFECT part is the time-weighted ratio blend (bug 9), which is not invertible, so an artifact
+  whose boss and normal ratios differ reads slightly differently equipped vs unequipped (Arwen's Glass Shoes: 7.3% vs 10.2% at typed 0).
 * **companions** (comparison table at `inputs["companion_levels"]` {name: level}, else `companion_level=` / `companion_comparison_level` for all, else the chosen
   companion's level), **summon_time** (value of each total the boots lines can reach; `companion_potential_lines_pct` = the lines already on PotentialCubes, b0 includes
   Arwen's Glass Shoes), **cdr** (absolute CDR 0.5 .. 5.0 s).
@@ -447,6 +470,13 @@ sensitivity.STAT_SWEEP / STAT_LIST / ARTIFACT_TOGGLES                      # met
 * Golden: `tests/golden/sens_cases.py` (36 cases) -> `sens_reference.py` (Sensitivity-slimmed copies of the workbook, one `formulas` evaluation at a time, ~2-4 min and 4-8 GB each)
   -> `fp_mage_sensitivity_golden.json` -> `test_sensitivity.py --class fp_mage` (rel 1e-9; companion quantities at a FRACTIONAL window carry the workbook's ~1.6e-9 `(a+b-|a-b|)/2`
   precision artifact, see `FRAC_RTOL` there).
+
+**Equip toggles in blended content** (Breakthrough / Hero Dungeon, 2026-11-25): an unequipped artifact is measured ADDING it (per branch `with / without`), an equipped one used to be measured REMOVING it (`without / with`), and the
+time-weighted blend `(1-w) r_boss + w r_normal` of the removal ratios is not the inverse of the adding blend, so the same real pair read differently from the two sides (up to 3 percentage points of % gain, e.g. Arwen's Glass
+Shoes in Breakthrough 110.2% vs 107.3%).  `sensitivity.artifact_row` now inverts each branch's removal ratio before blending (`G = (1-w)/r'_boss + w/r'_normal`, hypothetical-unequipped total = the block's total), so both directions
+report the same dollar gain and % gain for every toggle kind (live, baked-in, companion / Horn Flute / Hexagon); `w` = 0 / 1 (pure boss / pure normal content) keeps the old formula bit for bit.  Test:
+`tests/golden/test_equip_blended.py`.  The frozen workbooks keep the old asymmetric numbers for the equipped rows of the Breakthrough cases: those 24 values of the sensitivity goldens were refreshed from the engine
+(`golden_refresh_log.md`).  With `typed_includes_artifacts` the toggles are what-ifs on the stripped base (see Artifacts above); `run()` reports `typed_notes` when the strip clamped.
 
 ### Sensitivity for more than one class (generalised 2026-11-21; FP-Mage + Dark Knight)
 
