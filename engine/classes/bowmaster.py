@@ -44,7 +44,7 @@ CLASS_NAME = "Bowmaster"
 STAT_IDENTITY = {"main": "DEX", "sub": "STR"}
 
 _MAIN_STAT_FIELDS = [
-    schema_mod.field("flat_dex", "Flat DEX", "Main stats", "float", "flat", 0, help="Include Soul Arrow: Bow's own bonus if unlocked."),
+    schema_mod.field("flat_dex", "Flat DEX", "Main stats", "float", "flat", 0),
     schema_mod.field("dex_pct", "DEX %", "Main stats", "float", "%", 0),
     schema_mod.field("str", "STR", "Main stats", "float", "flat", 0),
 ]

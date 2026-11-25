@@ -40,7 +40,7 @@ STAT_IDENTITY = {"main": "INT", "sub": "LUK"}
 PUBLISHED = False          # publish gate: flip only after the user confirmed the skill scaling in game (CLAUDE.md "Adding an engine-native class" step 6)
 
 _MAIN_STAT_FIELDS = [
-    schema_mod.field("flat_int", "Flat INT", "Main stats", "float", "flat", 0, help="Include Main Stat Enhancement's own +30 if unlocked."),
+    schema_mod.field("flat_int", "Flat INT", "Main stats", "float", "flat", 0),
     schema_mod.field("int_pct", "INT %", "Main stats", "float", "%", 0),
     schema_mod.field("luk", "LUK", "Main stats", "float", "flat", 0),
 ]

@@ -13,6 +13,7 @@ export const IDLE_STATUS: RequestStatus = { loading: false, unsupported: false, 
 /** Message of a failed request: 429 / 504 get a hint, 422 is summarised (the field messages are listed separately), anything else shows the API's own text. */
 export function friendlyError(e: unknown, what: string): string {
   if (e instanceof ApiError) {
+    if (e.status === 0) return "Can't reach the calculator server. Check your connection and try again.";
     if (e.status === 429) return `Too many ${what} requests in a short time (${e.message}). Wait a little and try again.`;
     if (e.status === 504) return `${e.message}.`;
     if (e.status === 422) return "Some inputs are invalid - fix them below or on the Calculator tab.";

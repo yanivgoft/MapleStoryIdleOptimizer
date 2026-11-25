@@ -4,6 +4,7 @@ import { ImportXlsx } from "./ImportXlsx";
 import { deleteProfile, exportJson, importProfiles, listProfiles, parseImport, saveProfile, subscribeProfiles } from "../lib/profiles";
 import { useCloudBridge } from "../lib/cloud/bridge";
 import { CloudStatusIcon } from "./CloudStatusIcon";
+import { AboutTab } from "./TabNotes";
 
 interface Props {
   state: FormState;
@@ -34,13 +35,13 @@ export function ProfilesPanel({ state, classes, onLoad }: Props) {
   return (
     <section className="card profiles" aria-label="Saved profiles">
       <h2>Saved profiles</h2>
-      {cloud ? (
-        <p className="note">
-          Profiles live in this browser (localStorage); {cloud.signedIn ? "press Save to account to copy the changed ones to your account" : "sign in (header) to keep them in your account"}. You can also export a file to back them up.
-        </p>
-      ) : (
-        <p className="note">Profiles live only in this browser (localStorage). Export a file to back them up or move them to another device.</p>
-      )}
+      <p className="note">
+        {cloud
+          ? cloud.signedIn
+            ? "Stored in this browser; press Save to account to copy the changed ones to your account."
+            : "Stored in this browser only; sign in (header) to keep them in your account."
+          : "Stored in this browser only."}
+      </p>
       {cloud?.signedIn && (
         <div className="cloud-bar">
           <button type="button" disabled={cloud.busy || cloud.dirtyCount === 0} onClick={cloud.save}>
@@ -55,19 +56,28 @@ export function ProfilesPanel({ state, classes, onLoad }: Props) {
         className="row"
         onSubmit={(e) => {
           e.preventDefault();
-          saveProfile(name, state);
-          setMsg({ kind: "ok", text: `Saved "${name.trim() || "Unnamed"}"` });
-          setName("");
-          refresh();
+          try {
+            saveProfile(name, state);
+            setMsg({ kind: "ok", text: `Saved "${name.trim() || "Unnamed"}"` });
+            setName("");
+            refresh();
+          } catch (err) {
+            setMsg({ kind: "err", text: (err as Error).message });
+          }
         }}
       >
         <label htmlFor="profile-name">Profile name</label>
         <input id="profile-name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="e.g. Main, 140 Breakthrough" />
         <button type="submit">Save current inputs</button>
       </form>
+      {msg && (
+        <p className={msg.kind === "ok" ? "note" : "error"} role="status">
+          {msg.text}
+        </p>
+      )}
 
       {profiles.length === 0 ? (
-        <p className="empty">No saved profiles yet.</p>
+        <p className="empty">No saved profiles yet. Type a name above and press Save current inputs.</p>
       ) : (
         <ul className="plist">
           {profiles.map((p) => (
@@ -105,7 +115,7 @@ export function ProfilesPanel({ state, classes, onLoad }: Props) {
           Export all
         </button>
         <label className="filebtn" htmlFor="import-file">
-          Import file
+          Import saved profiles (.json)
         </label>
         <input
           ref={fileRef}
@@ -127,19 +137,24 @@ export function ProfilesPanel({ state, classes, onLoad }: Props) {
           }}
         />
       </div>
-      <ImportXlsx
-        classes={classes}
-        onSaved={(p, load) => {
-          setMsg({ kind: "ok", text: `Imported "${p.name}" from Excel as a new profile (${className(p.state.classId)}).` });
-          refresh();
-          if (load) onLoad(p);
-        }}
-      />
-      {msg && (
-        <p className={msg.kind === "ok" ? "note" : "error"} role="status">
-          {msg.text}
-        </p>
-      )}
+      <details className="advanced">
+        <summary>Advanced</summary>
+        <ImportXlsx
+          classes={classes}
+          onSaved={(p, load) => {
+            setMsg({ kind: "ok", text: `Imported "${p.name}" from Excel as a new profile (${className(p.state.classId)}).` });
+            refresh();
+            if (load) onLoad(p);
+          }}
+        />
+      </details>
+      <AboutTab>
+        <ul>
+          <li>Profiles are stored in this browser only (clearing the site's data removes them). To keep them safe or move them to another device, use Export all and later Import saved profiles (.json).</li>
+          <li>A profile holds your stats for every content type, the equipped artifacts, companion levels, artifact star levels and potential lines, and the cube and equipment lines.</li>
+          <li>Loading a profile switches the Calculator to its class and content type.</li>
+        </ul>
+      </AboutTab>
     </section>
   );
 }

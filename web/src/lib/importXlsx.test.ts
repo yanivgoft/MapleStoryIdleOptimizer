@@ -4,7 +4,7 @@ import { ALL, fixtureFor } from "../test/fixtures";
 import { XlsxBook, XlsxError } from "./xlsx_read";
 import { CUBE_TABLES, XLSX_MAP, cubeSlotKey, detectClass, hasLayout, importWorkbook, noLayoutMessage, uniqueProfileName } from "./importXlsx";
 import { cubesFixture } from "../test/cubesFixture";
-import { gearPayload, getRow, normalizeCubesState, rowsToCalculate, statChoices, statOptions, NOT_ROLLABLE_ON_SLOT } from "./cubes";
+import { gearPayload, getRow, normalizeCubesState, rollValueOptions, rowsToCalculate, statChoices, statOptions, NOT_ROLLABLE_ON_SLOT } from "./cubes";
 import type { CubesState } from "./cubes";
 import { buildInputs, isApplicable } from "./schemaForm";
 import { isProfile, withArtifacts } from "./profiles";
@@ -31,6 +31,7 @@ interface Expected {
     rows: number;
     warnings: number;                           // the planted PotentialCubes problems (already part of `warnings`)
     ignored: number;
+    cleared: number;
     hints: string[];                            // a message fragment of each planted warning
   };
 }
@@ -208,6 +209,21 @@ describe.each(WITH_LAYOUT.map((c) => c.schema.class_id))("import of the generate
     expect(exp.cubes.hints).toHaveLength(exp.cubes.warnings);
     for (const h of exp.cubes.hints) expect(res.warnings.filter((x) => x.message.includes(h)), h).toHaveLength(1);   // each planted problem gives exactly one warning
     expect(res.ignored.filter((i) => /has no stat; ignored/.test(i.message))).toHaveLength(exp.cubes.ignored);
+  });
+  it("a line value the game does not roll for that line is not imported (cleared, with a short reason); the stat stays", () => {
+    const gone = res.ignored.filter((i) => /not available for this line/.test(i.message));
+    expect(gone).toHaveLength(exp.cubes.cleared);
+    for (const g of gone) expect(g.message).toMatch(/line \d: value 0\.123 not available for this line$/);
+    const meta = cubesFixture().meta;
+    for (const [key, row] of Object.entries(res.state.cubes!)) {
+      const slot = key.split("|")[0];
+      row.lines.forEach((l, i) => {
+        if (l.stat === "(none)") return;
+        const allowed = rollValueOptions(meta, slot, row.rarity, i, l.stat).map((o) => o.value);
+        if (allowed.length) expect(l.value === null || allowed.includes(l.value), `${key} line ${i + 1}`).toBe(true);
+        if (allowed.length === 1) expect(l.value, `${key} line ${i + 1}: the single allowed value is set`).toBe(allowed[0]);
+      });
+    }
   });
   it("a stat the slot cannot roll is kept and flagged like the Cubes tab flags it", () => {
     const meta = cubesFixture().meta;

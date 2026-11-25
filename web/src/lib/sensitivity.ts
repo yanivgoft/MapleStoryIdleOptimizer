@@ -1,6 +1,7 @@
 // Stat values (sensitivity) logic: types of POST /api/classes/{id}/sensitivity, ranking / sorting, formatting and the lazy-loading plan.
 // Pure functions only (the hook lives in lib/useSensitivity.ts); everything here is covered by sensitivity.test.ts.
 import { formatNumber } from "./format";
+import { plainText } from "./plainText";
 
 // ---- types (mirror engine/sensitivity.py's JSON; see src/fixtures/fp_mage.sensitivity.json) ---------------------------------------------------
 export type SensPart = "stats" | "artifacts" | "companions" | "summon_time" | "cdr";
@@ -143,16 +144,8 @@ export interface SensitivityMeta {
 // ---- formatting ------------------------------------------------------------------------------------------------------------------------------
 const MINUS = "−";
 
-/** Short step text of a stat type ("+1", "+1 pp", "x1.01" ...); `step` of the meta endpoint is the long form (tooltips). */
-export const STEP_SHORT: Record<StatKind, string> = { flat: "+1", pct: "+1 pp", level: "+1 lvl", mult: "×1.01", dr150: "+1 (DR 150)", dr100: "+1 (DR 100)" };
-export const STEP_LONG: Record<StatKind, string> = {
-  flat: "+1",
-  pct: "+1 percentage point",
-  level: "+1 skill level",
-  mult: "x1.01 (multiplicative source)",
-  dr150: "+1 combined by diminishing returns (factor 150)",
-  dr100: "+1 combined by diminishing returns (factor 100)",
-};
+/** The step of one test per stat type, shown as a small muted column ("+1", "+1%", "×1.01"); no sentences. */
+export const STEP_SHORT: Record<StatKind, string> = { flat: "+1", pct: "+1%", level: "+1", mult: "×1.01", dr150: "+1", dr100: "+1" };
 
 /** Significant-digit number without exponent and without trailing zeros ("0.0123", "1.5", "1000"). */
 export function sig(value: number, digits = 3): string {
@@ -180,7 +173,7 @@ export function signedPct(pp: number | null | undefined): string {
   return `${pp < 0 ? MINUS : "+"}${body}%`;
 }
 
-/** A "100 + gain" value (the workbook's % Gain column) as a signed gain: 105.94 -> "+5.94%". */
+/** A "100 + gain" value (a % of the baseline, 100 = no change) as a signed gain: 105.94 -> "+5.94%". */
 export function gainPct(pct100: number | null | undefined): string {
   return pct100 === null || pct100 === undefined ? "–" : signedPct(pct100 - 100);
 }
@@ -200,10 +193,26 @@ export function formatStatValue(v: number | null | undefined): string {
 }
 
 // ---- stats table -----------------------------------------------------------------------------------------------------------------------------
+/** Exact display names for the few engine labels that are not a plain tidy-up of themselves. */
+const STAT_LABEL_OVERRIDE: Record<string, string> = { "DEF_PEN %": "Defense Penetration %" };
+
+/**
+ * The stat's name as shown in the table: the engine label without its explanatory tail ("(diminishing returns, factor 150)", "(multiplicative source)",
+ * "- Invincible converts a level-scaling % ...") and without SNAKE_CASE ("BOSS_DAMAGE %" -> "Boss Damage %"; the 3-letter main stats stay upper case).
+ */
+export function statLabel(raw: string): string {
+  let s = raw.replace(/\s*\(seconds\)/i, " (s)").replace(/\s*\((?!s\))[^)]*\)/g, "").replace(/\s+—\s+[^—]*converts[^—]*$/i, "").trim();
+  if (s in STAT_LABEL_OVERRIDE) return STAT_LABEL_OVERRIDE[s];
+  if (/^[A-Z]{2,}(_[A-Z]+)*( %)?$/.test(s) && !/^[A-Z]{3}( %)?$/.test(s)) {
+    s = s.replace(/[A-Z]+/g, (w) => w[0] + w.slice(1).toLowerCase()).replace(/_/g, " ");
+  }
+  return s;
+}
+
 export type StatSort = "value" | "order" | "name";
 export const STAT_SORTS: { id: StatSort; label: string }[] = [
   { id: "value", label: "Best value first" },
-  { id: "order", label: "Workbook order" },
+  { id: "order", label: "Game stat order" },
   { id: "name", label: "Name" },
 ];
 
@@ -226,7 +235,7 @@ export function sortStats(rows: StatRow[], sort: StatSort = "value"): StatRow[] 
   const byOrder = (a: StatRow, b: StatRow) => idx.get(a.key)! - idx.get(b.key)!;
   const out = [...rows];
   if (sort === "order") return out.sort(byOrder);
-  if (sort === "name") return out.sort((a, b) => a.label.localeCompare(b.label) || byOrder(a, b));
+  if (sort === "name") return out.sort((a, b) => statLabel(a.label).localeCompare(statLabel(b.label)) || byOrder(a, b));
   return out.sort((a, b) => {
     const ha = hasValue(a);
     const hb = hasValue(b);
@@ -245,7 +254,7 @@ export function relativeValues(rows: StatRow[]): Map<string, number> {
 /** Chips / tooltip lines explaining how the workbook's block differs from a plain re-run of the stat. */
 export function statNotes(r: StatRow): string[] {
   const out: string[] = [];
-  if (r.semantics) out.push(r.semantics);
+  if (r.semantics) out.push(plainText(r.semantics));
   if (r.strip_reused) out.push("reuses the baseline Status Effect / KO timeline (exact: this stat does not move timing)");
   else out.push("re-runs the timeline (this stat moves cooldowns, buff values or damage weights)");
   if (r.summon_time_pinned) out.push("keeps the baseline's companion summon-time choice");
@@ -295,10 +304,10 @@ export function rankEquip(rows: ArtifactRow[], opts: { includeLocked?: boolean; 
 /** Why a row reads the way it does ("equipped: value of keeping it" / what-if notes), for the row tooltip. */
 export function equipNote(r: ArtifactRow): string {
   const parts: string[] = [];
-  if (r.no_dps_effect) parts.push(r.reason || "no DPS effect in the model");
+  if (r.no_dps_effect) parts.push(plainText(r.reason) || "no DPS effect");
   if (!r.unlocked) parts.push("not unlocked: what-if at star 0, not ranked");
   if (r.equipped) parts.push("equipped: the gain is what you lose if you remove it (same % either direction)");
-  if (r.baked_into_inputs) parts.push("its stat is typed into Inputs: the gain is a what-if on top of your typed values");
+  if (r.baked_into_inputs) parts.push("its bonus is already in the stats you typed: the gain is a what-if on top of your typed values");
   if (r.potential_gain) parts.push(`includes ${formatNumber(r.potential_gain)} DPS from its potential lines`);
   return parts.join(". ");
 }

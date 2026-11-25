@@ -37,16 +37,24 @@ export function Results({ result, busy, stale }: { result: ComputeResult; busy: 
   const derivedRows = Object.entries(result.derived).filter(([k]) => !HIDDEN_DERIVED.has(k));
 
   return (
-    <section className={`results${busy || stale ? " busy" : ""}`} aria-live="polite" aria-busy={busy}>
+    <section className={`results${busy || stale ? " busy" : ""}`} aria-busy={busy}>
+      <span className="sr-only" aria-live="polite" role="status">
+        Total DPS {formatNumber(result.total_dps)}
+      </span>
       <div className="total card">
-        <div className="label">Total DPS</div>
+        <div className="label">
+          Total DPS
+          {busy && <span className="updating"> Updating...</span>}
+        </div>
         <div className="big" title={formatFull(result.total_dps)}>
           {formatNumber(result.total_dps)}
         </div>
         <div className="sub">
-          <span className={`pill ${result.engine_on ? "on" : "off"}`} title="Status Effect / KO timeline engine (time-resolved buff, stun and KO windows)">
-            Timeline engine: {result.engine_on ? "on" : "off"}
-          </span>
+          {result.engine_on && (
+            <span className="pill on" title="Buffs, stuns and KO phases are placed second by second over the fight">
+              Detailed simulation
+            </span>
+          )}
           <span>Player {formatNumber(result.player_dps)}</span>
           {c && c.dps > 0 && <span>{hasCompanion ? "Companion" : "Stun effect"} {formatNumber(c.dps)}</span>}
         </div>
@@ -58,7 +66,7 @@ export function Results({ result, busy, stale }: { result: ComputeResult; busy: 
         </div>
         <div className="card">
           <div className="label">Normal monsters only</div>
-          <div className="mid" title={formatFull(result.normal_dps)}>{result.normal_dps > 0 ? formatNumber(result.normal_dps) : "n/a"}</div>
+          <div className="mid" title={formatFull(result.normal_dps)}>{result.normal_dps > 0 ? formatNumber(result.normal_dps) : result.derived.monster_type === "pvp" ? "n/a (PvP)" : "n/a (boss fight)"}</div>
         </div>
       </div>
 
@@ -122,7 +130,7 @@ export function Results({ result, busy, stale }: { result: ComputeResult; busy: 
       </div>
 
       <details className="card">
-        <summary>Derived values</summary>
+        <summary>Advanced: calculation details</summary>
         <dl className="derived">
           {derivedRows.map(([k, v]) => (
             <div key={k}>

@@ -207,7 +207,7 @@ def test_cubes_use_the_class_stat_maps(client, cid):
     else:
         pricing = cubes.pricing_from_sensitivity(sens, dict(inputs), c.module)
     gear = features.validate_gear(GEAR)[0]
-    direct = cubes.recommend(gear, pricing, only={i for i, g in enumerate(gear) if g["slot"] in ("head", "ring")})
+    direct = cubes.recommend(gear, pricing, only={i for i, g in enumerate(gear) if g["slot"] in ("head", "ring")}, include_curve=True)
     _same(direct, out["rows"])
     # the class's own priced stats (not the INT defaults): the main stat's lines = its sweep, a sub stat's % line = rate(sub) x its Inputs value / 100, the
     # Defense % line = the Defense sweep (worth 0 in the classes without one), main stat per level

@@ -313,6 +313,28 @@ def cubes_case(cid, idx, wb):
             ws.cell(row=row, column=sc, value=st)
             ws.cell(row=row, column=vc, value=v)
 
+    def opts(slot, rarity, i, stat):
+        """the values the app's tables allow for this line (prime first, then descending), merged like lib/cubes.ts rollOptionsIn"""
+        by = {}
+        for key in ("ALL", slot):
+            for v, prime in T["rollValues"].get(key, {}).get(rarity, {}).get(str(i + 1), {}).get(stat, []):
+                by[v] = by.get(v, False) or prime
+        return [v for v, _ in sorted(by.items(), key=lambda kv: (not kv[1], -kv[0]))]
+
+    def val(slot, rarity, i, stat, k=0, fallback=5):
+        o = opts(slot, rarity, i, stat)
+        return o[min(k, len(o) - 1)] if o else fallback
+
+    def fix(slot, rarity, i, stat, v):
+        """(expected value, was cleared): a value outside the allowed ones is cleared, a single allowed value fills a blank, no table entry = kept"""
+        o = opts(slot, rarity, i, stat)
+        if not o:
+            return v, False
+        if v is not None and any(abs(x - v) < 1e-9 for x in o):
+            return v, False
+        return (o[0] if len(o) == 1 else None), v is not None
+
+    cleared = 0
     blank = [("(none)", 0)] * 3
     planted = {}   # (slot, type) -> (slot text, type text, rarity, pity, lines)
     expected_rows = {}     # key -> {"rarity", "pity", "lines": [[stat, value|None] x 3]}
@@ -323,36 +345,45 @@ def cubes_case(cid, idx, wb):
 
     # A: three rollable lines, a capitalised rarity, a pity below the cap
     a = S(0)
-    la = [(roll(a, 0), 12), (roll(a, 1), 9.5), (roll(a, 2), 400)]
+    la = [(roll(a, i), val(a, "legendary", i, roll(a, i), k=i % 2)) for i in range(3)]
     planted[(a, "Potential")] = (a, "Potential", "Legendary", 120, la)
     expected_rows[f"{a}|Potential"] = {"rarity": "legendary", "pity": 120, "lines": [[x, y] for x, y in la]}
     # B: Bonus Potential of the same slot, two lines, the third empty
-    lb = [(roll(a, 3), 6), (roll(a, 4), 4.5), ("(none)", 0)]
+    lb = [(roll(a, 3), val(a, "epic", 0, roll(a, 3))), (roll(a, 4), val(a, "epic", 1, roll(a, 4))), ("(none)", 0)]
     planted[(a, "Bonus Potential")] = (a, "Bonus Potential", "epic", 49, lb)
-    expected_rows[f"{a}|Bonus Potential"] = {"rarity": "epic", "pity": 49, "lines": [[lb[0][0], 6], [lb[1][0], 4.5], NONE]}
+    expected_rows[f"{a}|Bonus Potential"] = {"rarity": "epic", "pity": 49, "lines": [[lb[0][0], lb[0][1]], [lb[1][0], lb[1][1]], NONE]}
     # C: pity above the Rare cap (60), an UNKNOWN stat (line left empty), a stat this slot cannot roll (kept + flagged)
     c = S(1)
     nr = unrollable(c, idx)
-    lc = [(roll(c, 0), 8), ("Bogus Stat", 5), (nr, 7)]
+    lc = [(roll(c, 0), val(c, "rare", 0, roll(c, 0))), ("Bogus Stat", 5), (nr, 7)]
+    assert not opts(c, "rare", 2, nr), "the planted not-rollable stat must have no roll entry on that slot"
     planted[(c, "Potential")] = (c, "Potential", "rare", 75, lc)
-    expected_rows[f"{c}|Potential"] = {"rarity": "rare", "pity": 75, "lines": [[lc[0][0], 8], NONE, [nr, 7]]}
+    expected_rows[f"{c}|Potential"] = {"rarity": "rare", "pity": 75, "lines": [[lc[0][0], lc[0][1]], NONE, [nr, 7]]}
     warnings += 3
     hints += [f'unknown stat "Bogus Stat"; the line was left empty', f"{nr} cannot roll on this slot", "is not below the rare cap of 60 for Potential"]
     # D: slot written as its label, type in lower case, rarity upper case, pity exactly at the Unique Bonus cap (417), a stat without a value, a value without a stat,
     #    a numeric string
     d = S(2)
-    ld = [(roll(d, 0), None), ("(none)", 3), (roll(d, 2).upper(), "7.5")]
+    v2 = val(d, "unique", 2, roll(d, 2), fallback=7.5)
+    ld = [(roll(d, 0), None), ("(none)", 3), (roll(d, 2).upper(), str(v2))]
+    d0, _ = fix(d, "unique", 0, roll(d, 0), None)
     planted[(d, "Bonus Potential")] = (labels[d], "bonus potential", "UNIQUE", 417, ld)
-    expected_rows[f"{d}|Bonus Potential"] = {"rarity": "unique", "pity": 417, "lines": [[ld[0][0], None], NONE, [roll(d, 2), 7.5]]}
-    warnings += 2
+    expected_rows[f"{d}|Bonus Potential"] = {"rarity": "unique", "pity": 417, "lines": [[ld[0][0], d0], NONE, [roll(d, 2), v2]]}
+    warnings += 1
     ignored += 1
-    hints += ["is not below the unique cap of 417 for Bonus Potential", "has no value; left empty"]
+    hints += ["is not below the unique cap of 417 for Bonus Potential"]
+    if d0 is None:                      # a stat with several allowed values stays blank (a single allowed value is filled in silently)
+        warnings += 1
+        hints += ["has no value; left empty"]
     # E: top tier with a pity count (meaningless), an upper-case stat name
     e = S(3)
-    le = [(roll(e, 0).upper(), 15), (roll(e, 1), 12), ("(none)", 0)]
+    #    and a value the line cannot roll (cleared, listed as not imported)
+    e1 = next(x for x in sorted(T["statsBySlot"][e]) if len(opts(e, "mystic", 1, x)) >= 2)
+    le = [(roll(e, 0).upper(), val(e, "mystic", 0, roll(e, 0))), (e1, 0.123), ("(none)", 0)]
     planted[(e, "Potential")] = (e, "Potential", "mystic", 5, le)
-    expected_rows[f"{e}|Potential"] = {"rarity": "mystic", "pity": 5, "lines": [[roll(e, 0), 15], [roll(e, 1), 12], NONE]}
+    expected_rows[f"{e}|Potential"] = {"rarity": "mystic", "pity": 5, "lines": [[roll(e, 0), le[0][1]], [e1, None], NONE]}
     warnings += 1
+    cleared += 1
     hints += ["is the top tier, so pity 5 has no meaning"]
     # F: an unknown rarity and a pity that is not a number, no lines -> an unconfigured row (not stored)
     f = S(4)
@@ -379,7 +410,7 @@ def cubes_case(cid, idx, wb):
     nlines = sum(1 for r_ in expected_rows.values() for l in r_["lines"] if l[0] != "(none)")
     return {
         "state": {k: {"rarity": v["rarity"], "pity": v["pity"], "lines": [{"stat": l[0], "value": l[1]} for l in v["lines"]]} for k, v in expected_rows.items()},
-        "pieces": pieces, "lines": nlines, "rows": len(expected_rows), "warnings": warnings, "ignored": ignored, "hints": hints,
+        "pieces": pieces, "lines": nlines, "rows": len(expected_rows), "warnings": warnings, "ignored": ignored, "cleared": cleared, "hints": hints,
     }
 
 

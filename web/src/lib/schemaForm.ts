@@ -16,7 +16,7 @@ export function isApplicable(field: Field, contentType: string): boolean {
 }
 
 /** Section the form shows the companion machinery in: the pick + its level and Companion Summoning Time Increase %. (Status Effect Damage is a damage modifier and stays in "Damage modifiers".) */
-export const COMPANION_GROUP = "Companion";
+export const COMPANION_GROUP = "Main companion";
 /** Fields moved into COMPANION_GROUP (presentation only: the engine schema keeps its own groups) in display order. */
 export const COMPANION_GROUP_KEYS = ["companion_choice", "companion_level", "companion_summon_time_increase_pct"];
 /** Display order of sections; sections not listed go just before "PvP". */
@@ -97,19 +97,53 @@ export function initialState(schema: ClassSchema, defaults: Values, contentType?
   return { classId: schema.class_id, contentType: ct, shared, perContent: { [ct]: per }, artifacts: schema.artifacts ? emptyArtifacts(schema.artifacts) : {}, equippedArtifacts: {}, companions: legacyCompanions(shared, { [ct]: per }, schema.companions) };
 }
 
-/** Switch content type; a content type visited for the first time gets its own defaults (fetched or computed by the caller).  Its equipped artifacts are
- *  `state.equippedArtifacts[contentType]` (empty until set: like every per-content value they start from the defaults, they are not copied from the previous content type). */
+/** Content types that share a situation: a first-time content type is seeded from a visited one of its group (see `seedSource`).  PvP is in no group. */
+export const CONTENT_GROUPS: readonly (readonly string[])[] = [
+  ["Chapter Hunt", "EXP Dungeon", "Equipment Dungeon"], // normal monsters
+  ["Breakthrough", "Hero Dungeon"], // normal monsters + boss
+  ["Chapter Boss", "Weapon Dungeon", "Enhancement Dungeon", "World Boss"], // bosses
+];
+
+export function contentGroup(contentType: string): readonly string[] | null {
+  return CONTENT_GROUPS.find((g) => g.includes(contentType)) ?? null;
+}
+
+/** Remember that the user edited this content type (most recent first; `editOrder` is persisted with the profile / draft). */
+export function markEdited(state: FormState, contentType: string = state.contentType): FormState {
+  const cur = state.editOrder ?? [];
+  if (cur[0] === contentType) return state;
+  return { ...state, editOrder: [contentType, ...cur.filter((c) => c !== contentType)] };
+}
+
+/** Where a content type that has no stored values yet gets its starting values from, or null (plain defaults):
+ *  1. a visited content type of the SAME group (several: the most recently edited, else the first in group order);
+ *  2. else the content type being switched from (PvP only ever counts here, never as a group member);
+ *  3. else nothing. */
+export function seedSource(state: FormState, contentType: string): string | null {
+  const visited = (c: string) => c !== contentType && !!state.perContent[c];
+  const group = contentGroup(contentType);
+  if (group) {
+    const siblings = group.filter(visited);
+    if (siblings.length) return (state.editOrder ?? []).find((c) => siblings.includes(c)) ?? siblings[0];
+  }
+  return visited(state.contentType) ? state.contentType : null;
+}
+
+/** Switch content type.  A content type that already has stored values is never touched.  One visited for the first time starts from its defaults
+ *  (fetched or computed by the caller) and then takes the values "Copy stats from" copies from `seedSource` (stats, the companion pick and the equipped
+ *  artifacts; not the per-content defaults such as Chapter-Stage). */
 export function switchContentType(state: FormState, schema: ClassSchema, contentType: string, defaults?: Values): FormState {
   if (state.perContent[contentType]) return { ...state, contentType };
   const d = defaults ?? defaultsFromSchema(schema, contentType);
   const sk = new Set(sharedKeys(schema));
   const per: Values = {};
   for (const [k, v] of Object.entries(d)) if (k !== "content_type" && !sk.has(k)) per[k] = v;
-  return { ...state, contentType, perContent: { ...state.perContent, [contentType]: per } };
+  const source = seedSource(state, contentType);
+  const fresh: FormState = { ...state, contentType, perContent: { ...state.perContent, [contentType]: per } };
+  return source ? copyInto(fresh, schema, source, contentType, false) : fresh;
 }
 
-/** Copy the per-content values (not Chapter-Stage-like per-content defaults) from one visited content type to another. */
-export function copyContentValues(state: FormState, schema: ClassSchema, from: string, to: string): FormState {
+function copyInto(state: FormState, schema: ClassSchema, from: string, to: string, overwriteEquipped: boolean): FormState {
   const src = state.perContent[from];
   if (!src) return state;
   const base = state.perContent[to] ?? {};
@@ -119,9 +153,18 @@ export function copyContentValues(state: FormState, schema: ClassSchema, from: s
     if (!isApplicable(f, to) || !isApplicable(f, from)) continue;
     next[f.key] = src[f.key] ?? null;
   }
-  // the equipped artifacts are a per-content value too (the Inputs page's "Equipped artifacts" section)
-  const equippedArtifacts = schema.artifacts ? { ...(state.equippedArtifacts ?? {}), [to]: currentSlots(schema.artifacts, { equippedArtifacts: state.equippedArtifacts, contentType: from }) } : state.equippedArtifacts;
+  // the equipped artifacts are a per-content value too (the Calculator's "Equipped artifacts" section); a seeded content type keeps slots that were already stored for it
+  let equippedArtifacts = state.equippedArtifacts;
+  if (schema.artifacts && (overwriteEquipped || !(state.equippedArtifacts?.[to] ?? []).some((k) => k !== ""))) {
+    equippedArtifacts = { ...(state.equippedArtifacts ?? {}), [to]: currentSlots(schema.artifacts, { equippedArtifacts: state.equippedArtifacts, contentType: from }) };
+  }
   return { ...state, perContent: { ...state.perContent, [to]: next }, ...(equippedArtifacts ? { equippedArtifacts } : {}) };
+}
+
+/** "Copy stats from": copy the per-content values (not Chapter-Stage-like per-content defaults) from one visited content type to another (the user's own action: counts as an edit). */
+export function copyContentValues(state: FormState, schema: ClassSchema, from: string, to: string): FormState {
+  const out = copyInto(state, schema, from, to, true);
+  return out === state ? state : markEdited(out, to);
 }
 
 export function getValue(state: FormState, field: Field): Scalar {
@@ -133,7 +176,7 @@ export function getValue(state: FormState, field: Field): Scalar {
 export function setValue(state: FormState, field: Field, value: Scalar): FormState {
   if (!field.per_content) return { ...state, shared: { ...state.shared, [field.key]: value } };
   const cur = state.perContent[state.contentType] ?? {};
-  return { ...state, perContent: { ...state.perContent, [state.contentType]: { ...cur, [field.key]: value } } };
+  return markEdited({ ...state, perContent: { ...state.perContent, [state.contentType]: { ...cur, [field.key]: value } } });
 }
 
 /** Flat inputs dict for ``POST /compute``: shared + current content type's values, non-applicable fields null. */
@@ -158,6 +201,10 @@ export function buildInputs(schema: ClassSchema, state: FormState): Record<strin
 
 export type ParseResult = { ok: true; value: number | null } | { ok: false; message: string };
 
+/** Number-input shorthand: the suffixes `formatNumber` prints (K = 1e3 ... Sp = 1e24). */
+const SUFFIX_EXPONENT: Record<string, number> = { k: 3, m: 6, b: 9, t: 12, qa: 15, qi: 18, sx: 21, sp: 24 };
+export const NUMBER_HINT = "Enter a number like 1234567, 12.5M or 1.2e6";
+
 function fmtBound(n: number): string {
   return Math.abs(n) >= 1e6 ? n.toExponential().replace("+", "") : String(n);
 }
@@ -172,13 +219,16 @@ export function rangeText(field: Pick<Field, "min" | "max" | "type">): string {
   return `${lo === null ? "" : fmtBound(lo)} - ${fmtBound(hi)}`;
 }
 
-/** Parse what the user typed into a numeric field: '' -> null (blank cell, reads as 0); '1,234.5' / '1e6' accepted; ints must be whole;
- *  optional inclusive bounds (the schema's min / max) are checked here too, with the same wording as the API. */
+/** Parse what the user typed into a numeric field: '' -> null (blank cell, reads as 0); '1,234.5', '1e6' and K / M / B / T / Qa / Qi / Sx / Sp shorthand ('12.5M') accepted;
+ *  ints must be whole; optional inclusive bounds (the schema's min / max) are checked here too, with the same wording as the API. */
 export function parseNumber(text: string, type: "int" | "float", min?: number | null, max?: number | null): ParseResult {
   const t = text.trim().replace(/,/g, "");
   if (t === "") return { ok: true, value: null };
-  if (!/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(t)) return { ok: false, message: "Enter a number" };
-  const n = Number(t);
+  const plain = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(t);
+  const short = /^([+-]?(?:\d+\.?\d*|\.\d+))\s*(k|m|b|t|qa|qi|sx|sp)$/i.exec(t);
+  if (!plain && !short) return { ok: false, message: NUMBER_HINT };
+  // "12.5M" -> Number("12.5e6"): going through the exponent form keeps 1.1T exactly 1.1e12 (1.1 * 1e12 is not)
+  const n = plain ? Number(t) : Number(`${short![1]}e${SUFFIX_EXPONENT[short![2].toLowerCase()]}`);
   if (!Number.isFinite(n)) return { ok: false, message: "Enter a finite number" };
   if (type === "int" && !Number.isInteger(n)) return { ok: false, message: "Whole number required" };
   if ((min !== undefined && min !== null && n < min) || (max !== undefined && max !== null && n > max)) {
@@ -194,10 +244,30 @@ export function optionLabel(field: Field, option: string): string {
   return field.key === "companion_choice" && option === "None" ? "None (no companion)" : option;
 }
 
+/** The one unit marker shown inside the input: "%" / "s"; none when the label already ends in "%" (ATTACK %, INT %). */
 export function unitSuffix(field: Field): string {
-  if (field.unit === "%") return "%";
+  if (field.unit === "%") return /%\s*$/.test(field.label) ? "" : "%";
   if (field.unit === "s") return "s";
   return "";
+}
+
+/**
+ * The few fields that keep a line under the input because their FORMAT or special value cannot be guessed (user rule: no help under plain stats,
+ * skill levels or anything a player already knows). Everything else shows no text at all; the full schema help lives in Help only.
+ * - Chapter-Stage: the "28-9" format.  - Max Enemies In Range: 999 = no limit.  - Fixed Fight Duration: 0 = no time limit.
+ * - Content Type: its single line (kept).  - Defense % when its help warns that the STR/INT it converts is added for you (a double-count trap with Flat STR).
+ */
+const INLINE_HELP: Record<string, string> = {
+  chapter_stage: "Like 28-9; a plain number for bosses and dungeons.",
+  max_enemies_hit: "999 = no limit.",
+  fight_duration: "0 = no time limit.",
+};
+export function inlineHelpText(field: Pick<Field, "key" | "help">): string | null {
+  if (!field.help) return null;
+  if (field.key in INLINE_HELP) return INLINE_HELP[field.key];
+  if (field.key === "content_type") return field.help; // the one "Each content type keeps its own stats." line (set by InputsForm)
+  if (field.key === "defense_pct" && /leave it out/i.test(field.help)) return field.help;
+  return null;
 }
 
 /** Map API field errors ('level', 'artifacts[0].key') onto form fields; the rest are general messages. */
@@ -238,6 +308,7 @@ export function normalizeState(schema: ClassSchema, state: FormState): FormState
   const artifacts = schema.artifacts ? normalizeArtifacts(state.artifacts, schema.artifacts, legacyPotentials) : state.artifacts ?? {}; // (a class without artifact support keeps what it had; never sent)
   // equipped artifacts: per content type; a profile saved before (one global `equipped` flag per artifact, or the old slots list) seeds EVERY content type from that set, once
   const equippedArtifacts = schema.artifacts ? normalizeEquipped(state.equippedArtifacts, schema.artifacts, schema.content_types, state.artifacts) : state.equippedArtifacts ?? {};
-  const out: FormState = { ...rest, contentType: contentTypes, shared, perContent: dropLockedChoices(perContent, companions.levels), artifacts, equippedArtifacts, companions };
+  const editOrder = Array.isArray(state.editOrder) ? state.editOrder.filter((c, i, a) => typeof c === "string" && schema.content_types.includes(c) && a.indexOf(c) === i) : undefined;
+  const out: FormState = { ...rest, contentType: contentTypes, shared, perContent: dropLockedChoices(perContent, companions.levels), artifacts, equippedArtifacts, companions, ...(editOrder ? { editOrder } : {}) };
   return out.perContent[contentTypes] ? out : switchContentType(out, schema, contentTypes);
 }

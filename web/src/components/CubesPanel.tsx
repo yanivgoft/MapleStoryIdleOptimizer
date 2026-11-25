@@ -4,19 +4,22 @@ import "./cubes.css";
 import { api } from "../api";
 import {
   CUBE_SORTS,
-  DEFAULT_MILESTONE,
   NONE_STAT,
-  SELECTABLE_MILESTONES,
   cubesCsv,
   evAt,
+  effectiveCubeCount,
   evPctAt,
   formatCubes,
   formatEvPct,
+  formatUntilPositive,
   gearKey,
   gearPayload,
   getRow,
+  initialCubeCount,
   isConfigured,
   linesText,
+  lineWithStat,
+  parseCubeCount,
   pityCap,
   NOT_ROLLABLE_ON_SLOT,
   groupByPotentialType,
@@ -24,25 +27,30 @@ import {
   potentialExplainer,
   rankRows,
   rarityLabel,
+  rollValueOptions,
   rowsToCalculate,
   setLine,
   setRow,
   slotLabel,
-  statChoices,
+  typeCubeCount,
+  withRarity,
   statOptions,
   worthRolling,
   type CubeRow,
   type CubeSort,
   type CubesMeta,
   type CubesState,
+  type GearLine,
   type GearRowState,
 } from "../lib/cubes";
 import { CubesRunner, IDLE_RUN, type RunState } from "../lib/cubesRunner";
 import { formatFull, formatNumber } from "../lib/format";
+import { groupedStatChoices } from "../lib/statGroups";
 import type { RequestStatus } from "../lib/liveRequest";
 import { NumInput } from "./NumInput";
+import { AboutTab, NOT_AVAILABLE_TEXT, Unavailable } from "./TabNotes";
 
-export const CUBES_UNSUPPORTED_TEXT = "The cube optimizer is not available for this class yet.";
+export const CUBES_UNSUPPORTED_TEXT = NOT_AVAILABLE_TEXT;
 
 function StatusBanner({ status, onRetry }: { status: RequestStatus; onRetry?: () => void }) {
   if (!status.error) return null;
@@ -67,8 +75,9 @@ function StatusBanner({ status, onRetry }: { status: RequestStatus; onRetry?: ()
   );
 }
 
-/** One stat dropdown shared by the three editors: "(none)" and the stats in `primary` (what that piece of equipment can roll).  A current value outside `primary` stays
- *  selectable as ONE entry, flagged with a warning when `notRollable` says why (cubes, artifact lines); without `notRollable` it is shown plain (Equipment compare). */
+/** One stat dropdown shared by the three editors: "(none)" first, then the stats in `primary` (what that piece of equipment can roll) in `<optgroup>`s by kind of stat
+ *  (lib/statGroups.ts).  A current value outside `primary` stays selectable as ONE entry above the groups, flagged with a warning when `notRollable` says why (cubes,
+ *  artifact lines); without `notRollable` it is shown plain (Equipment compare). */
 export function StatSelect({
   value,
   onChange,
@@ -84,8 +93,8 @@ export function StatSelect({
   notRollable?: string;
   none?: string;
 }) {
-  const choices = statChoices(primary, value, notRollable, none);
-  const flagged = choices.some((c) => c.warn);
+  const { head, groups } = groupedStatChoices(primary, value, notRollable, none);
+  const flagged = head.some((c) => c.warn);
   return (
     <select
       aria-label={label}
@@ -98,9 +107,57 @@ export function StatSelect({
       }
       onChange={(e) => onChange(e.target.value)}
     >
-      {choices.map((c) => (
+      {head.map((c) => (
         <option key={c.value} value={c.value} data-warn={c.warn ? "true" : undefined}>
           {c.label}
+        </option>
+      ))}
+      {groups.map((g) => (
+        <optgroup key={g.label} label={g.label}>
+          {g.choices.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
+  );
+}
+
+/** The value of one potential line: exactly the values the game rolls for (slot, rarity, line, stat), prime first, blank until chosen.  One possible value = plain text,
+ *  no dropdown.  A stat without a roll entry here (flagged, or not rollable at this rarity) has no value input: a stored value is only shown as text. */
+export function LineValue({ meta, slot, rarity, index, line, label, onChange }: {
+  meta: CubesMeta;
+  slot: string;
+  rarity: string;
+  index: number;
+  line: GearLine;
+  label: string;
+  onChange: (v: number | null) => void;
+}) {
+  if (line.stat === NONE_STAT) return <NumInput value={null} label={label} disabled onChange={onChange} />;
+  const options = rollValueOptions(meta, slot, rarity, index, line.stat);
+  if (options.length === 0) {
+    return (
+      <span className="valfix valnone" data-value-for={label}>
+        {line.value === null ? "" : String(line.value)}
+      </span>
+    );
+  }
+  if (options.length === 1) {
+    return (
+      <span className="valfix" data-value-for={label}>
+        {options[0].label}
+      </span>
+    );
+  }
+  return (
+    <select aria-label={label} className="valsel" value={line.value === null ? "" : String(line.value)} onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}>
+      <option value=""></option>
+      {options.map((o) => (
+        <option key={o.value} value={String(o.value)}>
+          {o.label}
         </option>
       ))}
     </select>
@@ -113,7 +170,7 @@ interface EditorProps {
   onState: (s: CubesState) => void;
 }
 
-/** The PotentialCubes sheet: 15 slots x {Potential, Bonus Potential}, rarity + pity + 3 lines each. */
+/** The gear editor: 15 slots x {Potential, Bonus Potential}, rarity + pity + 3 lines each. */
 export function GearEditor({ meta, state, onState }: EditorProps) {
   const update = (slot: string, type: string, row: GearRowState) => onState(setRow(state, slot, type, row));
   return (
@@ -130,118 +187,117 @@ export function GearEditor({ meta, state, onState }: EditorProps) {
             <th>Line 3</th>
           </tr>
         </thead>
-        <tbody>
-          {meta.slots.flatMap((s) => {
-            const own = statOptions(meta, s.key);
-            return meta.potential_types.map((t, ti) => {
-              const row = getRow(state, s.key, t);
-              const cap = pityCap(meta, t, row.rarity);
-              const id = `${s.label} ${t}`;
-              return (
-                <tr key={gearKey(s.key, t)} data-row={gearKey(s.key, t)} className={isConfigured(row) ? "cfg" : undefined}>
-                  <td className="slot">{ti === 0 ? s.label : ""}</td>
-                  <td>{t}</td>
-                  <td>
-                    <select aria-label={`${id} rarity`} value={row.rarity} onChange={(e) => update(s.key, t, { ...row, rarity: e.target.value })}>
-                      {meta.rarities.map((r) => (
-                        <option key={r.key} value={r.key}>
-                          {r.label}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <span className="pity">
-                      <NumInput
-                        value={row.pity}
-                        whole
-                        max={cap > 0 ? cap - 1 : 0}
-                        disabled={cap === 0}
-                        label={`${id} pity count`}
-                        placeholder="0"
-                        onChange={(v) => update(s.key, t, { ...row, pity: v })}
-                      />
-                      <span className="cap">{pityHint(meta, t, row.rarity)}</span>
-                    </span>
-                  </td>
-                  {row.lines.map((l, i) => (
-                    <td key={i}>
-                      <span className="line">
-                        <StatSelect
-                          value={l.stat}
-                          label={`${id} line ${i + 1} stat`}
-                          primary={own}
-                          notRollable={NOT_ROLLABLE_ON_SLOT}
-                          onChange={(stat) =>
-                            update(
-                              s.key,
-                              t,
-                              setLine(row, i, {
-                                stat,
-                                value: stat === NONE_STAT ? null : l.value,
-                              }),
-                            )
-                          }
-                        />
+        {meta.slots.map((s) => {
+          const own = statOptions(meta, s.key);
+          return (
+            <tbody key={s.key} className="slot-block" data-slot={s.key}>
+              {meta.potential_types.map((t, ti) => {
+                const row = getRow(state, s.key, t);
+                const cap = pityCap(meta, t, row.rarity);
+                const id = `${s.label} ${t}`;
+                return (
+                  <tr key={gearKey(s.key, t)} data-row={gearKey(s.key, t)} className={isConfigured(row) ? "cfg" : undefined}>
+                    <td className="slot">{ti === 0 ? s.label : ""}</td>
+                    <td>{t}</td>
+                    <td>
+                      <select aria-label={`${id} rarity`} value={row.rarity} onChange={(e) => update(s.key, t, withRarity(row, e.target.value))}>
+                        {meta.rarities.map((r) => (
+                          <option key={r.key} value={r.key}>
+                            {r.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <span className="pity">
                         <NumInput
-                          value={l.value}
-                          label={`${id} line ${i + 1} value`}
-                          disabled={l.stat === NONE_STAT}
-                          onChange={(v) => update(s.key, t, setLine(row, i, { value: v }))}
+                          value={row.pity}
+                          whole
+                          max={cap > 0 ? cap - 1 : 0}
+                          disabled={cap === 0}
+                          label={`${id} pity count`}
+                          placeholder="0"
+                          onChange={(v) => update(s.key, t, { ...row, pity: v })}
                         />
+                        <span className="cap">{pityHint(meta, t, row.rarity)}</span>
                       </span>
                     </td>
-                  ))}
-                </tr>
-              );
-            });
-          })}
-        </tbody>
+                    {row.lines.map((l, i) => (
+                      <td key={i}>
+                        <span className="line">
+                          <StatSelect
+                            value={l.stat}
+                            label={`${id} line ${i + 1} stat`}
+                            primary={own}
+                            notRollable={NOT_ROLLABLE_ON_SLOT}
+                            onChange={(stat) => update(s.key, t, setLine(row, i, lineWithStat(meta, s.key, row.rarity, i, l, stat)))}
+                          />
+                          <LineValue
+                            meta={meta}
+                            slot={s.key}
+                            rarity={row.rarity}
+                            index={i}
+                            line={l}
+                            label={`${id} line ${i + 1} value`}
+                            onChange={(v) => update(s.key, t, setLine(row, i, { value: v }))}
+                          />
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          );
+        })}
       </table>
     </div>
   );
 }
 
-/** Ranked recommendations (pure presentation of rows already received). */
+/** Ranked recommendations (pure presentation of rows already received); `cubes` = the exact number of cubes the user has. */
 export function CubeResults({
   rows,
   meta,
-  milestone,
+  cubes,
   sort,
   baseline,
 }: {
   rows: CubeRow[];
   meta: CubesMeta | null;
-  milestone: number;
+  cubes: number;
   sort: CubeSort;
   baseline: number | null;
 }) {
-  const groups = useMemo(() => groupByPotentialType(rankRows(rows, sort, milestone, meta)), [rows, sort, milestone, meta]);
+  const groups = useMemo(() => groupByPotentialType(rankRows(rows, sort, cubes, meta)), [rows, sort, cubes, meta]);
+  const [openWhy, setOpenWhy] = useState<string | null>(null);
   if (!rows.length) return null;
   return (
     <div className="table-wrap">
       <table className="sens-table" aria-label="Cube recommendations">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Slot</th>
-            <th>Current</th>
-            <th className="num" title="What the lines you entered are worth now, in % of Total DPS">
-              Now
+            <th scope="col">#</th>
+            <th scope="col">Slot</th>
+            <th scope="col">Current</th>
+            <th scope="col" className="num" title="Now: what the lines you entered are worth now, in % of Total DPS">
+              Worth now (% of Total DPS)
             </th>
-            <th className="num" title="Smallest number of cubes after which the expected value (keeping the best result so far) is positive">
-              Cubes to positive EV
+            <th scope="col" className="num" title="Cubes to positive EV: the smallest number of cubes after which the average gain (keeping the best result so far) is positive">
+              Cubes until rolling pays off
             </th>
-            <th className="num" title="Cubes needed for a 50% chance that at least one reroll beats your current lines">
-              N for 50%
+            <th scope="col" className="num" title="N for 50%: cubes needed for a 50% chance that at least one reroll beats your current lines">
+              Cubes for 50% chance of an upgrade
             </th>
-            <th className="num" title="... and for a 75% chance">
-              N for 75%
+            <th scope="col" className="num" title="N for 75%: cubes needed for a 75% chance that at least one reroll beats your current lines">
+              Cubes for 75% chance of an upgrade
             </th>
-            <th className="num" title={`Expected DPS gained by spending up to ${milestone} cubes, optimally stopping`}>
-              EV @ {milestone} cubes
+            <th scope="col" className="num" title={`EV @ ${cubes} cubes: the expected DPS gained by spending up to ${cubes} cubes, stopping at the best moment`}>
+              Average gain after {cubes} {cubes === 1 ? "cube" : "cubes"}
             </th>
-            <th title="A plain rule on the expected gain at the chosen cube count; see the note below the table">Worth rolling?</th>
+            <th scope="col" title="A plain rule on the average gain at your cube count; see About this tab below">
+              Worth rolling?
+            </th>
           </tr>
         </thead>
         {groups.map((g) => (
@@ -250,14 +306,17 @@ export function CubeResults({
               <th colSpan={9} scope="colgroup">
                 {g.type}{" "}
                 <span className="sub">
-                  {g.rows.length} {g.rows.length === 1 ? "slot" : "slots"}, ranked among themselves
+                  {g.rows.length} {g.rows.length === 1 ? "slot" : "slots"}
                 </span>
               </th>
             </tr>
             {g.rows.map((r, i) => {
-              const w = worthRolling(r, milestone);
+              const w = worthRolling(r, cubes);
+              const rk = `${r.slot}|${r.potential_type}`;
+              const open = openWhy === rk;
+              const whyId = `cube-why-${g.type === "Potential" ? "p" : "b"}-${r.slot}`;
               return (
-                <tr key={`${r.slot}|${r.potential_type}`} data-row={`${r.slot}|${r.potential_type}`} data-verdict={w.verdict}>
+                <tr key={rk} data-row={rk} data-verdict={w.verdict}>
                   <td className="rank">{i + 1}</td>
                   <td>
                     <span className="label-main">{slotLabel(meta, r.slot)}</span>
@@ -272,17 +331,29 @@ export function CubeResults({
                   <td className="num" title={baseline ? `${formatFull(r.current_value)} DPS` : undefined}>
                     {formatEvPct(r.current_value_pct)}
                   </td>
-                  <td className="num">{r.smallest_n === null ? "never" : r.smallest_n}</td>
+                  <td className="num">{formatUntilPositive(r.smallest_n)}</td>
                   <td className="num">{formatCubes(r.n_for_50pct, meta?.max_cubes)}</td>
                   <td className="num">{formatCubes(r.n_for_75pct, meta?.max_cubes)}</td>
-                  <td className="num" title={`${formatFull(evAt(r, milestone))} DPS`}>
-                    {formatEvPct(evPctAt(r, milestone))}
-                    <span className="sub">{formatNumber(evAt(r, milestone))}</span>
+                  <td className="num" title={`${formatFull(evAt(r, cubes, baseline))} DPS`}>
+                    {formatEvPct(evPctAt(r, cubes))}
+                    <span className="sub">{formatNumber(evAt(r, cubes, baseline))}</span>
                   </td>
                   <td>
-                    <span className={`verdict ${w.verdict}`} title={w.why}>
+                    <button
+                      type="button"
+                      className={`verdict ${w.verdict}`}
+                      title={w.why}
+                      aria-expanded={open}
+                      aria-controls={open ? whyId : undefined}
+                      onClick={() => setOpenWhy(open ? null : rk)}
+                    >
                       {w.label}
-                    </span>
+                    </button>
+                    {open && (
+                      <span className="verdict-why" id={whyId}>
+                        {w.why}
+                      </span>
+                    )}
                   </td>
                 </tr>
               );
@@ -300,8 +371,10 @@ interface ViewProps {
   state: CubesState | undefined;
   onState: (s: CubesState) => void;
   run: RunState;
-  milestone: number;
-  onMilestone: (n: number) => void;
+  /** the text in the "Cubes you have" box, and the count every result is priced for (the last valid entry) */
+  countText: string;
+  onCountText: (t: string) => void;
+  cubes: number;
   sort: CubeSort;
   onSort: (s: CubeSort) => void;
   includeBlank: boolean;
@@ -310,27 +383,46 @@ interface ViewProps {
   onCalculate: () => void;
   onCancel: () => void;
   onCsv?: () => void;
+  onOpenHelp?: () => void;
+}
+
+/** The "Cubes you have" box: a typed whole number (1..max); a bad entry shows a message and the results keep using the last good count. */
+export function CubeCountInput({ text, onText, max }: { text: string; onText: (t: string) => void; max: number }) {
+  const { error } = parseCubeCount(text, max);
+  return (
+    <span className="cube-count">
+      <label htmlFor="cube-count">Cubes you have</label>
+      <input
+        id="cube-count"
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        className="numin"
+        value={text}
+        aria-invalid={!!error}
+        aria-describedby={error ? "cube-count-err" : undefined}
+        onChange={(e) => onText(e.target.value)}
+      />
+      {error && (
+        <span className="note cube-count-err" id="cube-count-err" role="alert">
+          {error}
+        </span>
+      )}
+    </span>
+  );
 }
 
 /** Presentational part of the tab: everything given, nothing fetched (render tests). */
 export function CubesView(p: ViewProps) {
-  const { meta, run, milestone, sort } = p;
+  const { meta, run, cubes, sort } = p;
   const running = run.phase === "running";
   const pct = run.total ? Math.round((run.done / run.total) * 100) : 0;
   const nRows = meta ? rowsToCalculate(meta, p.state, p.includeBlank).length : 0;
   return (
     <div className="cubes-tab">
-      <section className="card" aria-label="Cube optimizer">
-        <h2>Cube optimizer</h2>
-        <div className="explain">
-          {potentialExplainer(meta).map((t) => (
-            <p key={t}>{t}</p>
-          ))}
-          <p>
-            Enter what you have now (rarity, pity count, up to 3 lines; leave a row alone if you are not rolling it), then press Calculate. Nothing is
-            calculated while you type - a full calculation takes a few seconds. Your entries are saved with the profile.
-          </p>
-        </div>
+      <section className="card" aria-label="Cubes">
+        <h2>Cubes</h2>
+        <p className="note">Enter the potential lines you have now to see which slots are worth cubing.</p>
       </section>
 
       {p.metaStatus.error && <StatusBanner status={p.metaStatus} />}
@@ -350,14 +442,7 @@ export function CubesView(p: ViewProps) {
                 <input type="checkbox" checked={p.includeBlank} onChange={(e) => p.onIncludeBlank(e.target.checked)} />
                 Also calculate rows I left blank (treated as Normal with no lines)
               </label>
-              <label htmlFor="cube-milestone">Cubes to compare</label>
-              <select id="cube-milestone" value={milestone} onChange={(e) => p.onMilestone(Number(e.target.value))}>
-                {SELECTABLE_MILESTONES.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
+              <CubeCountInput text={p.countText} onText={p.onCountText} max={meta.max_cubes} />
               <label htmlFor="cube-sort">Rank by</label>
               <select id="cube-sort" value={sort} onChange={(e) => p.onSort(e.target.value as CubeSort)}>
                 {CUBE_SORTS.map((s) => (
@@ -399,11 +484,7 @@ export function CubesView(p: ViewProps) {
             </div>
           </section>
 
-          {run.status.unsupported && (
-            <div className="sens-message" role="status">
-              <strong>{CUBES_UNSUPPORTED_TEXT}</strong>
-            </div>
-          )}
+          {run.status.unsupported && <Unavailable onOpenHelp={p.onOpenHelp} text={CUBES_UNSUPPORTED_TEXT} />}
           <StatusBanner status={run.status} onRetry={run.phase === "error" ? p.onCalculate : undefined} />
 
           {run.rows.length > 0 && (
@@ -415,8 +496,7 @@ export function CubesView(p: ViewProps) {
                 </p>
               )}
               <p className="note">
-                Total DPS now: <strong title={run.baseline ? formatFull(run.baseline) : undefined}>{formatNumber(run.baseline)}</strong>. Gains are expected DPS
-                as a % of that, keeping the best result so far and stopping optimally.
+                Total DPS now: <strong title={run.baseline ? formatFull(run.baseline) : undefined}>{formatNumber(run.baseline)}</strong>.
                 {p.onCsv && (
                   <>
                     {" "}
@@ -426,13 +506,7 @@ export function CubesView(p: ViewProps) {
                   </>
                 )}
               </p>
-              <CubeResults rows={run.rows} meta={meta} milestone={milestone} sort={sort} baseline={run.baseline} />
-              <p className="note">
-                Worth rolling? (a rule on the expected gain at the chosen cube count, it does not know what a cube costs you): <strong>Yes</strong> = at least
-                +1% Total DPS, <strong>Maybe</strong> = +0.1% to +1%, <strong>Marginal</strong> = positive but under +0.1%, <strong>No</strong> = no cube count
-                up to {meta.max_cubes} has a positive expected gain (you are at or near the best this slot can roll). &quot;N for 50% / 75%&quot; is the number
-                of cubes after which at least one reroll has beaten your current lines with that probability.
-              </p>
+              <CubeResults rows={run.rows} meta={meta} cubes={cubes} sort={sort} baseline={run.baseline} />
               {run.notes.length > 0 && (
                 <ul className="note">
                   {run.notes.map((n) => (
@@ -444,16 +518,49 @@ export function CubesView(p: ViewProps) {
           )}
         </>
       )}
+
+      {meta && <CubesAbout meta={meta} />}
     </div>
   );
 }
 
-/** Engine notes (api cubes `notes`) in plain words. */
+/** The collapsed explanation at the bottom of the tab: how to use it, how to read the table, what the Worth rolling? chips mean. */
+export function CubesAbout({ meta }: { meta: CubesMeta }) {
+  return (
+    <AboutTab>
+      <p>
+        Enter what you have now (rarity, pity count, up to 3 lines; leave a row alone if you are not rolling it), type how many cubes you have, then press Calculate. Changing a row's rarity clears its lines, because each rarity has its own stats and values.
+        Nothing is calculated while you type - a full calculation takes a few seconds. Your entries are saved with the profile. Changing the number of cubes
+        re-ranks the table at once, without calculating again.
+      </p>
+      {potentialExplainer(meta).map((t) => (
+        <p key={t}>{t}</p>
+      ))}
+      <p>
+        <strong>How to read the table.</strong> &quot;Worth now&quot; is what the lines you entered add to your Total DPS today. &quot;Average gain&quot; is the
+        average DPS gained by spending your cubes, as a % of Total DPS: you keep the best result so far and stop at the best moment, and a cube always re-rolls all
+        3 lines. &quot;Cubes until rolling pays off&quot; is the first cube count with a positive average gain. &quot;Cubes for 50% / 75% chance of an upgrade&quot;
+        is how many cubes it takes for at least one reroll to have beaten your current lines with that probability.
+      </p>
+      <p>
+        <strong>Worth rolling?</strong> A plain rule on the average gain at your cube count; it does not know what a cube costs you. <strong>Yes</strong> = at least
+        +1% Total DPS, <strong>Maybe</strong> = +0.1% to +1%, <strong>Marginal</strong> = positive but under +0.1%, <strong>No</strong> = no cube count up to{" "}
+        {meta.max_cubes} has a positive average gain (you are at or near the best this slot can roll). Press a chip to see its reason.
+      </p>
+    </AboutTab>
+  );
+}
+
+/** Notes of the cubes answer (api cubes `notes`) in plain words. */
 export function noteText(n: string): string {
   if (n === "above") return "Some Skill Cooldown Decrease values are above the table's last step; the last slope is extended.";
-  if (n === "below") return "Some Skill Cooldown Decrease values are below the table's first step; priced from the exact model or the linear rate.";
+  if (n === "below") return "Some Skill Cooldown Decrease values are below the table's first step; they are priced from an exact recalculation or the linear rate.";
   if (n.startsWith("cdr_lines_exceed_inputs:"))
-    return `${n.split(":")[1]}: the Cooldown Decrease lines you entered exceed the Cooldown Decrease in your Inputs; the rest of the character counts as 0.`;
+    return `${n.split(":")[1]}: the Cooldown Decrease lines you entered exceed the Cooldown Decrease on the Calculator tab; the rest of the character counts as 0.`;
+  if (n.startsWith("buff_lines_exceed_inputs:"))
+    return `${n.split(":")[1]}: the Buff Duration lines you entered exceed the Buff Duration on the Calculator tab; the rest of the character counts as 0.`;
+  if (n.startsWith("companion_lines_exceed_inputs:"))
+    return `${n.split(":")[1]}: the Companion Summoning Time lines you entered exceed the value on the Calculator tab; the rest of the character counts as 0.`;
   if (n.startsWith("mock mode")) return n;
   return n;
 }
@@ -468,12 +575,14 @@ interface Props {
   metaStatus: RequestStatus;
   state: CubesState | undefined;
   onState: (s: CubesState) => void;
+  /** opens the Help tab (the "See Help" link of the "not available" line); App.tsx passes it, absent = no link */
+  onOpenHelp?: () => void;
 }
 
-/** The "Cubes" tab: gear editor, Calculate (chunked, cancellable), ranked recommendations. */
-export function CubesPanel({ classId, inputs, supported, meta, metaStatus, state, onState }: Props) {
+/** The "Cubes" tab: gear editor, the cube count, Calculate (chunked, cancellable), ranked recommendations. */
+export function CubesPanel({ classId, inputs, supported, meta, metaStatus, state, onState, onOpenHelp }: Props) {
   const [run, setRun] = useState<RunState>(IDLE_RUN);
-  const [milestone, setMilestone] = useState(DEFAULT_MILESTONE);
+  const [count, setCount] = useState(initialCubeCount);
   const [sort, setSort] = useState<CubeSort>("ev");
   const [includeBlank, setIncludeBlank] = useState(false);
   const runner = useRef<CubesRunner | null>(null);
@@ -485,18 +594,11 @@ export function CubesPanel({ classId, inputs, supported, meta, metaStatus, state
     return () => r.reset();
   }, [classId]);
 
+  const maxCubes = meta?.max_cubes ?? 1000;
+  const cubes = effectiveCubeCount(count, maxCubes);
+
   const currentKey = useMemo(() => (meta && inputs ? JSON.stringify({ classId, inputs, gear: gearPayload(meta, state) }) : ""), [classId, inputs, meta, state]);
-  if (supported === false) {
-    return (
-      <div className="sens-message" role="status">
-        <strong>{CUBES_UNSUPPORTED_TEXT}</strong>
-        <p>
-          The cube optimizer needs the class&apos;s stat values (they price every line), which are not modelled for this class yet. The Calculator tab works for
-          every class.
-        </p>
-      </div>
-    );
-  }
+  if (supported === false) return <Unavailable onOpenHelp={onOpenHelp} text={CUBES_UNSUPPORTED_TEXT} />;
   const calculate = () => {
     if (!meta || !inputs || !classId) return;
     const rows = rowsToCalculate(meta, state, includeBlank);
@@ -505,7 +607,7 @@ export function CubesPanel({ classId, inputs, supported, meta, metaStatus, state
   };
   const csv = () => {
     if (!meta) return;
-    const text = cubesCsv(rankRows(run.rows, "sheet", milestone, meta), meta.milestones, meta.csv_columns);
+    const text = cubesCsv(rankRows(run.rows, "slot", cubes, meta), meta.milestones, meta.csv_columns);
     const url = URL.createObjectURL(new Blob([text], { type: "text/csv" }));
     const a = document.createElement("a");
     a.href = url;
@@ -520,8 +622,9 @@ export function CubesPanel({ classId, inputs, supported, meta, metaStatus, state
       state={state}
       onState={onState}
       run={run}
-      milestone={milestone}
-      onMilestone={setMilestone}
+      countText={count.text}
+      onCountText={(t) => setCount((c) => typeCubeCount(c, t, maxCubes))}
+      cubes={cubes}
       sort={sort}
       onSort={setSort}
       includeBlank={includeBlank}
@@ -530,6 +633,7 @@ export function CubesPanel({ classId, inputs, supported, meta, metaStatus, state
       onCalculate={calculate}
       onCancel={() => runner.current!.cancel()}
       onCsv={csv}
+      onOpenHelp={onOpenHelp}
     />
   );
 }

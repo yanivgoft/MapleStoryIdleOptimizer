@@ -8,6 +8,9 @@
 .cube-table .line { display: flex; gap: 4px; align-items: center; }
 .cube-table .line select { width: 11em; }
 .cube-table .line .numin { width: 4.5em; }
+.cube-table .line select.valsel { width: 8.5em; }
+.cube-table .line .valfix { display: inline-block; min-width: 4.5em; padding: 0 6px; font-variant-numeric: tabular-nums; }
+.cube-table .line .valnone { color: var(--muted); }
 .cube-table .pity { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
 .cube-table .pity .numin { width: 4.5em; }
 .cube-table .cap { color: var(--muted); font-size: 0.72rem; }
@@ -22,7 +25,11 @@ button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
 .progress > span { display: block; height: 100%; background: var(--bar); transition: width 0.2s; }
 .explain { color: var(--ink2); font-size: 0.85rem; }
 .explain p { margin: 4px 0; }
-.verdict { display: inline-block; border-radius: 8px; padding: 0 8px; font-size: 0.75rem; border: 1px solid var(--line); cursor: help; }
+.verdict { display: inline-block; border-radius: 8px; padding: 0 8px; font: inherit; font-size: 0.75rem; line-height: 1.5; background: transparent; border: 1px solid var(--line); color: var(--ink2); cursor: pointer; }
+.verdict-why { display: block; max-width: 24em; margin-top: 3px; font-size: 0.75rem; color: var(--ink2); white-space: normal; }
+.cube-count { display: inline-flex; gap: 6px 8px; align-items: center; flex-wrap: wrap; }
+.cube-count .numin { width: 5em; }
+.cube-count-err { color: var(--danger); margin: 0; }
 .verdict.yes { color: var(--ok); border-color: var(--ok); }
 .verdict.maybe { color: var(--bar-alt); border-color: var(--bar-alt); }
 .verdict.marginal, .verdict.no { color: var(--muted); }
@@ -33,8 +40,14 @@ button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
 .equip-line .label-fixed { color: var(--ink2); font-size: 0.85rem; }
 .equip-line .numin { width: 100%; }
 .equip-total { font-size: 1.1rem; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 8px; }
-/* a stored stat the slot cannot roll (kept, flagged) */
+/* a stored stat the slot cannot roll, or a stored value the table does not list (kept, flagged) */
 .cube-table select.warn { border-color: var(--bar-alt); }
+/* one block per equipment slot (its Potential and Bonus Potential rows): a clear gap + a stronger rule above each block and a subtle tint on every second block */
+.cube-table tbody.slot-block:nth-of-type(even) td { background-color: color-mix(in srgb, var(--ink) 5%, transparent); }
+.cube-table tbody.slot-block:nth-of-type(even) tr.cfg td { background-color: color-mix(in srgb, var(--accent) 12%, color-mix(in srgb, var(--ink) 5%, transparent)); }
+.cube-table tbody.slot-block > tr:first-child > td { border-top: 2px solid var(--control-border); padding-top: 12px; }
+.cube-table tbody.slot-block > tr:last-child > td { padding-bottom: 12px; }
+.cube-table tbody.slot-block > tr:first-child > td.slot { color: var(--ink); font-size: 0.95rem; }
 
 
 /* Recommendations: one block per roll track (Potential, then Bonus Potential), ranked separately. */

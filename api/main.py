@@ -246,7 +246,7 @@ def create_app(settings=None):
             payload = json.dumps(_json_safe(features.cubes_payload(class_id, found)), allow_nan=False, separators=(",", ":")).encode()
             return Response(content=payload, media_type="application/json", headers={"X-Cache": "HIT"})
         fresh, err = await run_pooled(cubes_pool, lambda: features.run_cubes(pricing, entry, clean, gear, missing, cache, class_id), settings.cubes_timeout_s,
-                                      "cube optimizer", class_id, features.CUBES_UNSUPPORTED)
+                                      "cube calculation", class_id, features.CUBES_UNSUPPORTED)
         if err:
             return err
         payload = json.dumps(_json_safe(features.cubes_payload(class_id, {**found, **fresh})), allow_nan=False, separators=(",", ":")).encode()

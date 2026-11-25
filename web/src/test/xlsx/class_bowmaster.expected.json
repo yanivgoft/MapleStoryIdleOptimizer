@@ -363,7 +363,7 @@
    "pvp_fight_length": null
   }
  },
- "warnings": 17,
+ "warnings": 16,
  "ignoredHints": [
   "does not apply to Chapter Boss"
  ],
@@ -1163,16 +1163,16 @@
     "pity": 120,
     "lines": [
      {
-      "stat": "Buff Duration Increase %",
+      "stat": "Critical Rate %",
       "value": 12
      },
      {
-      "stat": "Defense %",
-      "value": 9.5
+      "stat": "Dex",
+      "value": 400
      },
      {
-      "stat": "Final Damage %",
-      "value": 400
+      "stat": "Int",
+      "value": 600
      }
     ]
    },
@@ -1181,12 +1181,12 @@
     "pity": 49,
     "lines": [
      {
-      "stat": "Luk",
+      "stat": "Luk %",
       "value": 6
      },
      {
-      "stat": "Max HP %",
-      "value": 4.5
+      "stat": "Max MP %",
+      "value": 6
      },
      {
       "stat": "(none)",
@@ -1200,7 +1200,7 @@
     "lines": [
      {
       "stat": "Basic Attack Target Increase",
-      "value": 8
+      "value": 5
      },
      {
       "stat": "(none)",
@@ -1217,16 +1217,16 @@
     "pity": 417,
     "lines": [
      {
-      "stat": "Buff Duration Increase %",
-      "value": null
+      "stat": "Critical Rate %",
+      "value": 9
      },
      {
       "stat": "(none)",
       "value": null
      },
      {
-      "stat": "Dex %",
-      "value": 7.5
+      "stat": "Int",
+      "value": 400
      }
     ]
    },
@@ -1235,12 +1235,12 @@
     "pity": 5,
     "lines": [
      {
-      "stat": "Buff Duration Increase %",
+      "stat": "Critical Rate %",
       "value": 15
      },
      {
-      "stat": "Defense %",
-      "value": 12
+      "stat": "Attack Speed %",
+      "value": null
      },
      {
       "stat": "(none)",
@@ -1270,14 +1270,14 @@
   "pieces": 5,
   "lines": 11,
   "rows": 6,
-  "warnings": 9,
+  "warnings": 8,
   "ignored": 1,
+  "cleared": 1,
   "hints": [
    "unknown stat \"Bogus Stat\"; the line was left empty",
    "Basic Attack Damage % cannot roll on this slot",
    "is not below the rare cap of 60 for Potential",
    "is not below the unique cap of 417 for Bonus Potential",
-   "has no value; left empty",
    "is the top tier, so pity 5 has no meaning",
    "unknown rarity \"Godlike\"; normal used",
    "pity \"abc\" is not a number",

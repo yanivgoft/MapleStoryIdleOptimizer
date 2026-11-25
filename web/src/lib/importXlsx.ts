@@ -10,7 +10,7 @@ import { defaultFor, isApplicable, normalizeState, parseNumber, rangeText, share
 import { NOT_UNLOCKED, NO_STAT, artifactInfo, blankLine, defaultStarFor, emptyArtifacts, lineCount, normalizeSlots, parseStar, EMPTY_SLOT } from "./artifacts";
 import { STATIC_POTENTIAL_TABLES } from "./artifactPotentials";
 import { COMPANION_NONE, COMPANION_MAX_LEVEL, emptyCompanions, type CompanionsState } from "./companions";
-import { NONE_STAT as CUBE_NONE, blankRow, isConfigured, type CubesState, type GearLine, type GearRowState } from "./cubes";
+import { NONE_STAT as CUBE_NONE, blankRow, isConfigured, sanitizeLine, type CubesState, type GearLine, type GearRowState, type RollValues } from "./cubes";
 
 export { XlsxError } from "./xlsx_read";
 
@@ -56,6 +56,7 @@ export interface CubeTables {
   stats: string[];
   statsBySlot: Record<string, string[]>;
   pityCaps: Record<string, Record<string, number>>; // potential type -> rarity -> cubes that force the upgrade (0 = top tier)
+  rollValues: RollValues; // the values each (slot, rarity, line, stat) can roll
   maxPity: number;
   maxLineValue: number;
 }
@@ -563,14 +564,18 @@ function readCubes(sheet: XlsxSheet, cm: ClassMap, ctx: Ctx): { state: CubesStat
       }
       let value: number | null = null;
       if (val.kind === "bad") ctx.warnings.push({ where: lw, message: `${label} line ${i + 1}: value ${val.shown} is not a number; left empty` });
-      else if (val.kind === "blank") ctx.warnings.push({ where: lw, message: `${label} line ${i + 1}: ${stat} has no value; left empty` });
+      else if (val.kind === "blank") {
+        if (sanitizeLine(T.rollValues, slot, rarity, i, { stat, value: null }).line.value === null) ctx.warnings.push({ where: lw, message: `${label} line ${i + 1}: ${stat} has no value; left empty` });
+      }
       else if (val.n < 0) ctx.warnings.push({ where: lw, message: `${label} line ${i + 1}: value ${val.n} is negative; left empty` });
       else {
         value = val.n;
         if (val.n > T.maxLineValue) ctx.warnings.push({ where: lw, message: `${label} line ${i + 1}: value ${val.n} is above the maximum ${T.maxLineValue} the calculator accepts` });
       }
       if (!(T.statsBySlot[slot] ?? T.stats).includes(stat)) ctx.warnings.push({ where: lw, message: `${label} line ${i + 1}: ${stat} cannot roll on this slot (kept, flagged like the Cubes tab does)` });
-      lines[i] = { stat, value };
+      const fixed = sanitizeLine(T.rollValues, slot, rarity, i, { stat, value });
+      if (fixed.cleared) ctx.ignored.push({ where: lw, message: `${label} line ${i + 1}: value ${value} not available for this line` });
+      lines[i] = fixed.line;
     });
     const rowState: GearRowState = { ...blankRow(), rarity, pity, lines };
     const nl = lines.filter((l) => l.stat !== CUBE_NONE).length;

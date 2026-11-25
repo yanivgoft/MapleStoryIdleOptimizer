@@ -16,6 +16,7 @@ import {
   sortCompanions,
   sortStats,
   statFlags,
+  statLabel,
   type ArtifactRow,
   type CompanionRow,
   type SensitivityResult,
@@ -176,4 +177,22 @@ describe("the real FP-Mage fixture (dumped from the engine through the API)", ()
     const engine = fx.result.artifacts!.ranking.filter((k) => !fx.result.artifacts!.rows.find((r) => r.key === k)!.no_dps_effect);
     expect(ranked.map((r) => r.key)).toEqual(engine);
   });
+});
+
+describe("statLabel: the engine label without its explanatory tail", () => {
+  it.each([
+    ["ATTACK_SPEED % (diminishing returns, factor 150)", "Attack Speed %"],
+    ["DEF_PEN % (diminishing returns, factor 100)", "Defense Penetration %"],
+    ["FINAL_DAMAGE % (multiplicative source)", "Final Damage %"],
+    ["BOSS_DAMAGE %", "Boss Damage %"],
+    ["ATTACK %", "Attack %"],
+    ["DEX %", "DEX %"],
+    ["LUK", "LUK"],
+    ["Flat ATTACK", "Flat ATTACK"],
+    ["Skill Level Bonus — 1st Job", "Skill Level Bonus — 1st Job"],
+    ["Defense (flat) — Iron Wall converts a level-scaling % (10%+) into STR", "Defense"],
+    ["Incoming Hit Rate (hits/sec, Shadow Shifter only)", "Incoming Hit Rate"],
+    ["Skill Cooldown Decrease (seconds)", "Skill Cooldown Decrease (s)"],
+    ["Basic Attack Target Increase (flat)", "Basic Attack Target Increase"],
+  ])("%s -> %s", (raw, shown) => expect(statLabel(raw)).toBe(shown));
 });

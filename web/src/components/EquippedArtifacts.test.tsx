@@ -33,22 +33,22 @@ const shown = (html: string, art: ArtifactSchema): string[] =>
   });
 
 describe("Equipped artifacts section of the Inputs form", () => {
-  it.each(MODELLED.map((c) => [c.info.id] as const))("%s: max_slots dropdowns with every artifact, between 'Additional bonuses' and the Companion section", (id) => {
+  it.each(MODELLED.map((c) => [c.info.id] as const))("%s: max_slots dropdowns with every artifact, between 'Additional bonuses' and the Main companion section", (id) => {
     const c = fixtureFor(id);
     const art = c.schema.artifacts as ArtifactSchema;
     const html = form(c, initialState(c.schema, c.defaults["World Boss"], "World Boss"));
-    expect(html).toContain("<legend>Equipped artifacts</legend>");
+    expect(html).toContain("<summary>Equipped artifacts</summary>");
     expect(html).toContain('id="equipped-artifacts-section"');
     expect(html.match(/<select id="f-artifact-slot-\d+"/g)).toHaveLength(art.max_slots);
     const first = html.match(/<select id="f-artifact-slot-1"[\s\S]*?<\/select>/)![0];
     expect(first.match(/<option/g)).toHaveLength(1 + art.artifacts.length);
     expect(first).toContain(`>${art.none_label}</option>`);
     for (const a of art.artifacts) expect(first).toContain(`>${a.name.replace(/'/g, "&#x27;")}</option>`);
-    const at = (t: string) => html.indexOf(`<legend>${t}</legend>`);
+    const at = (t: string) => html.indexOf(`<summary>${t}</summary>`);
     expect(at("Additional bonuses")).toBeGreaterThan(-1);
     expect(at("Equipped artifacts")).toBeGreaterThan(at("Additional bonuses"));
-    expect(at("Equipped artifacts")).toBeLessThan(at("Companion"));
-    expect(at("Equipped artifacts")).toBeLessThan(at("Computed (read-only)"));
+    expect(at("Equipped artifacts")).toBeLessThan(at("Main companion"));
+    expect(at("Equipped artifacts")).toBeLessThan(at("Fight setup (calculated)"));
     expect(html).not.toContain("Artifacts in use:");                          // the old summary above the form is replaced by this section
   });
   it("a class without artifact support has no section", () => {
@@ -72,9 +72,11 @@ describe("Equipped artifacts section of the Inputs form", () => {
     expect(slot1).not.toMatch(/<option value="candle" disabled/);
     expect(slot1).toMatch(/<option value="pigs_ribbon" disabled="">/);
     expect(slot1).not.toMatch(/<option value="chalice" disabled/);
-    // an artifact that is not unlocked says so
+    // an artifact that is not unlocked says so, in two words; no hint paragraph under the slots
     const locked = form(c, { ...st, artifacts: setStar(art, st.artifacts, "pigs_ribbon", "Not Unlocked") });
-    expect(locked).toContain("not unlocked (acts as star 0)");
+    expect(locked).toContain("★ not set");
+    expect(locked).not.toContain("counted as 0");
+    expect(html).not.toMatch(/Up to \d slots|Set stars on/i);
   });
   it("switching the content type changes the slots shown in the form AND the `artifacts` of the next compute request", () => {
     const c = fixtureFor("fp_mage");
@@ -95,11 +97,11 @@ describe("Equipped artifacts section of the Inputs form", () => {
     const back = switchContentType(toCb, c.schema, wb);
     expect(shown(form(c, back), art)).toEqual(shown(form(c, st), art));
     expect(keys(back)).toEqual(keys(st));
-    // a content type without stored slots shows empty slots and sends none
+    // a content type visited for the first time starts from the one it is switched from (the seeding rules, lib/schemaForm.ts), slots included
     const third = c.schema.content_types.find((ct) => ct !== wb && ct !== cb)!;
     const toThird = switchContentType(st, c.schema, third, c.defaults[third]);
-    expect(shown(form(c, toThird), art)).toEqual(["", "", "", "", ""]);
-    expect(keys(toThird)).toEqual([]);
+    expect(shown(form(c, toThird), art)).toEqual(shown(form(c, st), art));
+    expect(keys(toThird)).toEqual(keys(st));
   });
   it("choosing in a slot stores it for the current content type only; a duplicate never gets through; clearing works", () => {
     const c = fixtureFor("fp_mage");

@@ -373,7 +373,7 @@
    "pvp_fight_length": null
   }
  },
- "warnings": 17,
+ "warnings": 16,
  "ignoredHints": [
   "does not apply to Chapter Boss"
  ],
@@ -1173,16 +1173,16 @@
     "pity": 120,
     "lines": [
      {
-      "stat": "Int %",
-      "value": 12
+      "stat": "Luk",
+      "value": 600
      },
      {
-      "stat": "Max Damage Multiplier %",
-      "value": 9.5
+      "stat": "Max HP %",
+      "value": 15
      },
      {
-      "stat": "Min Damage Multiplier %",
-      "value": 400
+      "stat": "Str",
+      "value": 600
      }
     ]
    },
@@ -1191,12 +1191,12 @@
     "pity": 49,
     "lines": [
      {
-      "stat": "Str %",
-      "value": 6
+      "stat": "Attack Speed %",
+      "value": 4
      },
      {
-      "stat": "Buff Duration Increase %",
-      "value": 4.5
+      "stat": "Defense %",
+      "value": 6
      },
      {
       "stat": "(none)",
@@ -1209,8 +1209,8 @@
     "pity": 75,
     "lines": [
      {
-      "stat": "Luk",
-      "value": 8
+      "stat": "Luk %",
+      "value": 4.5
      },
      {
       "stat": "(none)",
@@ -1227,16 +1227,16 @@
     "pity": 417,
     "lines": [
      {
-      "stat": "Int %",
-      "value": null
+      "stat": "Luk",
+      "value": 400
      },
      {
       "stat": "(none)",
       "value": null
      },
      {
-      "stat": "Min Damage Multiplier %",
-      "value": 7.5
+      "stat": "Str",
+      "value": 400
      }
     ]
    },
@@ -1245,12 +1245,12 @@
     "pity": 5,
     "lines": [
      {
-      "stat": "Int %",
-      "value": 15
+      "stat": "Luk",
+      "value": 1000
      },
      {
-      "stat": "Max Damage Multiplier %",
-      "value": 12
+      "stat": "Attack Speed %",
+      "value": null
      },
      {
       "stat": "(none)",
@@ -1280,14 +1280,14 @@
   "pieces": 5,
   "lines": 11,
   "rows": 6,
-  "warnings": 9,
+  "warnings": 8,
   "ignored": 1,
+  "cleared": 1,
   "hints": [
    "unknown stat \"Bogus Stat\"; the line was left empty",
    "All Skill Level cannot roll on this slot",
    "is not below the rare cap of 60 for Potential",
    "is not below the unique cap of 417 for Bonus Potential",
-   "has no value; left empty",
    "is the top tier, so pity 5 has no meaning",
    "unknown rarity \"Godlike\"; normal used",
    "pity \"abc\" is not a number",

@@ -61,8 +61,8 @@ STAT_IDENTITY = {"main": "STR", "sub": "DEX"}
 
 _MAIN_STAT_FIELDS = [
     schema_mod.field("defense_pct", "Defense %", "Offense", "float", "%", 0,
-                     help="Iron Wall converts your TOTAL Defense (flat Defense x (1 + this %)) into STR at a level-scaling rate (from Lv38)."),
-    schema_mod.field("flat_str", "Flat STR", "Main stats", "float", "flat", 0, help="Excludes the STR Iron Wall adds (the model adds it)."),
+                     help="Iron Wall (from Lv38) turns your TOTAL Defense (flat Defense x (1 + this %)) into STR. That STR is added for you: leave it out of Flat STR."),
+    schema_mod.field("flat_str", "Flat STR", "Main stats", "float", "flat", 0),
     schema_mod.field("str_pct", "STR %", "Main stats", "float", "%", 0),
     schema_mod.field("dex", "DEX", "Main stats", "float", "flat", 0),
 ]

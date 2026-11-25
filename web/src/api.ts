@@ -18,6 +18,9 @@ async function fixture<T>(name: string): Promise<T> {
 export const API_URL: string = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
 export const MOCK: boolean = import.meta.env.VITE_MOCK === "1";
 
+/** Text of a request that never got an answer (status 0). */
+export const UNREACHABLE_MESSAGE = "Can't reach the calculator server.";
+
 export class ApiError extends Error {
   status: number;
   fieldErrors: FieldError[];
@@ -34,7 +37,7 @@ async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal
     res = await fetch(`${API_URL}${path}`, { ...init, signal, headers: { "Content-Type": "application/json" } });
   } catch (e) {
     if ((e as Error).name === "AbortError") throw e;
-    throw new ApiError(0, `Cannot reach the API at ${API_URL}. Is it running? (or start the UI with VITE_MOCK=1)`);
+    throw new ApiError(0, UNREACHABLE_MESSAGE); // no URL in the text: players cannot act on it (the console / dev server shows it)
   }
   let body: unknown = null;
   try {

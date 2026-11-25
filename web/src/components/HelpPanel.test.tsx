@@ -10,7 +10,7 @@ const html = strip(renderToString(<HelpPanel classes={classList} schema={fp.sche
 
 describe("Help tab render", () => {
   it("has the headings, in order, with anchors from the table of contents", () => {
-    const heads = ["Help", "How to use it", "Which stats to type", "Modelling conventions", "What is modelled per class", "Known limitations"];
+    const heads = ["Help", "How to use it", "Glossary", "Which stats to type", "How the numbers are calculated", "What each class supports", "Known limitations"];
     let at = -1;
     for (const h of heads) {
       const i = html.indexOf(`>${h}</h`);
@@ -23,10 +23,12 @@ describe("Help tab render", () => {
       expect(html, s.id).toContain(`id="${s.id}"`);
     }
   });
-  it("the Import from Excel help names the cube gear as imported and Equipment Compare as not imported", () => {
-    expect(html).toContain("Import from Excel");
-    expect(html).toContain("your cube gear (the PotentialCubes sheet");
-    expect(html).toContain("and the Equipment Compare sheet");
+  it("has a 5-step Quick start and a Glossary of the game / app terms", () => {
+    const quick = html.split("Quick start</h4>")[1].split("</ol>")[0];
+    expect((quick.match(/<li>/g) ?? []).length).toBe(5);
+    const glossary = html.split('id="help-glossary"')[1].split("</section>")[0];
+    for (const t of ["Total DPS", "Content type", "Stat values", "pp", "Baked in", "Cube", "EV (expected value)", "Pity", "Qa", "Qi"]) expect(glossary, t).toContain(`<dt>${t.startsWith("Qa") ? "K, M, B, T, Qa, Qi" : t}</dt>`.replace("<dt>Qa</dt>", "<dt>K, M, B, T, Qa, Qi</dt>").replace("<dt>Qi</dt>", "<dt>K, M, B, T, Qa, Qi</dt>"));
+    expect(html).not.toContain("Import from Excel");   // the spreadsheet import is explained where it lives (Profiles > Advanced)
   });
   it("covers every tab and the key conventions", () => {
     for (const t of ["Calculator", "Companions", "Profiles", "Stat values", "Artifacts", "Cubes", "Equipment compare"]) expect(html, t).toContain(`<strong>${t}</strong>`);

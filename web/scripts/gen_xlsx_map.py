@@ -21,7 +21,7 @@ Per class id the map holds (sheet / row / column coordinates, 1-based; columns a
                    Equipment Compare is NOT imported (the user's decision), so it has no entry.
 
 and one top-level `cubeTables` entry: the class-independent cube tables the importer needs without an API call (slots, potential types, rarities, stat names,
-the stats each slot can roll, pity caps, limits).  It is a copy of the engine's `GET .../cubes/meta` (the fixtures of the 7 classes with cubes are identical in
+the stats each slot can roll, pity caps, the roll value tables, limits).  It is a copy of the engine's `GET .../cubes/meta` (the fixtures of the 7 classes with cubes are identical in
 these keys; `--check` fails when one differs from the copy or from the builder's constants).
 
 A class WITHOUT ``src/build_<id>_workbook.py`` (an ENGINE-NATIVE class: no Excel calculator exists) is skipped: it has no map entry, the importer answers "No Excel layout is known
@@ -55,7 +55,7 @@ SHARED_KEYS = ("level", "content_type")
 
 # cube meta keys copied into the map's `cubeTables` (fixture key -> map key)
 CUBE_TABLE_KEYS = {"slots": "slots", "potential_types": "potentialTypes", "rarities": "rarities", "none_stat": "noneStat", "stats": "stats",
-                   "stats_by_slot": "statsBySlot", "pity_caps": "pityCaps"}
+                   "stats_by_slot": "statsBySlot", "pity_caps": "pityCaps", "roll_values": "rollValues"}
 
 
 def cube_tables(problems: list[str]) -> dict:

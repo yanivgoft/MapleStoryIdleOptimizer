@@ -1166,6 +1166,20 @@ interpolates it. Details worth knowing:
   Compare has no CDR option; Artifact Potentials has no CDR line). The prebuilt `potential_cubes_ev-*` release
   executables need rebuilding to pick this up.
 
+### Update 2026-11-25: step stats are priced on the real model, held lines on the same scale (web app / engine)
+
+The engine no longer interpolates the CDR table or applies a linear rate for these stats when it has the character's inputs (`engine.cubes.pricing_from_sensitivity(..., inputs)`; the
+workbook script above is unchanged).  Skill Cooldown Decrease (hat), Buff Duration Increase % (belt) and Companion Summoning Time Increase % (boots) are evaluated by re-running the
+class model at the exact TOTAL (`ExactCurve` / `CompanionPricing`, memoised: ~70 runs for a full 30-row sheet).  The typed Inputs value INCLUDES the gear's lines, so
+`b0 = max(0, typed - all held lines of that stat)` and a row is priced on top of `b0 + the other rows' lines`: a held line is worth `f(base + own)/f(base)`, a reroll
+`f(base + candidate)/f(base)`, so a candidate that crosses a threshold (Blaze Wizard's 3rd stun at +13.667 % summoning time) shows the jump only from the totals it really
+crosses it from.  The old table interpolation was off by up to 0.4 % between steps / when the typed total is off the 0.5 s grid, and by 7.8 % at +7 s (last-slope extrapolation).
+Held lines above the typed total are noted (`cdr_/buff_/companion_lines_exceed_inputs:slot/type`) and b0 clamps at 0.  Every row also reports the DPS lost by removing a held
+line / the row (`line_loss`, `row_loss`).  If NO lines are entered on the gear while the typed total contains them, the whole typed total is "other sources" (b0 = typed) and every
+candidate is priced on top of it - enter the held lines in the Cubes tab.  Still approximate (linear rate at the typed point): Defense Penetration, Attack Speed, Critical Rate
+across the 100 % cap, Basic Attack Target Increase, All Skill Level.  Cooldown Decrease is blended like Summoning Time and Buff Duration: the time-weighted relative growth of the
+boss and normal branches (bug 9; user decision 2026-11-26, `engine.cubes.EXACT_STATS`); the old CDR milestone table used the dollar-blended Total.
+
 ## FP-Mage: Flame Haze's level-118 fog is Poison Mist's own fog (2026-10-26)
 
 The mastery text is "Creates Poison Mist poisonous fog upon using Flame Haze. Poison Mist max count +1", but the

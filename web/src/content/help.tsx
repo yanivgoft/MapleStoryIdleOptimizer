@@ -36,7 +36,7 @@ export function classCapabilities(c: ClassInfo): Record<Capability, boolean> {
 export const INTRO = (
   <p>
     This app estimates your damage per second (DPS) from the character stats you type in, for every class in the class picker, and tells you which stat, artifact, companion or potential line
-    would raise it the most.  It is a model of the game, not the game itself: read the conventions and the known limitations below before trusting a small difference.
+    would raise it the most.  It is an estimate, not the game itself: read the conventions and the known limitations below before trusting a small difference.
   </p>
 );
 
@@ -45,19 +45,23 @@ export const HOW_TO_USE: HelpSection = {
   title: "How to use it",
   body: (
     <>
+      <h4>Quick start</h4>
       <ol>
         <li>
-          <strong>Pick your class</strong> in the header.  The status line next to it says which features exist for that class.
+          <strong>Pick your class</strong> in the header.
         </li>
         <li>
-          <strong>Pick a content type</strong> on the Calculator (Chapter Boss, Breakthrough, PvP, a dungeon, World Boss, Chapter Hunt).  Add the chapter / stage when it asks.  Each content type keeps its
-          own stats, like the columns of the workbook, so you can type your PvP stats once and come back to them.
+          <strong>Pick a content type</strong> on the Calculator (Chapter Boss, Breakthrough, PvP, a dungeon, World Boss, Chapter Hunt) and add the chapter / stage when it asks.  Each content type keeps its own
+          stats, so you can type your PvP stats once and come back to them.
         </li>
         <li>
-          <strong>Type your stats</strong> from the in-game stat screen (see "Which stats to type" below).  The result updates a moment after you stop typing.
+          <strong>Type the values your in-game preset page shows</strong> (see "Which stats to type" below).  The result updates a moment after you stop typing.
         </li>
         <li>
-          <strong>Read the Calculator result</strong>: Total DPS, the boss / normal-monster split, a per-skill breakdown and, when a companion is chosen, its share.
+          <strong>Read the result</strong>: Total DPS, the boss / normal-monster split, a per-skill breakdown and, when a companion is chosen, its share.
+        </li>
+        <li>
+          <strong>See what to improve next</strong> on Companions, Artifacts, Stat values, Cubes and Equipment compare, and keep your setup on Profiles.
         </li>
       </ol>
       <h4>The tabs</h4>
@@ -66,22 +70,17 @@ export const HOW_TO_USE: HelpSection = {
           <strong>Calculator</strong> - the inputs and the result.  Like the content type's other values, its <strong>Equipped artifacts</strong> (up to 5 slots, one dropdown each, an artifact once) are set here and saved with the profile.
         </li>
         <li>
-          <strong>Companions</strong> - set the level of each companion you own (Not unlocked, 1-18).  Compares them (DPS gain vs no companion, rank) and shows what boots lines of Summoning Time are worth.  The
+          <strong>Companions</strong> - set the level of each legendary companion you have (Not unlocked, 1-18).  Compares them (DPS it adds, rank).  The
           companion you actually use in a content type is chosen on the Calculator.
         </li>
         <li>
-          <strong>Profiles</strong> - save the current setup in your browser, load it later, export it to a JSON file and import it on another device, or import your Excel calculator's values (see "Import from Excel" below).  Stats, companion levels, artifacts and the cube / equipment
-          editors are all part of a profile.
+          <strong>Artifacts</strong> - one table with all 36 artifacts: set each artifact's star level (Not unlocked, 0-5) and, per artifact, up to three potential lines (rarity + stat; the third line only
+          for Legendary artifacts) with the DPS each line and the artifact's potential total would add.  Stars and lines are the same for every content type.  The artifacts you have <strong>equipped</strong> are
+          chosen per content type in the <strong>Equipped artifacts</strong> section of the Calculator; in the table the rows equipped in the current content type carry an "equipped" marker.  Filter the table by
+          name or show only unlocked / equipped artifacts.  Below it: what the equipped artifacts do in the calculation and the artifact ranking (DPS gain if equipped).  "Not unlocked" counts as star 0 once the artifact is equipped.
         </li>
         <li>
-          <strong>Stat values</strong> - what one more point of each stat is worth for your current build (DPS gain, % gain, and "units per +1% DPS").
-        </li>
-        <li>
-          <strong>Artifacts</strong> - one table with all 36 artifacts (like the workbook's ArtifactsInput sheet): set each artifact's star level (Not unlocked, 0-5) and, per artifact, up to three potential
-          lines (rarity + stat; the third line only for Legendary artifacts) with the DPS each line and the artifact's potential total would add.  Stars and lines are the same for every content type.  The
-          artifacts you have <strong>equipped</strong> are chosen per content type in the <strong>Equipped artifacts</strong> section of the Calculator (the 5 slot dropdowns, like the workbook's Slot rows); here the
-          rows equipped in the current content type only carry an "equipped" marker.  Filter the table by name or show only unlocked / equipped artifacts.  Below it: what the equipped artifacts do in the
-          calculation and the equip ranking.  "Not unlocked" acts as star 0 once the artifact is equipped.
+          <strong>Stat values</strong> - what one more step of each stat is worth for your current build (DPS gained per step, % gained per step, and "units per +1% DPS").
         </li>
         <li>
           <strong>Cubes</strong> - enter the potential and bonus-potential lines of your 15 equipment slots (each line's stat list shows only what that piece can roll) and press Calculate: for each slot, how many cubes until rolling is expected to pay off, and whether it is
@@ -91,48 +90,67 @@ export const HOW_TO_USE: HelpSection = {
           <strong>Equipment compare</strong> - type the lines of the equip you wear and the one you could swap to; shows which is better and by how much.
         </li>
         <li>
+          <strong>Profiles</strong> - save the current setup in this browser, load it later, or export it to a file and import it on another device.  Stats, companion levels, artifacts and the cube / equipment
+          lines are all part of a profile.
+        </li>
+        <li>
           <strong>Help</strong> - this page.
-        </li>
-      </ul>
-      <h4>Import from Excel</h4>
-      <p>
-        Used the Excel calculator before?  <strong>Profiles &gt; Import from Excel (.xlsx)</strong> (or drop the file on it) loads the values you typed into your own{" "}
-        <code>&lt;Class&gt;-DPS-Calculator.xlsx</code>, so you do not have to retype them.  A preview shows what will be imported and any warnings; pressing Import saves it as a NEW profile (a profile with the same
-        name is never overwritten).
-      </p>
-      <ul>
-        <li>
-          <strong>What is read</strong>: the class (from the title of the Inputs sheet), the character level, every value of the Inputs sheet for each content type (columns C-L, found by their headers), the
-          Chapter-Stage text, Boss/Normal emphasis, max enemies, PvP fight length, the companion chosen per content type and each companion's level (CompanionsInput), and the star level of EVERY artifact and its potential lines
-          (ArtifactsInput), the artifacts in the Slot rows of each content type's column (they become that content type's Equipped artifacts) and your cube gear (the PotentialCubes sheet: rarity, pity count and the three lines of each of the 15 slots, Potential and Bonus Potential; they appear on the Cubes tab).  A
-          line whose stat is unknown is left empty, and a stat the slot cannot roll, a pity count above the cap or an unknown rarity is listed under Warnings.
-        </li>
-        <li>
-          <strong>What is not</strong>: anything the workbook computes (derived cells, DPS results, the Sensitivity / Skills / Calc sheets), and the Equipment Compare sheet.  Each content type keeps its own equipped artifacts, as in the workbook.  The workbook has 4 artifact slots, the game (and this app) 5: the fifth slot of every content type is yours to fill after the import.  Potential-line stats the app does not know are listed under Warnings and left empty.  Formula cells are only read when the file holds a saved result for them.
-        </li>
-        <li>
-          <strong>Values outside the allowed range</strong> (a typo, a placeholder) are imported as typed and listed under Warnings; blank cells and values that cannot be read fall back to the defaults.
-        </li>
-        <li>
-          <strong>Privacy</strong>: the workbook is opened and parsed in your browser.  It is never uploaded; the only thing fetched from the server is the class definition, exactly as when you switch class.
-        </li>
-        <li>
-          <strong>Not supported</strong>: macro-enabled (.xlsm) or binary (.xlsb) files, old .xls files and password-protected workbooks.  Open them in Excel and use Save As .xlsx first.
-        </li>
-        <li>
-          <strong>Classes without an Excel calculator</strong>: only the classes that have a <code>&lt;Class&gt;-DPS-Calculator.xlsx</code> can be imported.  The newer classes (the Cygnus Knights) were built straight into the app and
-          have none: the importer says &quot;No Excel layout is known for this class&quot; and does not list them; type their stats in directly.
         </li>
       </ul>
     </>
   ),
 };
 
+export const GLOSSARY: HelpSection = {
+  id: "help-glossary",
+  title: "Glossary",
+  body: (
+    <dl className="help-glossary help-fields">
+      <div>
+        <dt>Total DPS</dt>
+        <dd>Your estimated damage per second over a whole fight in the selected content type (boss and normal-monster damage are blended where the content has both).</dd>
+      </div>
+      <div>
+        <dt>Content type</dt>
+        <dd>The kind of fight you are calculating for (Chapter Boss, Breakthrough, PvP, a dungeon, World Boss, Chapter Hunt).  Each one keeps its own stats and its own equipped artifacts.</dd>
+      </div>
+      <div>
+        <dt>Stat values</dt>
+        <dd>What one more step of each stat is worth for your build: the DPS and the % of Total DPS it adds, and how many units of the stat give +1% DPS.</dd>
+      </div>
+      <div>
+        <dt>pp</dt>
+        <dd>Percentage point: going from 40% to 41% is +1 pp.</dd>
+      </div>
+      <div>
+        <dt>Baked in</dt>
+        <dd>An artifact whose bonus is already inside the numbers on your preset page.  Do not add it again; the calculator only shows what equipping it is worth.</dd>
+      </div>
+      <div>
+        <dt>Cube</dt>
+        <dd>The in-game item that rerolls the three lines of a Potential or Bonus Potential on one piece of equipment.</dd>
+      </div>
+      <div>
+        <dt>EV (expected value)</dt>
+        <dd>The average result over many tries.  On the Cubes tab: the average DPS gain after a number of cubes when you keep a roll only if it is better than what you have.</dd>
+      </div>
+      <div>
+        <dt>Pity</dt>
+        <dd>The count of cubes since the last rarity upgrade; at a fixed number (the cap) the next upgrade is guaranteed.  Potential and Bonus Potential have different caps.</dd>
+      </div>
+      <div>
+        <dt>K, M, B, T, Qa, Qi</dt>
+        <dd>Number suffixes: thousand, million, billion, trillion, quadrillion (Qa, 10^15) and quintillion (Qi, 10^18).  You can type them too: 12.5M means 12,500,000.</dd>
+      </div>
+    </dl>
+  ),
+};
+
 export const WHICH_STATS_INTRO = (
   <>
     <p>
-      Type the numbers shown <strong>on your in-game character stat screen</strong>, as they are after everything you wear and have unlocked, not the base values of a single item.  The model does not
-      add anything for artifacts you list as baked in (next section): they are already inside the stat screen numbers.
+      Type the numbers shown <strong>on your in-game preset page</strong>, as they are after everything you wear and have unlocked, not the base values of a single item.  The calculator does not
+      add anything for the artifacts listed as baked in (next section): they are already inside those numbers.
     </p>
     <p>Every field has a short hint under it; here are the hints for the class you have selected.  Numbers outside a field's allowed range are rejected with a message under the field.</p>
   </>
@@ -142,7 +160,7 @@ export const NO_SCHEMA_HINTS = <p className="note">Load a class (header) to see 
 
 export const CONVENTIONS: HelpSection = {
   id: "help-conventions",
-  title: "Modelling conventions",
+  title: "How the numbers are calculated",
   body: (
     <>
       <h4>Artifacts and your typed stats</h4>
@@ -152,17 +170,16 @@ export const CONVENTIONS: HelpSection = {
           plus Reindeer's Spear's base Defense Penetration and Bottle of Emotion's Final Damage.  Do not add them again.  The Artifacts tab marks them "baked into your stats".
         </li>
         <li>
-          The Artifacts tab's equip ranking is a <strong>what-if</strong>: for those baked-in artifacts the gain is computed on top of the typed stats (equipping it, or removing it, from your current state), so it tells you
+          The artifact ranking is a <strong>what-if</strong>: for those baked-in artifacts the gain is computed on top of the typed stats (equipping it, or removing it, from your current state), so it tells you
           what it is worth even though it does not change the main result.  The effects that are not baked in (for example Reindeer's Spear's Attack % and its extra boss / PvP effect, Bottle of Emotion's Attack %) are
           live and do change your Total DPS.
         </li>
         <li>
-          <strong>Five artifact slots</strong>: the game has five, the workbooks only four.  The results for up to four equipped artifacts match the workbooks; with five the engine adds the fifth artifact's
-          already verified effect to the same buckets (nothing in an effect depends on which slot it sits in), but that combination cannot be checked against Excel.  Order does not matter and an artifact counts once.
+          <strong>Five artifact slots</strong>: up to five artifacts can be equipped per content type.  Order does not matter, an artifact counts once, and nothing in an effect depends on which slot it sits in.
         </li>
         <li>
-          <strong>Seven artifacts have no DPS effect in the model</strong> (Pig's Ribbon, Mushmom's Cap, Zakum's Stone Piece, Horntail's Scale, Pink Bean's Giant Rib, Lunar Dew, Ancient Text Piece): their stat is
-          not used by the model or their content (raids, Guild Conquest) is not modelled.  They are listed greyed with the reason.
+          <strong>Seven artifacts have no DPS effect here</strong> (Pig's Ribbon, Mushmom's Cap, Zakum's Stone Piece, Horntail's Scale, Pink Bean's Giant Rib, Lunar Dew, Ancient Text Piece): their stat is
+          not used by the calculator or their content (raids, Guild Conquest) is not covered.  They are listed greyed with the reason.
         </li>
       </ul>
       <h4>Boss and normal monsters, fight length</h4>
@@ -173,7 +190,7 @@ export const CONVENTIONS: HelpSection = {
         </li>
         <li>
           Fixed-length contents (World Boss, dungeons, PvP) are simulated for their real length; Chapter Hunt is a steady state.  When the fight has a stun or KO window (a stunning companion, KO phases, Status Effect
-          Damage) and a single target, the model switches to a <strong>second-by-second schedule</strong>: it casts your buffs and cooldown skills at the moments that pay most, and damage inside a stun or KO second is
+          Damage) and a single target, the calculator switches to a <strong>second-by-second schedule</strong>: it casts your buffs and cooldown skills at the moments that pay most, and damage inside a stun or KO second is
           multiplied.
         </li>
       </ul>
@@ -185,7 +202,7 @@ export const CONVENTIONS: HelpSection = {
         </li>
         <li>
           Cast timing: the companion starts attacking after a 0.3 s delay and recasts with a period of cooldown + 0.5 s.  Because of that, breakpoints matter: for example Blaze Wizard's third stun cast needs
-          +13.667% Summoning Time, so +13% gains almost nothing over +12% and +15% gains a lot (the Companions tab flags such "step" rows).
+          +13.667% Summoning Time, so +13% gains almost nothing over +12% and +15% gains a lot.
         </li>
         <li>
           <strong>Arwen's Glass Shoes</strong> adds +20% (star 0) up to +40% (star 5) Summoning Time while equipped; it is added on top of the value you type.
@@ -200,7 +217,7 @@ export const CONVENTIONS: HelpSection = {
           <strong>Units per +1% DPS: lower is better.</strong>  It is how many units of that stat give +1% Total DPS, so a smaller number means each unit is worth more.  "n/a" means one step gives no gain at all.
         </li>
         <li>
-          Units differ between stats (+1 flat INT is not +1 percentage point): compare the % gain per step, or the units against what a unit costs you in game.  Critical Rate above 100% is priced as Critical Damage
+          Units differ between stats (+1 flat INT is not +1 percentage point): compare the % gained per step, or the units against what a unit costs you in game.  Critical Rate above 100% is priced as Critical Damage
           unless Ring of Cycles or Book of Ancient is equipped, which keep using the excess.
         </li>
       </ul>
@@ -211,8 +228,8 @@ export const CONVENTIONS: HelpSection = {
 /** Genuinely important assumptions (at most ~12), condensed from KNOWN_GAPS.md. */
 export const LIMITATIONS: ReactNode[] = [
   <>
-    <strong>No MP consumption.</strong>  The game's MP costs have no scaling data on either data source, so every skill is assumed castable.  Crowd control, accuracy / evasion, defense, healing and movement have no
-    DPS meaning here and are not modelled.
+    <strong>No MP consumption.</strong>  The game's MP costs have no usable scaling data, so every skill is assumed castable.  Crowd control, accuracy / evasion, defense, healing and movement have no
+    DPS meaning here and are not included.
   </>,
   <>
     <strong>Some skill curves are assumptions.</strong>  Where the game tables give only a level-1 value, the growth shape is assumed.  Bishop's Divine Protection has only its level-1 value (25% Defense) and an assumed
@@ -224,38 +241,37 @@ export const LIMITATIONS: ReactNode[] = [
     (Hero, Paladin, Dark Knight) still count per damage line rather than per attack.
   </>,
   <>
-    <strong>Steady-state approximations.</strong>  Stack, resource and uptime mechanics (Buccaneer's Assault Mode and Serpent Scales, Hero's combo stacks, Marksman's Blink Bolt, Paladin's Vessel of Light) are modelled as
-    averages or duty cycles, not exact state machines.  Marksman's Blink Bolt is probably a slight overestimate.
+    <strong>Steady-state approximations.</strong>  Stack, resource and uptime mechanics (Buccaneer's Assault Mode and Serpent Scales, Hero's combo stacks, Marksman's Blink Bolt, Paladin's Vessel of Light) are
+    averaged as duty cycles, not simulated exactly.  Marksman's Blink Bolt is probably a slight overestimate.
   </>,
   <>
-    <strong>Skill damage masteries multiply.</strong>  A "+70%" skill mastery is modelled as x1.7 of that skill's damage and the basic-attack chain is summed first, then multiplied.  This was measured in game for FP-Mage;
+    <strong>Skill damage masteries multiply.</strong>  A "+70%" skill mastery counts as x1.7 of that skill's damage and the basic-attack chain is summed first, then multiplied.  This was measured in game for FP-Mage;
     the other classes assume the same rule.
   </>,
   <>
-    <strong>HP- and condition-based passives are not modelled</strong> (for example Buccaneer's Perseverance, Corsair's Fullmetal Jacket defense penetration mastery, Groggy Mastery's conditional Final Damage): assumed to
+    <strong>HP- and condition-based passives are not included</strong> (for example Buccaneer's Perseverance, Corsair's Fullmetal Jacket defense penetration mastery, Groggy Mastery's conditional Final Damage): assumed to
     be inside the stats you type.
   </>,
   <>
-    <strong>Unmodelled debuff and setup effects</strong>: Corsair's Swift Fire Weaken and the Siege Bomber / Broadside "Setup" masteries, Paladin's Divine Judgment +30% Basic Attack Damage buff, and Bowmaster's
-    Hurricane attack-speed behaviour are left out.  Corsair's Bombardment (level 118) is a large part of its DPS and is worth an in-game check.
+    <strong>Left out</strong>: Corsair's Swift Fire Weaken and the Siege Bomber / Broadside "Setup" masteries, Paladin's Divine Judgment +30% Basic Attack Damage buff, and Bowmaster's
+    Hurricane attack-speed behaviour.  Corsair's Bombardment (level 118) is a large part of its DPS and is worth an in-game check.
   </>,
   <>
-    <strong>Unverified in game</strong>: Ice / Lightning Mage's Elquines strike-interval mastery (level and value), Illusion Step at level 118 (Bowmaster / Marksman), and Hero's Puncture wound debuff.
+    <strong>Not yet checked in game</strong>: Ice / Lightning Mage's Elquines strike-interval mastery (level and value), Illusion Step at level 118 (Bowmaster / Marksman), and Hero's Puncture wound debuff.
   </>,
   <>
-    <strong>Artifacts</strong>: all 36 are listed and the equip effects of the live ones are modelled.  The potential lines of the Artifacts table are a reference / what-if tool only: they never change the main
-    result.  Artifacts that need their stat typed in (baked in) only show a what-if gain.  The game has 5 artifact slots, the workbooks 4: with 5 equipped the app combines the verified per-artifact effects
-    itself, which cannot be checked against Excel.
+    <strong>Artifacts</strong>: all 36 are listed and the equip effects of the live ones are counted.  The potential lines of the Artifacts table are a reference / what-if tool only: they never change the main
+    result.  Artifacts that need their stat typed in (baked in) only show a what-if gain.
   </>,
   <>
-    <strong>Companion and timeline simplifications</strong>: companions follow the user-provided kits and the rules above; a stun on normal monsters gets no timing alignment, Candle / Chalice / Ring of Cycles
+    <strong>Companion and timeline simplifications</strong>: companions follow the kits provided by the community and the rules above; a stun on normal monsters gets no timing alignment, Candle / Chalice / Ring of Cycles
     stay at their fight averages and only Hexagon Necklace and Charm of the Undead are resolved second by second.
   </>,
   <>
     <strong>Stat values, Cubes and Equipment compare</strong> are available for the classes marked in the table above; the others show "not available for this class yet".
   </>,
   <>
-    <strong>Game data moves.</strong>  The numbers follow the data sources at the time of the last audit and the patch notes up to then (mainly maplestoryidle.info's game tables and the community wiki); a patch can
+    <strong>Game data moves.</strong>  The numbers follow the community data sources and the patch notes at the time of the last check; a patch can
     make a value stale.  Treat differences of a percent or two as noise.
   </>,
 ];
@@ -345,7 +361,7 @@ export const PRIVACY: HelpSection = {
           address requested) under its own policy.  The server also uses your IP address, in memory only, to limit how many requests one visitor can make.
         </li>
         <li>
-          Importing an Excel workbook happens <strong>entirely in your browser</strong>: the file is read there and never uploaded.
+          Importing a file happens <strong>entirely in your browser</strong>: the file is read there and never uploaded.
         </li>
       </ul>
       <h4>With a Google account (optional)</h4>

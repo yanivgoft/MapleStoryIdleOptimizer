@@ -7,12 +7,13 @@
   --surface: light-dark(#ffffff, #1b2029);
   --ink: light-dark(#1b1f27, #e8ebf1);
   --ink2: light-dark(#4a5260, #b4bcc9);
-  --muted: light-dark(#6b7280, #8f99a8);
+  --muted: light-dark(#626977, #8f99a8);
   --line: light-dark(#d9dde4, #2f3643);
+  --control-border: light-dark(#848b98, #6b7587); /* borders of inputs / buttons: >= 3:1 against the surface (tested in lib/contrast.test.ts) */
   --accent: light-dark(#2f5fc4, #7aa2f7);
   --accent-ink: light-dark(#ffffff, #0d1117);
   --bar: light-dark(#3b6fd4, #6c97ec);
-  --bar-alt: light-dark(#c26a14, #e7974a);
+  --bar-alt: light-dark(#9a520c, #e7974a); /* also used for text: >= 4.5:1 */
   --danger: light-dark(#b3261e, #f2837b);
   --ok: light-dark(#1a7f4b, #5fcf92);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -22,8 +23,8 @@
 /* browsers without light-dark() (before 2024): light palette only, the toggle then has no visible effect */
 @supports not (color: light-dark(#000, #fff)) {
   :root {
-    --bg: #f5f6f8; --surface: #ffffff; --ink: #1b1f27; --ink2: #4a5260; --muted: #6b7280; --line: #d9dde4;
-    --accent: #2f5fc4; --accent-ink: #ffffff; --bar: #3b6fd4; --bar-alt: #c26a14; --danger: #b3261e; --ok: #1a7f4b;
+    --bg: #f5f6f8; --surface: #ffffff; --ink: #1b1f27; --ink2: #4a5260; --muted: #626977; --line: #d9dde4; --control-border: #848b98;
+    --accent: #2f5fc4; --accent-ink: #ffffff; --bar: #3b6fd4; --bar-alt: #9a520c; --danger: #b3261e; --ok: #1a7f4b;
   }
 }
 * { box-sizing: border-box; }
@@ -37,16 +38,22 @@ header h1 { font-size: 1.25rem; margin: 8px 0; }
 .tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 8px 14px; color: var(--ink2); cursor: pointer; font: inherit; white-space: nowrap; }
 .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
 .tabs button:disabled { opacity: 0.55; cursor: not-allowed; }
-.soon { font-size: 0.7rem; background: var(--line); border-radius: 8px; padding: 1px 6px; margin-left: 4px; }
+.tab-soon { font-size: 0.7rem; background: var(--line); border-radius: 8px; padding: 1px 6px; margin-left: 4px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .layout { display: grid; grid-template-columns: minmax(320px, 5fr) 7fr; gap: 20px; align-items: start; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
-.col-results { position: sticky; top: 8px; }
-@media (max-width: 900px) { .col-results { position: static; order: -1; } }
+.col-results { position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; }
+@media (max-width: 900px) { .col-results { position: static; order: -1; max-height: none; overflow: visible; } }
 
-fieldset { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); margin: 0 0 14px; padding: 8px 14px 14px; }
+fieldset, details.sec { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); margin: 0 0 14px; padding: 8px 14px 14px; }
 legend { font-weight: 600; padding: 0 6px; }
+details.sec > summary { font-weight: 600; padding: 2px 0; }
+details.sec[open] > summary { margin-bottom: 8px; }
+.form-hint { margin: 0 0 10px; color: var(--ink2); font-size: 0.9rem; }
+.notice { color: var(--ink2); font-size: 0.85rem; margin: 0 0 12px; }
+details.about { margin-top: 4px; }
+details.about ul { margin: 8px 0 0; padding-left: 18px; font-size: 0.9rem; color: var(--ink2); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px 14px; }
 .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .field label { font-size: 0.85rem; color: var(--ink2); }
@@ -55,7 +62,7 @@ legend { font-weight: 600; padding: 0 6px; }
 .input-wrap .suffix { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
 input, select, button { font: inherit; }
 input[type="text"], select {
-  width: 100%; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); min-height: 34px;
+  width: 100%; padding: 6px 9px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--bg); color: var(--ink); min-height: 34px;
 }
 .input-wrap input { padding-right: 26px; font-variant-numeric: tabular-nums; }
 input.readonly { background: transparent; border-style: dashed; color: var(--ink2); }
@@ -65,14 +72,14 @@ small.error, p.error { color: var(--danger); font-size: 0.8rem; }
 .copy-from { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 0.85rem; }
 .copy-from select { width: auto; }
 
-button { cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 6px; padding: 6px 12px; }
+button { cursor: pointer; border: 1px solid var(--control-border); background: var(--surface); color: var(--ink); border-radius: 6px; padding: 6px 12px; }
 button:hover:not(:disabled) { border-color: var(--accent); }
 button.danger { color: var(--danger); }
 button[type="submit"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; }
 .card h2 { margin: 0 0 8px; font-size: 1rem; }
-.results.busy .big, .results.busy .mid { opacity: 0.6; transition: opacity 0.15s; }
+.updating { text-transform: none; letter-spacing: 0; }
 .label { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
 .big { font-size: 3rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .mid { font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -111,7 +118,7 @@ details summary { cursor: pointer; font-weight: 600; }
 .plist li { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .plist .meta { display: block; color: var(--muted); font-size: 0.8rem; }
 .plist .actions { display: flex; gap: 6px; }
-.filebtn { border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; background: var(--surface); }
+.filebtn { border: 1px solid var(--control-border); border-radius: 6px; padding: 6px 12px; cursor: pointer; background: var(--surface); }
 input.sr-only:focus-visible + * , input.sr-only:focus-visible { outline: 2px solid var(--accent); }
 
 /* class picker + status line */
@@ -170,3 +177,14 @@ tr.dim { opacity: 0.6; }
 
 .site-footer { margin: 24px 0 8px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 0.8rem; color: var(--muted); }
 .site-footer a { color: inherit; }
+
+/* people who ask for less motion get none */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* touch screens: comfortable 44px targets */
+@media (pointer: coarse) {
+  button, select, input[type="text"], .filebtn, details > summary, .tabs button { min-height: 44px; }
+  button.link { min-height: 0; padding: 10px 4px; }
+}

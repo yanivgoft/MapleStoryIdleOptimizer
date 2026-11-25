@@ -3,29 +3,28 @@ import { api } from "../api";
 import { useDebounced } from "../hooks";
 import { useSensitivity } from "../lib/useSensitivity";
 import type { SensPart } from "../lib/sensitivity";
-import { EquipRanking } from "./EquipRanking";
 import { buildInputs } from "../lib/schemaForm";
 import { formatNumber } from "../lib/format";
 import { artifactStarsExtra, artifactsAvailable, breakdown, bucketTotals, currentSlots, dpsDelta, equippedKeys, withoutArtifacts } from "../lib/artifacts";
-import type { ClassInfo, ClassSchema, ComputeResult, FormState } from "../types";
+import type { ArtifactSchema, ClassInfo, ClassSchema, ComputeResult, FormState } from "../types";
 import { ArtifactTable } from "./ArtifactTable";
+import { AboutTab, Unavailable } from "./TabNotes";
+import { ARTIFACT_RANKING_TITLE, EquipRanking } from "./EquipRanking";
+import { potentialTables } from "../lib/artifactPotentials";
 import type { CubesMeta } from "../lib/cubes";
 import type { RequestStatus } from "../lib/liveRequest";
 
-// The equip ranking is the Stat values engine's artifact part (POST .../sensitivity, which=["artifacts"]) shown with the shared EquipRanking table.
-const RANKING_UNSUPPORTED = "The equip ranking (which artifact is worth the most DPS) is not available for this class yet.";
+// The artifact ranking is the stat values' artifact part (POST .../sensitivity, which=["artifacts"]) shown with the shared EquipRanking table.
 
-/** Equip ranking of all 36 artifacts for the current inputs; only requested while the Artifacts tab is open and the class supports stat values. */
-export function RankingSection({ classId, inputs, supported }: { classId: string; inputs: Record<string, unknown> | null; supported: boolean }) {
+/** Artifact ranking of all 36 artifacts for the current inputs; only requested while the Artifacts tab is open and the class supports stat values. */
+export function RankingSection({ classId, inputs, supported, onOpenHelp }: { classId: string; inputs: Record<string, unknown> | null; supported: boolean; onOpenHelp?: () => void }) {
   const wanted = useMemo<SensPart[]>(() => ["artifacts"], []);
   const { result, status, stale, pending, retry } = useSensitivity({ classId, inputs, active: supported, wanted });
   return (
-    <section className="card art-ranking" aria-label="Artifact equip ranking">
-      <h2>Equip ranking</h2>
+    <section className="card art-ranking" aria-label={ARTIFACT_RANKING_TITLE}>
+      <h2>{ARTIFACT_RANKING_TITLE}</h2>
       {!supported || status.unsupported ? (
-        <p className="empty" role="status">
-          {RANKING_UNSUPPORTED}
-        </p>
+        <Unavailable onOpenHelp={onOpenHelp} />
       ) : (
         <div className={stale || pending ? "sens-stale" : undefined} aria-busy={status.loading}>
           {status.error && (
@@ -37,14 +36,40 @@ export function RankingSection({ classId, inputs, supported }: { classId: string
             </div>
           )}
           {result?.artifacts ? (
-            <EquipRanking rows={result.artifacts.rows} title="Artifact equip ranking" />
+            <EquipRanking rows={result.artifacts.rows} title={ARTIFACT_RANKING_TITLE} />
           ) : (
             !status.error && <p className="empty">{status.loading || pending ? "Computing the ranking..." : "Loading the ranking..."}</p>
           )}
-          <p className="note">What each artifact is worth in total DPS if equipped (a what-if per artifact: the unequipped ones at the star set in the table above, added to what you have equipped in this content type even when all slots are used; artifacts that are not unlocked are listed unranked). Equipped ones show what you would lose.</p>
         </div>
       )}
     </section>
+  );
+}
+
+/** The collapsed explanation at the bottom of the Artifacts tab (what the table, the equipped marker, the potential lines and the ranking mean). */
+export function ArtifactsAbout({ art, meta, contentType }: { art: ArtifactSchema; meta?: CubesMeta | null; contentType?: string }) {
+  const tables = potentialTables(meta);
+  return (
+    <AboutTab>
+      <ul>
+        <li>
+          One row per artifact: its star level and its potential lines are kept for every artifact and saved with your profile (the same for every content type). Which artifacts are equipped (up to {art.max_slots}{" "}
+          slots, an artifact once) is chosen per content type in the Equipped artifacts section of the Calculator; the rows marked &quot;equipped&quot; are the ones equipped in{" "}
+          {contentType ? <strong>{contentType}</strong> : "the current content type"}. &quot;Not unlocked&quot; counts as star 0 once the artifact is equipped.
+        </li>
+        <li>
+          Potential lines are a reference calculator: the gains do not change your Total DPS (type a roll you keep into the Calculator yourself). Epic / Unique artifacts have 2 lines, Legendary 3; lines unlock at star{" "}
+          {tables.line_min_star.join(" / ")}, locked lines count 0. Same-stat lines add, different stats multiply. A stat marked with a warning is not rollable on artifacts: it is kept from an old profile or an import,
+          valued at 0 and sent as empty.
+        </li>
+        <li>Artifacts marked baked in already have their bonus inside the stats you typed, so they add nothing to Total DPS here; their gain in the ranking is a what-if. The &quot;No DPS effect&quot; tag marks artifacts whose effect does not change damage in this calculator (for example raid-only or accuracy bonuses).</li>
+        <li>The equipped-artifacts table lists the value each equipped artifact feeds into the calculation and the Total DPS with them against none.</li>
+        <li>
+          The artifact ranking shows what each artifact is worth in Total DPS if equipped: the unequipped ones at the star set in the table, added to what you have equipped in this content type even when all slots are used.
+          Artifacts that are not unlocked are listed unranked. Equipped ones show what you would lose by removing them.
+        </li>
+      </ul>
+    </AboutTab>
   );
 }
 
@@ -57,21 +82,21 @@ interface Props {
   busy: boolean;
   stale: boolean;
   onOpenCompanion: () => void;
-  /** "go to Equipped artifacts": the Inputs tab's section (the equipped artifacts are chosen there, per content type) */
+  /** "go to Equipped artifacts": the Calculator's section (the equipped artifacts are chosen there, per content type) */
   onOpenInputs?: () => void;
+  /** opens the Help tab (the "See Help" link of an unavailable section) */
+  onOpenHelp?: () => void;
   /** GET .../cubes/meta (the potential-line tables of the Artifacts table; the app's static copy is used while it is null / undefined / unavailable) */
   cubesMeta?: CubesMeta | null;
   cubesMetaStatus?: RequestStatus;
 }
 
 /** "Not available for this class yet" panel (schema says artifacts are not modelled). */
-export function ArtifactsUnavailable({ name }: { name: string }) {
+export function ArtifactsUnavailable({ name, onOpenHelp }: { name: string; onOpenHelp?: () => void }) {
   return (
     <section className="card artifacts" aria-label="Artifacts">
       <h2>Artifacts</h2>
-      <p className="empty" role="status">
-        Artifacts are not available for {name} yet. They are modelled class by class; no artifact settings are sent with this class&apos;s calculation.
-      </p>
+      <Unavailable onOpenHelp={onOpenHelp} text={`Artifacts are not available for ${name} yet.`} />
     </section>
   );
 }
@@ -82,7 +107,6 @@ const fmtVal = (v: number, unit: string) => `${v >= 0 ? "+" : ""}${formatNumber(
 export function ArtifactBreakdown({ result, baselineDps, baselineState }: { result: ComputeResult; baselineDps: number | null; baselineState: "idle" | "busy" | "error" }) {
   const rows = breakdown(result);
   const totals = bucketTotals(result);
-  const notes = Array.isArray(result.artifacts?.notes) ? (result.artifacts!.notes as unknown[]).filter((n): n is string => typeof n === "string") : [];
   if (!rows.length) return null;
   const delta = dpsDelta(result.total_dps, baselineDps);
   return (
@@ -92,10 +116,10 @@ export function ArtifactBreakdown({ result, baselineDps, baselineState }: { resu
         <table>
           <thead>
             <tr>
-              <th>Artifact</th>
-              <th className="num">Star</th>
-              <th>Value used</th>
-              <th>Feeds</th>
+              <th scope="col">Artifact</th>
+              <th scope="col" className="num">Star</th>
+              <th scope="col">Value used</th>
+              <th scope="col">Feeds</th>
             </tr>
           </thead>
           <tbody>
@@ -105,13 +129,13 @@ export function ArtifactBreakdown({ result, baselineDps, baselineState }: { resu
                 <td className="num">{r.star}</td>
                 <td>
                   {r.values.length === 0 ? (
-                    <span className="note">{r.note ?? "-"}</span>
+                    <span className="note">-</span>
                   ) : (
                     <ul className="art-lines">
                       {r.values.map((v) => (
                         <li key={v.label}>
                           {v.label}: {fmtVal(v.value, v.unit)}
-                          {!v.applied && <span className="note"> (reference only: type it into Inputs)</span>}
+                          {!v.applied && <span className="note"> (baked in)</span>}
                         </li>
                       ))}
                     </ul>
@@ -123,18 +147,13 @@ export function ArtifactBreakdown({ result, baselineDps, baselineState }: { resu
           </tbody>
         </table>
       </div>
-      {notes.map((n) => (
-        <p key={n} className="note">
-          {n}
-        </p>
-      ))}
       {totals.length > 0 && (
         <p className="note">
-          Bucket totals fed into the model: {totals.map((t) => `${t.label} ${fmtVal(t.value, "")}`).join(" | ")}
+          Totals these artifacts add: {totals.map((t) => `${t.label} ${fmtVal(t.value, "")}`).join(" | ")}
         </p>
       )}
       <p className="art-delta" role="status">
-        <strong>Total DPS with these artifacts vs. none</strong> (separate calculation without artifacts):{" "}
+        <strong>Total DPS with these artifacts vs. none</strong>:{" "}
         {delta ? (
           <>
             {formatNumber(result.total_dps)} vs {formatNumber(baselineDps as number)}
@@ -146,12 +165,11 @@ export function ArtifactBreakdown({ result, baselineDps, baselineState }: { resu
             </strong>
           </>
         ) : baselineState === "error" ? (
-          "not available (the comparison calculation failed)"
+          "not available (the comparison failed)"
         ) : (
           "calculating..."
         )}
       </p>
-      <p className="note">Baked-into-Inputs artifacts add nothing here until you type their stat into the Inputs; their gain is shown on the equip ranking below.</p>
     </section>
   );
 }
@@ -186,7 +204,7 @@ function useBaseline(classId: string, inputs: Record<string, unknown> | null, en
   return { dps: debounced === key ? dps : null, status: debounced === key ? status : ("busy" as const) };
 }
 
-export function ArtifactsPanel({ schema, classInfo, state, onState, result, busy, stale, onOpenCompanion, onOpenInputs, cubesMeta, cubesMetaStatus }: Props) {
+export function ArtifactsPanel({ schema, classInfo, state, onState, result, busy, stale, onOpenCompanion, onOpenInputs, onOpenHelp, cubesMeta, cubesMetaStatus }: Props) {
   const art = schema.artifacts;
   const available = artifactsAvailable(schema, classInfo);
   const equippedIds = useMemo(() => (art ? equippedKeys(art, currentSlots(art, state)) : []), [art, state]);
@@ -196,7 +214,7 @@ export function ArtifactsPanel({ schema, classInfo, state, onState, result, busy
   const rankingInputs = useMemo(() => (inputs && art ? { ...inputs, ...artifactStarsExtra(art, state.artifacts) } : inputs), [inputs, art, state.artifacts]);
   const baseline = useBaseline(state.classId, inputs, available && equipped > 0);
 
-  if (!available || !art) return <ArtifactsUnavailable name={schema.name} />;
+  if (!available || !art) return <ArtifactsUnavailable name={schema.name} onOpenHelp={onOpenHelp} />;
   const hasResult = !!result && breakdown(result).length > 0;
 
   return (
@@ -220,7 +238,9 @@ export function ArtifactsPanel({ schema, classInfo, state, onState, result, busy
       {equipped > 0 && hasResult && <ArtifactBreakdown result={result!} baselineDps={!busy && !stale ? baseline.dps : null} baselineState={baseline.status} />}
       {equipped > 0 && !hasResult && <p className="empty">{busy ? "Calculating..." : "The artifact breakdown appears after the next calculation."}</p>}
 
-      <RankingSection classId={state.classId} inputs={rankingInputs} supported={classInfo?.status?.stat_values !== false} />
+      <RankingSection classId={state.classId} inputs={rankingInputs} supported={classInfo?.status?.stat_values !== false} onOpenHelp={onOpenHelp} />
+
+      <ArtifactsAbout art={art} meta={cubesMeta} contentType={state.contentType} />
     </div>
   );
 }

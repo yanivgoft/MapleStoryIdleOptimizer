@@ -1,4 +1,4 @@
-// "Import from Excel (.xlsx)" in the Profiles tab: pick or drop a <Class>-DPS-Calculator.xlsx, preview what will be imported, save it as a NEW profile.
+// "Import from the old Excel calculator (optional)" in the Advanced area of the Profiles tab: pick or drop a <Class>-DPS-Calculator.xlsx, preview what will be imported, save it as a NEW profile.
 // The file is read ENTIRELY IN THE BROWSER (File.arrayBuffer -> fflate -> DOMParser); it is never uploaded.  The only network call is the class SCHEMA
 // (static class definition, no user data), exactly as when you switch class.  The heavy parts (unzip + the workbook map) are loaded on first use.
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
@@ -16,7 +16,7 @@ const loadLib = () => (libPromise ??= import("../lib/importXlsx"));
 export function describeLoadError(e: unknown): string {
   const err = e as { name?: string; code?: string; message?: string; status?: number };
   if (err?.name === "XlsxError") {
-    return err.code === "not_zip" ? `${err.message} (Saved profiles in .json files are loaded with "Import file" instead.)` : (err.message ?? "This file cannot be read.");
+    return err.code === "not_zip" ? `${err.message} (Saved profiles in .json files are loaded with "Import saved profiles (.json)" instead.)` : (err.message ?? "This file cannot be read.");
   }
   if (err?.name === "ApiError" || typeof err?.status === "number") return `Could not load the class definition from the server (${err.message ?? "error"}). Your file was not uploaded anywhere; try again in a moment.`;
   return `This file could not be read: ${err?.message ?? "unknown error"}`;
@@ -94,10 +94,9 @@ export function ImportXlsx({ classes, onSaved, loadSchema = api.schema }: Props)
 
   return (
     <section className="xlsx-import" aria-labelledby={`${hintId}-h`}>
-      <h3 id={`${hintId}-h`}>Import from your Excel calculator</h3>
+      <h3 id={`${hintId}-h`}>Import from the old Excel calculator (optional)</h3>
       <p className="note" id={hintId}>
-        Already filled in a <code>&lt;Class&gt;-DPS-Calculator.xlsx</code>? Load its typed-in values instead of retyping them. The file is read in your browser only and is never uploaded.
-        Only classes that have an Excel calculator can be imported; the newer classes, built straight into the app, have none (type their stats in directly).
+        For people who used the spreadsheet calculators from GitHub.
       </p>
       <div
         className={`xlsx-drop${over ? " over" : ""}`}
@@ -133,6 +132,28 @@ export function ImportXlsx({ classes, onSaved, loadSchema = api.schema }: Props)
           {error}
         </p>
       )}
+      <details className="xlsx-about">
+        <summary>What is imported</summary>
+        <p className="note">
+          Your own <code>&lt;Class&gt;-DPS-Calculator.xlsx</code>: its typed-in values are loaded as a NEW profile (a profile with the same name is never overwritten), after a preview with any warnings.
+          The file is read in your browser only and is never uploaded; only the class definition is fetched from the server, as when you switch class.
+        </p>
+        <ul className="note">
+          <li>
+            <strong>Read</strong>: the class (from the title of the Inputs sheet), the character level, every value of the Inputs sheet for each content type (columns C-L, found by their headers), the Chapter-Stage text,
+            Boss/Normal emphasis, max enemies, PvP fight length, the companion chosen per content type and each companion&apos;s level (CompanionsInput), the star level of every artifact and its potential lines (ArtifactsInput),
+            the artifacts in the Slot rows of each content type&apos;s column (they become that content type&apos;s Equipped artifacts) and your cube gear (the PotentialCubes sheet: rarity, pity count and the three lines of each of the 15
+            slots, Potential and Bonus Potential).
+          </li>
+          <li>
+            <strong>Not imported</strong>: calculated cells (DPS results and other formulas, unless the file holds a saved result for them) and the Equipment Compare sheet.  The workbook has 4 artifact slots, the game 5: the
+            fifth slot of every content type is yours to fill after the import.
+          </li>
+          <li>Values outside the allowed range are imported as typed and listed under Warnings; blank or unreadable cells fall back to the defaults.</li>
+          <li>Macro-enabled (.xlsm), binary (.xlsb), old .xls and password-protected files are not supported: open them in Excel and use Save As .xlsx first.</li>
+          <li>Only classes that have an Excel calculator can be imported; the newer classes, built straight into the app, have none (type their stats in directly).</li>
+        </ul>
+      </details>
       {opened && lib && (
         <ImportFlow
           lib={lib}
@@ -388,8 +409,8 @@ export function ImportDialog(p: DialogProps) {
                 )}
               </details>
               <details>
-                <summary>Ignored ({r.ignored.length})</summary>
-                {ignoredGroups.length > 0 ? <NoteList groups={ignoredGroups} /> : <p className="note">Nothing was ignored.</p>}
+                <summary>Not imported (calculated cells) ({r.ignored.length})</summary>
+                {ignoredGroups.length > 0 ? <NoteList groups={ignoredGroups} /> : <p className="note">Everything in the file was read.</p>}
               </details>
 
               <div className="field-row">
@@ -413,7 +434,7 @@ export function ImportDialog(p: DialogProps) {
               Cancel
             </button>
             <button type="submit" disabled={!r}>
-              Import as new profile
+              Create profile from Excel
             </button>
           </div>
         </form>

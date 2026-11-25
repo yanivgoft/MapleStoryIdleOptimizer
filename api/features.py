@@ -26,7 +26,7 @@ except Exception:                                        # noqa: BLE001
     log.exception("engine.cubes / equipment / potentials failed to import; cube features disabled")
     cubes = equipment = potentials = artifact_data = None
 
-CUBES_UNSUPPORTED = "the cube optimizer is not modelled for this class yet"
+CUBES_UNSUPPORTED = "cube recommendations are not available for this class yet"
 EQUIPMENT_UNSUPPORTED = "equipment compare is not modelled for this class yet"
 POTENTIALS_UNSUPPORTED = "artifact potentials are not modelled for this class yet"
 
@@ -199,6 +199,21 @@ def validate_cubes_extras(extras):
     return gear, only, errors
 
 
+def _num_out(v):
+    return int(v) if float(v).is_integer() else v
+
+
+def _roll_values_meta():
+    """``{"ALL" | slot: {rarity: {line "1".."3": {stat: [[value, prime], ...]}}}}``: the values a line can roll, prime first then descending.  "ALL" is the pool shared by
+    every slot, a slot key holds only that slot's own additions; a client merges the two for (slot, rarity, line) (``rollValueOptions`` in web/src/lib/cubes.ts)."""
+    out = {}
+    for (slot, rarity, line), stats in cubes.roll_values().items():
+        by_stat = out.setdefault(slot, {}).setdefault(rarity, {}).setdefault(str(line), {})
+        for stat, vals in stats.items():
+            by_stat[stat] = [[_num_out(v), bool(p)] for v, p in sorted(vals.items(), key=lambda kv: (not kv[1], -kv[0]))]
+    return out
+
+
 _META = None
 
 
@@ -213,7 +228,7 @@ def cubes_meta():
         by_slot = {}
         for slot in cubes.CUBE_SLOTS:
             have = {s for (sl, _r, _l), entries in table.items() if sl in ("ALL", slot) for s, _v, _w in entries}
-            by_slot[slot] = sorted(have | set(cubes.EXTRA_SELECTABLE_STATS))
+            by_slot[slot] = sorted(have)
         _META = {
             "slots": [{"key": s, "label": SLOT_LABELS.get(s, s)} for s in cubes.CUBE_SLOTS],
             "potential_types": list(cubes.POTENTIAL_TYPES),
@@ -221,6 +236,7 @@ def cubes_meta():
             "none_stat": cubes.NONE_STAT,
             "stats": all_stats,
             "stats_by_slot": by_slot,
+            "roll_values": _roll_values_meta(),
             "pity_caps": {t: {r: int(v["max"]) for r, v in rates[t].items()} for t in cubes.POTENTIAL_TYPES},
             "upgrade_rates": {t: {r: v["rate"] for r, v in rates[t].items()} for t in cubes.POTENTIAL_TYPES},
             "milestones": list(cubes.CUBE_MILESTONES),
@@ -424,7 +440,20 @@ def cubes_row_key(class_id, clean, gear, i):
     """Cache key of ONE gear row's result: the inputs, the gear's total summoning-time % (it moves the pricing's b0), the row's own state and the summoning time on
     the OTHER rows (the only cross-row dependency).  Rows are cached one by one, so recalculating after editing one slot hits the cache for every other slot and a
     slot-by-slot request series shares work with a full call."""
-    return cache_key("cubes-row", class_id, clean, companion_pct(gear), gear[i], cubes.CubeModel.row_companion_base(gear[i], gear))
+    return cache_key("cubes-row", class_id, clean, companion_pct(gear), gear[i], cubes.CubeModel.row_companion_base(gear[i], gear), _exact_held_part(class_id, clean, gear))
+
+
+def _exact_held_part(class_id, clean, gear):
+    """Cooldown Decrease / Buff Duration lines on the WHOLE gear, but only when they exceed the typed total (then b0 clamps at 0 and a row's baseline stops being
+    ``typed - own``): in the normal case a row depends on the Inputs and its own lines only, so editing the hat does not invalidate the other rows."""
+    mapping = _map(class_id, "cubes") or cubes.POTENTIAL_STAT_TO_SWEEP_KEY
+    out = []
+    for stat in cubes.EXACT_STATS:
+        key = mapping.get(stat)
+        typed = float(clean.get(key) or 0) if key else 0.0
+        held = sum(v for g in gear for s, v in g["lines"] if s == stat)
+        out.append(held if held > typed + 1e-9 else None)
+    return out
 
 
 def cubes_lookup(cache, class_id, clean, gear, only):
@@ -445,7 +474,7 @@ def run_cubes(service, entry, clean, gear, indices, cache=None, class_id=None):
     pct = companion_pct(gear)
     pricing = service.cubes_pricing(entry, clean, pct)
     model = cubes.CubeModel(pricing)
-    rows = cubes.recommend(gear, pricing, only=set(indices), model=model, sort=False)     # gear order = ascending index
+    rows = cubes.recommend(gear, pricing, only=set(indices), model=model, sort=False, include_curve=True)     # gear order = ascending index
     notes = sorted(model.notes)
     out = {}
     for i, row in zip(sorted(indices), rows):

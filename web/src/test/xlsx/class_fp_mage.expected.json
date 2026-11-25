@@ -363,7 +363,7 @@
    "pvp_fight_length": null
   }
  },
- "warnings": 17,
+ "warnings": 16,
  "ignoredHints": [
   "does not apply to Chapter Boss"
  ],
@@ -1164,15 +1164,15 @@
     "lines": [
      {
       "stat": "Dex",
-      "value": 12
+      "value": 600
      },
      {
       "stat": "Int %",
-      "value": 9.5
+      "value": 9
      },
      {
       "stat": "Max Damage Multiplier %",
-      "value": 400
+      "value": 15
      }
     ]
    },
@@ -1182,11 +1182,11 @@
     "lines": [
      {
       "stat": "Min Damage Multiplier %",
-      "value": 6
+      "value": 8
      },
      {
-      "stat": "Str %",
-      "value": 4.5
+      "stat": "Attack Speed %",
+      "value": 4
      },
      {
       "stat": "(none)",
@@ -1199,8 +1199,8 @@
     "pity": 75,
     "lines": [
      {
-      "stat": "Defense %",
-      "value": 8
+      "stat": "Dex",
+      "value": 100
      },
      {
       "stat": "(none)",
@@ -1217,16 +1217,16 @@
     "pity": 417,
     "lines": [
      {
-      "stat": "Defense %",
-      "value": null
+      "stat": "Dex",
+      "value": 400
      },
      {
       "stat": "(none)",
       "value": null
      },
      {
-      "stat": "Luk %",
-      "value": 7.5
+      "stat": "Max Damage Multiplier %",
+      "value": 10
      }
     ]
    },
@@ -1235,12 +1235,12 @@
     "pity": 5,
     "lines": [
      {
-      "stat": "Defense %",
-      "value": 15
+      "stat": "Dex",
+      "value": 1000
      },
      {
-      "stat": "Int",
-      "value": 12
+      "stat": "All Skill Level",
+      "value": null
      },
      {
       "stat": "(none)",
@@ -1270,14 +1270,14 @@
   "pieces": 5,
   "lines": 11,
   "rows": 6,
-  "warnings": 9,
+  "warnings": 8,
   "ignored": 1,
+  "cleared": 1,
   "hints": [
    "unknown stat \"Bogus Stat\"; the line was left empty",
    "Basic Attack Target Increase cannot roll on this slot",
    "is not below the rare cap of 60 for Potential",
    "is not below the unique cap of 417 for Bonus Potential",
-   "has no value; left empty",
    "is the top tier, so pity 5 has no meaning",
    "unknown rarity \"Godlike\"; normal used",
    "pity \"abc\" is not a number",

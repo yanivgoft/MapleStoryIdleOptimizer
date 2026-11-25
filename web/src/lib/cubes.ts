@@ -1,5 +1,6 @@
-// Cube optimizer tab logic (pure): types of GET .../cubes/meta and POST .../cubes, the editable gear state, request building, ranking and the "worth rolling?" rule.
+// Cubes tab logic (pure): types of GET .../cubes/meta and POST .../cubes, the editable gear state, request building, the exact cube count, ranking and the "worth rolling?" rule.
 import { parseNumber } from "./schemaForm";
+import xlsxMap from "./xlsx_map.json";
 
 export const NONE_STAT = "(none)";
 export const POTENTIAL_TYPES = ["Potential", "Bonus Potential"] as const;
@@ -36,6 +37,8 @@ export interface ArtifactPotentialMeta {
   star_options: (number | string)[];
   artifacts: PotentialArtifactMeta[];
 }
+/** "ALL" (the pool shared by every slot) or a slot key -> rarity -> line "1".."3" -> stat -> [value, prime] pairs */
+export type RollValues = Record<string, Record<string, Record<string, Record<string, [number, boolean][]>>>>;
 export interface CubesMeta {
   class_id: string;
   slots: SlotMeta[];
@@ -44,6 +47,9 @@ export interface CubesMeta {
   none_stat: string;
   stats: string[]; // every stat selectable on a line
   stats_by_slot: Record<string, string[]>; // stats that can actually roll in the slot
+  /** the values a line can show: "ALL" (the pool shared by every slot) or a slot key (that slot's own additions) -> rarity -> line "1".."3" -> stat -> [value, prime] pairs;
+   *  merged for one (slot, rarity, line, stat) by `rollValueOptions`.  Absent in an old cached meta (the value stays a typed number then). */
+  roll_values?: RollValues;
   pity_caps: Record<string, Record<string, number>>; // potential type -> rarity -> cubes that force the upgrade (0 = top tier)
   upgrade_rates: Record<string, Record<string, number>>;
   milestones: number[];
@@ -80,6 +86,8 @@ export interface CubeRow {
   n_for_75pct: number | null;
   milestone_ev: Record<string, number>; // EV (DPS) per cube count, keys are the milestones
   milestone_ev_pct: Record<string, number>; // EV as % of the current Total DPS
+  /** EV as % of the current Total DPS after n cubes for EVERY n = 0..max_cubes (index n = n cubes, ~6 significant digits); absent in old cached rows / mock fixtures */
+  ev_pct_by_cubes?: number[];
 }
 export interface CubesResult {
   class_id: string;
@@ -125,8 +133,9 @@ export function isConfigured(row: GearRowState): boolean {
   return row.rarity !== "normal" || (row.pity ?? 0) > 0 || row.lines.some((l) => l.stat !== NONE_STAT);
 }
 
-/** Make a stored / imported value well-formed (profiles may hold anything): unknown shapes are dropped, numbers clamped, three lines each. */
-export function normalizeCubesState(raw: unknown): CubesState {
+/** Make a stored / imported value well-formed (profiles may hold anything): unknown shapes are dropped, numbers clamped, three lines each, and a line value that is
+ *  not one of the values the game rolls for (slot, rarity, line, stat) is cleared (a line with exactly one possible value gets it). */
+export function normalizeCubesState(raw: unknown, rollValues: RollValues = STATIC_ROLL_VALUES): CubesState {
   const out: CubesState = {};
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
@@ -139,7 +148,9 @@ export function normalizeCubesState(raw: unknown): CubesState {
       const value = typeof l?.value === "number" && Number.isFinite(l.value) && l.value >= 0 ? l.value : null;
       return { stat, value };
     });
-    out[k] = { rarity: typeof r.rarity === "string" && r.rarity ? r.rarity : "normal", pity, lines };
+    const rarity = typeof r.rarity === "string" && r.rarity ? r.rarity : "normal";
+    const slot = k.split("|")[0];
+    out[k] = { rarity, pity, lines: lines.map((l, i) => sanitizeLine(rollValues, slot, rarity, i, l).line) };
   }
   return out;
 }
@@ -156,8 +167,8 @@ export function pityHint(meta: CubesMeta | null, type: string, rarity: string): 
 }
 
 /** Stats offered on a line of `slot`: ONLY the stats that piece of equipment can roll (`stats_by_slot`).  The engine's roll tables are keyed by slot and rarity,
- *  not by track, so Potential and Bonus Potential share the list; the list also holds the two stats the sheet keeps selectable although they are not in the roll
- *  table (Skill Cooldown Decrease, Buff Duration Increase).  A stored line outside it is handled by `statChoices`. */
+ *  not by track, so Potential and Bonus Potential share the list.  Slot-exclusive stats (Skill Cooldown Decrease on the hat, Buff Duration Increase on the belt,
+ *  Basic Attack Target Increase on the chest, ...) appear only on their slot; a stored line outside the list is handled by `statChoices`. */
 export function statOptions(meta: CubesMeta, slot: string): string[] {
   return meta.stats_by_slot[slot] ?? meta.stats;
 }
@@ -177,6 +188,66 @@ export function statChoices(rollable: string[], current: string, notRollable?: s
   if (current !== none && !rollable.includes(current)) out.push(notRollable ? { value: current, label: `\u26A0 ${current} (${notRollable})`, warn: true } : { value: current, label: current });
   for (const s of rollable) out.push({ value: s, label: s });
   return out;
+}
+
+// ---- the values a line can roll ---------------------------------------------------------------------------------------------------------------------
+/** The class-independent roll tables (the same in every class's cube meta; `gen_xlsx_map.py --check` keeps this copy equal to the fixtures).  Used when a meta has none
+ *  and where no meta is at hand (profile repair, the Excel import). */
+export const STATIC_ROLL_VALUES = (xlsxMap as unknown as { cubeTables: { rollValues: RollValues } }).cubeTables.rollValues;
+
+export interface ValueOption {
+  value: number;
+  prime: boolean;
+  label: string;
+}
+const fmtValue = (v: number) => String(Number(v.toFixed(6)));
+
+/** The values a line can show for (slot, rarity, line position, stat), prime first then descending: the shared pool of `roll_values` plus the slot's own
+ *  additions, equal values merged (prime if any of them is).  `line` is 0-based (Line 1 = 0).  Empty = no table entry (no stat, or a stat that does not roll on that
+ *  slot / rarity / line). */
+export function rollOptionsIn(rv: RollValues, slot: string, rarity: string, line: number, stat: string): ValueOption[] {
+  if (stat === NONE_STAT) return [];
+  const byValue = new Map<number, boolean>();
+  for (const key of ["ALL", slot]) {
+    for (const [v, prime] of rv[key]?.[rarity]?.[String(line + 1)]?.[stat] ?? []) byValue.set(v, (byValue.get(v) ?? false) || prime);
+  }
+  return [...byValue]
+    .map(([value, prime]) => ({ value, prime, label: fmtValue(value) }))
+    .sort((a, b) => Number(b.prime) - Number(a.prime) || b.value - a.value);
+}
+export function rollValueOptions(meta: CubesMeta | null, slot: string, rarity: string, line: number, stat: string): ValueOption[] {
+  return rollOptionsIn(meta?.roll_values ?? STATIC_ROLL_VALUES, slot, rarity, line, stat);
+}
+
+/** The value picked for you when a stat is chosen: the one prime option, else the only option; null = the user must choose. */
+export function autoValue(options: ValueOption[]): number | null {
+  const primes = options.filter((o) => o.prime);
+  if (primes.length === 1) return primes[0].value;
+  return options.length === 1 ? options[0].value : null;
+}
+
+/** A line made consistent with the roll tables: a value that is not one of the allowed values for (slot, rarity, line, stat) is cleared (`cleared` = it was a real
+ *  number that got dropped); a blank value on a line with exactly ONE allowed value gets that value; a stat without any table entry keeps its value untouched (it is
+ *  shown flagged, without a value input). */
+export function sanitizeLine(rv: RollValues, slot: string, rarity: string, line: number, l: GearLine): { line: GearLine; cleared: boolean } {
+  if (l.stat === NONE_STAT) return { line: l.value === null ? l : { stat: l.stat, value: null }, cleared: false };
+  const options = rollOptionsIn(rv, slot, rarity, line, l.stat);
+  if (options.length === 0) return { line: l, cleared: false };
+  if (l.value !== null && options.some((o) => Math.abs(o.value - l.value!) < 1e-9)) return { line: l, cleared: false };
+  const cleared = l.value !== null;
+  return { line: { stat: l.stat, value: options.length === 1 ? options[0].value : null }, cleared };
+}
+
+/** The line after the user picked `stat` for line `line` (0-based): "(none)" clears the value; a stat with a value table gets its auto value (or blank); a stat
+ *  without a table entry gets no value. */
+export function lineWithStat(meta: CubesMeta | null, slot: string, rarity: string, line: number, _current: GearLine, stat: string): GearLine {
+  if (stat === NONE_STAT) return { stat, value: null };
+  return { stat, value: autoValue(rollValueOptions(meta, slot, rarity, line, stat)) };
+}
+
+/** The row after the user picked another rarity: the allowed stats and values differ per rarity, so all three lines are emptied. */
+export function withRarity(row: GearRowState, rarity: string): GearRowState {
+  return { ...row, rarity, lines: [emptyLine(), emptyLine(), emptyLine()] };
 }
 
 export function slotLabel(meta: CubesMeta | null, slot: string): string {
@@ -231,12 +302,74 @@ export function parseNonNegative(text: string, whole = false, max: number | null
   return parseNumber(text, whole ? "int" : "float", 0, max);
 }
 
-// ---- results ---------------------------------------------------------------------------------------------------------------------------------------
-export const SELECTABLE_MILESTONES = [5, 20, 50, 100, 200, 500, 1000];
-export const DEFAULT_MILESTONE = 100;
+// ---- the cube count the user typed -----------------------------------------------------------------------------------------------------------------
+export const DEFAULT_CUBE_COUNT = 100;
+export const MIN_CUBE_COUNT = 1;
 
-export const evPctAt = (row: CubeRow, n: number): number => row.milestone_ev_pct[String(n)] ?? 0;
-export const evAt = (row: CubeRow, n: number): number => row.milestone_ev[String(n)] ?? 0;
+export interface CubeCountParse {
+  value: number | null; // the count when the text is valid
+  error: string | null;
+}
+
+/** "Cubes you have": a whole number from 1 to `max` (the most cubes the calculation covers).  Typing like "86" or "1,000" works; blank, decimals, text and
+ *  out-of-range numbers give a message and no value. */
+export function parseCubeCount(text: string, max = 1000): CubeCountParse {
+  const msg = `Enter a whole number of cubes from ${MIN_CUBE_COUNT} to ${max}`;
+  const t = text.trim().replace(/,/g, "");
+  if (t === "") return { value: null, error: msg };
+  if (!/^\d+$/.test(t)) return { value: null, error: /^\d*\.\d+$/.test(t) ? "Whole cubes only: enter a number like 86" : msg };
+  const n = Number(t);
+  if (n < MIN_CUBE_COUNT || n > max) return { value: null, error: msg };
+  return { value: n, error: null };
+}
+
+/** What the "Cubes you have" box remembers: the text as typed and the last valid count (the table keeps using it while the text is invalid). */
+export interface CubeCountState {
+  text: string;
+  good: number;
+}
+export const initialCubeCount = (): CubeCountState => ({ text: String(DEFAULT_CUBE_COUNT), good: DEFAULT_CUBE_COUNT });
+
+/** The box after the user typed `text`: the text always follows the typing; the count changes only when the text is valid. */
+export function typeCubeCount(prev: CubeCountState, text: string, max = 1000): CubeCountState {
+  const { value } = parseCubeCount(text, max);
+  return { text, good: value ?? prev.good };
+}
+
+/** The count to price the table for: the typed one when valid, else the last valid one (never above `max`). */
+export function effectiveCubeCount(c: CubeCountState, max = 1000): number {
+  return parseCubeCount(c.text, max).value ?? Math.min(c.good, max);
+}
+
+// ---- results ---------------------------------------------------------------------------------------------------------------------------------------
+/** Largest preset milestone <= n among a row's milestone keys (EV never decreases with more cubes, so it is a safe lower bound); null = none that small. */
+function milestoneFloor(record: Record<string, number>, n: number): number | null {
+  let best: number | null = null;
+  for (const k of Object.keys(record)) {
+    const m = Number(k);
+    if (m <= n && (best === null || m > best)) best = m;
+  }
+  return best;
+}
+
+/** EV as % of Total DPS after exactly `n` cubes: from the full per-count curve when the row has one, else from the preset milestones (the largest one not above n). */
+export function evPctAt(row: CubeRow, n: number): number {
+  const curve = row.ev_pct_by_cubes;
+  if (curve && curve.length > 0) return curve[Math.max(0, Math.min(Math.floor(n), curve.length - 1))] ?? 0;
+  const key = milestoneFloor(row.milestone_ev_pct, n);
+  return key === null ? 0 : row.milestone_ev_pct[String(key)] ?? 0;
+}
+
+/** EV in DPS after `n` cubes: derived from the % and the baseline Total DPS when the row has the full curve, else from the milestone values. */
+export function evAt(row: CubeRow, n: number, baseline?: number | null): number {
+  if (row.ev_pct_by_cubes && row.ev_pct_by_cubes.length > 0 && baseline) return (evPctAt(row, n) / 100) * baseline;
+  const key = milestoneFloor(row.milestone_ev, n);
+  return key === null ? 0 : row.milestone_ev[String(key)] ?? 0;
+}
+
+/** The preset-milestone values exactly as the API sends them (the CSV keeps these columns). */
+const msEv = (row: CubeRow, n: number): number => row.milestone_ev[String(n)] ?? 0;
+const msEvPct = (row: CubeRow, n: number): number => row.milestone_ev_pct[String(n)] ?? 0;
 
 export type Verdict = "yes" | "maybe" | "marginal" | "no";
 export interface Worth {
@@ -250,7 +383,7 @@ export const WORTH_YES_PCT = 1;
 export const WORTH_MAYBE_PCT = 0.1;
 
 /**
- * "Worth rolling?" - a plain rule on the engine's fields, for a budget of `n` cubes:
+ * "Worth rolling?" - a plain rule on the API's fields, for exactly `n` cubes:
  *  - `smallest_n` null: no cube count up to the maximum has a positive expected gain -> No (this line set is at or near the best the slot can roll);
  *  - expected gain at `n` cubes (EV, kept only when better: you never accept a worse roll) of at least 1% Total DPS -> Yes;
  *  - at least 0.1% -> Maybe (worth it only when cubes are cheap or the slot is your weakest one);
@@ -259,21 +392,21 @@ export const WORTH_MAYBE_PCT = 0.1;
  */
 export function worthRolling(row: CubeRow, n: number): Worth {
   if (row.smallest_n === null) {
-    return { verdict: "no", label: "No", why: "No number of cubes has a positive expected gain: the current lines are at or near the best this slot can roll." };
+    return { verdict: "no", label: "No", why: "No number of cubes gives a positive average gain: the current lines are at or near the best this slot can roll." };
   }
   const pct = evPctAt(row, n);
-  if (pct >= WORTH_YES_PCT) return { verdict: "yes", label: "Yes", why: `Expected +${pct.toFixed(2)}% Total DPS within ${n} cubes (rule: at least ${WORTH_YES_PCT}%).` };
+  if (pct >= WORTH_YES_PCT) return { verdict: "yes", label: "Yes", why: `On average +${pct.toFixed(2)}% Total DPS after ${n} cubes (rule: at least ${WORTH_YES_PCT}%).` };
   if (pct >= WORTH_MAYBE_PCT) {
-    return { verdict: "maybe", label: "Maybe", why: `Expected +${pct.toFixed(2)}% Total DPS within ${n} cubes (between ${WORTH_MAYBE_PCT}% and ${WORTH_YES_PCT}%).` };
+    return { verdict: "maybe", label: "Maybe", why: `On average +${pct.toFixed(2)}% Total DPS after ${n} cubes (between ${WORTH_MAYBE_PCT}% and ${WORTH_YES_PCT}%).` };
   }
-  return { verdict: "marginal", label: "Marginal", why: `Expected only +${pct.toFixed(3)}% Total DPS within ${n} cubes (under ${WORTH_MAYBE_PCT}%); first positive EV after ${row.smallest_n} cubes.` };
+  return { verdict: "marginal", label: "Marginal", why: `On average only +${pct.toFixed(3)}% Total DPS after ${n} cubes (under ${WORTH_MAYBE_PCT}%); the first positive gain comes after ${row.smallest_n} cubes.` };
 }
 
-export type CubeSort = "ev" | "smallest_n" | "sheet";
+export type CubeSort = "ev" | "smallest_n" | "slot";
 export const CUBE_SORTS: { id: CubeSort; label: string }[] = [
-  { id: "ev", label: "Best expected gain at the chosen cubes" },
-  { id: "smallest_n", label: "Fewest cubes to a positive gain" },
-  { id: "sheet", label: "Sheet order (slot)" },
+  { id: "ev", label: "Best average gain with your cubes" },
+  { id: "smallest_n", label: "Fewest cubes until rolling pays off" },
+  { id: "slot", label: "Slot order" },
 ];
 
 export function rankRows(rows: CubeRow[], sort: CubeSort, n: number, meta?: CubesMeta | null): CubeRow[] {
@@ -284,7 +417,7 @@ export function rankRows(rows: CubeRow[], sort: CubeSort, n: number, meta?: Cube
   const typeIdx = (t: string) => (t === "Potential" ? 0 : 1);
   const never = Number.POSITIVE_INFINITY;
   const copy = [...rows];
-  if (sort === "sheet") return copy.sort((a, b) => slotIdx(a.slot) - slotIdx(b.slot) || typeIdx(a.potential_type) - typeIdx(b.potential_type));
+  if (sort === "slot") return copy.sort((a, b) => slotIdx(a.slot) - slotIdx(b.slot) || typeIdx(a.potential_type) - typeIdx(b.potential_type));
   if (sort === "smallest_n") return copy.sort((a, b) => (a.smallest_n ?? never) - (b.smallest_n ?? never) || evPctAt(b, n) - evPctAt(a, n));
   return copy.sort((a, b) => evPctAt(b, n) - evPctAt(a, n) || (a.smallest_n ?? never) - (b.smallest_n ?? never));
 }
@@ -293,6 +426,11 @@ export function rankRows(rows: CubeRow[], sort: CubeSort, n: number, meta?: Cube
  *  group is kept, a group with no rows is left out. */
 export function groupByPotentialType(ranked: CubeRow[]): { type: (typeof POTENTIAL_TYPES)[number]; rows: CubeRow[] }[] {
   return POTENTIAL_TYPES.map((type) => ({ type, rows: ranked.filter((r) => r.potential_type === type) })).filter((g) => g.rows.length > 0);
+}
+
+/** "never (already near the best)" for a row whose gain never turns positive, else the cube count. */
+export function formatUntilPositive(n: number | null): string {
+  return n === null ? "never (already near the best)" : String(n);
 }
 
 /** Cube count text: null = not reached within the maximum. */
@@ -315,7 +453,7 @@ export function linesText(row: CubeRow): string {
   return parts.length ? parts.join(" | ") : "no lines";
 }
 
-/** The sheet's key of a result row (to detect which rows changed since the last Calculate). */
+/** The key of a result row (slot and track; to tell the rows apart across Calculate runs). */
 export const rowKey = (r: { slot: string; potential_type: string }) => gearKey(r.slot, r.potential_type);
 
 /** "Normal 30 / 42, Rare 60 / 75, ..." from the meta's pity caps (Potential / Bonus Potential); the top tier (cap 0) is left out. */
@@ -336,17 +474,17 @@ export function potentialExplainer(meta: CubesMeta | null): string[] {
   return [
     "Potential and Bonus Potential are separate roll tracks: they roll the same lines at the same weights, but their pity caps (the number of cubes after which the next " +
       `rarity is forced) differ - ${pityCapsText(meta) || "see the table"} (Potential / Bonus Potential; where only one number is shown both tracks share it).`,
-    "The pity count is how many cubes you have already spent on the current rarity without an upgrade. Every cube re-rolls all 3 lines; the recommendation assumes you keep " +
-      "the best result so far and stop optimally.",
+    "The pity count is how many cubes you have already spent on the current rarity without an upgrade. Every cube re-rolls all 3 lines; the average gain assumes you keep " +
+      "the best result so far and stop at the best moment.",
     "Critical Rate lines are priced as Critical Damage once your live crit rate is at or above 100% (the extra crit rate does nothing), unless Ring of Cycles or Book of " +
       "Ancient is equipped - their effects keep growing with crit rate, so it is priced as itself.",
   ];
 }
 
-/** The result as CSV in the cube script's column order (engine/cubes.csv_row): Slot, PotentialType, Rarity, Pity, CurrentValue, CurrentValue%, SmallestNPositive, ... */
+/** The result as CSV with the preset-milestone columns (the API's csv_columns): Slot, PotentialType, Rarity, Pity, CurrentValue, CurrentValue%, SmallestNPositive, ... */
 export function cubesCsv(rows: CubeRow[], milestones: number[], columns: string[]): string {
   const cell = (v: unknown) => (v === null || v === undefined ? "" : typeof v === "number" ? String(v) : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
   const line = (r: CubeRow) =>
-    [r.slot, r.potential_type, r.rarity, r.pity, r.current_value, r.current_value_pct, r.smallest_n, r.n_for_50pct, r.n_for_75pct, ...milestones.map((n) => evAt(r, n)), ...milestones.map((n) => evPctAt(r, n))].map(cell).join(",");
+    [r.slot, r.potential_type, r.rarity, r.pity, r.current_value, r.current_value_pct, r.smallest_n, r.n_for_50pct, r.n_for_75pct, ...milestones.map((n) => msEv(r, n)), ...milestones.map((n) => msEvPct(r, n))].map(cell).join(",");
   return [columns.join(","), ...rows.map(line)].join("\n") + "\n";
 }

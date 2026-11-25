@@ -7,8 +7,5 @@ button.link:disabled { color: var(--muted); cursor: default; text-decoration: no
 .companions-tab .companion-select { width: auto; min-width: 7.5em; }
 .companions-tab .sens-table tr.best td { background: color-mix(in srgb, var(--ok) 10%, transparent); }
 .companions-tab .sens-table tr.chosen td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
-.companions-tab .sens-table td.combos { font-size: 0.75rem; color: var(--ink2); max-width: 28em; }
-.companions-tab .lines-input { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 8px 0; font-size: 0.85rem; }
-.companions-tab .lines-input .numin { width: 6em; }
 .companions-tab .explain { color: var(--ink2); font-size: 0.85rem; margin: 6px 0 10px; }
 .companions-tab .explain li { margin: 2px 0; }

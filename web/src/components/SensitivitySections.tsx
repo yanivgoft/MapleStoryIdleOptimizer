@@ -12,12 +12,12 @@ export function CompanionTable({ part }: { part: CompanionsPart }) {
         <caption className="sr-only">Companion comparison</caption>
         <thead>
           <tr>
-            <th>#</th>
-            <th>Companion</th>
-            <th className="num">Level</th>
-            <th className="num" title="Total DPS this companion adds against no companion">DPS gain</th>
-            <th className="num">% gain</th>
-            <th className="num" title="The companion's own DPS (boss / normal blended)">Companion DPS</th>
+            <th scope="col">#</th>
+            <th scope="col">Companion</th>
+            <th scope="col" className="num">Level</th>
+            <th scope="col" className="num">DPS gain</th>
+            <th scope="col" className="num">% gain</th>
+            <th scope="col" className="num">Companion DPS</th>
           </tr>
         </thead>
         <tbody>
@@ -29,7 +29,7 @@ export function CompanionTable({ part }: { part: CompanionsPart }) {
                 <td>
                   <span className="label-main">{r.name}</span>
                   {chosen && <span className="chip ok">chosen</span>}
-                  {!r.unlocked && <span className="sub">level 0: not owned</span>}
+                  {!r.unlocked && <span className="sub">not owned</span>}
                 </td>
                 <td className="num">{r.level}</td>
                 <td className={`num${r.dps_gain < 0 ? " neg" : ""}`}>{r.unlocked ? signedNumber(r.dps_gain) : "–"}</td>
@@ -54,14 +54,14 @@ export function SummonTable({ part }: { part: SummonPart }) {
         <caption className="sr-only">Companion summoning time potential</caption>
         <thead>
           <tr>
-            <th title="Summoning Time Increase % added by boots potential lines on top of the current value">+ Lines %</th>
-            <th className="num">Total %</th>
-            <th className="num">Summon time (s)</th>
-            <th className="num">Window (s)</th>
-            <th className="num">Companion DPS</th>
-            <th className="num" title="Change of the blended total DPS against no boots lines">Weighted DPS change</th>
-            <th className="num">Normal monsters</th>
-            {part.boss_phase_content && <th className="num" title="Boss-phase content: average boss DPS change">Avg boss DPS</th>}
+            <th scope="col">+ Lines %</th>
+            <th scope="col" className="num">Total %</th>
+            <th scope="col" className="num">Summon time (s)</th>
+            <th scope="col" className="num">Window (s)</th>
+            <th scope="col" className="num">Companion DPS</th>
+            <th scope="col" className="num">Weighted DPS change</th>
+            <th scope="col" className="num">Normal monsters</th>
+            {part.boss_phase_content && <th scope="col" className="num">Avg boss DPS</th>}
           </tr>
         </thead>
         <tbody>
@@ -91,10 +91,10 @@ export function CdrTable({ part }: { part: CdrPart }) {
         <caption className="sr-only">Cooldown decrease milestones</caption>
         <thead>
           <tr>
-            <th className="num">CDR (s)</th>
-            <th className="num">Total DPS</th>
-            <th className="num" title="Gain over the previous milestone">Step gain</th>
-            <th className="num" title="Against the current baseline">% vs now</th>
+            <th scope="col" className="num">CDR (s)</th>
+            <th scope="col" className="num">Total DPS</th>
+            <th scope="col" className="num">Step gain</th>
+            <th scope="col" className="num">% vs now</th>
           </tr>
         </thead>
         <tbody>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Field, Scalar } from "../types";
-import { optionLabel, parseNumber, rangeText, unitSuffix } from "../lib/schemaForm";
+import { inlineHelpText, optionLabel, parseNumber, unitSuffix } from "../lib/schemaForm";
 
 interface Props {
   field: Field;
@@ -18,9 +18,10 @@ function show(value: Scalar): string {
 
 export function FormField({ field, value, onChange, error, readOnlyDisplay, disabled, note }: Props) {
   const id = `f-${field.key}`;
-  const range = rangeText(field);
-  const tightRange = range && !range.startsWith("min") ? range : ""; // wide "min 0" ranges are not worth a line on every field
-  const hasHint = !!(field.help || tightRange);
+  // only fields whose format / special value is not guessable show a line (and a tooltip with the full help); the rest show no text (Help lists it)
+  const inlineHelp = inlineHelpText(field);
+  const hasHint = !!inlineHelp;
+  const tip = inlineHelp ? field.help ?? undefined : undefined;
   const helpId = hasHint ? `${id}-help` : undefined;
   const errId = `${id}-err`;
   const numeric = field.type === "int" || field.type === "float";
@@ -47,7 +48,7 @@ export function FormField({ field, value, onChange, error, readOnlyDisplay, disa
     control = <input id={id} type="text" value={readOnlyDisplay ?? "–"} readOnly aria-readonly="true" className="readonly" />;
   } else if (field.type === "enum") {
     control = (
-      <select id={id} value={show(value)} onChange={(e) => onChange(e.target.value)} aria-invalid={!!message} aria-describedby={describedBy} disabled={disabled}>
+      <select id={id} value={show(value)} onChange={(e) => onChange(e.target.value)} aria-invalid={!!message} aria-describedby={describedBy} disabled={disabled} title={tip}>
         {(field.options ?? []).map((o) => (
           <option key={o} value={o}>
             {optionLabel(field, o)}
@@ -69,6 +70,7 @@ export function FormField({ field, value, onChange, error, readOnlyDisplay, disa
           disabled={disabled}
           aria-invalid={!!message}
           aria-describedby={describedBy}
+          title={tip}
           onChange={(e) => {
             setDraft(e.target.value);
             const p = parseNumber(e.target.value, field.type as "int" | "float", field.min, field.max);
@@ -89,15 +91,11 @@ export function FormField({ field, value, onChange, error, readOnlyDisplay, disa
 
   return (
     <div className={`field${message ? " has-error" : ""}`}>
-      <label htmlFor={id}>
-        {field.label}
-        {field.unit === "s" && <span className="unit"> (s)</span>}
-      </label>
+      <label htmlFor={id}>{field.label}</label>
       {control}
       {hasHint && (
         <small id={helpId} className="help">
-          {field.help}
-          {tightRange && <span className="range"> {field.help ? "(" : "Range "}{tightRange}{field.help ? ")" : ""}</span>}
+          {inlineHelp}
         </small>
       )}
       {note && <small className="help note-warn">{note}</small>}

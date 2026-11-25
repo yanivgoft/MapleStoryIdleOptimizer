@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToString } from "react-dom/server";
-import { initialState, setValue } from "../lib/schemaForm";
+import { initialState, inlineHelpText, setValue } from "../lib/schemaForm";
 import { formatNumber } from "../lib/format";
 import { ALL, classList, fixtureFor } from "../test/fixtures";
 import { InputsForm } from "./InputsForm";
@@ -37,14 +37,45 @@ describe("render smoke (server-side), FP-Mage", () => {
     expect(html).toContain(formatNumber(fp.result.total_dps));
     expect(html).toContain("Companion: Blaze Wizard");
     expect(html).toContain("Basic Attack");
-    expect(html).toContain(`Timeline engine: ${fp.result.engine_on ? "on" : "off"}`);
+    expect(html).not.toContain("Timeline engine");
+    expect(html.includes("Detailed simulation")).toBe(fp.result.engine_on);       // the pill only appears when the simulation is on
     expect(html).toContain("<svg");
   });
-  it("hints: schema help text, range and min / max attributes", () => {
+  it("hints: no help line and no tooltip under stats, skill levels or other guessable fields; only format / special-value fields keep a line", () => {
     const html = form("fp_mage", "Chapter Boss");
-    expect(html).toContain("Defense Penetration in %, 0-100");
-    expect(html).toContain("(0 - 100)");
+    expect(html).not.toContain("Defense Penetration in %");                      // no tooltip text of a plain stat
+    expect(html).not.toMatch(/id="f-(level|def_pen|attack_speed|crit_damage|skill_lvl_1st|skill_lvl_all|flat_int|luk)"[^>]*title=/);
+    expect(html).not.toMatch(/<small class="help">(?!Each content type)/);        // no inline help except the content type line (Chapter Boss has no special-format field here)
+    expect(html).not.toMatch(/<small[^>]*>[^<]*\(0 - 100\)/);
+    expect(html).not.toContain("Range 0");
     expect(html).toMatch(/id="f-level"[^>]*min="1"[^>]*max="300"/);
+    expect(form("fp_mage", "Chapter Hunt")).toContain("999 = no limit");           // special value: visible line
+    expect(form("fp_mage", "Chapter Hunt")).toContain("Like 28-9");                // format: visible line
+  });
+  it("no help line under any field of any class except the few unguessable ones (printed per class)", () => {
+    const allowed = new Set(["chapter_stage", "max_enemies_hit", "fight_duration", "defense_pct", "content_type"]);
+    for (const c of ALL) {
+      for (const f of c.schema.fields) {
+        if (!f.help || allowed.has(f.key)) continue;
+        expect(inlineHelpText(f), `${c.info.id}.${f.key}`).toBeNull();
+      }
+    }
+    expect(inlineHelpText({ key: "defense_pct", help: "Iron Wall turns your total Defense into STR. That STR is added for you: leave it out of Flat STR." })).toContain("leave it out");
+    expect(inlineHelpText({ key: "defense_pct", help: "Invincible converts total Defense into INT." })).toBeNull();
+  });
+  it("the form has ONE short line on top, sections as details (3 collapsed), one unit marker per field, no spreadsheet words", () => {
+    const html = form("fp_mage", "Chapter Boss");
+    expect(html).toContain("Enter the values shown on your preset page in game.");
+    expect(html.indexOf("Enter the values")).toBeLessThan(html.indexOf("<summary>Character</summary>"));
+    expect(html).toContain("Each content type keeps its own stats.");
+    for (const name of ["Character", "Offense", "Main stats", "Damage modifiers"]) expect(html, name).toMatch(new RegExp(`<details class="sec"[^>]* open=""[^>]*><summary>${name}</summary>`));
+    for (const name of ["Skill levels", "Additional bonuses", "Fight setup \\(calculated\\)"]) expect(html, name).toMatch(new RegExp(`<details class="sec"(?![^>]* open)[^>]*><summary>${name}</summary>`));
+    expect(html).not.toContain("<legend>");
+    expect(html).not.toContain("(s)</span>");
+    expect(html).not.toMatch(/Include .* if unlocked|excludes? (Nimble|Infinity)/i);
+  });
+  it("a section that holds a field with an error opens even when it starts collapsed", () => {
+    expect(form("fp_mage", "Chapter Boss", { skill_lvl_1st: "Must be between 0 and 1000" })).toMatch(/<details class="sec"[^>]* open=""[^>]*><summary>Skill levels<\/summary>/);
   });
 });
 
@@ -80,7 +111,8 @@ describe("render smoke, every class", () => {
     expect(html).toContain("<svg");
     for (const s of c.result.skills.filter((x) => x.unlocked)) expect(html, s.key).toContain(esc(s.name));
     expect(html).toContain("Companion: Blaze Wizard");
-    expect(html).toContain("Derived values");
+    expect(html).toContain("Advanced: calculation details");
+    expect(html).not.toContain("Derived values");
   });
   it("no companion chosen: no 'Companion: None' row; a stun-only block is labelled as such", () => {
     const hero = fixtureFor("hero").result;
@@ -102,9 +134,9 @@ describe("render smoke, every class", () => {
     expect(none).not.toContain('id="f-companion_level"');
     for (const n of ["Shadower", "Hero", "Wind Archer"]) expect(none).not.toContain(`<option value="${n}"`);
     expect(none).toContain('<option value="None"');
-    expect(none).toContain("no companions set up yet");
-    expect(none).toContain("Set up your companions");
-    const owned = { ...setValue(base, c.schema.fields.find((f) => f.key === "companion_choice")!, "Shadower"), companions: { levels: { Shadower: 7, Hero: 3 }, potentialLinesPct: 0 } };
+    expect(none).toContain("No companions yet:");
+    expect(none).toContain("set levels on the Companions tab");
+    const owned = { ...setValue(base, c.schema.fields.find((f) => f.key === "companion_choice")!, "Shadower"), companions: { levels: { Shadower: 7, Hero: 3 } } };
     const html = render(owned, () => undefined);
     expect(html).toContain("Shadower: level 7");
     expect(html).toContain("Edit companions");
@@ -113,6 +145,14 @@ describe("render smoke, every class", () => {
     expect(html).not.toContain('<option value="Wind Archer">');
     expect(html).toContain("Status Effect Damage");
     expect(html).toContain("Companion Summoning Time Increase");
+  });
+  it("the companion section is titled 'Main companion' in every class (schema group and form heading), with short field labels", () => {
+    for (const c of ALL) {
+      for (const f of c.schema.fields.filter((x) => ["companion_choice", "companion_level"].includes(x.key))) expect(f.group, `${c.info.id}/${f.key}`).toBe("Main companion");
+      const html = strip(renderToString(<InputsForm schema={c.schema} state={initialState(c.schema, c.defaults["Chapter Boss"], "Chapter Boss")} onState={() => undefined} errors={{}} loadDefaults={() => undefined} />));
+      expect(html, c.info.id).toContain("<summary>Main companion</summary>");
+      expect(html, c.info.id).not.toContain("<summary>Companion</summary>");
+    }
   });
 });
 
@@ -134,5 +174,22 @@ describe("class picker", () => {
     const soon = strip(renderToString(<ClassPicker classes={[{ id: "x", name: "X", family: "Mage", status: { companions: true, artifacts: false, stat_values: false } }]} value="x" onChange={() => undefined} />));
     expect(soon).toContain("Artifacts: coming soon");
     expect(soon).toContain("Companions: yes");
+  });
+});
+
+describe("results details", () => {
+  const hero = fixtureFor("hero").result;
+  it("'Updating...' only while busy; the live region is one tiny sr-only total", () => {
+    const idle = strip(renderToString(<Results result={hero} busy={false} stale={false} />));
+    const busy = strip(renderToString(<Results result={hero} busy stale={false} />));
+    expect(idle).not.toContain("Updating...");
+    expect(busy).toContain("Updating...");
+    expect((idle.match(/aria-live/g) ?? []).length).toBe(1);
+    expect(idle).toMatch(/<span class="sr-only" aria-live="polite" role="status">Total DPS /);
+  });
+  it("normal-monster column says why it is empty", () => {
+    const boss = { ...hero, normal_dps: 0, derived: { ...hero.derived, monster_type: "boss" } };
+    expect(strip(renderToString(<Results result={boss} busy={false} stale={false} />))).toContain("n/a (boss fight)");
+    expect(strip(renderToString(<Results result={{ ...boss, derived: { ...boss.derived, monster_type: "pvp" } }} busy={false} stale={false} />))).toContain("n/a (PvP)");
   });
 });

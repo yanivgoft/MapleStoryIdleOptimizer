@@ -363,7 +363,7 @@
    "pvp_fight_length": null
   }
  },
- "warnings": 17,
+ "warnings": 16,
  "ignoredHints": [
   "does not apply to Chapter Boss"
  ],
@@ -1163,16 +1163,16 @@
     "pity": 120,
     "lines": [
      {
-      "stat": "Int",
+      "stat": "Int %",
       "value": 12
      },
      {
-      "stat": "Luk %",
-      "value": 9.5
+      "stat": "Max Damage Multiplier %",
+      "value": 10
      },
      {
-      "stat": "Max MP %",
-      "value": 400
+      "stat": "Min Damage Multiplier %",
+      "value": 15
      }
     ]
    },
@@ -1181,12 +1181,12 @@
     "pity": 49,
     "lines": [
      {
-      "stat": "Str",
-      "value": 6
+      "stat": "All Skill Level",
+      "value": 5
      },
      {
-      "stat": "Attack Speed %",
-      "value": 4.5
+      "stat": "Damage %",
+      "value": 12
      },
      {
       "stat": "(none)",
@@ -1199,15 +1199,15 @@
     "pity": 75,
     "lines": [
      {
-      "stat": "Int",
-      "value": 8
+      "stat": "Int %",
+      "value": 4.5
      },
      {
       "stat": "(none)",
       "value": null
      },
      {
-      "stat": "Companion Summoning Time Increase %",
+      "stat": "Buff Duration Increase %",
       "value": 7
      }
     ]
@@ -1217,16 +1217,16 @@
     "pity": 417,
     "lines": [
      {
-      "stat": "Int %",
-      "value": null
+      "stat": "Luk",
+      "value": 400
      },
      {
       "stat": "(none)",
       "value": null
      },
      {
-      "stat": "Max MP %",
-      "value": 7.5
+      "stat": "Min Damage Multiplier %",
+      "value": 10
      }
     ]
    },
@@ -1235,12 +1235,12 @@
     "pity": 5,
     "lines": [
      {
-      "stat": "Int",
+      "stat": "Int %",
       "value": 15
      },
      {
-      "stat": "Luk %",
-      "value": 12
+      "stat": "Attack Speed %",
+      "value": null
      },
      {
       "stat": "(none)",
@@ -1270,14 +1270,14 @@
   "pieces": 5,
   "lines": 11,
   "rows": 6,
-  "warnings": 9,
+  "warnings": 8,
   "ignored": 1,
+  "cleared": 1,
   "hints": [
    "unknown stat \"Bogus Stat\"; the line was left empty",
-   "Companion Summoning Time Increase % cannot roll on this slot",
+   "Buff Duration Increase % cannot roll on this slot",
    "is not below the rare cap of 60 for Potential",
    "is not below the unique cap of 417 for Bonus Potential",
-   "has no value; left empty",
    "is the top tier, so pity 5 has no meaning",
    "unknown rarity \"Godlike\"; normal used",
    "pity \"abc\" is not a number",

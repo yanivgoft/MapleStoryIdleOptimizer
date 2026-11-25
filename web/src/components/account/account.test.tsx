@@ -111,7 +111,7 @@ describe("account menu (signed in)", () => {
   });
   it("status text for each situation", () => {
     expect(syncStatusText({ ...base, migration: { first: true, candidates: [] } })).toMatch(/Choose which local profiles/);
-    expect(syncStatusText({ ...base, lastSyncAt: null })).toBe("Signed in");
+    expect(syncStatusText({ ...base, lastSyncAt: null })).toBe("Signed in - profiles are saved only when you press Save to account");
     expect(syncStatusText({ ...base, dirtyCount: 1 })).toBe("1 unsaved profile");
   });
 });
@@ -204,7 +204,8 @@ describe("Profiles tab with accounts", () => {
   afterEach(() => publishCloud(null));
   it("accounts off: exactly the old wording and no cloud controls", () => {
     const h = html();
-    expect(h).toContain("Profiles live only in this browser (localStorage). Export a file to back them up or move them to another device.");
+    expect(h).toContain("Stored in this browser only.");
+    expect(h).not.toContain("localStorage");
     expect(h).not.toContain("cloud-bar");
     expect(h).not.toContain("cloud-status");
   });

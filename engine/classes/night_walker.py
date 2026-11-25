@@ -42,7 +42,7 @@ CLASS_NAME = "Night Walker"
 STAT_IDENTITY = {"main": "LUK", "sub": "DEX"}
 
 _MAIN_STAT_FIELDS = [
-    schema_mod.field("flat_luk", "Flat LUK", "Main stats", "float", "flat", 0, help="Include Main Stat Enhancement's own +30 if unlocked."),
+    schema_mod.field("flat_luk", "Flat LUK", "Main stats", "float", "flat", 0),
     schema_mod.field("luk_pct", "LUK %", "Main stats", "float", "%", 0),
     schema_mod.field("dex", "DEX", "Main stats", "float", "flat", 0),
 ]

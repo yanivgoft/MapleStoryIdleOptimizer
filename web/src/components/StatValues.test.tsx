@@ -16,7 +16,9 @@ describe("stat table", () => {
   const html = strip(renderToString(<StatTable rows={fx.result.stats!.rows} meta={fx.meta} />));
   it("renders all 27 stats with the columns, best value first", () => {
     expect((html.match(/data-stat=/g) ?? []).length).toBe(27);
-    for (const h of ["Units per +1% DPS", "DPS gain", "% gain", "Relative value", "New (+step)", "Current"]) expect(html).toContain(h);
+    for (const h of ["Units per +1% DPS", "DPS gained per step", "% gained per step", "Relative value", "After one step", "Current"]) expect(html).toContain(h);
+    expect((html.match(/<th scope="col"/g) ?? []).length).toBe(9);
+    expect(html).not.toContain(">Notes<");
     const keys = [...html.matchAll(/data-stat="([a-z_0-9]+)"/g)].map((m) => m[1]);
     const rows = fx.result.stats!.rows;
     const units = keys.map((k) => rows.find((r) => r.key === k)!.units_per_1pct);
@@ -25,26 +27,26 @@ describe("stat table", () => {
     expect(units.slice(real.length).every((u) => u === null || u <= 0)).toBe(true); // n/a rows last
     expect(html).toContain("n/a");
   });
-  it("shows the semantic notes and the step text", () => {
-    expect(html).toContain("main stat&#x27;s flat-Attack channel");
-    expect(html).toContain("+1 (DR 150)");
-    expect(html).toContain("+1 percentage point");
+  it("shows a compact step per row and NO prose notes (no semantics, no timing chips, no tooltips with sentences)", () => {
+    expect(html).toContain('class="step">+1%<');
+    expect(html).toContain('class="step">+1<');
     expect(html).toContain("sens-bar");
-  });
-  it("a timeline-reusing table flags the rows that re-run it", () => {
-    const rows = fx.result.stats!.rows;
-    const reused = rows.some((r) => r.strip_reused);
-    expect(html.includes("timing re-run")).toBe(reused && rows.some((r) => !r.strip_reused));
+    for (const bad of ["diminishing", "factor 150", "factor 100", "combined by", "percentage point", "DR 150", "flat-Attack channel", "timing re-run", "summon time re-searched", "re-runs the timeline", "Notes"]) expect(html, bad).not.toContain(bad);
+    expect(html).not.toMatch(/<tr[^>]* title=/);
+    expect(html).not.toMatch(/<th[^>]* title=/);
+    expect(html).not.toContain("class=\"info\"");
   });
 });
 
 describe("equip ranking", () => {
   const rows = fx.result.artifacts!.rows;
   const html = strip(renderToString(<EquipRanking rows={rows} />));
-  it("ranked rows first, no-effect ones greyed with their reason, locked ones marked", () => {
+  it("ranked rows first, no-effect ones greyed with a bare tag (no reason text), locked ones marked", () => {
     expect((html.match(/data-group="ranked"/g) ?? []).length).toBe(rows.filter((r) => r.unlocked && !r.no_dps_effect).length);
     expect(html).toContain('data-group="no_effect"');
-    expect(html).toContain("no DPS effect: ");
+    expect(html).toContain('<span class="sub">no DPS effect</span>');
+    expect(html).not.toMatch(/no DPS effect:|not modelled|not used by the DPS model/);
+    expect(html).not.toMatch(/<tr[^>]* title=/);
     expect(html).toContain('data-group="locked"');
     expect(html.indexOf('data-group="ranked"')).toBeLessThan(html.indexOf('data-group="no_effect"'));
     expect(html.indexOf('data-group="no_effect"')).toBeLessThan(html.indexOf('data-group="locked"'));
@@ -84,9 +86,14 @@ describe("tab view states", () => {
     const html = view();
     expect(html).toContain(formatNumber(fx.result.baseline_total));
     expect(html).toContain("Units per +1% DPS");
-    expect(html).toContain("Artifacts: what equipping each one is worth");
+    expect(html).toContain("Artifact ranking (DPS gain if equipped)");
+    expect(html).toContain("About this tab");
+    expect(html).toContain("Sort by");
     for (const t of ["Companion comparison", "Companion summoning time potential", "Cooldown decrease milestones"]) expect(html).toContain(t);
     expect(html).not.toMatch(/<details[^>]* open/);
+    expect(html).not.toContain('class="hint"');                               // no per-section prose in the working area
+    const working = html.split('class="about-tab"')[0];
+    expect(working).not.toMatch(/diminishing|factor 1[05]0|combined by|Every companion at your companion level|step function/);
     expect(view({ open: ["cdr"] })).toMatch(/<details[^>]* open/);
   });
   it("loading shows a spinner and a skeleton when nothing is loaded yet", () => {

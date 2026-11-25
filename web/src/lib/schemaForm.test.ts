@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { ALL, fixtureFor } from "../test/fixtures";
+import { setSlot, slotsFor } from "./artifacts";
+import type { ArtifactSchema, FormState } from "../types";
 import {
-  buildInputs, computedFields, copyContentValues, COMPANION_GROUP, COMPANION_GROUP_KEYS, defaultsFromSchema,
+  buildInputs, computedFields, contentGroup, CONTENT_GROUPS, copyContentValues, markEdited, NUMBER_HINT, seedSource, COMPANION_GROUP, COMPANION_GROUP_KEYS, defaultsFromSchema,
   getValue, groupFields, GROUP_ORDER, initialState, isApplicable, normalizeState, optionLabel, parseNumber, rangeText, setValue, sharedKeys,
-  splitErrors, switchContentType, visibleGroups,
+  splitErrors, switchContentType, unitSuffix, visibleGroups,
 } from "./schemaForm";
 
 const fp = fixtureFor("fp_mage");
@@ -47,7 +49,7 @@ describe("defaults per content type", () => {
     s = setValue(s, field("flat_attack"), 123456);
     s = switchContentType(s, schema, "Breakthrough", defaults["Breakthrough"]);
     expect(getValue(s, field("chapter_stage"))).toBe("28-9");
-    expect(getValue(s, field("flat_attack"))).toBe(10000); // fresh defaults for the new content type
+    expect(getValue(s, field("flat_attack"))).toBe(123456); // a first-time content type with no sibling is seeded from the one it was switched from (seeding rules below)
     s = switchContentType(s, schema, "Chapter Boss");
     expect(getValue(s, field("flat_attack"))).toBe(123456); // edits are remembered per content type
     s = copyContentValues(s, schema, "Chapter Boss", "Breakthrough");
@@ -112,6 +114,44 @@ describe("parseNumber", () => {
   });
 });
 
+describe("number shorthand", () => {
+  it("K / M / B / T / Qa / Qi / Sx / Sp, any case, exact decimals", () => {
+    const ok = (t: string) => parseNumber(t, "float");
+    expect(ok("12.5M")).toEqual({ ok: true, value: 12500000 });
+    expect(ok("12.5m")).toEqual({ ok: true, value: 12500000 });
+    expect(ok("1.1T")).toEqual({ ok: true, value: 1.1e12 });                 // exactly the literal, no 1.1 * 1e12 rounding
+    expect(ok("3k")).toEqual({ ok: true, value: 3000 });
+    expect(ok("2B")).toEqual({ ok: true, value: 2e9 });
+    expect(ok("1,500K")).toEqual({ ok: true, value: 1.5e6 });
+    expect(ok(" 7 M ")).toEqual({ ok: true, value: 7e6 });
+    expect(ok("4Qa")).toEqual({ ok: true, value: 4e15 });
+    expect(ok("1.2qi")).toEqual({ ok: true, value: 1.2e18 });
+    expect(ok("5Sx")).toEqual({ ok: true, value: 5e21 });
+    expect(ok("2sp")).toEqual({ ok: true, value: 2e24 });
+    expect(ok("-2M")).toEqual({ ok: true, value: -2e6 });
+    expect(ok(".5K")).toEqual({ ok: true, value: 500 });
+    expect(ok("1.2e6")).toEqual({ ok: true, value: 1.2e6 });
+  });
+  it("the suffix goes through the same whole-number and bounds checks", () => {
+    expect(parseNumber("1.5K", "int")).toEqual({ ok: true, value: 1500 });
+    expect(parseNumber("1.0005K", "int")).toEqual({ ok: false, message: "Whole number required" });
+    expect(parseNumber("2K", "int", 1, 300)).toEqual({ ok: false, message: "Must be between 1 and 300" });
+    expect(parseNumber("1e999", "float").ok).toBe(false);
+    expect(parseNumber(`1${"0".repeat(300)}Sp`, "float").ok).toBe(false);          // overflows to Infinity
+  });
+  it("junk gets the one helpful message", () => {
+    expect(NUMBER_HINT).toBe("Enter a number like 1234567, 12.5M or 1.2e6");
+    for (const t of ["abc", "12X", "M", "1e", "12MM", "1e3K", "--5", "12 5"]) expect(parseNumber(t, "float"), t).toEqual({ ok: false, message: NUMBER_HINT });
+  });
+  it("one unit marker: no suffix when the label already ends in %", () => {
+    const f = (label: string, unit: string) => ({ ...field("attack_pct"), label, unit });
+    expect(unitSuffix(f("ATTACK %", "%"))).toBe("");
+    expect(unitSuffix(f("Crit Rate", "%"))).toBe("%");
+    expect(unitSuffix(f("Skill Cooldown Decrease", "s"))).toBe("s");
+    expect(unitSuffix(f("Flat ATTACK", "flat"))).toBe("");
+  });
+});
+
 describe("splitErrors", () => {
   it("maps API errors to fields, leaves the rest general", () => {
     const r = splitErrors([{ field: "level", message: "bad" }, { field: "bogus", message: "unknown field" }, { field: "", message: "oops" }], schema);
@@ -150,7 +190,7 @@ describe("companion section", () => {
     expect(buildInputs(schema, s)).toMatchObject({ companion_choice: "None", companion_level: 0 });
     s = setValue(s, field("companion_choice"), "Blaze Wizard");
     expect(buildInputs(schema, s)).toMatchObject({ companion_choice: "None", companion_level: 0 }); // not owned: no companion
-    s = { ...s, companions: { levels: { "Blaze Wizard": 7 }, potentialLinesPct: 0 } };
+    s = { ...s, companions: { levels: { "Blaze Wizard": 7 } } };
     expect(buildInputs(schema, s)).toMatchObject({ companion_choice: "Blaze Wizard", companion_level: 7 });
     s = setValue(s, field("companion_level"), 3); // the stale shared value is ignored
     expect(buildInputs(schema, s)).toMatchObject({ companion_level: 7 });
@@ -229,6 +269,154 @@ describe.each(ALL.map((c) => [c.info.id, c] as const))("every class: %s", (_id, 
       const out = buildInputs(sch, s);
       for (const f of sch.fields) if (!f.computed && !isApplicable(f, ct)) expect(out[f.key], `${ct}/${f.key}`).toBeNull();
       expect(visibleGroups(groupFields(sch), ct).length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ---- seeding of a content type visited for the first time -------------------------------------------------------------------------------------------
+describe("content type seeding", () => {
+  const sch = fixtureFor("fp_mage").schema;
+  const defs = fixtureFor("fp_mage").defaults;
+  const art = sch.artifacts as ArtifactSchema;
+  const f = (k: string) => sch.fields.find((x) => x.key === k)!;
+  const atk = (s: FormState, ct = s.contentType) => s.perContent[ct]?.flat_attack;
+  /** open `ct` the way the app does (defaults fetched, then seeded) and set Flat ATTACK there */
+  const visit = (s: FormState, ct: string, flat?: number): FormState => {
+    const n = switchContentType(s, sch, ct, defs[ct]);
+    return flat === undefined ? n : setValue(n, f("flat_attack"), flat);
+  };
+  const start = (ct: string, flat: number) => setValue(initialState(sch, defs[ct], ct), f("flat_attack"), flat);
+
+  it("groups: normal monsters, breakthrough, bosses; PvP in none; every group member is a real content type", () => {
+    expect(CONTENT_GROUPS.map((g) => [...g])).toEqual([
+      ["Chapter Hunt", "EXP Dungeon", "Equipment Dungeon"],
+      ["Breakthrough", "Hero Dungeon"],
+      ["Chapter Boss", "Weapon Dungeon", "Enhancement Dungeon", "World Boss"],
+    ]);
+    expect(contentGroup("PvP")).toBeNull();
+    for (const g of CONTENT_GROUPS) for (const ct of g) expect(sch.content_types).toContain(ct);
+    expect(new Set(CONTENT_GROUPS.flat()).size).toBe(CONTENT_GROUPS.flat().length);
+  });
+
+  it("rule 1: a visited content type of the SAME group wins over the one switched from", () => {
+    let s = start("Chapter Hunt", 111);
+    s = visit(s, "Chapter Boss", 222);                         // seeded from Chapter Hunt (rule 2), then edited
+    expect(atk(s)).toBe(222);
+    s = visit(s, "EXP Dungeon");                                // sibling Chapter Hunt (111), not the current Chapter Boss (222)
+    expect(atk(s)).toBe(111);
+    expect(seedSource(visit(start("Chapter Hunt", 1), "Chapter Boss"), "Weapon Dungeon")).toBe("Chapter Boss");
+  });
+
+  it("rule 1 with several siblings: the most recently edited one; without any edit record the first in group order", () => {
+    let s = start("Chapter Hunt", 111);
+    s = visit(s, "EXP Dungeon", 333);                          // edited after Chapter Hunt
+    s = visit(s, "Chapter Boss", 999);                         // elsewhere
+    s = visit(s, "Equipment Dungeon");
+    expect(atk(s)).toBe(333);
+    s = setValue(switchContentType(s, sch, "Chapter Hunt"), f("flat_attack"), 444);   // now Chapter Hunt is the most recent
+    expect(seedSource(s, "Equipment Dungeon")).toBe("Chapter Hunt");                    // (as if it were new) the most recent edit is now Chapter Hunt's
+    let t = start("Chapter Hunt", 111);
+    t = visit(t, "EXP Dungeon", 333);
+    t = { ...t, editOrder: undefined };                                                // an older state: no record
+    expect(seedSource(t, "Equipment Dungeon")).toBe("Chapter Hunt");
+    expect(atk(visit(t, "Equipment Dungeon"))).toBe(111);
+  });
+
+  it("rule 2: no sibling visited -> copy from the content type being switched from", () => {
+    const s = visit(start("Chapter Boss", 555), "Chapter Hunt");            // Chapter Hunt has no visited sibling
+    expect(atk(s)).toBe(555);
+    expect(seedSource(start("Chapter Boss", 1), "Breakthrough")).toBe("Chapter Boss");
+  });
+
+  it("PvP: never a source for group lookups, but the first-time PvP copies the content type it came from", () => {
+    let s = start("Chapter Hunt", 111);
+    s = visit(s, "PvP", 777);                                  // first-time PvP: rule 2 (copied 111, then edited)
+    expect(s.perContent["PvP"].pvp_fight_length).toBe(15);     // its own default stays (not an applicable field of Chapter Hunt)
+    s = visit(s, "EXP Dungeon");                               // PvP is the most recently edited, but only the group counts: Chapter Hunt
+    expect(atk(s)).toBe(111);
+    const fromPvp = visit(start("PvP", 888), "Chapter Boss");   // no group member visited: rule 2 from where the user was
+    expect(atk(fromPvp)).toBe(888);
+    expect(seedSource(start("Chapter Boss", 1), "PvP")).toBe("Chapter Boss");
+    expect(atk(visit(start("Chapter Boss", 5), "PvP"))).toBe(5);
+  });
+
+  it("copies what 'Copy stats from' copies, plus the companion pick and the equipped artifacts; not the per-content defaults", () => {
+    let s = start("Breakthrough", 1234);
+    s = setValue(s, f("companion_choice"), "Blaze Wizard");
+    s = { ...s, companions: { levels: { "Blaze Wizard": 5 } }, equippedArtifacts: setSlot(art, s.equippedArtifacts, "Breakthrough", 1, "candle") };
+    s = setValue(s, f("max_enemies_hit"), 7);
+    s = setValue(s, f("chapter_stage"), "30-2");
+    const h = visit(s, "Hero Dungeon");
+    expect(atk(h)).toBe(1234);
+    expect(h.perContent["Hero Dungeon"].companion_choice).toBe("Blaze Wizard");
+    expect(h.perContent["Hero Dungeon"].max_enemies_hit).toBe(7);          // applicable to both
+    expect(slotsFor(art, h.equippedArtifacts, "Hero Dungeon")[1]).toBe("candle");
+    expect(h.perContent["Hero Dungeon"].chapter_stage).toBe("80");         // default_by_content: the content type's own default
+    const w = visit(s, "World Boss");                                       // boss content: Breakthrough-only fields are not applicable there
+    expect(w.perContent["World Boss"].max_enemies_hit).toBeNull();
+    expect(w.perContent["World Boss"].chapter_stage).toBeNull();
+    expect(slotsFor(art, w.equippedArtifacts, "World Boss")[1]).toBe("candle");
+    expect(w.equippedArtifacts!["World Boss"]).not.toBe(s.equippedArtifacts!["Breakthrough"]);   // not shared by reference
+  });
+
+  it("never overwrites: stored content types are untouched, slots already stored for a new one are kept", () => {
+    let s = start("Chapter Boss", 10);
+    s = visit(s, "World Boss", 20);
+    const before = JSON.stringify(s.perContent["Chapter Boss"]);
+    s = visit(s, "Chapter Boss");                                            // switching back: nothing is copied over it
+    expect(JSON.stringify(s.perContent["Chapter Boss"])).toBe(before);
+    expect(atk(s)).toBe(10);
+    // an equipped set that exists for a content type without values (a stored profile) is not replaced by the seed
+    let t = start("Chapter Boss", 10);
+    t = { ...t, equippedArtifacts: { ...setSlot(art, undefined, "Chapter Boss", 0, "candle"), ...setSlot(art, undefined, "Weapon Dungeon", 2, "chalice") } };
+    const n = visit(t, "Weapon Dungeon");
+    expect(slotsFor(art, n.equippedArtifacts, "Weapon Dungeon")[2]).toBe("chalice");
+    expect(slotsFor(art, n.equippedArtifacts, "Weapon Dungeon")[0]).toBe("");
+    expect(atk(n)).toBe(10);                                                  // the stats were seeded, the slots were not
+  });
+
+  it("only user edits count as 'edited' (seeding, shared fields and the switch itself do not)", () => {
+    let s = start("Chapter Hunt", 1);
+    expect(s.editOrder).toEqual(["Chapter Hunt"]);
+    s = visit(s, "EXP Dungeon");
+    expect(s.editOrder).toEqual(["Chapter Hunt"]);
+    s = setValue(s, f("level"), 150);                                         // shared: not a content-type edit
+    expect(s.editOrder).toEqual(["Chapter Hunt"]);
+    s = setValue(s, f("crit_rate"), 5);
+    expect(s.editOrder).toEqual(["EXP Dungeon", "Chapter Hunt"]);
+    s = copyContentValues(visit(s, "Chapter Boss"), sch, "EXP Dungeon", "Chapter Boss");     // the user's own "Copy stats from"
+    expect(s.editOrder).toEqual(["Chapter Boss", "EXP Dungeon", "Chapter Hunt"]);
+    expect(markEdited(s, "Chapter Boss")).toBe(s);
+  });
+
+  it("older profiles load unchanged (no editOrder is invented, nothing is overwritten); the order round-trips through JSON and bad entries are dropped", () => {
+    const old = initialState(sch, defs["Chapter Boss"], "Chapter Boss");
+    delete (old as { editOrder?: string[] }).editOrder;
+    const n = normalizeState(sch, JSON.parse(JSON.stringify(old)));
+    expect("editOrder" in n).toBe(false);
+    expect(n.perContent).toEqual(old.perContent);
+    expect(Object.keys(n.perContent)).toEqual(["Chapter Boss"]);
+    const s = visit(start("Chapter Hunt", 9), "EXP Dungeon", 8);
+    const back = normalizeState(sch, JSON.parse(JSON.stringify(s)));
+    expect(back.editOrder).toEqual(s.editOrder);
+    expect(back.perContent).toEqual(s.perContent);
+    const bad = normalizeState(sch, { ...s, editOrder: ["EXP Dungeon", "Nope", "EXP Dungeon", 5 as unknown as string, "Chapter Hunt"] });
+    expect(bad.editOrder).toEqual(["EXP Dungeon", "Chapter Hunt"]);
+    // a profile that stored several content types seeds a NEW one from the most recently edited sibling of its record
+    const t = visit(normalizeState(sch, JSON.parse(JSON.stringify(s))), "Equipment Dungeon");
+    expect(atk(t)).toBe(8);
+  });
+
+  it("every class: opening a first-time content type seeds it and keeps buildInputs valid", () => {
+    for (const c of ALL) {
+      let st = initialState(c.schema, c.defaults[c.schema.content_types[0]], c.schema.content_types[0]);
+      st = setValue(st, c.schema.fields.find((x) => x.key === "flat_attack")!, 4242);
+      for (const ct of c.schema.content_types) {
+        st = switchContentType(st, c.schema, ct, c.defaults[ct]);
+        const inp = buildInputs(c.schema, st);
+        expect(inp.flat_attack, `${c.info.id}/${ct}`).toBe(4242);
+        for (const fl of c.schema.fields) if (!fl.computed && !isApplicable(fl, ct)) expect(inp[fl.key], `${ct}/${fl.key}`).toBeNull();
+      }
     }
   });
 });

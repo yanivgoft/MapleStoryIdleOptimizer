@@ -3,6 +3,7 @@ rate limits, timeout / failure paths.
 
 Run from the repo root:  python -m pytest api/tests -q   (a handful of real engine evaluations, ~1-3 s each; the 30-row call is ~6 s without numpy)
 """
+import json
 import math
 import time
 
@@ -95,12 +96,57 @@ def test_meta_matches_engine_tables(client):
     assert m["class_id"] == "fp_mage"
 
 
+EXCLUSIVE = {"Skill Cooldown Decrease (seconds)": "head", "Buff Duration Increase %": "belt"}
+
+
+def test_cdr_and_buff_duration_are_slot_exclusive_on_both_tracks(client):
+    """Skill Cooldown Decrease is rolled only on the hat, Buff Duration Increase % only on the belt (like Basic Attack Target Increase on the chest): not offered on any
+    other slot, not in any other slot's roll table, rolled in the exclusive slot's table on every rarity it exists in (the tables are shared by both potential tracks)."""
+    m = client.get(CUBES + "/meta").json()
+    assert not hasattr(cubes, "EXTRA_SELECTABLE_STATS")
+    for stat, slot in EXCLUSIVE.items():
+        assert stat in m["stats"]
+        assert [s for s in cubes.CUBE_SLOTS if stat in m["stats_by_slot"][s]] == [slot]
+        rolled = {key[0] for key, entries in cubes.roll_table().items() if any(e[0] == stat for e in entries)}
+        assert rolled == {slot}
+    assert [s for s in cubes.CUBE_SLOTS if "Basic Attack Target Increase" in m["stats_by_slot"][s]] == ["chest"]
+    # the exclusive stat is offered on its slot only: a stored line elsewhere stays accepted (kept, flagged "not rollable on this slot" by the client) and is still
+    # counted as the current value of that row, never rolled by the rerolls
+    rows, errors = features.validate_gear([{"slot": "boots", "potential_type": "Bonus Potential", "rarity": "epic",
+                                           "lines": [{"stat": "Buff Duration Increase %", "value": 5}]}])
+    assert not errors
+    row = next(r for r in rows if r["slot"] == "boots" and r["potential_type"] == "Bonus Potential")
+    assert row["lines"][0] == ("Buff Duration Increase %", 5.0)
+
+
+def test_meta_roll_values_match_the_roll_tables(client):
+    """``roll_values``: per ("ALL" | slot, rarity, line, stat) the [value, prime] pairs, prime first then descending, exactly the values of the roll table (no weights)."""
+    m = client.get(CUBES + "/meta").json()
+    rv = m["roll_values"]
+    table = cubes.roll_table()
+    assert set(rv) <= {"ALL", *cubes.CUBE_SLOTS} and "ALL" in rv
+    for (slot, rarity, line), entries in table.items():
+        got = rv[slot][rarity][str(line)]
+        assert {e[0] for e in entries} == set(got)
+        for stat, pairs in got.items():
+            assert [p[0] for p in pairs] == sorted({e[1] for e in entries if e[0] == stat}, key=lambda v: (not dict(pairs)[v], -v))
+            assert len({p[0] for p in pairs}) == len(pairs)
+            assert [p[1] for p in pairs] == sorted((p[1] for p in pairs), reverse=True)                  # prime entries first
+    assert rv["ALL"]["legendary"]["2"]["Critical Rate %"] == [[12, True], [9, False]]
+    assert rv["ALL"]["legendary"]["1"]["Critical Rate %"] == [[12, False]]                               # the data's own flag
+    assert rv["head"]["epic"]["1"] == {"Skill Cooldown Decrease (seconds)": [[0.5, True]]}
+    assert rv["head"]["mystic"]["2"] == {"Skill Cooldown Decrease (seconds)": [[2, True], [1.5, False]]}
+    assert rv["belt"]["unique"]["3"]["Buff Duration Increase %"] == [[8, True], [5, False]]
+    assert "chest" in rv and "epic" not in rv["chest"]                                                   # no epic option on the chest (user-confirmed)
+    assert len(json.dumps(rv, separators=(",", ":"))) < 30_000                                           # stays small: shared pool once + slot additions
+
+
 def test_unsupported_class_is_501_before_validation(client, monkeypatch):
     for cid in (unsupported_class(monkeypatch),):
         for method, suffix in (("get", "/cubes/meta"), ("post", "/cubes"), ("post", "/equipment-compare"), ("post", "/artifact-potentials")):
             r = getattr(client, method)(f"/api/classes/{cid}{suffix}", **({"json": {"gear": "nonsense", "bogus": 1}} if method == "post" else {}))
             assert r.status_code == 501, (cid, suffix)
-            assert r.json()["detail"].endswith("modelled for this class yet")
+            assert r.json()["detail"].endswith("for this class yet")
     assert client.post("/api/classes/nope/cubes", json={}).status_code == 404
     assert client.get("/api/classes/nope/cubes/meta").status_code == 404
     assert client.post("/api/classes/nope/equipment-compare", json={}).status_code == 404
@@ -118,7 +164,7 @@ def test_cubes_match_engine_directly(client):
     sens = sensitivity.run(fp_mage, dict(inputs), which=["stats", "cdr", "summon_time"])
     pricing = cubes.pricing_from_sensitivity(sens, dict(inputs), fp_mage)
     idx = {i for i, g in enumerate(gear) if g["slot"] in ("head", "boots")}
-    direct = cubes.recommend(gear, pricing, only=idx)
+    direct = cubes.recommend(gear, pricing, only=idx, include_curve=True)
     assert len(out["rows"]) == len(direct) == 4
     _same(direct, out["rows"])
     assert out["baseline_total"] == pytest.approx(sens["baseline_total"], rel=1e-12)
@@ -127,6 +173,53 @@ def test_cubes_match_engine_directly(client):
     head = next(x for x in out["rows"] if x["slot"] == "head" and x["potential_type"] == "Potential")
     assert head["rarity"] == "epic" and head["lines"][0] == ["Damage %", 12.0] and head["current_value"] > 0 and head["milestone_ev"]["100"] >= head["milestone_ev"]["5"]
     assert "NaN" not in r.text and "Infinity" not in r.text
+
+
+def test_cube_messages_have_no_internal_words(monkeypatch):
+    """The 501 / 504 texts the Cubes tab can show are plain player language (no engine / model / workbook talk)."""
+    import re
+    assert not re.search(r"model|engine|excel|workbook|sheet|script", features.CUBES_UNSUPPORTED, re.I)
+    c = make_client(cubes_timeout_s=1)
+    monkeypatch.setattr(features, "run_cubes", lambda *a, **k: time.sleep(1.6))
+    r = c.post(CUBES, json={**CASE, "gear": GEAR[:1], "only": ["ring"]})
+    assert r.status_code == 504 and r.json()["detail"].startswith("cube calculation took longer than 1 s")
+    assert not re.search(r"model|engine|excel|workbook|sheet|script", r.json()["detail"], re.I)
+    time.sleep(0.8)
+
+
+def test_ev_pct_by_cubes_every_count_matches_the_milestones(client):
+    """Every row carries ``ev_pct_by_cubes``: EV % after n cubes for n = 0..max_cubes (index n), equal to ``milestone_ev_pct`` at every preset milestone within the
+    6-significant-digit rounding, starting at 0 and never decreasing; the old fields are unchanged."""
+    r = client.post(CUBES, json={**CASE, "gear": GEAR, "only": ["head", "boots", "ring"]})
+    assert r.status_code == 200, r.text
+    rows = r.json()["rows"]
+    assert len(rows) == 6
+    for row in rows:
+        curve = row["ev_pct_by_cubes"]
+        assert len(curve) == cubes.MAX_CUBES + 1 and curve[0] == 0
+        assert all(b >= a for a, b in zip(curve, curve[1:]))
+        for n in cubes.CUBE_MILESTONES:
+            assert curve[n] == pytest.approx(row["milestone_ev_pct"][str(n)], rel=6e-6, abs=1e-12), (row["slot"], n)
+        assert set(row["milestone_ev"]) == set(row["milestone_ev_pct"]) == {str(n) for n in cubes.CUBE_MILESTONES}
+    assert any(row["ev_pct_by_cubes"][86] > row["ev_pct_by_cubes"][80] for row in rows)       # a count between two milestones is priced on its own
+
+
+def test_ev_pct_by_cubes_survives_chunking_and_the_row_cache():
+    """Chunked requests (a few rows each) return the same curves as one big call; a cache HIT / PARTIAL answers with the stored curve (byte-identical)."""
+    c = make_client()
+    full = c.post(CUBES, json={**CASE, "gear": GEAR, "only": ["head", "boots", "ring"]})
+    assert full.headers["x-cache"] == "MISS"
+    by_key = {(x["slot"], x["potential_type"]): x for x in full.json()["rows"]}
+    for part in (["head"], ["boots", "ring"]):
+        a = c.post(CUBES, json={**CASE, "gear": GEAR, "only": part})
+        assert a.headers["x-cache"] in ("HIT", "PARTIAL")
+        for row in a.json()["rows"]:
+            assert row == by_key[(row["slot"], row["potential_type"])]
+            assert len(row["ev_pct_by_cubes"]) == cubes.MAX_CUBES + 1
+    again = c.post(CUBES, json={**CASE, "gear": GEAR, "only": ["head", "boots", "ring"]})
+    assert again.headers["x-cache"] == "HIT" and again.content == full.content
+    fresh = make_client(cubes_cache_entries=0).post(CUBES, json={**CASE, "gear": GEAR, "only": ["head"]}).json()["rows"]
+    assert [row["ev_pct_by_cubes"] for row in fresh] == [by_key[(row["slot"], row["potential_type"])]["ev_pct_by_cubes"] for row in fresh]
 
 
 def test_only_selects_rows_and_types(client):
@@ -178,6 +271,87 @@ def test_cache_disabled():
     c = make_client(cubes_cache_entries=0)
     body = {**CASE, "gear": GEAR[:1], "only": ["ring"]}
     assert [c.post(CUBES, json=body).headers["x-cache"] for _ in range(2)] == ["MISS", "MISS"]
+
+
+# ---- cubes: step stats priced on the real model (Summoning Time, Cooldown Decrease, Buff Duration) -----------------------------------------------
+BT = {"content_type": "Breakthrough", "companion_choice": "Blaze Wizard", "companion_level": 10, "companion_summon_time_increase_pct": 10}
+S_STAT, C_STAT, B_STAT = cubes.COMPANION_STAT, cubes.CDR_STAT, cubes.BUFF_STAT
+
+
+def _exact_factor(body, key, total_with, total_without):
+    """The class model re-run at two totals of one Inputs value (what a held line is worth): boss / normal growth blended by the time weight (Summoning Time, Buff
+    Duration, Cooldown Decrease)."""
+    base = sensitivity._Base(dict(engine_inputs(body)), class_module=fp_mage)
+    run = lambda x: base.block({key: x}, {}, rebuild=True, full_search=True)
+    (t0, b0, n0), (t1, b1, n1) = run(total_without), run(total_with)
+    return (1 - base.w) * b1 / b0 + base.w * n1 / n0
+
+
+def test_held_summoning_time_line_is_priced_from_b0_and_carries_its_removal_loss():
+    """The user's case: Breakthrough, Blaze Wizard, typed Summoning Time 10 INCLUDING a held boots line of 10.  The held line is worth the exact f(10) / f(0) of the
+    real model (b0 = 0), its removal loss is reported (positive DPS), and the same typed total with NO lines on the gear is priced as 10 from other sources."""
+    c = make_client()
+    held = {"slot": "boots", "potential_type": "Potential", "rarity": "unique", "lines": [{"stat": S_STAT, "value": 10}]}
+    r = c.post(CUBES, json={**BT, "gear": [held], "only": ["boots"]})
+    assert r.status_code == 200, r.text
+    out = r.json()
+    row = next(x for x in out["rows"] if x["potential_type"] == "Potential")
+    g = _exact_factor(BT, "companion_summon_time_increase_pct", 10.0, 0.0)
+    assert row["current_value"] / out["baseline_total"] + 1 == pytest.approx(g, rel=1e-12)
+    assert g > 1 and row["row_loss"] > 0 and row["row_loss"] == pytest.approx(out["baseline_total"] * (1 - 1 / g), rel=1e-12)
+    assert row["line_loss"] == [pytest.approx(row["row_loss"]), None, None] and row["line_loss_pct"][0] == pytest.approx(row["row_loss"] / out["baseline_total"] * 100)
+    bonus = next(x for x in out["rows"] if x["potential_type"] == "Bonus Potential")
+    assert bonus["current_value"] == 0 and bonus["row_loss"] == 0 and bonus["line_loss"] == [None, None, None]
+    # the Bonus row's rerolls sit on top of the OTHER row's held 10: its rolls are priced from 10 (crossing 13.667 only when they really do), not from b0 = 0
+    inputs = dict(engine_inputs(BT), companion_potential_lines_pct=10)
+    sens = sensitivity.run(fp_mage, dict(inputs), which=["stats", "cdr", "summon_time"])
+    pricing = cubes.pricing_from_sensitivity(sens, dict(inputs), fp_mage)
+    assert pricing.companion.b0 == 0.0
+    model = cubes.CubeModel(pricing)
+    up = lambda extra, other: model.combined_dps_gain([(S_STAT, extra)], None, other) / pricing.baseline_dps + 1
+    assert up(5.0, 10.0) == pytest.approx(_exact_factor(BT, "companion_summon_time_increase_pct", 15.0, 10.0), rel=1e-12)
+    assert up(5.0, 10.0) > up(5.0, 0.0) and up(5.0, 10.0) > up(5.0, 20.0)
+    # nothing on the gear: the typed 10 is other sources, b0 = 10 (the old positive-only pricing of the same candidates); the held-line row value is 0
+    none = c.post(CUBES, json={**BT, "gear": [], "only": ["boots"]}).json()
+    assert all(x["current_value"] == 0 and x["row_loss"] == 0 for x in none["rows"])
+
+
+def test_held_lines_above_the_typed_total_are_noted_and_clamped():
+    """Held Summoning Time / Cooldown Decrease / Buff Duration lines larger than the typed totals: noted per row (``*_lines_exceed_inputs:slot/type``), b0 clamps at 0."""
+    c = make_client()
+    gear = [{"slot": "boots", "potential_type": "Potential", "rarity": "unique", "lines": [{"stat": S_STAT, "value": 8}, {"stat": S_STAT, "value": 5}]},
+            {"slot": "head", "potential_type": "Potential", "rarity": "legendary", "lines": [{"stat": C_STAT, "value": 1.5}]},
+            {"slot": "belt", "potential_type": "Bonus Potential", "rarity": "unique", "lines": [{"stat": B_STAT, "value": 8}]}]
+    body = {**BT, "companion_summon_time_increase_pct": 6, "skill_cooldown_decrease": 1.0, "buff_duration_increase_pct": 5, "gear": gear, "only": ["boots", "head", "belt"]}
+    r = c.post(CUBES, json=body)
+    assert r.status_code == 200, r.text
+    assert {"companion_lines_exceed_inputs:boots/Potential", "cdr_lines_exceed_inputs:head/Potential", "buff_lines_exceed_inputs:belt/Bonus Potential"} <= set(r.json()["notes"])
+    # lines inside the typed totals: no such note
+    ok = c.post(CUBES, json={**body, "companion_summon_time_increase_pct": 20, "skill_cooldown_decrease": 3.0, "buff_duration_increase_pct": 30}).json()
+    assert not [n for n in ok["notes"] if "exceed" in n]
+
+
+def test_cooldown_and_buff_rows_are_exact_and_row_cache_follows_the_base():
+    """A hat / belt row is priced on the real model (typed total off the table grid); editing the hat does not invalidate the other rows' cached results unless the held
+    lines overtake the typed total (then every row's base changes, so every row is recomputed)."""
+    c = make_client()
+    body = {**BT, "skill_cooldown_decrease": 4.2, "buff_duration_increase_pct": 35}
+    gear = [{"slot": "head", "potential_type": "Potential", "rarity": "legendary", "lines": [{"stat": C_STAT, "value": 1.5}, {"stat": C_STAT, "value": 1.0}]},
+            {"slot": "belt", "potential_type": "Potential", "rarity": "epic", "lines": [{"stat": B_STAT, "value": 5}, {"stat": B_STAT, "value": 5}]},
+            {"slot": "ring", "potential_type": "Potential", "rarity": "unique", "lines": [{"stat": "Damage %", "value": 9}]}]
+    a = c.post(CUBES, json={**body, "gear": gear, "only": ["head", "belt", "ring"]})
+    assert a.status_code == 200 and a.headers["x-cache"] == "MISS"
+    rows = {(x["slot"], x["potential_type"]): x for x in a.json()["rows"]}
+    base_total = a.json()["baseline_total"]
+    head, belt = rows[("head", "Potential")], rows[("belt", "Potential")]
+    assert 1 + head["current_value"] / base_total == pytest.approx(_exact_factor(body, "skill_cooldown_decrease", 4.2, 1.7), rel=1e-12)
+    assert 1 + belt["current_value"] / base_total == pytest.approx(_exact_factor(body, "buff_duration_increase_pct", 35.0, 25.0), rel=1e-12)
+    assert head["row_loss"] > 0 and belt["row_loss"] > 0
+    # edit the hat inside the typed total: ring stays cached (PARTIAL: head recomputed), edit it beyond the typed total: ring recomputed too
+    gear2 = [dict(gear[0], lines=[{"stat": C_STAT, "value": 1.5}]), gear[1], gear[2]]
+    assert c.post(CUBES, json={**body, "gear": gear2, "only": ["head", "ring"]}).headers["x-cache"] == "PARTIAL"
+    gear3 = [dict(gear[0], lines=[{"stat": C_STAT, "value": 2.0}] * 3), gear[1], gear[2]]
+    assert c.post(CUBES, json={**body, "gear": gear3, "only": ["ring"]}).headers["x-cache"] == "MISS"
 
 
 # ---- cubes: validation -----------------------------------------------------------------------------------------------------------------------

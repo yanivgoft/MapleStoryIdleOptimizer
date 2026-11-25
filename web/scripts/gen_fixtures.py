@@ -126,6 +126,23 @@ POTENTIALS_CASE = {"potentials": {"book_of_ancient": {"star": 5, "lines": [{"rar
                                   "pigs_ribbon": {"star": 3, "lines": [{"rarity": "Unique", "stat": "Defense Penetration %"}]}}}
 
 
+CURVE_FIXTURE_CLASSES = {"fp_mage"}      # the per-cube-count curve (`ev_pct_by_cubes`, 1001 numbers per row) is kept in this class's fixture only (it is ~250 KB per class); the others fall back to the milestones
+
+
+def dump_cubes_case(cid, gear, result):
+    """``<id>.cubes_case.json``: the rows' ``ev_pct_by_cubes`` arrays are written on ONE line each (kept for CURVE_FIXTURE_CLASSES, dropped for the rest)."""
+    arrays = []
+    for row in result["rows"]:
+        curve = row.pop("ev_pct_by_cubes", None)
+        if curve is not None and cid in CURVE_FIXTURE_CLASSES:
+            arrays.append(json.dumps(curve, separators=(",", ":")))
+            row["ev_pct_by_cubes"] = f"@@CURVE{len(arrays) - 1}@@"
+    text = json.dumps({"gear": gear, "result": result}, indent=1)
+    for i, arr in enumerate(arrays):
+        text = text.replace(f'"@@CURVE{i}@@"', arr)
+    (OUT / f"{cid}.cubes_case.json").write_text(text + "\n")
+
+
 def dump_cubes(client, cid):
     from engine import cubes, potentials, sensitivity
     inputs = sample_inputs(cid)
@@ -134,7 +151,7 @@ def dump_cubes(client, cid):
     dump(f"{cid}.cubes_meta.json", meta.json())
     r = client.post(f"/api/classes/{cid}/cubes", json={**inputs, "gear": CUBES_GEAR})
     assert r.status_code == 200, (cid, r.text)
-    dump(f"{cid}.cubes_case.json", {"gear": CUBES_GEAR, "result": r.json()})
+    dump_cubes_case(cid, CUBES_GEAR, r.json())
     e = client.post(f"/api/classes/{cid}/equipment-compare", json={**inputs, **EQUIP_CASE})
     assert e.status_code == 200, (cid, e.text)
     dump(f"{cid}.equipment_case.json", {"request": EQUIP_CASE, "result": e.json()})

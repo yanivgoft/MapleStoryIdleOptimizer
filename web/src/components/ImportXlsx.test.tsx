@@ -40,7 +40,11 @@ describe("Profiles panel: import from Excel", () => {
   const html = strip(renderToString(<ProfilesPanel state={initialState(fixtureFor("shadower").schema, fixtureFor("shadower").defaults["Chapter Boss"])} classes={classList} onLoad={() => undefined} />));
   it("offers the .xlsx import next to the JSON import, with the privacy promise", () => {
     expect(html).toContain("Import from Excel (.xlsx)");
-    expect(html).toContain("Import file"); // the existing JSON import is untouched
+    expect(html).toContain("Import from the old Excel calculator (optional)");
+    expect(html).toContain("For people who used the spreadsheet calculators from GitHub");
+    expect(html).toMatch(/<details class="advanced"><summary>Advanced<\/summary>/);                // the entry lives in the collapsed Advanced area at the bottom
+    expect(html.indexOf("Advanced</summary>")).toBeGreaterThan(html.indexOf("Import saved profiles (.json)"));
+    expect(html).toContain("Import saved profiles (.json)"); // the existing JSON import is untouched (re-labelled)
     expect(html).toMatch(/accept="\.xlsx,application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet"/);
     expect(html).toMatch(/never uploaded/);
     expect(html).toContain("or drop the .xlsx file here");
@@ -60,7 +64,7 @@ describe("preview dialog", () => {
     expect(h).toContain('role="dialog"');
     expect(h).toContain('aria-modal="true"');
     expect(h).toMatch(/aria-labelledby="[^"]+-t"/);
-    expect(h).toContain("Import as new profile");
+    expect(h).toContain("Create profile from Excel");
     expect(h).toContain("Cancel");
     expect(h).toContain("Shadower-DPS-Calculator.xlsx");
     expect(h).toContain("the file stays on your device");
@@ -74,7 +78,7 @@ describe("preview dialog", () => {
     expect(h).toContain(`Opens on</dt><dd>${r.state.contentType}`);
     expect(h).toContain("Values read per content type");
     expect(h).toContain(`Warnings (${r.warnings.length})`);
-    expect(h).toContain(`Ignored (${r.ignored.length})`);
+    expect(h).toContain(`Not imported (calculated cells) (${r.ignored.length})`);
     expect(h).toContain("Wind Archer Lv 3");
     expect(h).toContain(`equipped artifacts set for ${Object.keys(r.summary.loadouts).length} of ${schemaContents("shadower")} content types`); // one set per content type, like the workbook
     expect(h).not.toContain("Artifact loadout of");               // (the old "choose one loadout" selector is gone)
@@ -172,7 +176,7 @@ describe("applying creates a new profile and never overwrites", () => {
 describe("friendly errors", () => {
   const xe = (code: ConstructorParameters<typeof XlsxError>[0], message: string) => new XlsxError(code, message);
   it("explains what to do for each kind of unusable file", () => {
-    expect(describeLoadError(xe("not_zip", "This is not an Excel .xlsx workbook"))).toMatch(/Import file/);
+    expect(describeLoadError(xe("not_zip", "This is not an Excel .xlsx workbook"))).toMatch(/Import saved profiles \(\.json\)/);
     expect(describeLoadError(xe("macro", "Macro-enabled workbooks (.xlsm) are not supported. Save As .xlsx"))).toMatch(/\.xlsx/);
     expect(describeLoadError(xe("corrupt", "The file looks corrupted"))).toMatch(/corrupted/);
     expect(describeLoadError(Object.assign(new Error("HTTP 503"), { name: "ApiError", status: 503 }))).toMatch(/not uploaded/);

@@ -181,6 +181,33 @@ def test_properties():
     assert len(row) == len(cubes.CSV_COLUMNS) == 9 + 2 * len(cubes.CUBE_MILESTONES)
 
 
+def test_ev_curve_for_every_cube_count():
+    """``include_curve`` adds ``ev_pct_by_cubes`` (EV % after n cubes for EVERY n = 0..max_cubes, 6 significant digits): equals ``milestone_ev_pct`` at every preset
+    milestone (within the rounding), starts at 0, never decreases, is the same on both backends, and is absent by default (the existing row shape is untouched)."""
+    p = cubes.Pricing.from_dict(dict(baseline_dps=1e6, dps_per_unit=cubes.dps_per_unit_table(cc.SYNTH_RATES, level=150), cdr_current=0.0,
+                                     cdr_table=cc.SYNTH_CDR_TABLE))
+    gear = [dict(slot="head", potential_type="Potential", rarity="epic", pity=10, lines=[("Damage %", 9.0), ("Final Damage %", 3.0), (cubes.NONE_STAT, 0)]),
+            dict(slot="boots", potential_type="Bonus Potential", rarity="rare", pity=3, lines=[]),
+            dict(slot="ring", potential_type="Potential", rarity="mystic", pity=0, lines=[("Damage %", 40.0), ("Final Damage %", 20.0), ("Critical Damage %", 30.0)])]
+    plain = cubes.recommend(gear, p, backend="python", sort=False)
+    assert all("ev_pct_by_cubes" not in r for r in plain)
+    runs = [cubes.recommend(gear, p, backend="python", sort=False, include_curve=True)]
+    if cubes._np is not None:
+        runs.append(cubes.recommend(gear, p, backend="numpy", sort=False, include_curve=True))
+    for rows in runs:
+        for r, q in zip(rows, plain):
+            curve = r["ev_pct_by_cubes"]
+            assert len(curve) == cubes.MAX_CUBES + 1 and curve[0] == 0.0
+            assert all(curve[k + 1] >= curve[k] for k in range(len(curve) - 1))
+            for n in cubes.CUBE_MILESTONES:
+                assert close(curve[n], r["milestone_ev_pct"][n], 5.1e-6, 1e-12), (r["slot"], n, curve[n], r["milestone_ev_pct"][n])
+            assert {k: v for k, v in r.items() if k != "ev_pct_by_cubes"} == q          # nothing else changes
+    assert any(r["milestone_ev_pct"][100] > 0 for r in runs[0])
+    short = cubes.recommend(gear[:1], p, backend="python", max_cubes=50, milestones=[5, 50], include_curve=True)[0]["ev_pct_by_cubes"]
+    assert len(short) == 51
+    assert cubes.ev_pct_curve([5.0, 7.0], 5.0, 0) == [0.0, 0.0]                           # zero baseline: no division
+
+
 def test_adapter_from_sensitivity():
     """``pricing_from_sensitivity`` on a live FP-Mage sensitivity run: rates, CDR curve, companion b0 / model, crit-cap and ring / book rules."""
     from engine import sensitivity
@@ -217,6 +244,158 @@ def test_adapter_from_sensitivity():
     assert rows and all(r["milestone_ev"][100] >= 0 for r in rows)
 
 
+# ---- exact pricing of step / capped stats (Skill Cooldown Decrease, Buff Duration Increase %, Companion Summoning Time Increase %) --------------------------------------
+def _live(content, typed_cdr=1.5, typed_buff=20.0, typed_sum=0.0, gear=None, companion="Blaze Wizard", **over):
+    """(inputs, sensitivity result, pricing, the evaluated sensitivity base) of a live FP-Mage state; ``companion_potential_lines_pct`` = the gear's boots lines (the API's rule)."""
+    from engine import sensitivity
+    from engine.classes import fp_mage
+    inp = fp_mage.defaults(content)
+    inp.update(level=140, flat_attack=1_209_199, flat_int=60000, int_pct=150, luk=3000, crit_rate=80, crit_damage=150, damage=200, skill_cooldown_decrease=typed_cdr,
+               buff_duration_increase_pct=typed_buff, companion_choice=companion, companion_level=10, companion_summon_time_increase_pct=typed_sum,
+               companion_potential_lines_pct=cubes.companion_lines_pct(gear or []))
+    inp.update(over)
+    sens = sensitivity.run(fp_mage, dict(inp), which=["stats", "cdr", "summon_time"])
+    return inp, sens, cubes.pricing_from_sensitivity(sens, dict(inp), fp_mage), sensitivity._Base(dict(inp), class_module=fp_mage)
+
+
+def _g(base, key, total_with, total_without):
+    """Exact factor of an Inputs stat going from ``total_without`` to ``total_with``: the full class model at both totals; boss / normal growth blended by the time
+    weight (Summoning Time, Buff Duration, Cooldown Decrease)."""
+    run = lambda x: base.block({key: x}, {}, rebuild=True, full_search=True)
+    (t0, b0, n0), (t1, b1, n1) = run(total_without), run(total_with)
+    return (1 - base.w) * b1 / b0 + base.w * n1 / n0
+
+
+def _gear(**rows):
+    """default gear with ``{slot}_{p|b}`` = (rarity, [lines]) rows replaced."""
+    g = cubes.default_gear()
+    for name, (rarity, lines) in rows.items():
+        slot, kind = name.rsplit("_", 1)
+        row = next(r for r in g if r["slot"] == slot and r["potential_type"] == ("Potential" if kind == "p" else "Bonus Potential"))
+        row.update(rarity=rarity, lines=list(lines) + [(cubes.NONE_STAT, 0.0)] * (3 - len(lines)))
+    return g
+
+
+def _row(rows, slot, ptype="Potential"):
+    return next(r for r in rows if r["slot"] == slot and r["potential_type"] == ptype)
+
+
+def test_exact_companion_held_line_and_threshold():
+    """The user's scenario (Breakthrough, Blaze Wizard, typed Summoning Time 10 INCLUDING a held boots line of 10): b0 = 0, the held line is worth the exact full-model
+    f(10)/f(0) (not a step from the typed total), a candidate crossing 13.667 % is priced from b0 + the OTHER held lines, and the same candidate with no lines on the gear
+    is priced from the typed 10 (the old, positive-only behaviour)."""
+    S = cubes.COMPANION_STAT
+    gear = _gear(boots_p=("unique", [(S, 10.0)]))
+    inp, sens, p, base = _live("Breakthrough", typed_sum=10.0, gear=gear)
+    assert p.companion.b0 == 0.0
+    rows = cubes.recommend(gear, p, max_cubes=60, milestones=[5, 60])
+    held = _row(rows, "boots")
+    g_exact = _g(base, "companion_summon_time_increase_pct", 10.0, 0.0)
+    assert close(1 + held["current_value"] / p.baseline_dps, g_exact, 1e-12, 0)
+    assert close(held["row_loss"], p.baseline_dps * (1 - 1 / g_exact), 1e-12, 0) and held["line_loss"][0] == held["row_loss"] and held["line_loss"][1:] == [None, None]
+    assert g_exact > 1.0 and held["row_loss"] > 0                                      # the lost DPS on removing the line is a real, positive amount
+    # a candidate +5 on the Bonus row: 15 from the other row's 10 (crosses 13.667) vs 5 from nothing vs 25 from 20
+    m = cubes.CubeModel(p)
+    gain = lambda extra, other: m.combined_dps_gain([(S, extra)], None, other) / p.baseline_dps + 1
+    assert close(gain(5.0, 10.0), _g(base, "companion_summon_time_increase_pct", 15.0, 10.0), 1e-12, 0)
+    assert close(gain(5.0, 0.0), _g(base, "companion_summon_time_increase_pct", 5.0, 0.0), 1e-12, 0)
+    assert close(gain(5.0, 20.0), _g(base, "companion_summon_time_increase_pct", 25.0, 20.0), 1e-12, 0)
+    assert gain(5.0, 10.0) > gain(5.0, 0.0) > 1.0 and gain(5.0, 10.0) > gain(5.0, 20.0)       # the crossing step shows only from b0 + the held lines
+    # nothing on the gear: the typed 10 is all "other sources" (b0 = 10) and the same candidates are priced on top of it
+    inp0, sens0, p0, base0 = _live("Breakthrough", typed_sum=10.0, gear=_gear())
+    assert p0.companion.b0 == 10.0
+    r0 = _row(cubes.recommend(_gear(), p0, max_cubes=60, milestones=[5, 60]), "boots")
+    assert r0["current_value"] == 0.0 and r0["row_loss"] == 0.0 and r0["line_loss"] == [None] * 3
+    m0 = cubes.CubeModel(p0)
+    assert close(m0.combined_dps_gain([(S, 5.0)], None, 0.0) / p0.baseline_dps + 1, _g(base0, "companion_summon_time_increase_pct", 15.0, 10.0), 1e-12, 0)
+    # both tracks: the Bonus Potential row sees the Potential row's held line as its base and vice versa
+    two = _gear(boots_p=("unique", [(S, 8.0)]), boots_b=("epic", [(S, 5.0)]))
+    inp2, sens2, p2, base2 = _live("Breakthrough", typed_sum=13.0, gear=two)
+    rows2 = cubes.recommend(two, p2, max_cubes=60, milestones=[5, 60])
+    assert p2.companion.b0 == 0.0
+    assert close(1 + _row(rows2, "boots", "Potential")["current_value"] / p2.baseline_dps, _g(base2, "companion_summon_time_increase_pct", 13.0, 5.0), 1e-12, 0)
+    assert close(1 + _row(rows2, "boots", "Bonus Potential")["current_value"] / p2.baseline_dps, _g(base2, "companion_summon_time_increase_pct", 13.0, 8.0), 1e-12, 0)
+    # held lines above the typed total: noted, b0 clamps at 0
+    inp3, sens3, p3, _b3 = _live("Breakthrough", typed_sum=6.0, gear=two)
+    m3 = cubes.CubeModel(p3)
+    cubes.recommend(two, p3, max_cubes=20, milestones=[5], model=m3)
+    assert p3.companion.b0 == 0.0 and {"companion_lines_exceed_inputs:boots/Potential", "companion_lines_exceed_inputs:boots/Bonus Potential"} <= m3.notes
+    # pure boss content: the factor is the plain Total ratio, so the removal loss is exactly Total(10) - Total(0) of the real model
+    from engine.classes import fp_mage
+    wb_gear = _gear(boots_p=("unique", [(S, 10.0)]))
+    wb_inp, _s, wb_p, _bb = _live("World Boss", typed_sum=10.0, gear=wb_gear)
+    wb_row = _row(cubes.recommend(wb_gear, wb_p, max_cubes=20, milestones=[5]), "boots")
+    t10, t0 = (fp_mage.compute(dict(wb_inp, companion_summon_time_increase_pct=x))["total_dps"] for x in (10.0, 0.0))
+    assert close(wb_row["row_loss"], t10 - t0, 1e-9, 0), (wb_row["row_loss"], t10 - t0)
+
+
+def test_exact_cdr_and_buff_duration_lines():
+    """Skill Cooldown Decrease (hat) and Buff Duration Increase % (belt) on both tracks: each row is priced on the real model at b0 + the other rows' lines, the typed
+    total (off the 0.5 s table grid, past its 5.0 s end) included, instead of interpolating the milestone table / the linear rate."""
+    C, B = cubes.CDR_STAT, cubes.BUFF_STAT
+    gear = _gear(head_p=("legendary", [(C, 1.5), ("Damage %", 15.0), (C, 1.0)]), head_b=("unique", [(C, 1.0), (C, 0.5)]),
+                 belt_p=("epic", [(B, 5.0), ("Damage %", 9.0), (B, 5.0)]), belt_b=("unique", [(B, 8.0)]))
+    inp, sens, p, base = _live("Breakthrough", typed_cdr=4.2, typed_buff=35.0, gear=gear)
+    assert set(p.exact) == {C, B} and p.exact[C].typed == 4.2 and p.exact[B].typed == 35.0
+    rows = cubes.recommend(gear, p, max_cubes=60, milestones=[5, 60])
+    key = {C: "skill_cooldown_decrease", B: "buff_duration_increase_pct"}
+    for slot, ptype, stat, own in (("head", "Potential", C, 2.5), ("head", "Bonus Potential", C, 1.5), ("belt", "Potential", B, 10.0), ("belt", "Bonus Potential", B, 8.0)):
+        typed = p.exact[stat].typed
+        row = _row(rows, slot, ptype)
+        # the Damage % line (linear) multiplies on top: strip it out by pricing the stat's own lines alone
+        only = [(s, v) for s, v in row["lines"] if s == stat]
+        m = cubes.CubeModel(p)
+        ebases = m.row_exact_bases(dict(row, lines=[tuple(x) for x in row["lines"]]), [dict(r, lines=[tuple(x) for x in r["lines"]]) for r in rows])
+        assert close(ebases[stat], typed - own, 1e-12, 1e-12)
+        g_own = 1 + m.combined_dps_gain(only, None, 0.0, ebases) / p.baseline_dps
+        assert close(g_own, _g(base, key[stat], typed, typed - own), 1e-12, 0), (slot, ptype)
+    # the table / rate it replaces is NOT exact here (off-grid typed total, 4.2 - 1.5 = 2.7 s between steps, 35 % buff past the linear regime)
+    p_old = cubes.pricing_from_sensitivity(sens, dict(inp), exact_stats=None)
+    old = cubes.recommend(gear, p_old, max_cubes=60, milestones=[5, 60])
+    assert abs(_row(old, "belt")["current_value"] - _row(rows, "belt")["current_value"]) > 1e-3 * p.baseline_dps
+    # past the table's end: 7 s of Cooldown Decrease all on the hat (typed 7, three 2 s / 1.5 s lines + ...) is the real model, not the last slope continued
+    big = _gear(head_p=("mystic", [(C, 2.0), (C, 2.0), (C, 2.0)]), head_b=("mystic", [(C, 1.0)]))
+    inp_b, sens_b, p_b, base_b = _live("Breakthrough", typed_cdr=7.0, gear=big)
+    rows_b = cubes.recommend(big, p_b, max_cubes=20, milestones=[5], only=lambda r: r["slot"] == "head")
+    assert close(1 + _row(rows_b, "head")["current_value"] / p_b.baseline_dps, _g(base_b, "skill_cooldown_decrease", 7.0, 1.0), 1e-12, 0)
+    # held lines above the typed total: the old note key stays, b0 clamps at 0 (the row's base = the other rows' lines)
+    inp_c, sens_c, p_c, base_c = _live("Breakthrough", typed_cdr=1.0, gear=gear)
+    m_c = cubes.CubeModel(p_c)
+    cubes.recommend(gear, p_c, max_cubes=20, milestones=[5], model=m_c, only=lambda r: r["slot"] == "head")
+    assert {"cdr_lines_exceed_inputs:head/Potential", "cdr_lines_exceed_inputs:head/Bonus Potential"} <= m_c.notes
+
+
+def test_exact_stats_leave_everything_else_alone():
+    """Rows without a step-stat line / a roll of one are priced exactly as before; with nothing held and a typed total on the table grid, an exact curve reproduces the
+    milestone table in pure-boss content (where the Total ratio is the weighted ratio); linear stats and golden-pinned numbers do not move."""
+    C = cubes.CDR_STAT
+    gear = _gear(ring_p=("legendary", [("Damage %", 12.0), ("Final Damage %", 6.0)]), cape_p=("epic", [("Critical Damage %", 15.0)]),
+                 head_p=("epic", [("Damage %", 12.0)]))
+    inp, sens, p, base = _live("World Boss", typed_cdr=1.5, gear=gear)
+    p_old = cubes.pricing_from_sensitivity(sens, dict(inp), exact_stats=None)
+    new = cubes.recommend(gear, p, max_cubes=40, milestones=[5, 40], only=lambda r: r["slot"] in ("ring", "cape"), sort=False)
+    old = cubes.recommend(gear, p_old, max_cubes=40, milestones=[5, 40], only=lambda r: r["slot"] in ("ring", "cape"), sort=False)
+    strip = lambda rows: [{k: v for k, v in r.items() if not k.startswith(("line_loss", "row_loss"))} for r in rows]
+    assert strip(new) == strip(old) and len(new) == 4
+    # nothing held, typed total on the 0.5 s grid: the exact curve == a milestone table that covers every reachable total (World Boss: weighted ratio == Total ratio);
+    # the table is interpolated exactly on its grid, so the two pricings must agree to rounding (the stock 5 s table would extrapolate past its end instead)
+    wide = [(x / 2, base.block({"skill_cooldown_decrease": x / 2}, {}, rebuild=True, full_search=True)[0]) for x in range(1, 25)]
+    p_grid = cubes.Pricing(p.baseline_dps, p.dps_per_unit, p.cdr_current, wide, None, p.companion, {k: v for k, v in p.exact.items() if k != C})
+    hat_new = cubes.recommend(gear, p, max_cubes=40, milestones=[5, 40], only=lambda r: r["slot"] == "head", sort=False)
+    hat_old = cubes.recommend(gear, p_grid, max_cubes=40, milestones=[5, 40], only=lambda r: r["slot"] == "head", sort=False)
+    for a, b in zip(hat_new, hat_old):
+        assert close(a["current_value"], b["current_value"], 1e-11, 1e-3) and a["smallest_n"] == b["smallest_n"]
+        for n in (5, 40):
+            assert close(a["milestone_ev"][n], b["milestone_ev"][n], 1e-9, 1e-3), (a["slot"], a["potential_type"], n)
+    # model evaluations stay small (memoised per total) for a full 30-row sheet
+    full = cubes.default_gear()
+    for r in full:
+        r.update(rarity="legendary")
+    _i, _s, pf, _b = _live("Breakthrough", typed_cdr=1.5, typed_buff=20.0, typed_sum=0.0, gear=[])
+    cubes.recommend(full, pf, max_cubes=30, milestones=[5, 30])
+    assert 0 < pf.model_evaluations() < 400, pf.model_evaluations()
+
+
 def test_golden(stride=6):
     n, bad = run_golden("python", stride)
     assert not bad, {k: v[:5] for k, v in bad.items()}
@@ -232,7 +411,8 @@ if __name__ == "__main__":
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args()
     t0 = time.time()
-    for fn in (test_roll_table_matches_builder, test_separate_pity_caps, test_dps_per_unit_table_matches_workbook, test_properties, test_adapter_from_sensitivity):
+    for fn in (test_roll_table_matches_builder, test_separate_pity_caps, test_dps_per_unit_table_matches_workbook, test_properties, test_ev_curve_for_every_cube_count,
+               test_adapter_from_sensitivity, test_exact_companion_held_line_and_threshold, test_exact_cdr_and_buff_duration_lines, test_exact_stats_leave_everything_else_alone):
         fn()
         print(f"ok: {fn.__name__}", flush=True)
     failed = False

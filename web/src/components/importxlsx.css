@@ -1,5 +1,7 @@
 /* Import from Excel: drop zone and preview dialog (uses the theme variables of styles.css). */
-.xlsx-import { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.xlsx-import { margin-top: 4px; }
+.xlsx-import .xlsx-about { margin: 4px 0; }
+.xlsx-import .xlsx-about ul { padding-left: 20px; margin: 4px 0; }
 .xlsx-import h3 { margin: 0 0 4px; font-size: 1rem; }
 .xlsx-drop { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; border: 2px dashed var(--line); border-radius: 8px; padding: 12px; margin: 8px 0; background: var(--surface); }
 .xlsx-drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }

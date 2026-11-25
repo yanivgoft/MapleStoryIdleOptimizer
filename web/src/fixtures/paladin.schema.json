@@ -47,7 +47,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Character level, 1-300; unlocks skills and masteries.",
+   "help": "Your character level (1-300); it unlocks skills and masteries.",
    "default_by_content": null,
    "min": 1,
    "max": 300
@@ -99,7 +99,7 @@
    ],
    "options": null,
    "computed": false,
-   "help": "'chapter-substage' (e.g. '28-9') for Breakthrough/Chapter Hunt, just the chapter number for Chapter Boss, or just the stage number for Weapon/Equipment/Enhancement/EXP/Hero Dungeon. Not applicable to World Boss/PvP.",
+   "help": "Breakthrough and Chapter Hunt: chapter and stage like 28-9. Chapter Boss: the chapter number. Dungeons: the stage number.",
    "default_by_content": {
     "Chapter Boss": "28",
     "Breakthrough": "28-9",
@@ -124,7 +124,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Flat ATTACK from your stat screen (the model does not add a main-stat conversion on top).",
+   "help": "Flat ATTACK, as shown on your preset page.",
    "default_by_content": null,
    "min": 0,
    "max": 10000000000000.0
@@ -140,7 +140,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Total ATTACK % bonus (large late-game values are normal).",
+   "help": "Total ATTACK % (very large values are normal late game).",
    "default_by_content": null,
    "min": 0,
    "max": 100000000.0
@@ -156,7 +156,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Your own DEF stat; PvP assumes the opponent has the same Defense as you.",
+   "help": "Your own Defense. In PvP the opponent is assumed to have the same Defense as you.",
    "default_by_content": null,
    "min": 0,
    "max": 10000000000000.0
@@ -172,7 +172,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Crit Rate in %; only the first 100% counts directly (Ring of Cycles / Book of Ancient use the excess).",
+   "help": "Only the first 100% counts directly; Ring of Cycles and Book of Ancient also use the excess.",
    "default_by_content": null,
    "min": 0,
    "max": 500
@@ -204,7 +204,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Base value, excludes Nimble Feet.",
+   "help": "Attack Speed in %, as shown on your preset page.",
    "default_by_content": null,
    "min": 0,
    "max": 150
@@ -220,7 +220,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Include Iron Body's own +30 if unlocked.",
+   "help": "Flat STR, as shown on your preset page.",
    "default_by_content": null,
    "min": 0,
    "max": 10000000000000.0
@@ -252,7 +252,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "DEX (sub stat of STR / LUK classes).",
+   "help": "DEX (the sub stat of STR / LUK classes).",
    "default_by_content": null,
    "min": 0,
    "max": 10000000000000.0
@@ -268,7 +268,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "DAMAGE % from your stat screen.",
+   "help": "DAMAGE %, as shown on your preset page.",
    "default_by_content": null,
    "min": 0,
    "max": 100000000.0
@@ -284,7 +284,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "DAMAGE AMP % from your stat screen.",
+   "help": "DAMAGE AMP %, as shown on your preset page.",
    "default_by_content": null,
    "min": 0,
    "max": 100000000.0
@@ -300,7 +300,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Extra damage % applied to basic attacks only.",
+   "help": "Extra damage % for basic attacks only.",
    "default_by_content": null,
    "min": 0,
    "max": 100000000.0
@@ -316,7 +316,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Extra damage % applied to skills only.",
+   "help": "Extra damage % for skills only.",
    "default_by_content": null,
    "min": 0,
    "max": 100000000.0
@@ -332,7 +332,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Defense Penetration in %, 0-100 (the total shown on your stat screen).",
+   "help": "Defense Penetration in %, 0-100 (the total shown on your preset page).",
    "default_by_content": null,
    "min": 0,
    "max": 100
@@ -380,7 +380,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Extra damage while the enemy is frozen/stunned/KO'd; 0 = no bonus (KO still doubles damage).",
+   "help": "Extra damage while the enemy is frozen, stunned or KO'd; 0 = no bonus (a KO also doubles damage).",
    "default_by_content": null,
    "min": 0,
    "max": 100000000.0
@@ -396,7 +396,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Lower end of your damage range in % of the max (the model averages min and max).",
+   "help": "Lower end of your damage range, in % of the max (the average of min and max is used).",
    "default_by_content": null,
    "min": 0,
    "max": 1000
@@ -428,7 +428,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Base value, excludes Infinity.",
+   "help": "Final Damage in %, as shown on your preset page.",
    "default_by_content": null,
    "min": 0,
    "max": 100000000.0
@@ -524,7 +524,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Seconds; applies to every cooldown (skills, buffs and passives).",
+   "help": "Seconds taken off every cooldown (skills, buffs and passives).",
    "default_by_content": null,
    "min": 0,
    "max": 60
@@ -540,7 +540,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Flat, adds to the 6-target normal-monster base.",
+   "help": "Extra targets for basic attacks, on top of the base 6 against normal monsters.",
    "default_by_content": null,
    "min": 0,
    "max": 100
@@ -556,7 +556,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Extends the duration of your buffs and timed effects in %.",
+   "help": "Makes your buffs and timed effects last longer, in %.",
    "default_by_content": null,
    "min": 0,
    "max": 10000
@@ -572,7 +572,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Companion duration = 30 s x (1 + this/100); summon cooldown is always 90 s.",
+   "help": "The companion stays 30 s x (1 + this/100); its 90 s summon cooldown never changes.",
    "default_by_content": null,
    "min": 0,
    "max": 10000
@@ -597,7 +597,7 @@
     "More Boss"
    ],
    "computed": false,
-   "help": "Breakthrough / Hero Dungeon only: how the fight time splits between normal monsters and the boss.",
+   "help": "How the fight time splits between normal monsters and the boss.",
    "default_by_content": null,
    "min": null,
    "max": null
@@ -619,7 +619,7 @@
    ],
    "options": null,
    "computed": false,
-   "help": "Normal-monster content only; 999 = uncapped.",
+   "help": "Normal-monster content only; 999 = no limit.",
    "default_by_content": null,
    "min": 0,
    "max": 100000
@@ -627,7 +627,7 @@
   {
    "key": "companion_choice",
    "label": "Companion",
-   "group": "Companion",
+   "group": "Main companion",
    "type": "enum",
    "unit": "",
    "default": "None",
@@ -661,7 +661,7 @@
   {
    "key": "companion_level",
    "label": "Companion Level",
-   "group": "Companion",
+   "group": "Main companion",
    "type": "int",
    "unit": "",
    "default": 0,
@@ -669,7 +669,7 @@
    "applicable": null,
    "options": null,
    "computed": false,
-   "help": "Level of the chosen companion (0 = not unlocked, 1-18); the workbook keeps one level per companion.",
+   "help": "Level of the chosen companion (0 = not unlocked, 1-18); set on the Companions tab.",
    "default_by_content": null,
    "min": 0,
    "max": 18
@@ -687,7 +687,7 @@
    ],
    "options": null,
    "computed": false,
-   "help": "PvP content only; shorter fights cut DoT/summon ticks and buff uptime.",
+   "help": "Shorter fights count fewer damage-over-time and summon ticks and less buff uptime.",
    "default_by_content": null,
    "min": 1,
    "max": 600
@@ -799,7 +799,7 @@
    "applicable": null,
    "options": null,
    "computed": true,
-   "help": "0 = steady state (Chapter Hunt).",
+   "help": "0 = no time limit (Chapter Hunt).",
    "default_by_content": null,
    "min": null,
    "max": null

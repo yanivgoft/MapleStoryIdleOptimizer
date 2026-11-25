@@ -11,7 +11,7 @@ export function syncStatusText(s: Pick<AccountState, "phase" | "error" | "dirtyC
   if (s.dirtyCount > 0) return `${s.dirtyCount} unsaved profile${s.dirtyCount === 1 ? "" : "s"}`;
   if (s.settingsDirty) return "Settings changed (saved with your next Save)";
   if (s.lastSyncAt) return `All changes saved (${new Date(s.lastSyncAt).toLocaleTimeString()})`;
-  return "Signed in";
+  return "Signed in - profiles are saved only when you press Save to account";
 }
 
 export function SignInButtonView({ busy, onClick, onPrefetch }: { busy?: boolean; onClick: () => void; onPrefetch?: () => void }) {
@@ -135,7 +135,7 @@ export function AccountMenuView(p: AccountMenuProps) {
           {item(`Save to account${state.dirtyCount > 0 ? ` (${state.dirtyCount} unsaved)` : ""}`, p.onSave, { primary: true, disabled: !canSave, hint: canSave ? "Writes the profiles that changed since the last save" : "Nothing to save" })}
           {item("Refresh from account", p.onRefresh, { disabled: busy, hint: "Reads your account again and merges it with this device" })}
           {state.skippedCount > 0 && item(`Upload local-only profiles (${state.skippedCount})...`, p.onUploadLocal)}
-          {(state.history.length > 0 || state.notices.some((n) => n.kind === "conflict")) && item(`Version history (${state.history.length})...`, p.onHistory)}
+          {(state.history.length > 0 || state.notices.some((n) => n.kind === "conflict")) && item(`Version history (${state.history.length})...`, p.onHistory, { hint: "Versions of a profile that lost when two devices edited it: restore one as a new profile" })}
           {item("Download all my data (JSON)", p.onExport, { disabled: busy })}
           {item("Delete my account and data...", p.onDelete, { danger: true })}
           {item("Sign out...", p.onSignOut)}

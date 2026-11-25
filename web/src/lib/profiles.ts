@@ -22,8 +22,16 @@ function read(): Profile[] {
   }
 }
 
+/** Shown when the browser refuses to store the profile list (storage full, or blocked by the browser's privacy settings). */
+export const SAVE_FAIL_MESSAGE = "Could not save: this browser's storage is full or blocked. Export your profiles to keep a copy.";
+
+/** Write the list; a refusing browser throws an Error with `SAVE_FAIL_MESSAGE` (callers show `e.message`) and nothing is announced to the listeners. */
 function write(list: Profile[]) {
-  localStorage.setItem(KEY, JSON.stringify(list));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(list));
+  } catch {
+    throw new Error(SAVE_FAIL_MESSAGE);
+  }
   changeListeners.forEach((fn) => fn());
 }
 

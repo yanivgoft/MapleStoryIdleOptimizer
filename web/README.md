@@ -2,13 +2,13 @@
 
 Everything on the form is generated from the engine's schema (`GET /api/classes/{id}/schema`): groups become sections, `type`/`unit`/`options`
 pick the widget, `applicable` hides fields for the selected content type, `computed` fields are read-only (values come from the result's
-`derived`).  Per-content-type values are kept separately (like the workbook's columns): switching content type loads that content type's
-defaults the first time and remembers edits afterwards; level and companion level are shared; "Copy stats from" copies between visited
+`derived`).  Per-content-type values are kept separately (like the workbook's columns): switching to a content type opened for the first time seeds it
+(`seedSource` in `lib/schemaForm.ts`: a visited content type of the same group - Chapter Hunt / EXP / Equipment Dungeon, Breakthrough / Hero Dungeon, the four boss types, most recently edited first - else the one switched from, else the defaults; stats, companion pick and equipped artifacts, never Chapter-Stage; stored values are never overwritten) and remembers edits afterwards; level and companion level are shared; "Copy stats from" copies between visited
 content types.  Any change triggers a debounced (350 ms) `POST .../compute`; 422 field messages are shown under the fields and in a banner.
 
 ```
 src/
-  main.tsx, App.tsx          shell: class picker, tabs (Calculator, Companions, Profiles, Stat values, Artifacts, Cubes, Equipment compare, Help), theme toggle, debounced compute
+  main.tsx, App.tsx          shell: class picker, a real tablist (Calculator, Companions, Artifacts, Stat values, Cubes, Equipment compare, Profiles, Help; `lib/tabs.ts`), one <main>, theme toggle, debounced compute, silent draft autosave (`lib/draft.ts`, `msi.draft.v1`), friendly server messages (cold start after 3 s, unreachable + Retry)
   api.ts                     fetch client (VITE_API_URL, default http://localhost:8000) + mock mode (VITE_MOCK=1, serves src/fixtures/)
   types.ts                   TypeScript types of schema / result / form state (derived from the engine's real JSON)
   lib/schemaForm.ts          pure form logic: grouping, applicability, defaults, per-content state, request building, parsing, error mapping
@@ -22,7 +22,7 @@ src/
                              migrations, setSlot, filter), star options, effect wording + badges, request slots (`inputs.artifacts`), `artifact_stars`, result breakdown
   lib/artifact_values.json   the engine's star-value table (engine/data/artifacts.py ARTIFACT_STAR_VALUES), written by scripts/gen_fixtures.py
   lib/companions.ts          Companions tab logic (pure): levels per companion (`FormState.companions`), owned list / dropdown options, chosen level for the request, `companion_levels` request extras,
-                             old-profile migration, comparison view model, the potential-line totals (port of the workbook's) and the summon-time table view model
+                             old-profile migration and the comparison view model
   components/CompanionsPanel.tsx  the "Companions" tab (container + `CompanionsView`); EquippedArtifacts.tsx the "Equipped artifacts" section of the Inputs form (slot dropdowns per content type); companions.css
   lib/classes.ts             class picker logic: grouping by job family, stat identity label, per-class status line
   lib/sensitivity.ts         Stat values logic (types of POST .../sensitivity, ranking / sorting, formatting, equip ranking order, lazy-loading plan)
@@ -46,6 +46,9 @@ src/
   lib/theme.ts               theme logic (pure): Auto -> Light -> Dark cycle, localStorage `msi.theme` (try/catch: blocked storage reads as Auto), `applyTheme` (sets / removes `data-theme` and `color-scheme` on <html>)
   components/ThemeToggle.tsx header button (inline SVG sun / moon / auto icons, aria-label + title say the current mode and what a click does)
   content/help.tsx           the copy of the Help tab (how to use, conventions, known limitations, the per-class capability rule); components/HelpPanel.tsx assembles it
+  components/TabNotes.tsx    `AboutTab` (the collapsed "About this tab" block at the BOTTOM of a tab; long explanations live there and in Help, never above the controls) and `Unavailable` ("Not available for this class yet." + a "See Help" link when the app passes `onOpenHelp`)
+  lib/plainText.ts           player wording for the few server texts that still carry jargon (artifact "no DPS effect" reasons, the baked-in note)
+  ui-text.test.tsx           GUARD: renders Help and every tab and fails when a forbidden word (Excel, workbook, sheet, engine, model, golden, Sensitivity, snapshot, ...) reaches the screen; only the optional Excel import (Profiles > Advanced) may use them
   styles.css                 plain CSS; one palette of CSS variables (light-dark()), theme = system (Auto) or forced Light / Dark
 ```
 
@@ -97,7 +100,7 @@ npm test               # vitest: formatter, schema->form logic (iterates every c
 
 ## Companions tab
 
-The full companion input page (the workbook's `CompanionsInput` sheet); state in `FormState.companions = {levels: {name: 1..18}, potentialLinesPct}` (absent name = Not unlocked), saved with profiles
+The full companion input page (the workbook's `CompanionsInput` sheet); state in `FormState.companions = {levels: {name: 1..18}}` (absent name = Not unlocked; a `potentialLinesPct` stored by older versions is ignored and dropped on load), saved with profiles
 (localStorage + JSON export / import) and repaired on load.  **Old profiles** (no `companions`) are migrated by `normalizeState`: every companion chosen in any content type stays owned at the old shared
 `companion_level` (level 0 = nothing was owned, the choice becomes None).  Choosing a companion on the Calculator, the "use in <content type>" / "use none" links of this page, the "chosen" marker and
 profile load / import all read and write the same state.
@@ -106,14 +109,8 @@ profile load / import all read and write the same state.
   companion)** and **rank** (among the owned ones, from the Sensitivity `companions` part; "n/a" for classes without stat values, with the text "gain: not available for this class yet"), a "chosen" chip on the
   companion of the current content type, a "best for <content type>" chip + highlighted row on rank 1 and a sentence comparing the best with the chosen one.  Numbers are shown only for a row that was
   computed at the level now selected (a changed level shows "..." until the new answer arrives).
-* **Summoning Time Increase potential lines**: the workbook's table - every total that 1-3 boots lines can add up to (5 ... 60, lines roll at the item's tier or the one below; the combinations are a port of
-  `companion_model.potential_line_totals`, tested against the engine's totals), with the window, DPS gain / % gain vs none of these lines, DPS vs your current setup and, in Breakthrough / Hero Dungeon, the
-  boss-phase columns (average DPS change, time factor, total damage).  The one input is "Lines already counted in your Summoning Time Increase %" (`companion_potential_lines_pct`: the part of the
-  Calculator's value that comes from re-rollable boots lines, default 0; the Cubes tab's lines of that stat can be copied with one click); the row equal to it is marked "yours".  Rows where the table itself shows a jump
-  (slope more than twice the median) get a "step" chip, and the explanation text covers the thresholds (e.g. Blaze Wizard's 3rd stun cast needs +13.667%, so +13% gains almost nothing over +12% and +15% a lot).
-* **Requests**: `POST .../sensitivity` with the compute inputs + `companion_levels` (all 16, 0 = not unlocked) + `companion_potential_lines_pct` + `which: ["companions"]` (+ `"summon_time"` once a companion is
-  chosen), only while the tab is visible, 600 ms debounce, aborted when superseded (the same `useSensitivity` loader as Stat values; the component stays mounted).  Classes without stat values never call the API.
-* **Mock mode**: the class's sensitivity fixture (already holds both parts) is re-labelled with the requested levels (`relevel`: owned ones ranked by the fixture's gains, the numbers are the fixture's).
+* **Requests**: `POST .../sensitivity` with the compute inputs + `companion_levels` (all 16, 0 = not unlocked) + `which: ["companions"]`, only while the tab is visible, 600 ms debounce, aborted when superseded (the same `useSensitivity` loader as Stat values; the component stays mounted).  Classes without stat values never call the API.
+* **Mock mode**: the class's sensitivity fixture is re-labelled with the requested levels (`relevel`: owned ones ranked by the fixture's gains, the numbers are the fixture's).
 
 ## Artifacts tab
 
@@ -188,7 +185,7 @@ the stat-values engine (every class today); for a class without it each shows ".
 JSON export/import, repaired on load, absent in older profiles).
 
 * **Cubes tab** (stays mounted, so a result survives a tab switch).  The editor is the PotentialCubes sheet: 15 slots x {Potential, Bonus Potential}, each with rarity, pity count (the cap of that rarity on that
-  track is shown next to it and bounds the input: the two tracks have different caps) and 3 lines (stat dropdown: ONLY the stats that piece of equipment can roll, `stats_by_slot` of the meta - Potential and Bonus Potential share the list, the engine's roll tables are keyed by slot and rarity, not by track; a stored stat outside it, e.g. from an old profile or an Excel import, stays selectable as one flagged option "<stat> (not rollable on this slot)" with a warning icon and title; plus a value).  Nothing is requested while you
+  track is shown next to it and bounds the input: the two tracks have different caps) and 3 lines (stat dropdown: ONLY the stats that piece of equipment can roll, `stats_by_slot` of the meta - Potential and Bonus Potential share the list, the engine's roll tables are keyed by slot and rarity, not by track; a stored stat outside it, e.g. from an old profile or an Excel import, stays selectable as one flagged option "<stat> (not rollable on this slot)" with a warning icon and title; the stats are grouped (`<optgroup>`: main stat %, flat, scaling, critical, damage, attack, skills / utility, defense) by the ONE definition `lib/statGroups.ts`, shared with the artifact potential lines and Equipment compare, and a test fails when a real stat is left in "Other"; Skill Cooldown Decrease is rolled on the hat only and Buff Duration Increase on the belt only; the value is a dropdown of exactly the values the game rolls for that slot / rarity / line / stat (`roll_values` of the meta, "12 (prime)" / "9 (normal)", prime first; picking a stat picks its prime value; a stored number that is not listed stays as one "12.5 (custom)" option, a stat the slot cannot roll keeps a typed number); each slot is its own table block with a stronger rule and an alternating tint).  Nothing is requested while you
   type.  **Calculate** sends the rows you filled in (or, with the checkbox, all 30; blank = Normal with no lines) 6 rows at a time (`CUBES_CHUNK_ROWS`: 5 requests for the whole sheet, under the API's 20 per minute),
   each request carries the whole gear (summoning-time lines of other rows matter) plus `only`; a progress bar counts rows, **Cancel** aborts the request in flight and keeps what arrived, a failing chunk (429 / 504 / 422 /
   network) stops the run with a message and keeps earlier rows, 501 shows the "not available" text.  The ranking updates as rows arrive and says "outdated" when the inputs or the gear changed since.  Columns: slot / track,

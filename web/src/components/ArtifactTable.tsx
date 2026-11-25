@@ -4,11 +4,11 @@ import "./cubes.css";
 import "./artifacttable.css";
 import { api } from "../api";
 import {
-  NOT_UNLOCKED, STAR_TOOLTIP, badgesFor, effectText, equippedKeys, isBlankLine, isNoDps, lineCount, normalizeArtifacts, setLine,
+  NOT_UNLOCKED, badgesFor, equippedKeys, isBlankLine, isNoDps, lineCount, normalizeArtifacts, setLine,
   setStar, starIndex, starOptions, visibleArtifacts, type Badge,
 } from "../lib/artifacts";
 import {
-  lineKnown, lineUnlockStar, lineValue, potentialTables, potentialsRequest, type PotentialRow, type PotentialsResult, type PotentialTables,
+  lineKnown, lineValue, potentialTables, potentialsRequest, type PotentialRow, type PotentialsResult, type PotentialTables,
 } from "../lib/artifactPotentials";
 import { NONE_STAT, NOT_ROLLABLE_ON_ARTIFACTS, type CubesMeta } from "../lib/cubes";
 import { formatFull, formatNumber } from "../lib/format";
@@ -18,19 +18,18 @@ import type { ArtifactInfo, ArtifactSchema, ArtifactsState } from "../types";
 import { StatSelect } from "./CubesPanel";
 
 export const POTENTIALS_UNSUPPORTED_TEXT = "Artifact potentials are not available for this class yet.";
-const GAINS_UNSUPPORTED_NOTE = `${POTENTIALS_UNSUPPORTED_TEXT} You can still record your potential lines here: they are saved with the profile and valued once this class gets Stat values.`;
+const GAINS_UNSUPPORTED_NOTE = `${POTENTIALS_UNSUPPORTED_TEXT} Your lines are still saved with the profile.`;
 
 export function BadgeChip({ badge, onOpenCompanion, compact }: { badge: Badge; onOpenCompanion: () => void; compact?: boolean }) {
-  const text = `${badge.label} - ${badge.detail}`;
   if (badge.kind === "companion" || badge.kind === "status") {
     return (
-      <button type="button" className={`badge ${badge.kind}`} title={text} onClick={onOpenCompanion}>
+      <button type="button" className={`badge ${badge.kind}`} onClick={onOpenCompanion}>
         {badge.label} <span className="badge-link">(go to Companion)</span>
       </button>
     );
   }
   return (
-    <span className={`badge ${badge.kind}`} title={text}>
+    <span className={`badge ${badge.kind}`}>
       {badge.label}
       {!compact && <span className="badge-detail">: {badge.detail}</span>}
     </span>
@@ -52,7 +51,7 @@ interface ViewProps {
   pending?: boolean;
   onRetry?: () => void;
   onOpenCompanion: () => void;
-  /** artifact ids equipped in the CURRENT content type (read-only here: they are chosen in the Inputs tab's "Equipped artifacts" section) */
+  /** artifact ids equipped in the CURRENT content type (read-only here: they are chosen in the Calculator's "Equipped artifacts" section) */
   equipped: readonly string[];
   contentType?: string;
   /** link to that section (absent: no link) */
@@ -65,8 +64,8 @@ interface ViewProps {
 const NOT_UNLOCKED_VALUE = NOT_UNLOCKED;
 
 /**
- * The Artifacts tab's one table (the workbook's ArtifactsInput sheet): a row per artifact with its Star Level, a read-only "equipped" marker (for the current content
- * type; the slots are chosen on the Inputs tab, at most `art.max_slots`) and the 3 potential lines (rarity + stat; line 3 only for Legendary artifacts) with their DPS gain and the artifact's total.  Presentational: the container
+ * The Artifacts tab's one table: a row per artifact with its Star Level, a read-only "equipped" marker (for the current content
+ * type; the slots are chosen on the Calculator, at most `art.max_slots`) and the 3 potential lines (rarity + stat; line 3 only for Legendary artifacts) with their DPS gain and the artifact's total.  Presentational: the container
  * (`ArtifactTable`) feeds it the potentials answer.
  */
 export function ArtifactTableView(p: ViewProps) {
@@ -93,23 +92,10 @@ export function ArtifactTableView(p: ViewProps) {
   return (
     <section className="card artifacts art-table-card" aria-label="Artifacts table">
       <h2>Artifacts</h2>
-      <p className="note">
-        One row per artifact, like the workbook&apos;s ArtifactsInput sheet: its star level and its potential lines, kept for every artifact and saved with your profile (the same for every content
-        type). Which artifacts are equipped (up to {art.max_slots} slots, an artifact once) is chosen per content type in the <strong>Equipped artifacts</strong> section of the Inputs tab
-        {p.onOpenInputs && (
-          <>
-            {" "}
-            <button type="button" className="link" onClick={p.onOpenInputs}>
-              (go to Equipped artifacts)
-            </button>
-          </>
-        )}
-        ; the rows marked &quot;equipped&quot; below are the ones equipped in {p.contentType ? <strong>{p.contentType}</strong> : "the current content type"}.
-      </p>
       <div className="art-controls-row">
         <label htmlFor="art-filter">Filter</label>
         <input id="art-filter" type="search" value={text} placeholder="filter by name" onChange={(e) => setText(e.target.value)} />
-        <label className="check" htmlFor="art-only-active" title="Hide the artifacts that are neither unlocked (a star level is set) nor equipped">
+        <label className="check" htmlFor="art-only-active">
           <input id="art-only-active" type="checkbox" checked={onlyActive} onChange={(e) => setOnlyActive(e.target.checked)} /> Show only unlocked / equipped
         </label>
         <span className={`equip-count${equipped >= art.max_slots ? " full" : ""}`} role="status" data-testid="equip-count">
@@ -145,21 +131,15 @@ export function ArtifactTableView(p: ViewProps) {
           <thead>
             <tr>
               <th scope="col">Artifact</th>
-              <th scope="col" title={STAR_TOOLTIP}>
-                Star level
-              </th>
-              <th scope="col" title={`Read-only: the artifacts equipped in the current content type (chosen in the Inputs tab, at most ${art.max_slots})`}>
-                Equipped
-              </th>
+              <th scope="col">Star level</th>
+              <th scope="col">Equipped</th>
               {[0, 1, 2].map((i) => (
-                <th key={i} scope="col" title={`Unlocks at star ${lineUnlockStar(tables, i)}${i === 2 ? "; Legendary artifacts only" : ""}`}>
+                <th key={i} scope="col">
                   Line {i + 1}
                   {i === 2 ? " (Legendary)" : ""}
                 </th>
               ))}
-              <th scope="col" title="Total DPS the artifact's potential lines would add (same-stat lines add, different stats multiply)">
-                Potential total
-              </th>
+              <th scope="col">Potential total</th>
             </tr>
           </thead>
           <tbody>
@@ -167,8 +147,7 @@ export function ArtifactTableView(p: ViewProps) {
               <RankGroup key={g.rank} rank={g.rank} cols={COLS}>
                 {g.items.map((info) => {
                   const e = state[info.key];
-                  const fx = effectText(info.key, e.star);
-                  const noDps = isNoDps(info);
+                                  const noDps = isNoDps(info);
                   const row = rows.get(info.key);
                   const n = lineCount(info);
                   const isEq = equippedIds.includes(info.key);
@@ -185,19 +164,10 @@ export function ArtifactTableView(p: ViewProps) {
                             <BadgeChip key={b.kind} badge={b} onOpenCompanion={p.onOpenCompanion} compact />
                           ))}
                         </div>
-                        {noDps ? (
-                          <p className="note art-fx">No DPS effect: {info.reason || "not modelled"}.</p>
-                        ) : (
-                          <p className="note art-fx" title={[...fx.live, ...fx.baked, fx.note ?? ""].filter(Boolean).join("\n")}>
-                            {fx.summary || "Equip effect not applied by the model"}
-                            {fx.live.length === 0 && fx.baked.length > 0 ? " (baked into your stats: not applied)" : ""}
-                          </p>
-                        )}
                       </td>
                       <td>
                         <select
                           aria-label={`${info.name} star level`}
-                          title={STAR_TOOLTIP}
                           value={String(e.star ?? NOT_UNLOCKED_VALUE)}
                           onChange={(ev) => {
                             const o = opts.find((x) => String(x.value) === ev.target.value);
@@ -210,19 +180,16 @@ export function ArtifactTableView(p: ViewProps) {
                             </option>
                           ))}
                         </select>
-                        {isEq && e.star === null && <div className="note">acts as star 0</div>}
                       </td>
                       <td className="equip-cell">
                         {isEq && (
-                          <span className="chip ok" title="Equipped in the current content type. Change it in the Equipped artifacts section of the Inputs tab.">
-                            equipped
-                          </span>
+                          <span className="chip ok">equipped</span>
                         )}
                       </td>
                       {[0, 1, 2].map((i) => {
                         if (i >= n) {
                           return (
-                            <td key={i} className="line-na" title={`${info.rank} artifacts have ${n} potential lines`}>
+                            <td key={i} className="line-na">
                               -
                             </td>
                           );
@@ -287,13 +254,6 @@ export function ArtifactTableView(p: ViewProps) {
           </tbody>
         </table>
       </div>
-      {showGains && (
-        <p className="note">
-          Potential lines are a reference calculator: the gains do not change the calculation (type a roll you keep into the Inputs yourself). Epic / Unique artifacts have 2 lines, Legendary 3; lines
-          unlock at star {tables.line_min_star.join(" / ")}, locked lines count 0. Same-stat lines add, different stats multiply. A stat marked with a warning is not rollable on artifacts: it is kept
-          from an old profile or an import, valued at 0 and sent as empty.
-        </p>
-      )}
       {(p.status.loading || p.pending) && showGains && (
         <div className="sens-loading" role="status">
           <span className="spinner" aria-hidden="true" /> Calculating the potential gains...

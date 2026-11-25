@@ -130,6 +130,8 @@ export interface FormState {
   // Equipped artifacts PER CONTENT TYPE (the Inputs page's "Equipped artifacts" section, like the workbook's slot rows).  Absent in profiles saved before
   // (those had one global `artifacts[key].equipped` flag per artifact): normalizeState seeds every content type from the old flags (lib/artifacts.ts `normalizeEquipped`).
   equippedArtifacts?: EquippedState;
+  // Content types the user edited, most recent first (decides which sibling a first-time content type is seeded from, lib/schemaForm.ts `seedSource`); absent in older profiles
+  editOrder?: string[];
   // Companions tab: level of every companion owned + boots lines already in the summoning-time input (absent in profiles saved before the tab existed:
   // normalizeState migrates the old shared companion level)
   companions?: CompanionsState;

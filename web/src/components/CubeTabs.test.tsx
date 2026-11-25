@@ -6,7 +6,7 @@ import { initialState } from "../lib/schemaForm";
 import { IDLE_STATUS } from "../lib/liveRequest";
 import { IDLE_RUN, type RunState } from "../lib/cubesRunner";
 import { blankEquip, compareEquip } from "../lib/equipment";
-import { gearKey, blankRow, type CubesState } from "../lib/cubes";
+import { gearKey, blankRow, evPctAt, type CubesState } from "../lib/cubes";
 import { emptyArtifacts, setLine, setStar } from "../lib/artifacts";
 import { STATIC_POTENTIAL_TABLES } from "../lib/artifactPotentials";
 import type { ArtifactSchema } from "../types";
@@ -30,7 +30,7 @@ const doneRun: RunState = { ...IDLE_RUN, phase: "done", done: 30, total: 30, row
 function cubesView(over: Partial<Parameters<typeof CubesView>[0]> = {}) {
   return strip(
     renderToString(
-      <CubesView meta={meta} metaStatus={IDLE_STATUS} state={state} onState={noop} run={IDLE_RUN} milestone={100} onMilestone={noop} sort="ev" onSort={noop} includeBlank={false}
+      <CubesView meta={meta} metaStatus={IDLE_STATUS} state={state} onState={noop} run={IDLE_RUN} countText="100" onCountText={noop} cubes={100} sort="ev" onSort={noop} includeBlank={false}
         onIncludeBlank={noop} outdated={false} onCalculate={noop} onCancel={noop} {...over} />,
     ),
   );
@@ -53,13 +53,17 @@ describe("Cubes tab", () => {
     expect((html.match(/class="cfg"/g) ?? []).length).toBe(2); // the two configured rows are marked
     expect(html).toContain("Companion Summoning Time Increase %"); // offered (the boots roll it)
   });
-  it("stat dropdowns list ONLY the stats the slot can roll: no 'Other stats' group; a stored non-rollable stat is ONE flagged option", () => {
+  it("stat dropdowns list ONLY the stats the slot can roll, in groups by kind (no 'Other' group); a stored non-rollable stat is ONE flagged option", () => {
     const html = strip(renderToString(<GearEditor meta={meta} state={state} onState={noop} />));
     expect(html).not.toContain("Other stats");
-    expect(html).not.toContain("optgroup");
+    expect(html).not.toContain('optgroup label="Other"');
     const sel = (h: string, id: string) => h.match(new RegExp(`<select aria-label="${id}"[\\s\\S]*?</select>`))?.[0] ?? "";
     const head = sel(html, "Head Potential line 2 stat");
     expect((head.match(/<option/g) ?? []).length).toBe(1 + meta.stats_by_slot.head.length);        // (none) + the head's own stats
+    expect(head).toContain("Skill Cooldown Decrease (seconds)");                                    // exclusive to the hat ...
+    expect(sel(html, "Belt Potential line 1 stat")).not.toContain("Skill Cooldown Decrease");
+    expect(sel(html, "Belt Potential line 1 stat")).toContain("Buff Duration Increase %");          // ... and Buff Duration Increase to the belt
+    expect(head).not.toContain("Buff Duration Increase %");
     expect(head).not.toContain("Companion Summoning Time Increase %");                              // only boots-like slots roll it
     expect(head).not.toContain("not rollable");
     expect(sel(html, "Boots Potential line 1 stat")).toContain("Companion Summoning Time Increase %");
@@ -72,10 +76,17 @@ describe("Cubes tab", () => {
     expect(flagged).toContain("kept so nothing is lost");
     expect((flagged.match(/Companion Summoning Time Increase %/g) ?? []).length).toBe(2 + 1);        // value attr + label + the title text
     expect((flagged.match(/<option/g) ?? []).length).toBe(1 + 1 + meta.stats_by_slot.head.length);
+    expect(flagged.indexOf("(not rollable on this slot)")).toBeLessThan(flagged.indexOf("<optgroup"));   // the flagged entry sits above the groups
     expect(sel(h2, "Head Potential line 2 stat")).not.toContain("Companion Summoning");              // other lines do not offer it
+    // the same for the two slot-exclusive stats found on another slot (an old profile / an import): kept, flagged, never offered as rollable there
+    const stray: CubesState = { [gearKey("boots", "Bonus Potential")]: { rarity: "epic", pity: 0, lines: [{ stat: "Skill Cooldown Decrease (seconds)", value: 0.5 }, { stat: "Buff Duration Increase %", value: 5 }, { stat: "(none)", value: null }] } };
+    const h3 = strip(renderToString(<GearEditor meta={meta} state={stray} onState={noop} />));
+    expect(sel(h3, "Boots Bonus Potential line 1 stat")).toContain("\u26A0 Skill Cooldown Decrease (seconds) (not rollable on this slot)");
+    expect(sel(h3, "Boots Bonus Potential line 2 stat")).toContain("\u26A0 Buff Duration Increase % (not rollable on this slot)");
+    expect(sel(h3, "Boots Potential line 1 stat")).not.toContain("Skill Cooldown Decrease");
     expect(sel(h2, "Cape Potential line 1 stat")).not.toContain("not rollable");
   });
-  it("explains the two pity tracks and the crit-rate cap before any calculation, button counts the rows", () => {
+  it("explains the two pity tracks and the crit-rate cap in the collapsed About block at the bottom, button counts the rows", () => {
     const html = cubesView();
     expect(html).toContain("Potential and Bonus Potential are separate roll tracks");
     expect(html).toContain("Normal 30 / 42");
@@ -98,24 +109,25 @@ describe("Cubes tab", () => {
     expect(cubesView({ run: doneRun })).toContain("(done)");
   });
   it("ranked recommendations: every row, the columns, verdict chips with their reason, EV at the chosen milestone", () => {
-    const html = cubesView({ run: doneRun, milestone: 200, onCsv: noop });
+    const html = cubesView({ run: doneRun, cubes: 200, countText: "200", onCsv: noop });
     expect((html.match(/data-verdict="/g) ?? []).length).toBe(30);
-    for (const h of ["Cubes to positive EV", "N for 50%", "N for 75%", "EV @ 200 cubes", "Worth rolling?"]) expect(html).toContain(h);
+    for (const h of ["Worth now (% of Total DPS)", "Cubes until rolling pays off", "Cubes for 50% chance of an upgrade", "Cubes for 75% chance of an upgrade", "Average gain after 200 cubes", "Worth rolling?"]) expect(html).toContain(h);
+    for (const old of ["Cubes to positive EV: ", "N for 50%: ", "N for 75%: ", "EV @ 200 cubes: "]) expect(html).toContain(`title="${old}`); // the old wording stays in the tooltips
     expect(html).toMatch(/data-verdict="(yes|maybe|marginal|no)"/);
-    expect(html).toContain('class="verdict ');
+    expect(html).toMatch(/<button type="button" class="verdict (yes|maybe|marginal|no)"/);
     expect(html).toContain("Download CSV");
     expect(html).toContain("Total DPS now");
-    expect(html).toContain("no cube count up to 1000 has a positive expected gain");
+    expect(html).toContain("no cube count up to 1000 has a positive average gain"); // the legend lives in the About block
     expect(html).toContain("Some Skill Cooldown Decrease values are above the table");
     expect(html).not.toContain("changed since this was calculated");
     // split into the two roll tracks (Potential, then Bonus Potential), each ranked on its own: best expected gain first
-    const blocks = html.split(/<tbody /).slice(1);
+    const blocks = html.split(/<tbody /).slice(1).filter((b) => b.includes("data-potential-type="));                 // (the gear editor's per-slot blocks are not results)
     expect(blocks.length).toBe(2);
     expect(blocks[0]).toContain('data-potential-type="Potential"');
     expect(blocks[1]).toContain('data-potential-type="Bonus Potential"');
     for (const [i, type] of ["Potential", "Bonus Potential"].entries()) {
       const first = blocks[i].match(/data-row="([^"]+)" data-verdict/)![1];
-      const best = fx.cubes.result.rows.filter((r) => r.potential_type === type).sort((a, b) => (b.milestone_ev_pct["200"] ?? 0) - (a.milestone_ev_pct["200"] ?? 0))[0];
+      const best = fx.cubes.result.rows.filter((r) => r.potential_type === type).sort((a, b) => evPctAt(b, 200) - evPctAt(a, 200))[0];
       expect(first).toBe(`${best.slot}|${type}`);
       expect((blocks[i].match(/data-verdict="/g) ?? []).length).toBe(15);
       expect(blocks[i]).not.toContain(type === "Potential" ? "|Bonus Potential" : "|Potential\"");
@@ -139,6 +151,8 @@ describe("Cubes tab", () => {
   it("note texts", () => {
     expect(noteText("below")).toContain("below the table");
     expect(noteText("cdr_lines_exceed_inputs:head/Potential")).toContain("head/Potential");
+    expect(noteText("buff_lines_exceed_inputs:belt/Potential")).toMatch(/belt\/Potential.*Buff Duration/);
+    expect(noteText("companion_lines_exceed_inputs:boots/Bonus Potential")).toMatch(/boots\/Bonus Potential.*Companion Summoning Time/);
     expect(noteText("something else")).toBe("something else");
   });
   it("the panel says 'not available' for a class without stat values, without any request", () => {
@@ -171,7 +185,7 @@ describe("Equipment compare tab", () => {
     expect(html).toContain('aria-label="Current equip result"');
     expect(html).toContain('aria-label="New equip result"');
     const dup = compareEquip({ current: { attack: 0, lines: [{ stat: "Damage %", value: 5 }, { stat: "Damage %", value: 6 }] }, new: { attack: 0, lines: [] } }, fx.equipment.result.rate_by_stat, fx.equipment.result.baseline_total);
-    expect(view({ result: { ...fx.equipment.result, ...dup } })).toContain("added to the first Damage % line"); // a second line of the same stat merges into the first
+    expect(view({ result: { ...fx.equipment.result, ...dup } })).toContain("same stat"); // a second line of the same stat merges into the first
     expect(html).toContain("crit rate is at or above 100%"); // the fixture's sample character is over the cap (152.5%): its Critical Rate line is priced as Critical Damage
     expect(view({ result: { ...fx.equipment.result, crit_priced_as_crit_damage: false } })).not.toContain("crit rate is at or above 100%");
     expect(view({ result: { ...fx.equipment.result, better: "current", delta_pct: -2.5 } })).toContain("Your current equip is better");

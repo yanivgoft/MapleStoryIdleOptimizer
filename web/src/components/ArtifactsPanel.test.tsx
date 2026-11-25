@@ -40,32 +40,33 @@ async function render(id: string, artifacts: (art: ArtifactSchema) => ArtifactsS
 const rowHtml = (html: string, key: string) => html.match(new RegExp(`<tr data-artifact="${key}"[\\s\\S]*?</tr>`))?.[0] ?? "";
 
 describe("Artifacts tab render (server-side): one table", () => {
-  it.each(MODELLED.map((c) => [c.info.id] as const))("%s: 36 rows by rank, effect text, badges, equip count, breakdown, ranking section", async (id) => {
+  it.each(MODELLED.map((c) => [c.info.id] as const))("%s: 36 rows by rank, badges only (no effect text), equip count, breakdown, ranking section", async (id) => {
     const html = await render(id, caseTable, true, CASE_KEYS);
     expect(html).toContain('aria-label="Artifacts table"');
     expect(html.match(/<tr data-artifact="/g)).toHaveLength(36);
     for (const rank of ["Epic", "Unique", "Legendary"]) expect(html).toContain(`<th scope="rowgroup" colSpan="7">${rank}</th>`.replace("colSpan", "colSpan"));
     expect(html).toContain("4 / 5 equipped in World Boss");
-    expect(html).toContain("+18% Attack");                                   // Alliance Badge star 4
-    expect(html).toContain("+28% Companion Summoning Time Increase");        // Arwen's star 2
+    // no per-artifact effect description, no reason text, no caption above the table
+    for (const bad of ["+18% Attack", "+28% Companion Summoning Time Increase", "stat not used for damage", "No DPS effect:", "Equip effect not applied", "Set each artifact", "Equipped artifacts</strong>", "acts as star 0", "Not unlocked acts as star 0 when"]) expect(html, bad).not.toContain(bad);
+    expect(html).not.toMatch(/class="note art-fx"/);
+    expect(html).not.toContain("reference only: already in your stats");     // the breakdown carries no per-row prose either
     expect(html).toContain("Baked into your stats");
     expect(html).toContain("Companion effect");
     expect(html).toContain("go to Companion");
     expect(html).toContain("No DPS effect");
-    expect(html).toContain("stat not used by the DPS model (no attacking effect)");
     expect(html).toContain("What the equipped artifacts do in this calculation");
     expect(html).toContain("Total DPS with these artifacts vs. none");
     expect(html).toContain("calculating...");                                // baseline compute has not run (server render)
-    expect(html).toContain('aria-label="Artifact equip ranking"');
+    expect(html).toContain('aria-label="Artifact ranking (DPS gain if equipped)"');
     // the old slots design is gone
     expect(html).not.toContain("art-slot-");
     expect(html).not.toContain("Add an artifact");
     expect(html).not.toContain("pot-card");
   });
-  it("columns: Artifact, Star level (with the Not unlocked tooltip), Equipped, Line 1-3, Potential total; sticky-header table in its own scroll box", async () => {
+  it("columns: Artifact, Star level, Equipped, Line 1-3, Potential total; sticky-header table in its own scroll box", async () => {
     const html = await render("fp_mage", caseTable, false, CASE_KEYS);
     for (const h of ["Artifact", "Star level", "Equipped", "Line 1", "Line 2", "Line 3 (Legendary)", "Potential total"]) expect(html).toContain(h);
-    expect(html).toContain("Not unlocked acts as star 0 when the artifact is equipped");
+    expect(html).not.toMatch(/<(th|select)[^>]* title=/);                    // no explanatory tooltips on the headers / star selects
     expect(html).toContain('class="art-table-wrap"');
     expect(html).toContain('type="search"');
     expect(html).toContain('placeholder="filter by name"');
@@ -75,7 +76,7 @@ describe("Artifacts tab render (server-side): one table", () => {
     const html = await render("fp_mage", caseTable, false, CASE_KEYS);
     const pig = rowHtml(html, "pigs_ribbon");
     expect(pig).toContain('<option value="Not Unlocked" selected="">Not unlocked</option>');
-    expect(pig).toContain("acts as star 0");
+    expect(pig).not.toContain("acts as star 0");
     expect(pig).toContain('class="equipped');
     expect(rowHtml(html, "charm_of_the_undead")).toContain('<option value="5" selected="">Star 5 (max)</option>');         // Epic default
     expect(rowHtml(html, "hexagon_necklace")).toContain('<option value="3" selected="">Star 3</option>');                 // Unique default
@@ -90,16 +91,15 @@ describe("Artifacts tab render (server-side): one table", () => {
     expect(rowHtml(html, "candle")).not.toContain('class="line-na"');
     expect(html.match(/line 3 stat/g)).toHaveLength(art36Legendary(fixtureFor("fp_mage").schema.artifacts!));
   });
-  it("the Equipped column is read-only: a marker for the current content type's artifacts, no checkbox, a hint to the Inputs tab", async () => {
+  it("the Equipped column is read-only: a marker for the current content type's artifacts, no checkbox, no hint text", async () => {
     const keys = ["alliance_badge", "candle", "horn_flute", "secret_map", "flaming_lava"];
     const html = await render("hero", emptyArtifacts, false, keys);
     expect(html).toContain("5 / 5 equipped in World Boss");
     expect(html).not.toContain('aria-label="Equip ');
     expect(html).not.toMatch(/<td class="equip-cell"><input/);
-    expect(html.match(/<span class="chip ok" title="Equipped in the current content type[^>]*>equipped<\/span>/g)).toHaveLength(5);
+    expect(html.match(/<span class="chip ok">equipped<\/span>/g)).toHaveLength(5);
     expect(rowHtml(html, "candle")).toContain(">equipped</span>");
     expect(rowHtml(html, "chalice")).not.toContain(">equipped</span>");
-    expect(html).toContain("Equipped artifacts</strong> section of the Inputs tab");
     // other content types' slots do not show here; only the current one counts
     const other = await render("hero", emptyArtifacts, false, ["candle"], { "Chapter Boss": ["chalice", "horn_flute"] });
     expect(other).toContain("1 / 5 equipped in World Boss");
@@ -131,7 +131,7 @@ describe("Artifacts tab render (server-side): one table", () => {
     const html = await render(id, () => ({}), false);
     expect(html).toContain(`Artifacts are not available for ${fixtureFor(id).schema.name} yet`);
     expect(html).not.toContain("art-table");
-    expect(html).not.toContain("Equip ranking");
+    expect(html).not.toContain("Artifact ranking");
   });
 });
 
@@ -169,7 +169,8 @@ describe("the table view: filter, potential lines, gains", () => {
     for (const r of STATIC_POTENTIAL_TABLES.rarities) expect(row).toContain(`>${r}</option>`);
     const statSelect = row.match(/<select aria-label="Alliance Badge line 1 stat"[\s\S]*?<\/select>/)![0];
     expect(statSelect.match(/<option/g)).toHaveLength(1 + STATIC_POTENTIAL_TABLES.stats.length);        // (none) + the 12 artifact stats, no "other stats" group
-    expect(statSelect).not.toContain("optgroup");
+    expect(statSelect).not.toContain('optgroup label="Other"');                                         // grouped by kind of stat (lib/statGroups.ts), nothing left over
+    expect(statSelect.match(/<optgroup label="([^"]+)"/g)!.map((g) => g.slice(17, -1))).toEqual(["Main stat %", "Critical", "Damage", "Attack and accuracy", "Defense and health"]);
     expect(row).toContain("+14");                                               // Damage % at Legendary (the engine's value table)
     expect(row).toContain("(locked: star 2)");                                  // line 2 needs star 2, the artifact is at star 1
     expect(row).not.toContain("(locked: star 1)");

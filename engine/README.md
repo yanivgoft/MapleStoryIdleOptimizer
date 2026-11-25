@@ -499,13 +499,27 @@ Rule: the `src/verify_<class>_workbook.py` scripts stay untouched and remain the
 ## Cubes / Equipment / Potentials (Phase 4b)
 
 * `engine/cubes.py` - the cube optimizer of `src/potential_cubes_ev.py` as pure functions: `recommend(gear_rows, pricing)` -> one dict per (slot, potential type) with the
-  CSV columns (`current_value`, `smallest_n`, `n_for_50pct` / `n_for_75pct`, `milestone_ev` / `milestone_ev_pct` at the 24 milestones, CSV order via `sort=True`; `csv_row`).
+  CSV columns (`current_value`, `smallest_n`, `n_for_50pct` / `n_for_75pct`, `milestone_ev` / `milestone_ev_pct` at the 24 milestones, CSV order via `sort=True`; `csv_row`; `include_curve=True` adds `ev_pct_by_cubes`, the EV % for every cube count 0..max_cubes, which the API sends).
   `Pricing` = baseline DPS + stat-name -> DPS per unit + CDR curve (+ optional exact-CDR callable) + optional `CompanionPricing` (summoning-time model);
   `Pricing.from_dict` for classes without a sensitivity module, `pricing_from_sensitivity(sens_result, inputs)` (FP-Mage: `sensitivity.run(..., which=["stats","cdr","summon_time"])`)
   builds the CubeData!J:K table (`dps_per_unit_table`: Main Stat Per Level x level, Critical Rate at the FULL live crit total >= 100 priced as Critical Damage unless Ring of
   Cycles / Book of Ancient is equipped - CLAUDE.md item 13) and the companion pricing; Potential and Bonus Potential use separate pity tables (item 17).  `only=` computes a subset
   of rows while the others still define cross-row baselines.  Pure Python by default-fallback, numpy (optional, only here) when importable: **numpy is not needed** - 30 rows, 1000
   cubes, all starting at `normal` (worst case): 2.7 s numpy, 6.3 s pure Python (the roll enumeration has a bit-identical fast path; no API image dependency).
+* **Step / capped stats are priced on the real model (2026-11-25)**: Skill Cooldown Decrease (hat), Buff Duration Increase % (belt) and Companion Summoning Time Increase % (boots)
+  are NOT linear in the total (cast counts and uptimes are step / capped), and the Inputs value already INCLUDES the lines held on the gear (plus, for summoning time, the
+  Arwen's Glass Shoes artifact on top).  Rule: `b0 = max(0, typed - all held lines of that stat)` (both potential tracks, every row); a row is priced on top of
+  `b0 + the OTHER rows' lines` (= `max(typed, held) - own`), its held lines are worth `f(base + own) / f(base)`, a reroll `f(base + candidate) / f(base)` - the same scale,
+  below as well as above the typed total.  `f` is the class model re-run at that total (`pricing_from_sensitivity(..., inputs)` builds `Pricing.exact` = `ExactCurve`s for
+  Cooldown Decrease / Buff Duration from `sensitivity._Base.block(... rebuild, full_search)` = a plain `compute`, and `CompanionPricing` for summoning time; every total is
+  evaluated once, ~1 ms each: a full 30-row call makes ~70 evaluations, +0.1-0.2 s on a ~2.7 s call).  Cooldown Decrease blends boss / normal as the ratio of the dollar Totals
+  (the documented CDR-table convention, KNOWN_GAPS), Buff Duration and Summoning Time as the time-weighted relative growth (bug 9); in pure boss / pure normal content the factor
+  IS `compute(total)/compute(base)`.  Without `inputs` (`Pricing.from_dict`, the goldens' synthetic pricing) the old milestone-table interpolation / linear rate is used, bit for bit.
+  Held lines above the typed total clamp b0 at 0 and are noted: `cdr_lines_exceed_inputs:slot/type`, `buff_lines_exceed_inputs:slot/type`, `companion_lines_exceed_inputs:slot/type`.
+  Rows carry `line_loss` / `row_loss` (+ `_pct`): the real DPS lost by removing one held line / the row's lines.  Other stats the cube table can roll that are NOT linear and are
+  still priced by the linear Sensitivity rate at the typed point (known approximations): Defense Penetration (multiplicative with the typed value), Attack Speed, Critical Rate
+  across the 100 % cap (only the "already at cap" case is swapped for Critical Damage), Basic Attack Target Increase (integer steps vs the enemy cap), All Skill Level (mastery
+  breakpoints) - mild except Defense Penetration at a high typed value.
 * `engine/equipment.py` - Equipment Compare (fixed Attack line + 5 dropdown lines per equip, 21 stats, duplicates merge, different stats compound): `compare(current, new, rates, total_dps)`.
 * `engine/potentials.py` - ArtifactsInput potential lines: `artifact_potential`, `potential_table`, `potential_gains(state, rates, total_dps)` = the `inputs["artifact_potential_gain"]`
   hook value of `engine.sensitivity` (`hook_for` runs the stats part for you); Equipped? / Star Level resolution.  Rates = `cubes.sweep_rates(sens_result)` (the Sensitivity column H).

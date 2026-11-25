@@ -14,6 +14,7 @@
 .sens-table tr.dim .label-main { color: var(--muted); }
 .sens-table tr.current td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .sens-table .label-main { font-weight: 500; }
+.sens-table td.step { color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
 .sens-table .sub { display: block; color: var(--muted); font-size: 0.75rem; }
 .sens-table .neg { color: var(--danger); }
 .sens-table .pos { color: var(--ok); }

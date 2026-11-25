@@ -1,3 +1,4 @@
+import { plainText } from "./plainText";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ALL, fixtureFor, withoutArtifactSupport } from "../test/fixtures";
 import type { ArtifactSchema, ArtifactSlot, ArtifactsState, ComputeResult, FormState, Profile } from "../types";
@@ -200,7 +201,7 @@ describe("badges come from the engine's flags", () => {
       const b = badgesFor(a);
       expect(b).toHaveLength(1);
       expect(b[0].kind).toBe("no_dps");
-      expect(b[0].detail).toBe(a.reason);
+      expect(b[0].detail).toBe(plainText(a.reason));
     }
   });
   it("baked-into-Inputs: every reference_only artifact plus Reindeer's base Defense Penetration", () => {
@@ -444,7 +445,7 @@ describe("profiles saved with the OLD slots UI (a slots list + the separate Arti
   });
 });
 
-describe("equipped artifacts per content type (the Inputs page's Equipped artifacts section)", () => {
+describe("equipped artifacts per content type (the Calculator's Equipped artifacts section)", () => {
   const store = new Map<string, string>();
   beforeEach(() => {
     store.clear();
@@ -529,8 +530,10 @@ describe("equipped artifacts per content type (the Inputs page's Equipped artifa
     const five = ["candle", "chalice", "horn_flute", "secret_map", "flaming_lava"];
     five.forEach((k, i) => (s = { ...s, equippedArtifacts: setSlot(art, s.equippedArtifacts, wb, i, k) }));
     s = switchContentType(s, fp.schema, cb, fp.defaults[cb]);
-    expect(buildInputs(fp.schema, s).artifacts).toEqual([]);                           // a content type visited the first time starts empty (not copied)
+    expect((buildInputs(fp.schema, s).artifacts as { key: string }[]).map((x) => x.key)).toEqual(art.artifacts.map((x) => x.key).filter((k) => five.includes(k)));   // visited the first time: seeded from the content type it came from
+    five.forEach((_k, i) => (s = { ...s, equippedArtifacts: setSlot(art, s.equippedArtifacts, cb, i, "") }));        // (clear the seeded copy: this content type is to hold its own 2)
     s = { ...s, equippedArtifacts: setSlot(art, setSlot(art, s.equippedArtifacts, cb, 0, "pigs_ribbon"), cb, 1, "candle") };
+    expect(slotsFor(art, s.equippedArtifacts, wb).filter(Boolean)).toHaveLength(5);                                   // World Boss keeps its 5 (the seed was a copy, not a share)
     const reqCb = (buildInputs(fp.schema, s).artifacts as { key: string }[]).map((x) => x.key);
     expect(reqCb).toEqual(["pigs_ribbon", "candle"]);
     s = switchContentType(s, fp.schema, wb);

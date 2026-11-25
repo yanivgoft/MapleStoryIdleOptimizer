@@ -14,7 +14,13 @@ then Bonus Potential, each by ``smallest_n`` ascending, never-positive last).
 Methodology = the script's (see its docstring): every cube re-rolls all 3 lines, so the decision value is the optimal-stopping value
 ``W_k(tier, pity)`` solved by backward induction (``E[max(roll, W_{k-1})]`` with the tier-upgrade pity mechanic), the per-roll distribution comes
 from the full line1 x line2 x line3 enumeration (``combined_dps_gain``: same-stat lines add, different stats multiply), Skill Cooldown Decrease is priced
-from the CDR milestone curve and Companion Summoning Time from the companion model (both step functions).  The engine reproduces the script's numerics
+from the CDR milestone curve and Companion Summoning Time from the companion model (both step functions).
+
+Step / capped stats (2026-11-25): Skill Cooldown Decrease, Buff Duration Increase % and Companion Summoning Time are priced on the REAL model at every total
+(``ExactCurve`` / ``CompanionPricing``, memoised per total) when the pricing comes from ``pricing_from_sensitivity`` with ``inputs``.  The Inputs value INCLUDES every
+line of that stat on the gear (both potential tracks, any slot), so b0 = max(0, typed - all held lines) and a row is priced on top of ``b0 + the OTHER rows' lines``
+(= ``max(typed, held) - own``): its held lines are worth f(base + own) / f(base), a reroll f(base + candidate) / f(base), the same scale, including totals BELOW the
+typed one.  Rows also carry ``line_loss`` / ``row_loss`` (+ ``_pct``): the real DPS lost by removing one held line / the whole row.  The engine reproduces the script's numerics
 (golden: ``tests/golden/test_cubes.py``, rel 1e-9) - it is a re-implementation, not an import, because the script loads a workbook at import time.
 
 Two backends with the same algorithm: numpy (the script's own vectorised form; used when numpy is importable) and pure Python (bisect loops;
@@ -47,7 +53,14 @@ CUBE_SLOTS = ["head", "cape", "chest", "shoulders", "legs", "belt", "gloves", "b
 SLOT_SPECIFIC_KEY = {"shoulders": "shoulder", "neck": "necklace"}      # CUBE_SLOTS id -> the JSON's own slot id
 CDR_STAT = "Skill Cooldown Decrease (seconds)"
 COMPANION_STAT = "Companion Summoning Time Increase %"
+BUFF_STAT = "Buff Duration Increase %"
 NONE_STAT = "(none)"
+# Stats whose DPS is a step / capped function of the TOTAL, priced by exact full-model evaluation (``ExactCurve``) when the pricing carries one: stat -> (default
+# Sensitivity / Inputs key, note key reported when the gear's lines of that stat exceed the typed total, how the two content branches blend).  Cooldown Decrease
+# is blended like the other two (time-weighted relative growth of the boss and normal branches, user decision 2026-11-26; the old CDR milestone table used the
+# DOLLAR-blended Total).  Companion Summoning Time has its own exact model (``CompanionPricing``, summon time -> cast counts, weighted) and its own note.
+EXACT_STATS = {CDR_STAT: ("skill_cooldown_decrease", "cdr_lines_exceed_inputs", "weighted"), BUFF_STAT: ("buff_duration_increase_pct", "buff_lines_exceed_inputs", "weighted")}
+COMPANION_NOTE = "companion_lines_exceed_inputs"
 CSV_COLUMNS = (["Slot", "PotentialType", "Rarity", "Pity", "CurrentValue", "CurrentValue%", "SmallestNPositive", "NFor50PctChance", "NFor75PctChance"]
                + [f"EV@{n}" for n in CUBE_MILESTONES] + [f"EV%@{n}" for n in CUBE_MILESTONES])
 
@@ -65,8 +78,8 @@ SLOT_SPECIAL_BLOCKS = {
     "eye-accessory": ("Main Stat Per Level", {"epic": 10, "unique": 20, "legendary": 35, "mystic": 50}),
     "pocket": ("Main Stat % per 4 Levels", {"epic": 0.4, "unique": 0.6, "legendary": 0.8, "mystic": 1.2}),
 }
-# stats a character may already have equipped although they are not in the roll table (they stay selectable in the sheet's dropdown)
-EXTRA_SELECTABLE_STATS = (CDR_STAT, "Buff Duration Increase %")
+# Skill Cooldown Decrease is rolled ONLY on the hat ("head") and Buff Duration Increase % ONLY on the belt (their slot blocks above), like every other slot-exclusive
+# line: they are NOT selectable on other slots (a stored line on another slot is kept but flagged "not rollable on this slot" by the client).
 
 
 def _slot_special_block(stat, values_by_tier):
@@ -91,7 +104,8 @@ _DATA = None
 
 
 def _load_data():
-    """(rarity upgrade rates {potential type: {rarity: {rate, max}}}, roll table {(slot, rarity, line): [(stat, value, weight)]}, all stat names)."""
+    """(rarity upgrade rates {potential type: {rarity: {rate, max}}}, roll table {(slot, rarity, line): [(stat, value, weight)]}, all stat names,
+    roll values {("ALL" | slot, rarity, line): {stat: {value: prime}}} = the same entries without weights, with the data's ``prime`` flag)."""
     global _DATA
     if _DATA is None:
         data = json.loads(CUBE_DATA_JSON.read_text())
@@ -101,10 +115,16 @@ def _load_data():
         for slot, (stat, values) in SLOT_SPECIAL_BLOCKS.items():
             specific[slot] = _slot_special_block(stat, values)
         table = {}
+        values = {}
+
+        def add(key, e):
+            table.setdefault(key, []).append((e["stat"], float(e["value"]), float(e["weight"])))
+            by_value = values.setdefault(key, {}).setdefault(e["stat"], {})
+            by_value[float(e["value"])] = by_value.get(float(e["value"]), False) or bool(e["prime"])
         for rarity in RARITY_ORDER:                         # the generic pool, shared by every slot
             for line in (1, 2, 3):
                 for e in generic[rarity][f"line{line}"]:
-                    table.setdefault(("ALL", rarity, line), []).append((e["stat"], float(e["value"]), float(e["weight"])))
+                    add(("ALL", rarity, line), e)
         for slot in CUBE_SLOTS:                             # + the slot's own additions
             block = specific.get(SLOT_SPECIFIC_KEY.get(slot, slot))
             if not block:
@@ -112,9 +132,9 @@ def _load_data():
             for rarity, lines in block.items():
                 for line_name, entries in lines.items():
                     for e in entries:
-                        table.setdefault((slot, rarity, int(line_name[-1])), []).append((e["stat"], float(e["value"]), float(e["weight"])))
-        stats = sorted({s for entries in table.values() for s, _v, _w in entries} | set(EXTRA_SELECTABLE_STATS))
-        _DATA = (rates, table, stats)
+                        add((slot, rarity, int(line_name[-1])), e)
+        stats = sorted({s for entries in table.values() for s, _v, _w in entries})
+        _DATA = (rates, table, stats, values)
     return _DATA
 
 
@@ -128,8 +148,14 @@ def roll_table():
     return _load_data()[1]
 
 
+def roll_values():
+    """{("ALL" | slot, rarity, line): {stat: {value: prime}}} - the values a line can show, keyed like ``roll_table()`` (the generic pool under "ALL" and each slot's
+    own additions); ``prime`` is the data's flag (True when ANY entry of that value is a prime roll)."""
+    return _load_data()[3]
+
+
 def all_potential_stats():
-    """Every stat name that can sit on a potential line (the workbook's CubeData!J dropdown, without the leading "(none)")."""
+    """Every stat name that can sit on a potential line (the workbook's CubeData!J dropdown, without the leading "(none)"); the slot-exclusive ones (hat Skill Cooldown Decrease, belt Buff Duration Increase, ...) are included."""
     return list(_load_data()[2])
 
 
@@ -147,17 +173,24 @@ class CompanionPricing:
     ``player_boss`` / ``player_norm`` = the player's boss-only / normal-only DPS.  ``factor(extra, base)`` = relative growth of ``extra`` % on top of ``base`` %
     (above b0), each branch's own growth blended by w - never dollar totals."""
 
-    def __init__(self, run, b0, w, player_boss, player_norm, total=None, current_blend=None):
+    def __init__(self, run, b0, w, player_boss, player_norm, total=None, current_blend=None, typed=None, held=0.0):
         self._run, self.b0, self.w = run, float(b0), float(w)
         self.player_boss, self.player_norm = float(player_boss), float(player_norm)
         self.total, self.current_blend = total, current_blend
+        self.typed = None if typed is None else float(typed)     # the Inputs value (incl. the gear's lines) and the lines b0 excluded: only for the "lines exceed inputs" note
+        self.held = float(held or 0.0)
         self._cache = {}
+        self.evaluations = 0
 
     def at(self, x):
         key = round(float(x), 6)
         if key not in self._cache:
+            self.evaluations += 1
             self._cache[key] = self._run(self.b0 + key)
         return self._cache[key]
+
+    def lines_exceed_inputs(self):
+        return self.typed is not None and self.held > self.typed + 1e-9
 
     def factor(self, extra, base):
         pb, pn, w = self.player_boss, self.player_norm, self.w
@@ -165,6 +198,35 @@ class CompanionPricing:
         boss = (pb + rx["comp_boss_dps"]) / (pb + rb["comp_boss_dps"]) if pb + rb["comp_boss_dps"] > 0 else 1.0
         norm = (pn + rx["comp_norm_dps"]) / (pn + rb["comp_norm_dps"]) if pn + rb["comp_norm_dps"] > 0 else 1.0
         return (1 - w) * boss + w * norm
+
+
+class ExactCurve:
+    """Exact DPS-vs-TOTAL curve of one additive Inputs stat (Skill Cooldown Decrease, Buff Duration Increase %): ``run(x)`` is the full class model at a TOTAL ``x`` of
+    the stat (``(total, boss-only, normal-only)`` DPS, e.g. ``sensitivity._Base.block``), ``typed`` = the Inputs value (it INCLUDES every line of that stat on the gear),
+    ``w`` = the normal-branch time weight.  ``factor(extra, base)`` = relative growth of ``extra`` on top of ``base`` evaluated on the real model at both totals,
+    memoised per total (``evaluations`` counts the runs): ``blend="weighted"`` = each branch's own growth blended by w (CLAUDE.md bug 9, the convention of every
+    Sensitivity gain), ``"total"`` = the ratio of the dollar-blended Totals."""
+
+    def __init__(self, run, typed, w, blend="weighted"):
+        self._run, self.typed, self.w, self.blend = run, float(typed), float(w), blend
+        self._cache = {}
+        self.evaluations = 0
+
+    def at(self, x):
+        key = round(float(x), 6)
+        hit = self._cache.get(key)
+        if hit is None:
+            self.evaluations += 1
+            hit = self._cache[key] = tuple(float(v) for v in self._run(key))
+        return hit
+
+    def factor(self, extra, base):
+        if not extra:
+            return 1.0
+        (t0, b0, n0), (t1, b1, n1) = self.at(base), self.at(base + extra)
+        if self.blend == "total":
+            return t1 / t0 if t0 != 0 else 1.0
+        return (1 - self.w) * (b1 / b0 if b0 != 0 else 1.0) + self.w * (n1 / n0 if n0 != 0 else 1.0)
 
 
 class Pricing:
@@ -177,19 +239,26 @@ class Pricing:
     ``cdr_table``     [(cdr seconds, Total DPS)] from the CDR milestone sweep (None = linear +1 s rate); the (cdr_current, baseline_dps) point is added.
     ``cdr_exact``     optional callable(cdr) -> Total DPS, used once per value when a row's CDR baseline falls below the table's first step (None = +1 s rate).
     ``companion``     optional CompanionPricing (None = linear rate of ``dps_per_unit["Companion Summoning Time Increase %"]``).
+    ``exact``         optional {stat name (``EXACT_STATS``): ExactCurve}: those stats are priced on the real model at every achievable total (``cdr_table`` /
+                      ``cdr_exact`` / the linear rate are then not used for them).
     """
 
-    def __init__(self, baseline_dps, dps_per_unit, cdr_current=0.0, cdr_table=None, cdr_exact=None, companion=None):
+    def __init__(self, baseline_dps, dps_per_unit, cdr_current=0.0, cdr_table=None, cdr_exact=None, companion=None, exact=None):
         self.baseline_dps = float(baseline_dps)
         self.dps_per_unit = dict(dps_per_unit)
         self.cdr_current = float(cdr_current)
         self.cdr_exact = cdr_exact
         self.companion = companion
+        self.exact = dict(exact or {})
         self.cdr_points = None
         if cdr_table:
             pts = {float(x): float(t) for x, t in cdr_table}
             pts[self.cdr_current] = self.baseline_dps       # the live model state is exact, wherever it falls on the grid
             self.cdr_points = sorted(pts.items())
+
+    def model_evaluations(self):
+        """Full-model runs the exact curves / the companion model have made so far (diagnostics: they are memoised per total)."""
+        return sum(c.evaluations for c in self.exact.values()) + (self.companion.evaluations if self.companion is not None else 0)
 
     @classmethod
     def from_dict(cls, d):
@@ -217,6 +286,7 @@ class CubeModel:
             raise RuntimeError("numpy backend requested but numpy is not installed")
         self.backend = backend
         self.cdr_points = [tuple(p) for p in self.pricing.cdr_points] if self.pricing.cdr_points else None
+        self.exact = self.pricing.exact          # {stat: ExactCurve}: priced on the real model at every total (the CDR table / rate below are then unused for it)
         self._cdr_exact_failed = set()
         self.notes = set()
         self._dist_cache = {}
@@ -277,14 +347,33 @@ class CubeModel:
             self.notes.add(f"cdr_lines_exceed_inputs:{state['slot']}/{state['potential_type']}")
         return max(0.0, self.pricing.cdr_current - own)
 
+    def row_exact_bases(self, state, all_rows):
+        """{stat: total the character would have WITHOUT this row's own lines of that stat} for the exact-priced stats = b0 + the lines on every OTHER row (both
+        potential tracks, any slot), b0 = max(0, typed - all held lines): ``max(typed, held) - own``.  A reroll is priced as f(base + candidate lines) / f(base) and the
+        row's own current value as f(base + own lines) / f(base), all on the real model; held lines larger than the typed total are noted (b0 clamps at 0)."""
+        out = {}
+        for stat, curve in self.exact.items():
+            own = sum(v for s, v in state["lines"] if s == stat)
+            held = sum(v for r in all_rows for s, v in r["lines"] if s == stat)
+            out[stat] = max(curve.typed, held) - own
+            if own > 0 and held > curve.typed + 1e-9:
+                self.notes.add(f"{EXACT_STATS[stat][1]}:{state['slot']}/{state['potential_type']}")
+        return out
+
+    def row_companion_notes(self, state):
+        comp = self.pricing.companion
+        if comp is not None and comp.lines_exceed_inputs() and any(s == COMPANION_STAT and v > 0 for s, v in state["lines"]):
+            self.notes.add(f"{COMPANION_NOTE}:{state['slot']}/{state['potential_type']}")
+
     @staticmethod
     def row_companion_base(state, all_rows):
         """Summoning time (%) on every OTHER row's current lines, i.e. what stays equipped while this row is rerolled."""
         return sum(v for other in all_rows if other is not state for stat, v in other["lines"] if stat == COMPANION_STAT)
 
-    def combined_dps_gain(self, stat_value_pairs, cdr_baseline=None, companion_base=0.0):
+    def combined_dps_gain(self, stat_value_pairs, cdr_baseline=None, companion_base=0.0, exact_bases=None):
         """Absolute DPS delta of a set of lines: same-stat lines add before any DPS math, different stats multiply (1.01 x 1.01 - 1), CDR via the milestone
-        curve on top of ``cdr_baseline`` (default: all current CDR), Companion Summoning Time via the companion model on top of ``companion_base``."""
+        curve on top of ``cdr_baseline`` (default: all current CDR), Companion Summoning Time via the companion model on top of ``companion_base``; a stat with an
+        exact curve (``pricing.exact``) is priced on the real model on top of ``exact_bases[stat]`` (default: the typed total)."""
         grouped = {}
         for stat, value in stat_value_pairs:
             if not stat or stat == NONE_STAT:
@@ -293,7 +382,10 @@ class CubeModel:
         base = self.pricing.baseline_dps
         factor = 1.0
         for stat, total_value in grouped.items():
-            if stat == CDR_STAT:
+            curve = self.exact.get(stat)
+            if curve is not None:
+                factor *= curve.factor(total_value, curve.typed if not exact_bases or stat not in exact_bases else exact_bases[stat])
+            elif stat == CDR_STAT:
                 factor *= self.cdr_factor(total_value, self.pricing.cdr_current if cdr_baseline is None else cdr_baseline)
             elif stat == COMPANION_STAT and self.pricing.companion is not None:
                 factor *= self.pricing.companion.factor(total_value, companion_base)
@@ -301,8 +393,8 @@ class CubeModel:
                 factor *= 1.0 + (total_value * self.dps_per_unit(stat)) / base
         return base * (factor - 1.0)
 
-    def current_value(self, lines, cdr_baseline=None, companion_base=0.0):
-        return self.combined_dps_gain(lines, cdr_baseline, companion_base)
+    def current_value(self, lines, cdr_baseline=None, companion_base=0.0, exact_bases=None):
+        return self.combined_dps_gain(lines, cdr_baseline, companion_base, exact_bases)
 
     # ---- one roll's distribution ------------------------------------------------------------------------------------------
     def _line_pools(self, rarity, slot):
@@ -313,10 +405,14 @@ class CubeModel:
             pools.append([(stat, v, w / total) for stat, v, w in entries])
         return pools
 
-    def roll_distribution(self, rarity, slot, cdr_baseline=None, companion_base=0.0):
+    @staticmethod
+    def _bases_key(exact_bases):
+        return None if not exact_bases else tuple(sorted((k, round(v, 6)) for k, v in exact_bases.items()))
+
+    def roll_distribution(self, rarity, slot, cdr_baseline=None, companion_base=0.0, exact_bases=None):
         """(values ascending, cdf) of one roll's combined DPS value at (rarity, slot): the full line1 x line2 x line3 enumeration collapsed by identical
         value.  Lines on distinct, plainly priced stats take a precomputed-factor fast path (bit-identical to ``combined_dps_gain``)."""
-        key = (rarity, slot, None if cdr_baseline is None else round(cdr_baseline, 6), round(companion_base, 6))
+        key = (rarity, slot, None if cdr_baseline is None else round(cdr_baseline, 6), round(companion_base, 6), self._bases_key(exact_bases))
         hit = self._dist_cache.get(key)
         if hit is not None:
             return hit
@@ -324,7 +420,7 @@ class CubeModel:
         comp_live = self.pricing.companion is not None
 
         def special(stat):
-            return stat == CDR_STAT or (stat == COMPANION_STAT and comp_live)
+            return stat == CDR_STAT or (stat == COMPANION_STAT and comp_live) or stat in self.exact
 
         def prep(pool):
             # (stat, value, p, term, special?)  term = the stat's factor when it stands alone: 1.0 + (0.0 + v) * rate / baseline
@@ -343,7 +439,7 @@ class CubeModel:
                     if pair_fast and not sp3 and s3 != s1 and s3 != s2:
                         v = base * (pre * t3 - 1.0)
                     else:
-                        v = gen([(s1, v1), (s2, v2), (s3, v3)], cdr_baseline, companion_base)
+                        v = gen([(s1, v1), (s2, v2), (s3, v3)], cdr_baseline, companion_base, exact_bases)
                     combos[v] = get(v, 0.0) + w12 * w3
         values = sorted(combos)
         cdf = list(itertools.accumulate(combos[v] for v in values))
@@ -352,12 +448,12 @@ class CubeModel:
         return values, cdf
 
     # ---- tier tables ----------------------------------------------------------------------------------------------------
-    def _tail_tables(self, rarity, slot, cdr_baseline, companion_base):
+    def _tail_tables(self, rarity, slot, cdr_baseline, companion_base, exact_bases=None):
         """(values, tail_prob, tail_exp) of a tier's roll distribution: tail_prob[i] = P(roll >= values[i]), tail_exp[i] = E[roll 1{roll >= values[i]}], 0 appended."""
-        key = ("tail", rarity, slot, None if cdr_baseline is None else round(cdr_baseline, 6), round(companion_base, 6), self.backend)
+        key = ("tail", rarity, slot, None if cdr_baseline is None else round(cdr_baseline, 6), round(companion_base, 6), self._bases_key(exact_bases), self.backend)
         hit = self._prep_cache.get(key)
         if hit is None:
-            values, cdf = self.roll_distribution(rarity, slot, cdr_baseline, companion_base)
+            values, cdf = self.roll_distribution(rarity, slot, cdr_baseline, companion_base, exact_bases)
             probs = [cdf[0] - 0.0] + [cdf[i] - cdf[i - 1] for i in range(1, len(cdf))]
             tp = list(itertools.accumulate(reversed(probs)))[::-1] + [0.0]
             te = list(itertools.accumulate(v * p for v, p in zip(reversed(values), reversed(probs))))[::-1] + [0.0]
@@ -369,11 +465,12 @@ class CubeModel:
         return hit
 
     # ---- optimal stopping (backward induction) -----------------------------------------------------------------------------
-    def optimal_stopping_trace(self, start_rarity, start_pity, slot, current_value, potential_type, max_cubes=MAX_CUBES, cdr_baseline=None, companion_base=0.0):
+    def optimal_stopping_trace(self, start_rarity, start_pity, slot, current_value, potential_type, max_cubes=MAX_CUBES, cdr_baseline=None, companion_base=0.0,
+                               exact_bases=None):
         """trace[k] = max(current_value, W_k(start tier, start pity)) = the value held after optimally spending up to k cubes (trace[0] = current_value)."""
         rates = self.rates[potential_type]
         tiers = RARITY_ORDER[RARITY_ORDER.index(start_rarity):]
-        tails = [self._tail_tables(t, slot, cdr_baseline, companion_base) for t in tiers]
+        tails = [self._tail_tables(t, slot, cdr_baseline, companion_base, exact_bases) for t in tiers]
         start_bucket = min(max(int(start_pity), 0), max(int(rates[start_rarity]["max"]), 1) - 1) if start_rarity != tiers[-1] else 0
         if self.backend == "numpy":
             return self._trace_numpy(tiers, tails, rates, start_bucket, current_value, max_cubes)
@@ -476,18 +573,19 @@ class CubeModel:
         return None
 
     # ---- P(at least one roll beats the current value within N cubes) -------------------------------------------------------
-    def roll_beat_probability(self, rarity, slot, current_value, cdr_baseline=None, companion_base=0.0):
-        values, cdf = self.roll_distribution(rarity, slot, cdr_baseline, companion_base)
+    def roll_beat_probability(self, rarity, slot, current_value, cdr_baseline=None, companion_base=0.0, exact_bases=None):
+        values, cdf = self.roll_distribution(rarity, slot, cdr_baseline, companion_base, exact_bases)
         idx = bisect.bisect_right(values, current_value) - 1
         return 1.0 - (cdf[idx] if idx >= 0 else 0.0)
 
-    def probability_any_better_roll(self, start_rarity, start_pity, slot, current_value, potential_type, max_cubes=MAX_CUBES, cdr_baseline=None, companion_base=0.0):
+    def probability_any_better_roll(self, start_rarity, start_pity, slot, current_value, potential_type, max_cubes=MAX_CUBES, cdr_baseline=None, companion_base=0.0,
+                                    exact_bases=None):
         """prob_any[k] = P(some one of the first k rerolls beats ``current_value``): an absorbing chain over (tier, pity) - tier-upgrade timing does not
         depend on roll outcomes - with every cube checked against the ORIGINAL value (no continuation value)."""
         rates = self.rates[potential_type]
         tiers = RARITY_ORDER[RARITY_ORDER.index(start_rarity):]
         n_t = len(tiers)
-        p = [self.roll_beat_probability(t, slot, current_value, cdr_baseline, companion_base) for t in tiers]
+        p = [self.roll_beat_probability(t, slot, current_value, cdr_baseline, companion_base, exact_bases) for t in tiers]
         sizes = [max(int(rates[t]["max"]), 1) for t in tiers]
         terminal = [ti == n_t - 1 or rates[t]["max"] <= 0 for ti, t in enumerate(tiers)]
         start_bucket = min(max(int(start_pity), 0), sizes[0] - 1) if not terminal[0] else 0
@@ -556,11 +654,23 @@ def _normalise_row(row):
                 pity=float(row.get("pity") or 0), lines=lines)
 
 
-def recommend(gear_rows, pricing, milestones=None, max_cubes=MAX_CUBES, backend=None, include_trace=False, sort=True, model=None, only=None):
+def ev_pct_curve(trace, current_value, base, digits=6):
+    """EV as % of the current Total DPS after n cubes, n = 0..len(trace)-1 (``trace[n] - current_value``), each rounded to ``digits`` significant digits (rounding is
+    monotone, so the curve stays non-decreasing).  Lets a client price ANY cube count, not only the 24 milestones."""
+    if not base:
+        return [0.0] * len(trace)
+    fmt = f".{digits}g"
+    return [float(format((v - current_value) / base * 100, fmt)) for v in trace]
+
+
+def recommend(gear_rows, pricing, milestones=None, max_cubes=MAX_CUBES, backend=None, include_trace=False, sort=True, model=None, only=None, include_curve=False):
     """One result row per gear row, the script's CSV columns: ``current_value`` / ``current_value_pct``, ``smallest_n``, ``n_for_50pct``, ``n_for_75pct``,
-    ``milestone_ev`` {n: EV} and ``milestone_ev_pct`` {n: EV as % of the current Total DPS} (+ ``trace`` with ``include_trace``).  Rows are ordered like the CSV
+    ``milestone_ev`` {n: EV} and ``milestone_ev_pct`` {n: EV as % of the current Total DPS} (+ ``trace`` with ``include_trace``; + ``ev_pct_by_cubes`` with
+    ``include_curve``: the EV % for EVERY cube count 0..``max_cubes``, index n = n cubes, 6 significant digits - what the web app uses to price an exact cube count).  Rows are ordered like the CSV
     unless ``sort=False``.  ``milestones`` default ``CUBE_MILESTONES`` (each must be <= ``max_cubes``).  ``only``: compute just some rows - a set of indices
-    into ``gear_rows`` or a callable(row dict) -> bool; the other rows still count for the cross-row baselines (summoning time on the OTHER rows)."""
+    into ``gear_rows`` or a callable(row dict) -> bool; the other rows still count for the cross-row baselines (summoning time, cooldown decrease and buff duration
+    on the OTHER rows).  Extra per-row keys: ``line_loss`` (3 entries, None for an empty line) / ``line_loss_pct`` / ``row_loss`` / ``row_loss_pct`` = the real DPS
+    (% of Total) lost by removing that one held line / all of the row's lines while everything else stays = Total x (1 - G_without / G_all), G = the lines' exact factor."""
     milestones = list(CUBE_MILESTONES if milestones is None else milestones)
     if max(milestones, default=0) > max_cubes:
         raise ValueError("every milestone must be <= max_cubes")
@@ -576,15 +686,28 @@ def recommend(gear_rows, pricing, milestones=None, max_cubes=MAX_CUBES, backend=
         if state["rarity"] not in RARITY_ORDER:
             raise ValueError(f"unknown rarity {state['rarity']!r}")
         cbase = model.row_companion_base(state, rows)
-        cdr_base = model.row_cdr_baseline(state)
-        cur = model.current_value(state["lines"], cdr_base, cbase)
-        trace = model.optimal_stopping_trace(state["rarity"], state["pity"], state["slot"], cur, state["potential_type"], max_cubes, cdr_base, cbase)
-        prob_any = model.probability_any_better_roll(state["rarity"], state["pity"], state["slot"], cur, state["potential_type"], max_cubes, cdr_base, cbase)
+        cdr_base = model.row_cdr_baseline(state) if CDR_STAT not in model.exact else None       # an exact CDR curve takes its base from ``ebases``
+        ebases = model.row_exact_bases(state, rows) if model.exact else None
+        model.row_companion_notes(state)
+        cur = model.current_value(state["lines"], cdr_base, cbase, ebases)
+        trace = model.optimal_stopping_trace(state["rarity"], state["pity"], state["slot"], cur, state["potential_type"], max_cubes, cdr_base, cbase, ebases)
+        prob_any = model.probability_any_better_roll(state["rarity"], state["pity"], state["slot"], cur, state["potential_type"], max_cubes, cdr_base, cbase, ebases)
+        # the negative side: the REAL DPS lost by removing one held line (``line_loss``) or the whole row (``row_loss``) while everything else stays = Total x (1 - G_without /
+        # G_all), G = the lines' exact combined factor (a step stat makes a line's worth depend on every other line of that stat, so single losses do not add up to the row's)
+        g_all = 1.0 + cur / base if base else 1.0
+        g_without = lambda ls: 1.0 + model.current_value(ls, cdr_base, cbase, ebases) / base
+        loss = [None if (stat == NONE_STAT or not stat or not v) else (base * (1.0 - g_without(state["lines"][:i] + state["lines"][i + 1:]) / g_all) if base and g_all else 0.0)
+                for i, (stat, v) in enumerate(state["lines"])]
+        row_loss = base * (1.0 - 1.0 / g_all) if base and g_all else 0.0
         ev = {n: trace[n] - cur for n in milestones}
         row = dict(state, lines=[list(x) for x in state["lines"]], current_value=cur, current_value_pct=cur / base * 100 if base else 0.0,
                    smallest_n=model.smallest_n_positive(trace, cur), n_for_50pct=model.smallest_n_for_probability(prob_any, 0.5),
                    n_for_75pct=model.smallest_n_for_probability(prob_any, 0.75), milestone_ev=ev,
-                   milestone_ev_pct={n: (v / base * 100 if base else 0.0) for n, v in ev.items()})
+                   milestone_ev_pct={n: (v / base * 100 if base else 0.0) for n, v in ev.items()},
+                   line_loss=loss, line_loss_pct=[None if x is None else (x / base * 100 if base else 0.0) for x in loss],
+                   row_loss=row_loss, row_loss_pct=row_loss / base * 100 if base else 0.0)
+        if include_curve:
+            row["ev_pct_by_cubes"] = ev_pct_curve(trace, cur, base)
         if include_trace:
             row["trace"] = list(trace)
             row["prob_any"] = list(prob_any)
@@ -665,12 +788,13 @@ def sweep_rates(sens_result):
 
 
 def pricing_from_sensitivity(sens_result, inputs=None, class_module=None, *, level=None, crit_rate_total=None, ring_of_cycles_equipped=None,
-                             book_of_ancient_equipped=None, companion=None, cdr_exact="auto", stat_to_key=None, sub_stat_pct_lines=None):
+                             book_of_ancient_equipped=None, companion=None, cdr_exact="auto", stat_to_key=None, sub_stat_pct_lines=None, exact_stats="auto"):
     """Pricing for ``recommend`` from ``engine.sensitivity.run(class_module, inputs, which=["stats", "cdr", ...])``'s result.  ``inputs`` (the compute input dict)
     supplies what the sensitivity result does not carry: the character level, the live crit-rate total (Inputs + artifact bucket), whether Ring of Cycles /
     Book of Ancient is equipped, the companion host (the chosen companion's model) and the exact-CDR fallback; each can be given explicitly instead.  Needs the
     ``stats`` and ``cdr`` parts (the ``summon_time`` part supplies b0 when present).  Any class with a Sensitivity spec (``class_module.model`` is its entry; the main-stat
-    keys come from the spec's ``mainstat``; ``class_module`` defaults to FP-Mage)."""
+    keys come from the spec's ``mainstat``; ``class_module`` defaults to FP-Mage).  ``exact_stats="auto"`` (needs ``inputs``): Skill Cooldown Decrease and Buff Duration
+    Increase % are priced by ``ExactCurve`` (the real model at every total, see ``EXACT_STATS``) instead of the milestone table / linear rate; ``None`` keeps the table."""
     rates = sweep_rates(sens_result)
     cdr = sens_result.get("cdr")
     model = None
@@ -704,9 +828,26 @@ def pricing_from_sensitivity(sens_result, inputs=None, class_module=None, *, lev
                                sub_stat_pct_lines=sub_stat_pct_lines, input_values=inputs, **main_keys)
     cdr_table = [(r["cdr"], r["total_dps"]) for r in cdr["rows"]] if cdr else None
     cdr_current = cdr["current_cdr"] if cdr else 0.0
+    runner = _block_runner(inputs, class_module) if inputs is not None else None
     if cdr_exact == "auto":
-        cdr_exact = _exact_cdr_fn(inputs, class_module) if inputs is not None else None
-    return Pricing(baseline, table, cdr_current, cdr_table, cdr_exact, companion)
+        cdr_exact = (lambda cdr: runner("skill_cooldown_decrease", cdr)[0]) if runner is not None else None
+    exact = None
+    if exact_stats == "auto" and runner is not None and spec is not None:
+        exact = _exact_curves(inputs, runner, spec, stat_to_key or POTENTIAL_STAT_TO_SWEEP_KEY, sens_result.get("normal_weight", 0.0), cdr_current if cdr else None)
+    return Pricing(baseline, table, cdr_current, cdr_table, cdr_exact, companion, exact)
+
+
+def _exact_curves(inputs, runner, spec, mapping, w, cdr_typed):
+    """{stat: ExactCurve} of the ``EXACT_STATS`` the class's Sensitivity spec sweeps; typed = the Inputs value (it includes the lines on the gear)."""
+    keys = {k for k, _l, _t in spec.stat_list}
+    out = {}
+    for stat in EXACT_STATS:
+        key = mapping.get(stat)
+        if key is None or key not in keys:
+            continue
+        typed = cdr_typed if (stat == CDR_STAT and cdr_typed is not None) else float(inputs.get(key) or 0)
+        out[stat] = ExactCurve(lambda x, key=key: runner(key, x), typed, w, EXACT_STATS[stat][2])
+    return out
 
 
 def _companion_pricing(model, inputs, sens_result):
@@ -720,15 +861,18 @@ def _companion_pricing(model, inputs, sens_result):
         own = inputs.get("companion_potential_lines_pct") or 0
         b0 = max(0, (inputs.get("companion_summon_time_increase_pct") or 0) - own) + art_mod.summon_time_inc_pct(model.eq)
     return CompanionPricing(lambda inc: comp_mod.run(host, choice, lvl, inc), b0, host["w"], host["player_boss"], host["player_norm"],
-                            total=model.total_dps, current_blend=model.companion_dps)
+                            total=model.total_dps, current_blend=model.companion_dps,
+                            typed=inputs.get("companion_summon_time_increase_pct") or 0, held=inputs.get("companion_potential_lines_pct") or 0)
 
 
-def _exact_cdr_fn(inputs, class_module):
+def _block_runner(inputs, class_module):
+    """``run(input key, total) -> (Total, boss-only, normal-only DPS)``: the class model re-run with ONE Inputs value replaced (a Sensitivity block with the strip
+    re-solved and the summon time searched again = a plain ``compute``), the evaluated main model built lazily on the first call."""
     state = {}
 
-    def exact(cdr):
+    def run(key, value):
         if "base" not in state:
             from . import sensitivity
             state["base"] = sensitivity._Base(inputs, class_module=class_module)
-        return state["base"].block({"skill_cooldown_decrease": cdr}, {}, rebuild=True, full_search=True)[0]
-    return exact
+        return state["base"].block({key: value}, {}, rebuild=True, full_search=True)
+    return run

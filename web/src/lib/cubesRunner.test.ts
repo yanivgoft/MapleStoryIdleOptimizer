@@ -35,6 +35,13 @@ describe("CubesRunner", () => {
     expect(new Set(progress)).toEqual(new Set([0, 6, 12, 18, 24, 30]));
     expect(Math.max(...progress)).toBe(30);
   });
+  it("rows keep their per-count curve through the chunk merge", async () => {
+    const curve = Array.from({ length: 1001 }, (_v, n) => n / 100);
+    const r = new CubesRunner(async (_c, _i, _g, only) => ({ class_id: "x", baseline_total: 1, milestones: [], csv_columns: [], backend: "python", rows: only.map((x) => ({ ...row(x), ev_pct_by_cubes: curve })), notes: [] }));
+    await r.run("fp_mage", {}, GEAR, ALL, "k");
+    expect(r.state.rows).toHaveLength(30);
+    expect(r.state.rows.every((x) => x.ev_pct_by_cubes?.length === 1001 && x.ev_pct_by_cubes[86] === 0.86)).toBe(true);
+  });
   it("a smaller selection is one request; zero rows is a finished empty run", async () => {
     const log: RowRef[][] = [];
     const r = new CubesRunner(okFetcher(log));
@@ -74,7 +81,7 @@ describe("CubesRunner", () => {
     ] as const) {
       let n = 0;
       const r = new CubesRunner(async (_c, _i, _g, only) => {
-        if (++n === 2) throw new ApiError(status, status === 504 ? "cube optimizer took longer than 45 s; try again" : "x", status === 422 ? [{ field: "gear[0].rarity", message: "bad" }] : []);
+        if (++n === 2) throw new ApiError(status, status === 504 ? "cube calculation took longer than 45 s; try again" : "x", status === 422 ? [{ field: "gear[0].rarity", message: "bad" }] : []);
         return { class_id: "x", baseline_total: 1, milestones: [], csv_columns: [], backend: "python", rows: only.map(row), notes: [] };
       });
       await r.run("fp_mage", {}, GEAR, ALL, "k");

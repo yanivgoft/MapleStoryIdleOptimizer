@@ -1,15 +1,16 @@
 import { useMemo } from "react";
 import type { ClassInfo, ClassSchema, Field } from "../types";
 import { groupClasses, optionLabel } from "../lib/classes";
-import { ACCOUNTS, CAPABILITY_COLUMNS, PRIVACY, CONVENTIONS, HOW_TO_USE, INTRO, KNOWN_GAPS_URL, LIMITATIONS, NO_SCHEMA_HINTS, WHICH_STATS_INTRO, classCapabilities } from "../content/help";
+import { ACCOUNTS, CAPABILITY_COLUMNS, GLOSSARY, PRIVACY, CONVENTIONS, HOW_TO_USE, INTRO, KNOWN_GAPS_URL, LIMITATIONS, NO_SCHEMA_HINTS, WHICH_STATS_INTRO, classCapabilities } from "../content/help";
 
 import { CLOUD_ENABLED } from "../lib/cloud/config";
 
 export const HELP_SECTIONS = [
   { id: HOW_TO_USE.id, title: HOW_TO_USE.title },
+  { id: GLOSSARY.id, title: GLOSSARY.title },
   { id: "help-which-stats", title: "Which stats to type" },
   { id: CONVENTIONS.id, title: CONVENTIONS.title },
-  { id: "help-modelled", title: "What is modelled per class" },
+  { id: "help-modelled", title: "What each class supports" },
   { id: "help-limitations", title: "Known limitations" },
   { id: PRIVACY.id, title: PRIVACY.title },
 ] as const;
@@ -57,7 +58,7 @@ function ClassTable({ classes }: { classes: ClassInfo[] }) {
   return (
     <div className="table-wrap">
       <table className="help-table">
-        <caption className="sr-only">What the app models for each class</caption>
+        <caption className="sr-only">What each class supports</caption>
         <thead>
           <tr>
             <th scope="col">Class</th>
@@ -90,7 +91,7 @@ function ClassTable({ classes }: { classes: ClassInfo[] }) {
   );
 }
 
-/** The "Help" tab: how to use the app, which stats to type, the modelling conventions, what each class supports and the known limitations.  Copy lives in content/help.tsx. */
+/** The "Help" tab: how to use the app, a glossary, which stats to type, how the numbers are calculated, what each class supports and the known limitations.  Copy lives in content/help.tsx. */
 export function HelpPanel({ classes, schema }: { classes: ClassInfo[]; schema: ClassSchema | null }) {
   return (
     <article className="help" aria-labelledby="help-title">
@@ -111,6 +112,11 @@ export function HelpPanel({ classes, schema }: { classes: ClassInfo[]; schema: C
         {HOW_TO_USE.body}
       </section>
 
+      <section id={GLOSSARY.id} aria-labelledby={`${GLOSSARY.id}-h`} className="card">
+        <h3 id={`${GLOSSARY.id}-h`}>{GLOSSARY.title}</h3>
+        {GLOSSARY.body}
+      </section>
+
       <section id="help-which-stats" aria-labelledby="help-which-stats-h" className="card">
         <h3 id="help-which-stats-h">Which stats to type</h3>
         {WHICH_STATS_INTRO}
@@ -123,10 +129,10 @@ export function HelpPanel({ classes, schema }: { classes: ClassInfo[]; schema: C
       </section>
 
       <section id="help-modelled" aria-labelledby="help-modelled-h" className="card">
-        <h3 id="help-modelled-h">What is modelled per class</h3>
+        <h3 id="help-modelled-h">What each class supports</h3>
         <p>
-          The calculator works for every class.  The other features depend on how much of the class's data the engine has; "coming soon" means the tab shows a "not available for this class yet" message.
-          Stat values, Cubes and Equipment compare share one switch because the cube tabs price lines with the stat-values engine.
+          The calculator works for every class.  The other features need more data about a class; "coming soon" means the tab says "Not available for this class yet".
+          Stat values, Cubes and Equipment compare come together because the cube tabs price lines with the stat values.
         </p>
         <ClassTable classes={classes} />
       </section>

@@ -6,6 +6,7 @@
 // here is the human wording per artifact (EFFECTS below, mirroring the Equip effect code of engine/artifacts.py): which star-value keys belong to which
 // artifact, under which condition they apply, whether the stat is "baked into Inputs" (typed by the user) and whether the companion model reads it.
 import values from "./artifact_values.json";
+import { plainText } from "./plainText";
 import type { ArtifactEntry, ArtifactInfo, ArtifactLine, ArtifactSchema, ArtifactsState, ClassInfo, ClassSchema, ComputeResult, EquippedState, FormState } from "../types";
 
 export const STAR_VALUES = values as Record<string, number[]>;
@@ -295,7 +296,7 @@ export const EFFECTS: Record<string, EffectSpec> = {
   },
   arwens_glass_shoes: {
     live: ["+{arwens_glass_shoes_summon_time_increase_pct}% Companion Summoning Time Increase"],
-    note: "Added to the Inputs value wherever the companion model reads it.",
+    note: "Added on top of the Summoning Time Increase you type, wherever the companion uses it.",
     rows: ["arwens_glass_shoes_summon_time_increase_pct"], bucket: "Companion Summoning Time Increase %", companion: "companion",
   },
   mushmoms_cap: { live: [] },
@@ -344,7 +345,7 @@ export const EFFECTS: Record<string, EffectSpec> = {
   soul_pouch: { live: [], baked: ["+{soul_pouch_final_damage}% Final Damage in PvP"], refs: ["soul_pouch_final_damage"] },
   ancient_text_piece: { live: [] },
   icy_soul_rock: {
-    live: ["+{icy_soul_rock_crit_damage}% Critical Damage"], note: "Averaged at 1.5x its base value (MP is not modelled).",
+    live: ["+{icy_soul_rock_crit_damage}% Critical Damage"], note: "Averaged at 1.5x its base value (MP is not counted).",
     rows: ["icy_soul_rock"], bucket: "Crit Damage",
   },
   flaming_lava: {
@@ -378,7 +379,7 @@ export const EFFECTS: Record<string, EffectSpec> = {
   reindeer_spear: {
     live: ["+{reindeer_spear_attack_pct}% Attack", "Extra applications of its Defense Penetration against bosses / PvP (2x extra vs bosses, 1x in PvP)"],
     baked: ["+{reindeer_spear_def_pen}% Defense Penetration (the base 1x)"],
-    note: "The base Defense Penetration is typed into Inputs; the model adds the extra boss / PvP applications on top.",
+    note: "The base Defense Penetration is already in the stats you type; the extra boss / PvP applications are added on top.",
     rows: ["reindeer_spear_attack_pct"], refs: ["reindeer_spear_base_def_pen"], bucket: "Attack % and a boss / PvP defense correction",
   },
   secret_map: {
@@ -439,7 +440,7 @@ export interface Badge {
 }
 
 export const BAKED_LABEL = "Baked into your stats";
-export const BAKED_DETAIL = "type the stat into Inputs";
+export const BAKED_DETAIL = "already in the stats you type: do not add it again";
 
 export const isNoDps = (info: ArtifactInfo): boolean => !!info.no_dps_effect || info.effect === "no_dps_effect" || info.effect === "zero";
 
@@ -447,7 +448,7 @@ export function badgesFor(info: ArtifactInfo): Badge[] {
   const spec = EFFECTS[info.key];
   const out: Badge[] = [];
   if (isNoDps(info)) {
-    out.push({ kind: "no_dps", label: "No DPS effect", detail: info.reason || "no effect in the DPS model" });
+    out.push({ kind: "no_dps", label: "No DPS effect", detail: plainText(info.reason) || "no DPS effect" });
     return out;
   }
   const bakedLines = spec?.baked?.length ?? 0;
@@ -459,7 +460,7 @@ export function badgesFor(info: ArtifactInfo): Badge[] {
       detail: partial ? `${BAKED_DETAIL} (only the part listed as "baked"; the rest is applied live)` : BAKED_DETAIL,
     });
   }
-  if (spec?.companion === "companion") out.push({ kind: "companion", label: "Companion effect", detail: "read by the companion model" });
+  if (spec?.companion === "companion") out.push({ kind: "companion", label: "Companion effect", detail: "used by your companion" });
   if (spec?.companion === "status") out.push({ kind: "status", label: "Companion effect", detail: "timed together with the companion / status effects" });
   return out;
 }
@@ -536,7 +537,7 @@ export interface BreakdownValue {
   label: string;
   value: number;
   unit: Unit;
-  applied: boolean; // false: reference only (type it into Inputs; not applied live)
+  applied: boolean; // false: reference only (already in the typed stats; not applied live)
 }
 export interface BreakdownRow {
   key: string;
@@ -576,7 +577,7 @@ export function breakdown(result: ComputeResult | null | undefined): BreakdownRo
     return {
       key, name: info.name, star: starIndex(num(e.star)), badges: badgesFor(info),
       bucket: isNoDps(info) ? "none" : spec?.bucket ?? (spec?.baked?.length ? "none (reference only)" : ""), values,
-      note: isNoDps(info) ? info.reason ?? undefined : spec?.note,
+      note: isNoDps(info) ? plainText(info.reason) || undefined : spec?.note,
     };
   });
 }

@@ -128,7 +128,6 @@
   "statsBySlot": {
    "head": [
     "Attack Speed %",
-    "Buff Duration Increase %",
     "Critical Rate %",
     "Damage %",
     "Defense %",
@@ -148,7 +147,6 @@
    ],
    "cape": [
     "Attack Speed %",
-    "Buff Duration Increase %",
     "Critical Rate %",
     "Damage %",
     "Defense %",
@@ -163,14 +161,12 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Str",
     "Str %"
    ],
    "chest": [
     "Attack Speed %",
     "Basic Attack Target Increase",
-    "Buff Duration Increase %",
     "Critical Rate %",
     "Damage %",
     "Defense %",
@@ -184,13 +180,11 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Str",
     "Str %"
    ],
    "shoulders": [
     "Attack Speed %",
-    "Buff Duration Increase %",
     "Critical Rate %",
     "Damage %",
     "Defense %",
@@ -205,13 +199,11 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Str",
     "Str %"
    ],
    "legs": [
     "Attack Speed %",
-    "Buff Duration Increase %",
     "Critical Rate %",
     "Damage %",
     "Defense %",
@@ -226,7 +218,6 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Str",
     "Str %"
    ],
@@ -246,13 +237,11 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Str",
     "Str %"
    ],
    "gloves": [
     "Attack Speed %",
-    "Buff Duration Increase %",
     "Critical Damage %",
     "Critical Rate %",
     "Damage %",
@@ -267,13 +256,11 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Str",
     "Str %"
    ],
    "boots": [
     "Attack Speed %",
-    "Buff Duration Increase %",
     "Companion Summoning Time Increase %",
     "Critical Rate %",
     "Damage %",
@@ -288,14 +275,12 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Str",
     "Str %"
    ],
    "ring": [
     "All Skill Level",
     "Attack Speed %",
-    "Buff Duration Increase %",
     "Critical Rate %",
     "Damage %",
     "Defense %",
@@ -309,14 +294,12 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Str",
     "Str %"
    ],
    "neck": [
     "All Skill Level",
     "Attack Speed %",
-    "Buff Duration Increase %",
     "Critical Rate %",
     "Damage %",
     "Defense %",
@@ -330,13 +313,11 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Str",
     "Str %"
    ],
    "eye-accessory": [
     "Attack Speed %",
-    "Buff Duration Increase %",
     "Critical Rate %",
     "Damage %",
     "Defense %",
@@ -351,14 +332,12 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Str",
     "Str %"
    ],
    "ring2": [
     "Attack Speed %",
     "Basic Attack Damage %",
-    "Buff Duration Increase %",
     "Critical Rate %",
     "Damage %",
     "Defense %",
@@ -372,13 +351,11 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Str",
     "Str %"
    ],
    "face": [
     "Attack Speed %",
-    "Buff Duration Increase %",
     "Critical Rate %",
     "Damage %",
     "Defense %",
@@ -393,13 +370,11 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Str",
     "Str %"
    ],
    "earrings": [
     "Attack Speed %",
-    "Buff Duration Increase %",
     "Critical Rate %",
     "Damage %",
     "Defense %",
@@ -413,14 +388,12 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Skill Damage %",
     "Str",
     "Str %"
    ],
    "pocket": [
     "Attack Speed %",
-    "Buff Duration Increase %",
     "Critical Rate %",
     "Damage %",
     "Defense %",
@@ -435,7 +408,6 @@
     "Max HP %",
     "Max MP %",
     "Min Damage Multiplier %",
-    "Skill Cooldown Decrease (seconds)",
     "Str",
     "Str %"
    ]
@@ -456,6 +428,4308 @@
     "unique": 417,
     "legendary": 714,
     "mystic": 0
+   }
+  },
+  "rollValues": {
+   "ALL": {
+    "normal": {
+     "1": {
+      "Critical Rate %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        5,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        6,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        50,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        50,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        50,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        50,
+        false
+       ]
+      ]
+     },
+     "2": {
+      "Critical Rate %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        5,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        6,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        50,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        50,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        50,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        50,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Critical Rate %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        5,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        6,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        3,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        50,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        50,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        50,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        50,
+        false
+       ]
+      ]
+     }
+    },
+    "rare": {
+     "1": {
+      "Critical Rate %": [
+       [
+        4.5,
+        true
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        3.5,
+        true
+       ]
+      ],
+      "Damage %": [
+       [
+        8,
+        true
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        6,
+        true
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        6,
+        true
+       ]
+      ],
+      "Str %": [
+       [
+        4.5,
+        true
+       ]
+      ],
+      "Dex %": [
+       [
+        4.5,
+        true
+       ]
+      ],
+      "Int %": [
+       [
+        4.5,
+        true
+       ]
+      ],
+      "Luk %": [
+       [
+        4.5,
+        true
+       ]
+      ],
+      "Defense %": [
+       [
+        4.5,
+        true
+       ]
+      ],
+      "Max HP %": [
+       [
+        9,
+        true
+       ]
+      ],
+      "Max MP %": [
+       [
+        4.5,
+        true
+       ]
+      ],
+      "Str": [
+       [
+        100,
+        true
+       ]
+      ],
+      "Dex": [
+       [
+        100,
+        true
+       ]
+      ],
+      "Int": [
+       [
+        100,
+        true
+       ]
+      ],
+      "Luk": [
+       [
+        100,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Critical Rate %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        3.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        6,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        6,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        100,
+        true
+       ],
+       [
+        50,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        100,
+        true
+       ],
+       [
+        50,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        100,
+        true
+       ],
+       [
+        50,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        100,
+        true
+       ],
+       [
+        50,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Critical Rate %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        3.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        6,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        6,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        4.5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        100,
+        true
+       ],
+       [
+        50,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        100,
+        true
+       ],
+       [
+        50,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        100,
+        true
+       ],
+       [
+        50,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        100,
+        true
+       ],
+       [
+        50,
+        false
+       ]
+      ]
+     }
+    },
+    "epic": {
+     "1": {
+      "Critical Rate %": [
+       [
+        6,
+        true
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        4,
+        true
+       ]
+      ],
+      "Damage %": [
+       [
+        12,
+        true
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        8,
+        true
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        8,
+        true
+       ]
+      ],
+      "Str %": [
+       [
+        6,
+        true
+       ]
+      ],
+      "Dex %": [
+       [
+        6,
+        true
+       ]
+      ],
+      "Int %": [
+       [
+        6,
+        true
+       ]
+      ],
+      "Luk %": [
+       [
+        6,
+        true
+       ]
+      ],
+      "Defense %": [
+       [
+        6,
+        true
+       ]
+      ],
+      "Max HP %": [
+       [
+        12,
+        true
+       ]
+      ],
+      "Max MP %": [
+       [
+        6,
+        true
+       ]
+      ],
+      "Str": [
+       [
+        200,
+        true
+       ]
+      ],
+      "Dex": [
+       [
+        200,
+        true
+       ]
+      ],
+      "Int": [
+       [
+        200,
+        true
+       ]
+      ],
+      "Luk": [
+       [
+        200,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Critical Rate %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        4,
+        true
+       ],
+       [
+        3.5,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        8,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        8,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        200,
+        true
+       ],
+       [
+        100,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        200,
+        true
+       ],
+       [
+        100,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        200,
+        true
+       ],
+       [
+        100,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        200,
+        true
+       ],
+       [
+        100,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Critical Rate %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        4,
+        true
+       ],
+       [
+        3.5,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        8,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        8,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        6,
+        true
+       ],
+       [
+        4.5,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        200,
+        true
+       ],
+       [
+        100,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        200,
+        true
+       ],
+       [
+        100,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        200,
+        true
+       ],
+       [
+        100,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        200,
+        true
+       ],
+       [
+        100,
+        false
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "Critical Rate %": [
+       [
+        9,
+        true
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        5,
+        true
+       ]
+      ],
+      "Damage %": [
+       [
+        18,
+        true
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        10,
+        true
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        10,
+        true
+       ]
+      ],
+      "Str %": [
+       [
+        9,
+        true
+       ]
+      ],
+      "Dex %": [
+       [
+        9,
+        true
+       ]
+      ],
+      "Int %": [
+       [
+        9,
+        true
+       ]
+      ],
+      "Luk %": [
+       [
+        9,
+        true
+       ]
+      ],
+      "Defense %": [
+       [
+        9,
+        true
+       ]
+      ],
+      "Max HP %": [
+       [
+        15,
+        true
+       ]
+      ],
+      "Max MP %": [
+       [
+        9,
+        true
+       ]
+      ],
+      "Str": [
+       [
+        400,
+        true
+       ]
+      ],
+      "Dex": [
+       [
+        400,
+        true
+       ]
+      ],
+      "Int": [
+       [
+        400,
+        true
+       ]
+      ],
+      "Luk": [
+       [
+        400,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Critical Rate %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        5,
+        true
+       ],
+       [
+        4,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        18,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        10,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        10,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        400,
+        true
+       ],
+       [
+        200,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        400,
+        true
+       ],
+       [
+        200,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        400,
+        true
+       ],
+       [
+        200,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        400,
+        true
+       ],
+       [
+        200,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Critical Rate %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        5,
+        true
+       ],
+       [
+        4,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        18,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        10,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        10,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        9,
+        true
+       ],
+       [
+        6,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        400,
+        true
+       ],
+       [
+        200,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        400,
+        true
+       ],
+       [
+        200,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        400,
+        true
+       ],
+       [
+        200,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        400,
+        true
+       ],
+       [
+        200,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Critical Rate %": [
+       [
+        12,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        7,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        25,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        15,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        15,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        12,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        12,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        12,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        12,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        12,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        20,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        12,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        600,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        600,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        600,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        600,
+        false
+       ]
+      ]
+     },
+     "2": {
+      "Critical Rate %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        7,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        25,
+        true
+       ],
+       [
+        18,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        15,
+        true
+       ],
+       [
+        10,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        15,
+        true
+       ],
+       [
+        10,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        20,
+        true
+       ],
+       [
+        15,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        600,
+        true
+       ],
+       [
+        400,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        600,
+        true
+       ],
+       [
+        400,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        600,
+        true
+       ],
+       [
+        400,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        600,
+        true
+       ],
+       [
+        400,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Critical Rate %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        7,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        25,
+        true
+       ],
+       [
+        18,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        15,
+        true
+       ],
+       [
+        10,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        15,
+        true
+       ],
+       [
+        10,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        20,
+        true
+       ],
+       [
+        15,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        12,
+        true
+       ],
+       [
+        9,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        600,
+        true
+       ],
+       [
+        400,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        600,
+        true
+       ],
+       [
+        400,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        600,
+        true
+       ],
+       [
+        400,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        600,
+        true
+       ],
+       [
+        400,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Critical Rate %": [
+       [
+        15,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        10,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        35,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        25,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        25,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        15,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        15,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        15,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        15,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        15,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        25,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        15,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        1000,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        1000,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        1000,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        1000,
+        false
+       ]
+      ]
+     },
+     "2": {
+      "Critical Rate %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        10,
+        true
+       ],
+       [
+        7,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        35,
+        true
+       ],
+       [
+        25,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        25,
+        true
+       ],
+       [
+        15,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        25,
+        true
+       ],
+       [
+        15,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        25,
+        true
+       ],
+       [
+        20,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        1000,
+        true
+       ],
+       [
+        600,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        1000,
+        true
+       ],
+       [
+        600,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        1000,
+        true
+       ],
+       [
+        600,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        1000,
+        true
+       ],
+       [
+        600,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Critical Rate %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Attack Speed %": [
+       [
+        10,
+        true
+       ],
+       [
+        7,
+        false
+       ]
+      ],
+      "Damage %": [
+       [
+        35,
+        true
+       ],
+       [
+        25,
+        false
+       ]
+      ],
+      "Min Damage Multiplier %": [
+       [
+        25,
+        true
+       ],
+       [
+        15,
+        false
+       ]
+      ],
+      "Max Damage Multiplier %": [
+       [
+        25,
+        true
+       ],
+       [
+        15,
+        false
+       ]
+      ],
+      "Str %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Dex %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Int %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Luk %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Defense %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Max HP %": [
+       [
+        25,
+        true
+       ],
+       [
+        20,
+        false
+       ]
+      ],
+      "Max MP %": [
+       [
+        15,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ],
+      "Str": [
+       [
+        1000,
+        true
+       ],
+       [
+        600,
+        false
+       ]
+      ],
+      "Dex": [
+       [
+        1000,
+        true
+       ],
+       [
+        600,
+        false
+       ]
+      ],
+      "Int": [
+       [
+        1000,
+        true
+       ],
+       [
+        600,
+        false
+       ]
+      ],
+      "Luk": [
+       [
+        1000,
+        true
+       ],
+       [
+        600,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "head": {
+    "epic": {
+     "1": {
+      "Skill Cooldown Decrease (seconds)": [
+       [
+        0.5,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Skill Cooldown Decrease (seconds)": [
+       [
+        0.5,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "Skill Cooldown Decrease (seconds)": [
+       [
+        0.5,
+        true
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "Skill Cooldown Decrease (seconds)": [
+       [
+        1,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Skill Cooldown Decrease (seconds)": [
+       [
+        1,
+        true
+       ],
+       [
+        0.5,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Skill Cooldown Decrease (seconds)": [
+       [
+        1,
+        true
+       ],
+       [
+        0.5,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Skill Cooldown Decrease (seconds)": [
+       [
+        1.5,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Skill Cooldown Decrease (seconds)": [
+       [
+        1.5,
+        true
+       ],
+       [
+        1,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Skill Cooldown Decrease (seconds)": [
+       [
+        1.5,
+        true
+       ],
+       [
+        1,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Skill Cooldown Decrease (seconds)": [
+       [
+        2,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Skill Cooldown Decrease (seconds)": [
+       [
+        2,
+        true
+       ],
+       [
+        1.5,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Skill Cooldown Decrease (seconds)": [
+       [
+        2,
+        true
+       ],
+       [
+        1.5,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "cape": {
+    "epic": {
+     "1": {
+      "Final Damage %": [
+       [
+        3,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Final Damage %": [
+       [
+        3,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "Final Damage %": [
+       [
+        3,
+        true
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "Final Damage %": [
+       [
+        5,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Final Damage %": [
+       [
+        5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Final Damage %": [
+       [
+        5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Final Damage %": [
+       [
+        8,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Final Damage %": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Final Damage %": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Final Damage %": [
+       [
+        12,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Final Damage %": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Final Damage %": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "chest": {
+    "unique": {
+     "1": {
+      "Basic Attack Target Increase": [
+       [
+        1,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Basic Attack Target Increase": [
+       [
+        1,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "Basic Attack Target Increase": [
+       [
+        1,
+        true
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Basic Attack Target Increase": [
+       [
+        2,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Basic Attack Target Increase": [
+       [
+        2,
+        true
+       ],
+       [
+        1,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Basic Attack Target Increase": [
+       [
+        2,
+        true
+       ],
+       [
+        1,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Basic Attack Target Increase": [
+       [
+        3,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Basic Attack Target Increase": [
+       [
+        3,
+        true
+       ],
+       [
+        2,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Basic Attack Target Increase": [
+       [
+        3,
+        true
+       ],
+       [
+        2,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "shoulders": {
+    "unique": {
+     "1": {
+      "Defense Penetration": [
+       [
+        8,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Defense Penetration": [
+       [
+        8,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "Defense Penetration": [
+       [
+        8,
+        true
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Defense Penetration": [
+       [
+        12,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Defense Penetration": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Defense Penetration": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Defense Penetration": [
+       [
+        20,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Defense Penetration": [
+       [
+        20,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Defense Penetration": [
+       [
+        20,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "legs": {
+    "epic": {
+     "1": {
+      "Final Damage %": [
+       [
+        3,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Final Damage %": [
+       [
+        3,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "Final Damage %": [
+       [
+        3,
+        true
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "Final Damage %": [
+       [
+        5,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Final Damage %": [
+       [
+        5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Final Damage %": [
+       [
+        5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Final Damage %": [
+       [
+        8,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Final Damage %": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Final Damage %": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Final Damage %": [
+       [
+        12,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Final Damage %": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Final Damage %": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "belt": {
+    "epic": {
+     "1": {
+      "Buff Duration Increase %": [
+       [
+        5,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Buff Duration Increase %": [
+       [
+        5,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "Buff Duration Increase %": [
+       [
+        5,
+        true
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "Buff Duration Increase %": [
+       [
+        8,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Buff Duration Increase %": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Buff Duration Increase %": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Buff Duration Increase %": [
+       [
+        12,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Buff Duration Increase %": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Buff Duration Increase %": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Buff Duration Increase %": [
+       [
+        20,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Buff Duration Increase %": [
+       [
+        20,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Buff Duration Increase %": [
+       [
+        20,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "gloves": {
+    "epic": {
+     "1": {
+      "Critical Damage %": [
+       [
+        10,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Critical Damage %": [
+       [
+        10,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "Critical Damage %": [
+       [
+        10,
+        true
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "Critical Damage %": [
+       [
+        20,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Critical Damage %": [
+       [
+        20,
+        true
+       ],
+       [
+        10,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Critical Damage %": [
+       [
+        20,
+        true
+       ],
+       [
+        10,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Critical Damage %": [
+       [
+        30,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Critical Damage %": [
+       [
+        30,
+        true
+       ],
+       [
+        20,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Critical Damage %": [
+       [
+        30,
+        true
+       ],
+       [
+        20,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Critical Damage %": [
+       [
+        50,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Critical Damage %": [
+       [
+        50,
+        true
+       ],
+       [
+        30,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Critical Damage %": [
+       [
+        50,
+        true
+       ],
+       [
+        30,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "boots": {
+    "epic": {
+     "1": {
+      "Companion Summoning Time Increase %": [
+       [
+        5,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Companion Summoning Time Increase %": [
+       [
+        5,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "Companion Summoning Time Increase %": [
+       [
+        5,
+        true
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "Companion Summoning Time Increase %": [
+       [
+        8,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Companion Summoning Time Increase %": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Companion Summoning Time Increase %": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Companion Summoning Time Increase %": [
+       [
+        12,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Companion Summoning Time Increase %": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Companion Summoning Time Increase %": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Companion Summoning Time Increase %": [
+       [
+        20,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Companion Summoning Time Increase %": [
+       [
+        20,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Companion Summoning Time Increase %": [
+       [
+        20,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "ring": {
+    "epic": {
+     "1": {
+      "All Skill Level": [
+       [
+        5,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "All Skill Level": [
+       [
+        5,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "All Skill Level": [
+       [
+        5,
+        true
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "All Skill Level": [
+       [
+        8,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "All Skill Level": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "All Skill Level": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "All Skill Level": [
+       [
+        12,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "All Skill Level": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "All Skill Level": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "All Skill Level": [
+       [
+        16,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "All Skill Level": [
+       [
+        16,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "All Skill Level": [
+       [
+        16,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "neck": {
+    "epic": {
+     "1": {
+      "All Skill Level": [
+       [
+        5,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "All Skill Level": [
+       [
+        5,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "All Skill Level": [
+       [
+        5,
+        true
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "All Skill Level": [
+       [
+        8,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "All Skill Level": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "All Skill Level": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "All Skill Level": [
+       [
+        12,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "All Skill Level": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "All Skill Level": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "All Skill Level": [
+       [
+        16,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "All Skill Level": [
+       [
+        16,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "All Skill Level": [
+       [
+        16,
+        true
+       ],
+       [
+        12,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "eye-accessory": {
+    "epic": {
+     "1": {
+      "Main Stat Per Level": [
+       [
+        10,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Main Stat Per Level": [
+       [
+        10,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "Main Stat Per Level": [
+       [
+        10,
+        true
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "Main Stat Per Level": [
+       [
+        20,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Main Stat Per Level": [
+       [
+        20,
+        true
+       ],
+       [
+        10,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Main Stat Per Level": [
+       [
+        20,
+        true
+       ],
+       [
+        10,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Main Stat Per Level": [
+       [
+        35,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Main Stat Per Level": [
+       [
+        35,
+        true
+       ],
+       [
+        20,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Main Stat Per Level": [
+       [
+        35,
+        true
+       ],
+       [
+        20,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Main Stat Per Level": [
+       [
+        50,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Main Stat Per Level": [
+       [
+        50,
+        true
+       ],
+       [
+        35,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Main Stat Per Level": [
+       [
+        50,
+        true
+       ],
+       [
+        35,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "ring2": {
+    "epic": {
+     "1": {
+      "Basic Attack Damage %": [
+       [
+        8,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Basic Attack Damage %": [
+       [
+        8,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "Basic Attack Damage %": [
+       [
+        8,
+        true
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "Basic Attack Damage %": [
+       [
+        14,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Basic Attack Damage %": [
+       [
+        14,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Basic Attack Damage %": [
+       [
+        14,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Basic Attack Damage %": [
+       [
+        21,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Basic Attack Damage %": [
+       [
+        21,
+        true
+       ],
+       [
+        14,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Basic Attack Damage %": [
+       [
+        21,
+        true
+       ],
+       [
+        14,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Basic Attack Damage %": [
+       [
+        30,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Basic Attack Damage %": [
+       [
+        30,
+        true
+       ],
+       [
+        21,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Basic Attack Damage %": [
+       [
+        30,
+        true
+       ],
+       [
+        21,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "face": {
+    "epic": {
+     "1": {
+      "Final Damage %": [
+       [
+        3,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Final Damage %": [
+       [
+        3,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "Final Damage %": [
+       [
+        3,
+        true
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "Final Damage %": [
+       [
+        5,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Final Damage %": [
+       [
+        5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Final Damage %": [
+       [
+        5,
+        true
+       ],
+       [
+        3,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Final Damage %": [
+       [
+        8,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Final Damage %": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Final Damage %": [
+       [
+        8,
+        true
+       ],
+       [
+        5,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Final Damage %": [
+       [
+        12,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Final Damage %": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Final Damage %": [
+       [
+        12,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "earrings": {
+    "epic": {
+     "1": {
+      "Skill Damage %": [
+       [
+        8,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Skill Damage %": [
+       [
+        8,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "Skill Damage %": [
+       [
+        8,
+        true
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "Skill Damage %": [
+       [
+        14,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Skill Damage %": [
+       [
+        14,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Skill Damage %": [
+       [
+        14,
+        true
+       ],
+       [
+        8,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Skill Damage %": [
+       [
+        21,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Skill Damage %": [
+       [
+        21,
+        true
+       ],
+       [
+        14,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Skill Damage %": [
+       [
+        21,
+        true
+       ],
+       [
+        14,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Skill Damage %": [
+       [
+        30,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Skill Damage %": [
+       [
+        30,
+        true
+       ],
+       [
+        21,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Skill Damage %": [
+       [
+        30,
+        true
+       ],
+       [
+        21,
+        false
+       ]
+      ]
+     }
+    }
+   },
+   "pocket": {
+    "epic": {
+     "1": {
+      "Main Stat % per 4 Levels": [
+       [
+        0.4,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Main Stat % per 4 Levels": [
+       [
+        0.4,
+        true
+       ]
+      ]
+     },
+     "3": {
+      "Main Stat % per 4 Levels": [
+       [
+        0.4,
+        true
+       ]
+      ]
+     }
+    },
+    "unique": {
+     "1": {
+      "Main Stat % per 4 Levels": [
+       [
+        0.6,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Main Stat % per 4 Levels": [
+       [
+        0.6,
+        true
+       ],
+       [
+        0.4,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Main Stat % per 4 Levels": [
+       [
+        0.6,
+        true
+       ],
+       [
+        0.4,
+        false
+       ]
+      ]
+     }
+    },
+    "legendary": {
+     "1": {
+      "Main Stat % per 4 Levels": [
+       [
+        0.8,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Main Stat % per 4 Levels": [
+       [
+        0.8,
+        true
+       ],
+       [
+        0.6,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Main Stat % per 4 Levels": [
+       [
+        0.8,
+        true
+       ],
+       [
+        0.6,
+        false
+       ]
+      ]
+     }
+    },
+    "mystic": {
+     "1": {
+      "Main Stat % per 4 Levels": [
+       [
+        1.2,
+        true
+       ]
+      ]
+     },
+     "2": {
+      "Main Stat % per 4 Levels": [
+       [
+        1.2,
+        true
+       ],
+       [
+        0.8,
+        false
+       ]
+      ]
+     },
+     "3": {
+      "Main Stat % per 4 Levels": [
+       [
+        1.2,
+        true
+       ],
+       [
+        0.8,
+        false
+       ]
+      ]
+     }
+    }
    }
   },
   "maxPity": 10000,

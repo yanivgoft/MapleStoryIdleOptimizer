@@ -41,7 +41,7 @@ CLASS_NAME = "Hero"
 STAT_IDENTITY = {"main": "STR", "sub": "DEX"}
 
 _MAIN_STAT_FIELDS = [
-    schema_mod.field("flat_str", "Flat STR", "Main stats", "float", "flat", 0, help="Include Iron Body's own +30 if unlocked."),
+    schema_mod.field("flat_str", "Flat STR", "Main stats", "float", "flat", 0),
     schema_mod.field("str_pct", "STR %", "Main stats", "float", "%", 0),
     schema_mod.field("dex", "DEX", "Main stats", "float", "flat", 0),
 ]

@@ -1,4 +1,4 @@
-// Equipment compare logic (pure): the editable state (current vs new equip), the request body, result types and a port of the engine's formula that mock mode uses.
+// Equipment compare logic (pure): the editable state (current vs new equip), the request body, result types and a port of the server's formula that mock mode uses.
 import type { GearLine } from "./cubes";
 import { NONE_STAT, emptyLine } from "./cubes";
 
@@ -77,7 +77,7 @@ export interface EquipResult {
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 export const ATTACK_STAT = "Attack (flat)";
 
-/** Port of engine/equipment.py ``evaluate_equip`` (same-stat lines add, different stats multiply).  Real answers come from the API; this serves mock mode and is
+/** Port of the server's ``evaluate_equip`` (engine/equipment.py) (same-stat lines add, different stats multiply).  Real answers come from the API; this serves mock mode and is
  *  tested against a real engine case. */
 export function evaluateSide(side: { attack: number; lines: { stat: string; value: number }[] }, rate: Record<string, number>, total: number): EquipSideResult {
   const items: [string, number][] = [[ATTACK_STAT, side.attack || 0]];
@@ -108,10 +108,17 @@ export function compareEquip(body: ReturnType<typeof equipPayload>, rate: Record
   return { current, new: nw, delta_pct: delta, delta_dps: nw.total_gain - current.total_gain, better: (delta > 0 ? "new" : delta < 0 ? "current" : "equal") as EquipResult["better"] };
 }
 
+/** A percentage for display: two decimals, a tiny non-zero value as "<0.01%" (never exponent notation); `signed` puts a "+" in front of a normal positive value. */
+export function pctLabel(v: number, signed = false): string {
+  const abs = Math.abs(v);
+  if (abs === 0) return "0.00%";
+  if (abs < 0.01) return "<0.01%";
+  return `${signed && v > 0 ? "+" : ""}${v < 0 ? "-" : ""}${abs.toFixed(2)}%`;
+}
+
 /** One-line verdict of a result. */
 export function equipVerdict(r: Pick<EquipResult, "better" | "delta_pct">): string {
   if (r.better === "equal") return "Both equips are worth the same.";
   const pct = Math.abs(r.delta_pct);
-  const txt = pct >= 0.01 ? pct.toFixed(2) : pct.toExponential(1);
-  return r.better === "new" ? `The new equip is better: +${txt}% of Total DPS.` : `Your current equip is better: the new one loses ${txt}% of Total DPS.`;
+  return r.better === "new" ? `The new equip is better: ${pctLabel(pct, true)} of Total DPS.` : `Your current equip is better: the new one loses ${pctLabel(pct)} of Total DPS.`;
 }
