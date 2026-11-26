@@ -17,6 +17,8 @@ from engine.classes import bishop  # noqa: E402
 from engine.data import artifacts as AD  # noqa: E402
 import sens_compare_generic as C  # noqa: E402
 import sens_test_common as SC  # noqa: E402
+import patch_2026_11_26  # noqa: E402
+import patch_2026_11_26  # noqa: E402
 
 TEST = SC.SensTest.from_registry("bishop")
 GOLDEN = TEST.GOLDEN
@@ -33,25 +35,25 @@ def test_static():
     """The spec reproduces the builder's tables (so a builder change that is not mirrored in the spec fails here)."""
     assert [t["key"] for t in sensitivity.ARTIFACT_TOGGLES] == list(AD.ARTIFACT_LABELS), "toggle list must come from the engine's artifact table"
     assert sensitivity.supports(bishop) and sensitivity.meta(bishop)["class_id"] == "bishop"
-    assert len(sensitivity.stat_sweep(bishop)) == 29 and len(sensitivity.ARTIFACT_TOGGLES) == 36
+    assert len(sensitivity.stat_sweep(bishop)) == 29 and len(sensitivity.ARTIFACT_TOGGLES) == len(AD.ARTIFACT_LABELS)
     bm = _builder()
     if bm is None:
         return
     assert [(k, l, t) for k, l, t in bm.STAT_SWEEP_STAT_ENTRIES] == [tuple(e) for e in SPEC.stat_list]
-    assert list(bm.STATUS_REBUILD_KEYS) == list(SPEC.status_rebuild_keys)
-    assert tuple(bm.COMPANION_FULL_SEARCH_KEYS) == tuple(SPEC.companion_full_search_keys)
+    assert list(bm.STATUS_REBUILD_KEYS) == list(patch_2026_11_26.workbook_keys(SPEC.status_rebuild_keys))
+    assert tuple(bm.COMPANION_FULL_SEARCH_KEYS) == tuple(patch_2026_11_26.workbook_keys(SPEC.companion_full_search_keys, search=True))
     assert tuple(bm.SUMMON_TIME_KEYS) == tuple(SPEC.summon_time_keys)
     assert list(bm.CDR_SWEEP_VALUES) == list(sensitivity.CDR_SWEEP_VALUES)
-    assert list(bm.ARTIFACT_LABELS) == list(AD.ARTIFACT_LABELS) and sorted(bm.ARTIFACT_NO_DPS_EFFECT) == sorted(AD.ARTIFACT_NO_DPS_EFFECT)
+    assert list(bm.ARTIFACT_LABELS) == list(AD.WORKBOOK_ARTIFACT_LABELS) and sorted(bm.ARTIFACT_NO_DPS_EFFECT) == sorted(AD.ARTIFACT_NO_DPS_EFFECT)
     # passive-level deltas: the block's crit_rate_delta / crit_dmg_delta / min_dmg_delta / attack_speed_delta rows, each with the Skills-sheet row's own (base, factor index, job step)
     col = {name: i for i, name in enumerate(bm.SKILL_COLUMNS)}
     rows = {r[col["Key"]]: r for r in bm.SKILL_ROWS}
     hook_of = {"MAGIC_CRITICAL_RATE": "crit_rate_delta", "HIGH_WISDOM": "crit_rate_delta", "MAGIC_CRITICAL_DAMAGE": "crit_damage_delta",
                "SPELL_MASTERY": "min_damage_delta", "MAGIC_ACCELERATION": "as_bonus_extra"}
     expect = sorted((hook, rows[k][col["BaseDamage(tenths%)"]], rows[k][col["FactorIndex"]], rows[k][col["JobStep"]]) for k, hook in hook_of.items())
-    got = sorted((p.hook, p.base, p.fidx, p.step) for p in SPEC.passive_levels)
+    got = patch_2026_11_26.to_workbook('bishop', ((p.hook, p.base, p.fidx, p.step) for p in SPEC.passive_levels))   # (Divine Protection's level delta is engine-only: the patch made it permanent)
     assert expect == got, (expect, got)
-    assert all(rows[k][col["ScalesWithLevel"]] is True for k in hook_of) and all(p.unlock is None for p in SPEC.passive_levels)
+    assert all(rows[k][col["ScalesWithLevel"]] is True for k in hook_of) and all(p.unlock is None for p in SPEC.passive_levels if p.hook != "defense_pct_delta")
     src = Path(bm.__file__).read_text()
     for k, hook in (("MAGIC_CRITICAL_RATE", "crit_rate_delta"), ("HIGH_WISDOM", "crit_rate_delta"), ("MAGIC_CRITICAL_DAMAGE", "crit_dmg_delta"),
                     ("SPELL_MASTERY", "min_dmg_delta"), ("MAGIC_ACCELERATION", "attack_speed_delta")):

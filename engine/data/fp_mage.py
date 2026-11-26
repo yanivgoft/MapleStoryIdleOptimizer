@@ -130,6 +130,9 @@ CDR_EXEMPT = ["IGNITE", "ELEMENTAL_DRAIN"]   # rate-surrogate cooldowns, not rea
 # Ignite (game table skillIndex 52060): 50% per enemy hit to create a wall (2.5 s ICD after each success), up to 3 walls ticking every second
 IGNITE_CHANCE, IGNITE_ICD, IGNITE_WALLS = 0.5, 2.5, 3
 
+# ---- player's own stun (patch 2026-11-26): Poison Breath stuns for 1.5 s, cast on cooldown from the start (its cooldown tier is the row's own) ----
+PLAYER_STUN = [dict(id="BREATH", key="POISON_BREATH", typ="cast", dur=1.5, p=1.0)]
+
 # ---- Status Effect Damage / KO timeline engine spec (src/status_timeline.py) ----
 STATUS_BUFFS = [("MED", "MEDITATION", "atk"), ("MG", "MAGIC_GUARD", "atk"), ("INF", "INFINITY", "ramp")]
 INFINITY_RAMP = dict(p0=15, p1=25, ramp_t=10, dur0=15)     # Infinity: +15% -> +25% Final Damage over 10 s of its 15 s

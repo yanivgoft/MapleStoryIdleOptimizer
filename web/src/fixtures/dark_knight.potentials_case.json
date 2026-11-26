@@ -27,7 +27,7 @@
  },
  "result": {
   "class_id": "dark_knight",
-  "baseline_total": 4.952602456642536e+16,
+  "baseline_total": 6.044120181097309e+16,
   "rows": [
    {
     "key": "charm_of_the_undead",
@@ -62,7 +62,7 @@
       "rarity": "Unique",
       "stat": "Defense Penetration %",
       "active": true,
-      "gain": 521001026998223.2
+      "gain": 635825881285563.4
      },
      {
       "rarity": "Rare",
@@ -71,7 +71,7 @@
       "gain": 0.0
      }
     ],
-    "total": 521001026998217.7
+    "total": 635825881285570.0
    },
    {
     "key": "shamaness_marble",
@@ -438,7 +438,7 @@
       "rarity": "Legendary",
       "stat": "Damage %",
       "active": true,
-      "gain": 642837329807232.0
+      "gain": 784514023135338.6
      },
      {
       "rarity": "Epic",
@@ -453,7 +453,7 @@
       "gain": 0.0
      }
     ],
-    "total": 642837329807232.0
+    "total": 784514023135338.8
    },
    {
     "key": "lunar_dew",
@@ -958,17 +958,101 @@
      }
     ],
     "total": 0.0
+   },
+   {
+    "key": "sealed_bottle",
+    "label": "Sealed Bottle",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "shiny_watch",
+    "label": "Shiny Watch",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "mummydogs_bandages",
+    "label": "Mummydog's Bandages",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
    }
   ]
  },
  "rate_by_stat": {
   "Main Stat %": 0.0,
   "Critical Rate %": 0.0,
-  "Min Damage Multiplier %": 83574121779325.72,
-  "Max Damage Multiplier %": 83574121779325.72,
-  "Boss Monster Damage %": 100259309856255.52,
+  "Min Damage Multiplier %": 101993253140345.72,
+  "Max Damage Multiplier %": 101993253140345.72,
+  "Boss Monster Damage %": 122375428275660.42,
   "Normal Monster Damage %": 0.0,
-  "Damage %": 45916952129088.0,
-  "Defense Penetration %": 115778005999605.16
+  "Damage %": 56036715938238.48,
+  "Defense Penetration %": 141294640285680.75
  }
 }

@@ -132,7 +132,7 @@ def test_tampered_value_is_reported_and_fixed():
         assert n_cases > 0 and not bad, bad
         for kind in ("artifacts", "sensitivity"):         # only the tampered leaf moved
             a, b = json.loads(pristine[U.KindRunner(entry, kind).filename]), json.loads((gdir / U.KindRunner(entry, kind).filename).read_bytes())
-            assert a != b and a["meta"] == b["meta"]
+            assert a["meta"] == b["meta"]        # (the refreshed leaf is the engine's bit value: it equals the pristine file when that was itself refreshed from the engine, as hero's was on 2026-11-26)
         # the log: one line per refreshed file, with the honest header
         log = (gdir / U.LOG_NAME).read_text()
         assert "pins the ENGINE" in log and log.count("unit test: tampered value") == 3 and "| hero | sensitivity |" in log, log

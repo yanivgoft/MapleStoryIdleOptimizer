@@ -52,10 +52,10 @@ CURVES = {
     "BURNING_FOCUS_CRIT_RATE": Curve(80, 22, 3),             # Critical Rate +8 (stat screen)
     "BURNING_FOCUS_CRIT_DAMAGE": Curve(160, 22, 3),          # Critical Damage +16 (stat screen)
     "LIBERATED_MAGIC_FD": Curve(150, 22, 3),                 # Final Damage +15 while MP >= 35 % (stat screen)
-    "PHOENIX_RUN_FD": Curve(100, 22, 4),                     # Final Damage +10 (stat screen)
+    "PHOENIX_RUN_FD": Curve(10, 22, 4),                      # Final Damage +1 % PER STACK (patch 2026-11-26: +1 % every second up to 12 stacks; was a flat +10 in the stat screen)
     "FLAME_BARRIER_ATTACK": Curve(50, 22, 4),                # Attack +5 (stat screen)
     "PURE_MAGIC_SKILL": Curve(150, 22, 4),                   # Skill Damage +15 (stat screen)
-    "PURE_MAGIC_MAX": Curve(200, 22, 4),                     # Max Damage Multiplier +20 (stat screen)
+    "PURE_MAGIC_MAX": Curve(300, 22, 4),                     # Max Damage Multiplier +30 (stat screen; +20 before the 2026-11-26 patch)
     "WILD_BLAZE_FD": Curve(120, 22, 4),                      # Final Damage +12 (stat screen); its +6 % Buff Duration is a typed input
     # Call of Cygnus: per-skill Final Damage multiplier 1 + pct/100 (idx 23, 4th job)
     "CYGNUS_FLAME_VORTEX": Curve(600, 23, 4),
@@ -113,7 +113,12 @@ UNLOCK_LEVEL = {
     "GRAND_FLAME_ELEMENTAL": 74,
     "FINAL_FLAME_ELEMENTAL": 105,
     "CALL_OF_CYGNUS": 100,
+    "PHOENIX_RUN": 107,
+    "PHOENIX_RUN_BOOST": 118,                          # mastery "Phoenix Run - Recovery": Final Damage boost +100 % (x2)
 }
+
+# Phoenix Run (patch 2026-11-26): Final Damage +1 % (x curve 22, x2 from Lv118) every second from the battle start, up to 12 stacks (PHOENIX_RUN_FD is the per-stack value)
+PHOENIX_RUN_STACKS = dict(max_stacks=12, interval=1.0, boost=2.0)
 
 # ---- Final Orbital Flame (the basic attack) ----
 FOF_HITS = (5, 136, 6)                              # 5 hits, +1 strike from level 136 (mastery "Final Orbital Flame - Strike")
@@ -179,8 +184,8 @@ PLAYER_STUN = [dict(id="MAELSTROM", key="CINDER_MAELSTROM", typ="cast", dur=1.5,
 STAT_SCREEN_EFFECTS = (
     "Fire Repulsion (Attack +3, +5 pp at Lv24; its Defense is not a DPS stat)", "Word of Fire (Attack Speed +5)", "Controlled Burn mastery (Lv49: Attack Speed +7 while MP >= 35 %)",
     "Spell Control (Min Damage +15)", "Brilliant Enlightenment (Min +10 / Max +20)", "Burning Focus (Crit Rate +8, Crit Damage +16)",
-    "Liberated Magic (Final Damage +15 while MP >= 35 %)", "Phoenix Run (Final Damage +10, x2 from Lv118)", "Flame Barrier (Attack +5, +10 pp at Lv134)",
-    "Pure Magic (Skill Damage +15, Max Damage +20)", "Wild Blaze (Final Damage +12, Buff Duration +6)", "Fires of Creation (Final Damage +3, +3 pp at Lv104, while equipped)",
+    "Liberated Magic (Final Damage +15 while MP >= 35 %)", "Phoenix Run (a live ramp now: Final Damage +1 per second up to 12 stacks, x2 from Lv118)", "Flame Barrier (Attack +5, +10 pp at Lv134)",
+    "Pure Magic (Skill Damage +15, Max Damage +30)", "Wild Blaze (Final Damage +12, Buff Duration +6)", "Fires of Creation (Final Damage +3, +3 pp at Lv104, while equipped)",
     "masteries: Main Stat +30, Critical Rate +5, Basic Attack Damage +15, Accuracy +5, Max Damage Multiplier +10, Skill Damage +15, Basic Attack Target +1 (Lv64)",
 )
 

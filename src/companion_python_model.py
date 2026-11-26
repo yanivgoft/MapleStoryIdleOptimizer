@@ -28,6 +28,14 @@ def _aps_after(aps, delta_pct):
     return 1 + min(150.0, 150.0 * (1 - (1 - (aps - 1) * 100 / 150) * (1 - delta_pct / 150))) / 100
 
 
+def _ramp_avg_stacks(duration, max_stacks, interval):
+    """Average stack count over ``duration`` s of a buff gaining one stack every ``interval`` s from t = 0 up to ``max_stacks`` (same as engine.common.fight.ramp_avg_stacks)."""
+    if duration <= 0:
+        return 0.0
+    n = min(int(duration // interval), max_stacks)
+    return (interval * n * (n - 1) / 2 + n * (duration - n * interval)) / duration
+
+
 def run(host, choice, lvl, inc, grid_inc=None):
     """host: numeric dict (see HOST_KEYS in companion_model.py; functions avgbuff_snap(charm, extra) and hex_snap(stacks) are
     Python callables).  Returns {'comp_boss_dps', 'comp_norm_dps', 'comp_blend_dps', 'best', ...}."""
@@ -427,6 +435,8 @@ def _evaluate(h, rows, W, s, steady, pvp, isBT, chboss, tb0, Teff, cap, w, tbasi
         rhoH = (1 + h["horn_full"] / 100) / (1 + h["horn_avg"] / 100)
         core = (rhoA * rhoD * rhoF * rhoH * rc["fdR"] * rc["crR"] * rc["mxR"] * rc["dfR"] * rc["tkR"] * rc["pcR"] * lvlmult
                 * (stm_b if branch == "b" else stm_n))
+        if h.get("watch_per"):          # Shiny Watch (patch 2026-11-26, app only: the frozen workbooks never set it): the companion's own Final Damage ramp over its window W
+            core *= 1 + h["watch_per"] * _ramp_avg_stacks(W, h["watch_max"], h["watch_interval"]) / 100
         tf = tf_b if branch == "b" else tf_n
         dmg = h["unit"] * core * (BAS * rc["bdR"] + skratio * rc["sdR"] * (hit + dot + tf * (ech + stn + procs_d)))
         dmg *= (1 if pvp else 1 + pct / 100) * extra

@@ -2163,3 +2163,56 @@ Known limits of the inverse (each is a decision or a model property, not a bug o
 branch ratio before blending for equipped rows when 0 < w < 1, so both directions report identical dollar and % gain; pure boss / pure normal content is unchanged bit for bit.  Test `tests/golden/test_equip_blended.py` (19 live artifacts + the
 baked-in ones, 5 classes, both contents).  **The frozen workbooks keep the old asymmetric numbers**: only the equipped toggle rows of the Breakthrough sensitivity-golden cases moved (24 values in 10 `*_sensitivity_golden.json` files, refreshed from the
 engine with `update_goldens.py --kind sensitivity`, see `golden_refresh_log.md`; they now pin the engine, no longer the workbook, for those rows).
+
+## Patch 2026-11-26 (Nexon "November 26 Patch Notes": Job Balance, Artifacts; engine / API / web only - the frozen workbooks are NOT updated)
+
+Applied in the engine data (`engine/data/<class>.py`, `engine/sens_specs/<class>.py`) and pinned by `tests/golden/test_patch_2026_11_26.py`; the workbook-class goldens were refreshed with
+`update_goldens.py --write --reason "Nov 26 2026 patch: ..."` (`golden_refresh_log.md`), so the fields below now pin the ENGINE, not the workbooks.  `tests/golden/patch_2026_11_26.py` lists every deliberate
+engine-vs-workbook difference that the static workbook checks (`sens_extras/<id>.py::test_static`) must tolerate (passive bases, the Final Pact row, the extra Shiny Watch / Mummydog toggle keys).
+
+**Plain value changes**: Magic Crash 4800 -> 6500 % (Hero, Paladin, Dark Knight); Divine Judgment (Holy Brand) 850 -> 1000 %; Divine Mark - Weaken 20 -> 12 %; Advanced Final Attack - Enhance (Lv113)
++50 -> +100 (Hero, Dark Knight, Bowmaster, Marksman); Illusion Step Attack 14 -> 15 % (Bowmaster, Marksman); Arrow Illusion 1200 -> 1400 %, Bolt Surplus 650 -> 750 % (Marksman); Toxic Venom 600 -> 800 %
+(Night Lord, Shadower); Sudden Raid - Damage (Lv126) +50 -> +80 (Night Lord, Shadower); Smokescreen - Critical (Lv113) +30 -> +40 (Shadower).
+**Skill-level (sensitivity) deltas only** (the typed stat already contains the passive): Max Damage Multiplier 20 -> 30 % (Hero Combat Mastery, Paladin Expert, Dark Knight Barricade Mastery, Bowmaster Bow
+Expert, Marksman Crossbow Expert, Shadower Dagger Expert, Dawn Warrior Student of the Blade, Night Walker Throwing Expert, Blaze Wizard Pure Magic; **Night Lord's Claw Expert row was missing in the
+spec and was added**, the frozen builder has none), Power Stance 15 -> 18 % (Hero, Dark Knight).  The native classes' displayed-value tests keep their pre-patch in-game readings as comments; the Max
+Damage rows there are now patch-derived (x1.5), not readings.
+
+**New live terms** (each is an engine-only behaviour; no workbook has it):
+* **Final Pact (Dark Knight) / Phoenix Run (Blaze Wizard)**: a ramp of +1 % Final Damage per second from the battle start, 12 stacks (was a flat +10 % that the typed Final Damage contained; user: "live ramp
+  on top of the typed stat").  The per-stack value follows the old curve (10 tenths-of-% x factor 22, x2 from Lv118 by the existing "boost +100 %" mastery - ASSUMED unchanged by the patch, which does not mention
+  it); fight-average stacks `Fight.ramp_avg_stacks` (timed fights / PvP: exact, `12 - 78/T` for T >= 12; continuous hunting: always 12; one battle start per fight: not reset per wave - open, ask for an in-game
+  observation if a hunting number looks off).  Dark Knight therefore now uses `baked_fd_form="typed"` (Hero's convention) because the ramp shares the typed Final Damage bracket; `mult_extra` makes the
+  Final Damage sweep bump the whole bucket.
+* **Night Lord - Frailty Curse - Weaken** (was "Frailty Curse - Critical", Lv111, +30 % Critical Damage Taken): Lv113, the Frailty Curse damage-taken debuff x 1.08 (user: multiplicative reading of "+8%p");
+  the Critical-Damage-Taken term is gone (`crit_damage_bonus` 0).  The Critical Resistance half stays unmodelled.  "Frailty Curse / Smokescreen / Emerald Dust now a standalone 20 s buff, Buff Duration applies":
+  the engine already modelled both as 20 s buffs on a 45 s cooldown with Buff Duration; buff removal is not modelled (no change).
+* **Corsair - Majestic Presence**: every proc also gives +8 % Final Damage for 5 s: Poisson uptime `1 - exp(-rate x 5)` from the proc rate X/(1 + ICD X), per branch, time-weighted.  The rates come from the
+  AVERAGED attack rates (basic = APS - averaged cast rate; Brain Scrambler / Rapid Fire = hits / effective cooldown), not from the timeline strip, because the strip's Final Damage baseline needs the value first
+  (the strip's own cast counts differ from the averaged ones by a few percent in World Boss: second-order).  The buff does not stack (refreshes) and Buff Duration does not extend it (the patch does not say so).
+
+**Applied after the first pass (user answers, 2026-11-26)**:
+* **FP-Mage Poison Breath's 1.5 s stun** is a player stun like Ice/Lightning's Glacier Wall (`PLAYER_STUN` in `engine/data/fp_mage.py`, the stun vector + `stun_keys` of the timeline groups, `pst` on the companion host,
+  the stub-host run `comp_mod.stun_windows`).  Like in the other stun classes a stun-only uplift is reported as a `companion` block with `choice: "None"` when no companion is chosen.  Consequences: the FP-Mage
+  goldens were refreshed (`golden_harness.py` tolerates the "None" block against the workbook's `companion: null`; `artifacts_harness.py` compares `timeline_on` directly so it can be refreshed); Arwen's Glass
+  Shoes' summoning time is no longer saturated at a typed 40 in Breakthrough (Poison Breath's stun shifts the companion windows; 60 is the new saturation point: tests `test_artifact_lines_ranking.py`,
+  `api/tests/test_sensitivity.py` moved to 60); Athena's Gloves joins `COMPANION_FULL_SEARCH_KEYS` of every spec (its direct Attack Speed moves the first cast of a player stun with the engine off).
+* **Bishop Divine Protection**: permanent +25 % Defense that the preset page already shows (user): the live duty-cycle term is gone (`divine_protection_bonus` = 0); only its skill-level delta
+  (`PassiveLevel("defense_pct_delta", 250, 22, 3, 60)`) feeds Invincible's Defense -> INT conversion in Stat values.  Bishop's class golden now compares the multiplier-style rows on their stored DPS
+  (a re-derived value could not be refreshed).
+
+**Not modelled, on purpose**: Elemental Adaptation (I/L, F/P: debuff immunity only), Flame Barrier's absorb 6 -> 10 % of Max HP, Dark Impale's range, companion barriers (based on
+the target's Max HP; no barrier rows in `src/companion_kits.py`), party-play stacking (poison / venom / mark per character: the engine is solo and already uses "own only"), Wind Archer (Emerald Dust 3 %
+Final Damage as a standalone 20 s buff, Bow Expert Max Damage 30 %: the class is not built; record for when it is).  Cursed Doll's evasion rule, Peach Tree Herb Pouch's buff-removal rule and Candle's
+"cannot be removed" change: nothing in the engine models evasion or buff removal.  The artifact-potential slot lock (up to 2 locked lines, costs Mysterious Artifacts): the app prices the lines you type, not rerolls.
+
+**Artifacts**: the 5th slot already existed (2026-11-23).  **Awakening Stage 6-7 for Legendary artifacts** (`engine.artifacts.max_star`): every table is exactly `v0 x (1 + 0.2 x star)` (checked for all of
+them), stars 6 / 7 continue the line (`sv`); Epic / Unique stay at 5; schema `artifacts[].max_star`, API validation per artifact, web star dropdown per artifact (clamped).  **Three new Legendary artifacts**
+(`engine/data/artifacts_extra.py`, merged into `engine.data.artifacts` by the footer of the generated file; `WORKBOOK_ARTIFACT_*` keep the workbook subset, `gen_artifact_data.py --check` still verifies the
+generated part): Sealed Bottle (+6 % Final Damage; Normal +1 % / Boss +2 % Monster Damage per kill, 10 stacks, 30 in Chapter Breakthrough: stacks from the Chalice kill rate (100 / min), full in continuous
+hunting, a ramp until the boss appears in Breakthrough / Hero Dungeon, none in boss-only content / PvP), Shiny Watch (+10 % Attack; the companion's Final Damage +4 % every 3 s up to 10 stacks, averaged over
+its window by the companion model: host key `watch_per`, absent for the workbooks), Mummydog's Bandages (+12 % Attack; the below-50 %-HP branch has no DPS counterpart: HP is assumed to stay above 50 %).
+The star-0 values are the patch table's (inventory effects - Normal Monster Damage 15 %, Final Damage 2 %, Defense 10 % - belong to the preset page and are never modelled); the percentages scale +20 % of
+the base per star by the user's rule, the stack counts and the 3 s interval do not.  Sealed Bottle's Final Damage is stripped from the typed value like the other always-on Final Damage artifacts
+(`typed_artifacts.FACTOR_ROWS`); its kill stacks, Shiny Watch and Mummydog's Bandages are not.  The Sensitivity specs of every class carry `shiny_watch_equipped` / `mummydogs_bandages_equipped`
+(strip rebuild) and `shiny_watch_equipped` (full summon search) on top of the builders' lists (`engine/sens_specs/__init__.py`).  The Excel import has no rows for them (they stay at their defaults).

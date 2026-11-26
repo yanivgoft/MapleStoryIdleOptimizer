@@ -14,7 +14,7 @@ Corsair were substantially closed out via `maplestoryidle.info`. Companions (all
 (FP-Mage 2026-11-11..14, the other 11 ported 2026-11-14..17 incl. each class's own stun skills; shared modules
 `src/companion_model.py`, `src/status_timeline.py`; see KNOWN_GAPS "Companions"); MP
 consumption has no scaling data on either source (see that section) and may stay permanently out of scope. Artifacts (Equip Effects
-for all 36 artifacts, plus a reference-only Artifact Potentials calculator) has already shipped for
+for all 36 workbook artifacts (39 in the app since the 2026-11-26 patch), plus a reference-only Artifact Potentials calculator) has already shipped for
 all 12 classes — see the "Artifacts (\<Class\>)" sections in `KNOWN_GAPS.md` for each class's own
 wiring decisions.
 
@@ -38,7 +38,7 @@ One app for every class listed by `/api/classes` (the user picks the class; the 
 `engine/README.md` the engine layout. The user intends to STOP using the Excel workbooks once the app is live, so the workbooks/builders/verify scripts are now the
 frozen reference (not extended: e.g. the 5th artifact slot exists only in the app); fix a workbook only when an app bug needs the reference corrected.
 - `engine/` — plain-Python (stdlib only) calculation package: `engine/classes/<id>.py` (`compute/defaults/fields`), `engine/common/*` (content/fight/schema/blend/...),
-  `engine/artifacts.py` (36 effects, `MAX_SLOTS=5`), `engine/sensitivity.py` + `engine/sens_specs/<id>.py` (stat values), `engine/cubes.py`, `engine/equipment.py`,
+  `engine/artifacts.py` (39 effects: 36 of the workbooks + 3 from the 2026-11-26 patch in `engine/data/artifacts_extra.py`; `MAX_SLOTS=5`; stars 0-5, Legendary 0-7), `engine/sensitivity.py` + `engine/sens_specs/<id>.py` (stat values), `engine/cubes.py`, `engine/equipment.py`,
   `engine/potentials.py`. It imports the shared `src/companion_kits.py`, `src/companion_python_model.py`, `src/status_timeline.py` (through `engine/_src.py`).
 - `api/` — stateless FastAPI (Cloud Run): classes/schema/defaults/compute/sensitivity/cubes/equipment-compare/artifact-potentials, rate limits, caches, CORS via env.
 - `web/` — React + TypeScript + Vite (Firebase Hosting): schema-driven forms, profiles (localStorage, optional Google account sync to Firestore through an explicit
@@ -91,7 +91,7 @@ frozen reference (not extended: e.g. the 5th artifact slot exists only in the ap
      NOTHING: every `engine/classes/<id>.py` that is not one of the 12 workbook classes is discovered as engine-native (`registry.NATIVE`; `MSI_NATIVE_CLASSES=hero` lets a workbook class stand in for a test).
   3. The independent check is the user's in-game text: `tests/golden/test_<id>_displayed.py` (any `test_<id>_*.py` is a global script of the full run and one of the class's own jobs under `--class <id>`).
   4. Pin it: `python3 tests/golden/update_goldens.py --create --class <id> --reason "..."` writes `tests/golden/<id>_snapshot.json` from the CURRENT engine (generic case matrix from the class's schema + data module:
-     10 content types x stat sets x companion on/off, level sweep at every unlock / mastery threshold, all 36 artifacts, 2-5 slots, sensitivity runs, cube / equipment / potential pricing; < 3 MB; logged as
+     10 content types x stat sets x companion on/off, level sweep at every unlock / mastery threshold, all artifacts, 2-5 slots, sensitivity runs, cube / equipment / potential pricing; < 3 MB; logged as
      "engine-native snapshot: pins the engine, no independent source"). After an ON-PURPOSE model change: `update_goldens.py --class <id>` (dry-run diff), review, `--write --reason "..."`.
   5. `python3 tests/run_all.py --class <id>` runs `test_snapshots.py` + `test_engine_native.py` (equip-toggle direction invariance, Final Damage +1% exact, hooks are no-ops, API shape, no-DPS-effect artifacts, content sweep,
      LEVEL SWEEP 1-200 that flags every DPS decrease; an understood one goes into `tests/golden/native_level_allowlist.json` with a reason, a stale entry fails) + its API tests. Then regenerate the web fixtures
@@ -100,6 +100,11 @@ frozen reference (not extended: e.g. the 5th artifact slot exists only in the ap
   6. PUBLISHING (only after the user confirmed the skill scaling in game): flip `PUBLISHED = True` (or delete the line), run `update_goldens.py --create --class <id> --reason "..."` (the snapshot is now required),
      regenerate the fixtures with `web/scripts/gen_fixtures.py` (published classes only; use `--include-unpublished` beforehand if you want to preview them locally), run the full `tests/run_all.py`, then
      `deploy/redeploy.sh` (it expects `engine.published_classes()` classes live).
+- **Patch 2026-11-26 (Job Balance + Artifacts)**: applied in the ENGINE only (the workbooks are frozen); every changed number is named in `tests/golden/test_patch_2026_11_26.py` and listed in KNOWN_GAPS "Patch
+  2026-11-26" (incl. what was NOT modelled and why).  `tests/golden/patch_2026_11_26.py` holds the deliberate engine-vs-workbook differences the static workbook checks tolerate (passive bases, the Final Pact row,
+  the extra toggle keys of the new artifacts); the artifacts the game added after the workbooks live in `engine/data/artifacts_extra.py` (merged by the footer that `gen_artifact_data.py` writes; the generated
+  part still equals the builder, `WORKBOOK_ARTIFACT_LABELS` / `_RANK` / `_STAR_VALUES` are the workbook subset the builder comparisons use).  A new game-added artifact = rows in that file + the `Pre` / `Effects`
+  wiring in `engine/artifacts.py` + a typed row (`typed_artifacts`) or a `NO_TYPED` entry + `EFFECTS` wording in `web/src/lib/artifacts.ts`; never hard-code the artifact count in a test (derive it from `AD.ARTIFACT_LABELS` / the schema).
 - **Blank numeric inputs**: the engine reads a missing/None value as 0 (an empty Excel cell; the goldens pin this) - the one exception is typed by the user: "Max Enemies In Range" blank/0
   means uncapped (999), applied in `api/validation.py` (`validate_inputs`) only for content where the field applies. "0 enemies hit" was a bug (0 DPS in Chapter Hunt,
   ZeroDivisionError in Ice/Lightning Mage and Bishop). Do NOT put such a rule inside `engine/common/fight.py`: it changes the intermediate normal-branch numbers of boss content and

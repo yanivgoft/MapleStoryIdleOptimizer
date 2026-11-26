@@ -95,7 +95,7 @@ HOLY_SYMBOL_MASTERY = {90: 25}                                         # Damage 
 HOLY_SYMBOL_DURATION = (14, (98, 14 * 1.5))
 HOLY_SYMBOL_COOLDOWN = 28
 
-# Divine Protection: auto-triggering Defense buff, 15 s window every 20 s (duty-cycle averaged)
+# Divine Protection: +25 % Defense, PERMANENT since the 2026-11-26 patch (was a 15 s window every 20 s): part of the typed Defense %, only the skill-level delta is modelled
 DIVINE_PROTECTION = dict(base=250, fidx=22, job_step=3, cooldown=20, duration=15)
 # Invincible: converts a level-scaling share of total Defense (10 x factor 22 / 1000 percent) into INT from level 35
 INVINCIBLE = dict(level=35, base=10, fidx=22)

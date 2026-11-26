@@ -153,6 +153,10 @@ class _Model(model_mod.ModelBase):
         self.normal_damage = inp("normal_damage")
         self.status_effect_damage = status_effect_damage = inp("status_effect_damage")
         self.final_damage = inp("final_damage")
+        if sens.get("final_damage_factor") is not None:
+            # Sensitivity: with Final Pact's live ramp sharing the additive Final Damage bracket, a baked-in Final Damage artifact what-if is a factor on the TYPED value
+            # ((1 + F/100) x factor - 1), not on the live artifact bucket (``baked_fd_form="typed"`` in engine/sens_specs/dark_knight.py), as in Hero
+            self.final_damage = ((1 + self.final_damage / 100) * sens["final_damage_factor"] - 1) * 100
         self.min_damage = inp("min_damage") + sens.get("min_damage_delta", 0.0)      # (+ Weapon Mastery's level delta, Sensitivity only)
         self.max_damage = inp("max_damage") + sens.get("max_damage_delta", 0.0)      # (+ Barricade Mastery's level delta / Athena's Gloves' dependent Max Damage, Sensitivity only)
         self.crit_rate = inp("crit_rate") + sens.get("crit_rate_threshold_extra", 0.0) + sens.get("crit_rate_delta", 0.0)   # (+ Book of Ancient's direct Crit Rate what-if / a passive's level delta, Sensitivity only)
@@ -312,7 +316,12 @@ class _Model(model_mod.ModelBase):
         self.lord_critrate_avg, self.lord_critdmg_avg = lord_critrate_avg, lord_critdmg_avg
         self.crit_rate_bonus = lord_critrate_avg
         self.crit_damage_bonus = lord_critdmg_avg
-        self.final_damage_extra = sens.get("final_damage_delta", 0.0)      # no live Final-Damage-buff source exists in this kit (+ Power Stance / Final Pact level deltas, Sensitivity only)
+        # Final Pact (patch 2026-11-26): +1% Final Damage per second from the battle start, up to 12 stacks - the fight-average stack count x the per-stack value
+        fp = D.FINAL_PACT
+        fp_stack_pct = (coeff_pct(fp["base"], fp["fidx"], True, fp["step"]) * (fp["boost"][1] if level >= fp["boost"][0] else 1.0)
+                        + sens.get("final_pact_stack_delta", 0.0))      # (+ its level delta, Sensitivity only)
+        self.final_pact_avg = fp_stack_pct * fight.ramp_avg_stacks(fp["max_stacks"], fp["interval"]) if unlocked("FINAL_PACT") else 0.0
+        self.final_damage_extra = self.final_pact_avg + sens.get("final_damage_delta", 0.0)      # (+ Power Stance's level delta, Sensitivity only)
 
         # Buff-Casting Startup Delay: in fixed-duration fights the character casts every unlocked, actively cast buff sequentially at fight start
         # (1/APS s each) before the first damage-skill cast (0 when the engine is on: buffs are cast when they pay).
@@ -340,7 +349,7 @@ class _Model(model_mod.ModelBase):
         # the FULL live crit-rate total (Inputs + Lord of Darkness + artifact bucket; CLAUDE.md item 13): what the cube / equipment tables test against the 100% cap
         self.crit_rate_total = self.crit_rate + self.crit_rate_bonus + self.art_crit_rate
         self.art_boss_damage, self.art_normal_damage = eff.agg_boss_damage + sens.get("boss_damage_extra", 0.0), eff.agg_normal_damage   # (+ Star Rock what-if)
-        self.art_final_damage = sens_mod.final_damage_bucket(eff.agg_final_damage, sens)   # (Sensitivity: baked-in Final Damage what-ifs are a factor on the product)
+        self.art_final_damage = eff.agg_final_damage      # (Sensitivity: baked-in Final Damage what-ifs are a factor on the typed value, above)
         self.art_joint_damage = eff.agg_damage                                     # Hexagon Damage%; enemy damage taken sits in monster_dmg_bonus (below)
         self.art_skill_damage, self.art_basic_attack_damage = eff.agg_skill_damage, eff.agg_basic_attack_damage
         self.extra_boss, self.extra_norm = eff.extras(

@@ -507,6 +507,30 @@
    "effect": "live",
    "no_dps_effect": false,
    "reason": null
+  },
+  {
+   "key": "sealed_bottle",
+   "label": "Sealed Bottle",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "shiny_watch",
+   "label": "Shiny Watch",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
+  },
+  {
+   "key": "mummydogs_bandages",
+   "label": "Mummydog's Bandages",
+   "rank": "Legendary",
+   "effect": "live",
+   "no_dps_effect": false,
+   "reason": null
   }
  ],
  "cdr_values": [

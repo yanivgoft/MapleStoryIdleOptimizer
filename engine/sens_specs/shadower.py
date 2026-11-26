@@ -73,7 +73,7 @@ PASSIVE_LEVELS = (
     PassiveLevel("crit_damage_delta", 100, 22, 2, 50),          # Critical Edge (Crit Damage)
     PassiveLevel("basic_attack_damage_delta", 100, 22, 2, 38),  # Physical Training
     PassiveLevel("skill_damage_delta", 150, 22, 4, 120),        # Dagger Expert (Skill Damage)
-    PassiveLevel("max_damage_delta", 200, 22, 4, 120),          # Dagger Expert (Max Damage Multiplier)
+    PassiveLevel("max_damage_delta", 300, 22, 4, 120),          # Dagger Expert (Max Damage Multiplier)
     PassiveLevel("final_damage_delta", 200, 22, 4, 125),        # Shadower Instinct
     PassiveLevel("final_damage_delta", 100, 22, 4, 115),        # Shadow Shifter (self Final Damage; its Lv118 +10 mastery is a constant)
 )

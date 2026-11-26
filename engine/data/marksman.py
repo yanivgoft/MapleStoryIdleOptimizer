@@ -68,12 +68,12 @@ EPA_MASTERY = {102: 10, 106: 11, 116: 12, 120: 13, 128: 14, 132: 15}        # Da
 EPA_BOSS_MASTERY = {111: 10, 124: 10}                                       # Boss Damage mastery chain
 # Final Attack: Crossbow + Advanced Final Attack folded into its coefficient: FA% / 100 x (1 + AFA% / 100) x 25
 FINAL_ATTACK_CROSSBOW = dict(base=350, fidx=21, step=2, gated={54: 50})
-ADVANCED_FINAL_ATTACK = dict(base=5000, fidx=21, step=4, gated={113: 50})
+ADVANCED_FINAL_ATTACK = dict(base=5000, fidx=21, step=4, gated={113: 100})
 EPA_FINAL_ATTACK_SHARE = 25
 
 # ---- Attack% bucket: Marksmanship (base + conditional) + Illusion Step + Blink Bolt (unconditional) ----
 MARKSMANSHIP = dict(base=100, fidx=22, step=3)
-ILLUSION_STEP = dict(base=140, fidx=22, step=4, boost=(118, 1.375), duration=(15, 118, 24), cooldown=24)     # x1.375 and 24 s from Lv118
+ILLUSION_STEP = dict(base=150, fidx=22, step=4, boost=(118, 1.375), duration=(15, 118, 24), cooldown=24)     # x1.375 and 24 s from Lv118
 BLINK_BOLT = dict(base=250, fidx=22, step=3)
 
 # ---- Sharp Eyes / Mortal Blow / Last Man Standing / Nimble Feet ----
@@ -83,7 +83,7 @@ LAST_MAN_STANDING_COND = dict(base=50, fidx=22, step=4)                         
 NIMBLE_FEET = dict(base=150, fidx=0, step=1, duration=15, cooldown=60)               # Attack Speed % (non-scaling)
 
 # ---- Bolt Surplus: 15% proc off every Empowered Piercing Arrow and Snipe attack ----
-BOLT_SURPLUS = dict(base=6500, fidx=21, step=4, gated={122: 50}, chance=0.15, hits=(2, 138, 1), targets=(3, 138, 2))   # (base, level, added from that level)
+BOLT_SURPLUS = dict(base=7500, fidx=21, step=4, gated={122: 50}, chance=0.15, hits=(2, 138, 1), targets=(3, 138, 2))   # (base, level, added from that level)
 
 # ---- damage rows (the verify script's DAMAGE_SKILLS dict order; summation order matters bit-for-bit; Bolt Surplus is handled separately) ----
 # cooldown (s) [+ haste (level, multiplier)], hits, ICD / window (DoT rows), base damage (tenths of %), factor index, skill mastery chain,
@@ -98,7 +98,7 @@ DAMAGE_SKILLS = {
                       mastery_normal=(94, 100), costs_action=True, targets=3, extra_targets=[(78, 2)]),
     "SNIPE": dict(step=4, cooldown=12, hits=1, base=38000, fidx=12, mastery={108: 50}, fold=(134, 57000, 12, 4), mastery_boss=0,
                   mastery_normal=0, costs_action=True, targets=1, extra_targets=[]),
-    "ARROW_ILLUSION": dict(step=4, cooldown=45, hits=1, icd=1.5, window=25, base=12000, fidx=12, mastery={130: 50}, mastery_boss=0,
+    "ARROW_ILLUSION": dict(step=4, cooldown=45, hits=1, icd=1.5, window=25, base=14000, fidx=12, mastery={130: 50}, mastery_boss=0,
                            mastery_normal=0, costs_action=True, targets=10, extra_targets=[]),
 }
 

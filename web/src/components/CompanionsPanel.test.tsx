@@ -61,7 +61,7 @@ describe("Companions tab render", () => {
     expect(row(best.name)).toMatch(/class="rank">1</);
     expect(row("Blaze Wizard")).toContain(">chosen<");
     expect(row("Blaze Wizard")).toMatch(/class="rank">8</);
-    expect(row("Blaze Wizard")).toContain("+26.1%");
+    expect(row("Blaze Wizard")).toContain("+25.7%");
     expect(html).toContain(`Best companion for World Boss: <strong>${best.name}</strong>`);
     expect(html).toContain("rank 8 of 16");
     expect((html.match(/chip warn">best for/g) ?? []).length).toBe(1);

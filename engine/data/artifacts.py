@@ -169,3 +169,8 @@ ARTIFACT_POTENTIAL_STAT_TO_SWEEP_KEY = {'Main Stat %': 'int_pct',
  'Status Effect Damage %': None,
  'Damage %': 'damage',
  'Defense Penetration %': 'def_pen'}
+
+# ---- artifacts the game added after the frozen workbooks (engine-only, patch 2026-11-26): merged here, WORKBOOK_* keep the workbook subset ----
+from .artifacts_extra import extend as _extend  # noqa: E402
+
+_extend(globals())

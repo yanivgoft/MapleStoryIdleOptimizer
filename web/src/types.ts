@@ -31,6 +31,7 @@ export interface ArtifactInfo {
   name: string;
   rank: string;
   default_star: number | string | null;
+  max_star?: number; // 7 for Legendary artifacts, 5 for the others (absent in older schema snapshots: the common 0..5)
   effect: "live" | "reference_only" | "no_dps_effect" | "zero"; // "zero" = legacy value of older schema snapshots (= no_dps_effect)
   no_dps_effect?: boolean; // genuinely no DPS effect in the model (stat not used / content not modelled)
   reason?: string | null; // why, when no_dps_effect
@@ -159,7 +160,7 @@ export type EquippedState = Record<string, string[]>;
 
 /** One row of the Artifacts table (the workbook's ArtifactsInput row; whether it is equipped is per content type, see `FormState.equippedArtifacts`). */
 export interface ArtifactEntry {
-  star: number | null; // 0..5; null = "Not Unlocked" (acts as star 0 when equipped)
+  star: number | null; // 0..7 (the artifact's own limit: `max_star`); null = "Not Unlocked" (acts as star 0 when equipped)
   lines: ArtifactLine[]; // always 3 (line 3 only counts for Legendary artifacts; the others keep a blank one)
 }
 export type ArtifactsState = Record<string, ArtifactEntry>;

@@ -66,8 +66,18 @@ def _check_field(field, v):
     return v, None
 
 
+def _star_ok(art_schema, key, star):
+    """``star`` is a legal Star Level for artifact ``key`` (id or display name; any other key = the common 0-5 limit): 0..max_star(key) (7 for Legendary), or 'Not Unlocked'."""
+    if isinstance(star, bool) or star not in art_schema["star_options"]:
+        return False
+    if isinstance(star, (int, float)):
+        limit = next((a.get("max_star", 5) for a in art_schema["artifacts"] if key in (a["key"], a["name"])), 5)
+        return star <= limit
+    return True
+
+
 def _validate_artifacts(art_schema, value):
-    """Accepted: list (<= max_slots) of ``{"key": <artifact id | display name | '(none)'>, "star": 0..5 | 'Not Unlocked' | None}``."""
+    """Accepted: list (<= max_slots) of ``{"key": <artifact id | display name | '(none)'>, "star": 0..5 (0..7 for Legendary artifacts) | 'Not Unlocked' | None}``."""
     errors = []
     if not isinstance(value, list):
         return None, [("artifacts", "must be a list of {key, star} slots")]
@@ -75,7 +85,6 @@ def _validate_artifacts(art_schema, value):
         return None, [("artifacts", f"at most {art_schema['max_slots']} slots")]
     ids = {a["key"] for a in art_schema["artifacts"]}
     names = {a["name"] for a in art_schema["artifacts"]}
-    stars = [s for s in art_schema["star_options"]]
     clean = []
     for i, slot in enumerate(value):
         name = f"artifacts[{i}]"
@@ -90,8 +99,8 @@ def _validate_artifacts(art_schema, value):
         if key not in ids and key not in names and key not in (None, "", art_schema["none_label"]):
             errors.append((f"{name}.key", "unknown artifact"))
             continue
-        if star is not None and not (star in stars and not isinstance(star, bool)):
-            errors.append((f"{name}.star", "must be 0-5 or 'Not Unlocked'"))
+        if star is not None and not _star_ok(art_schema, key, star):
+            errors.append((f"{name}.star", "must be 0-5 (0-7 for Legendary artifacts) or 'Not Unlocked'"))
             continue
         clean.append({"key": key, "star": star})
     return clean, errors
@@ -243,8 +252,8 @@ def validate_sensitivity_extras(schema, extras, parts):
                 if k not in ids:
                     errors.append({"field": f"artifact_stars.{k}", "message": "unknown artifact"})
                     ok = False
-                elif s is not None and not (s in art["star_options"] and not isinstance(s, bool)):
-                    errors.append({"field": f"artifact_stars.{k}", "message": "must be 0-5, 'Not Unlocked' or null"})
+                elif s is not None and not _star_ok(art, k, s):
+                    errors.append({"field": f"artifact_stars.{k}", "message": "must be 0-5 (0-7 for Legendary artifacts), 'Not Unlocked' or null"})
                     ok = False
                 else:
                     stars[k] = s

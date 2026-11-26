@@ -100,6 +100,25 @@ def test_five_artifact_slots(client):
         assert sch["artifacts"]["max_slots"] == 5
 
 
+def test_legendary_artifacts_reach_star_7(client):
+    """Patch 2026-11-26: Legendary artifacts go up to Awakening Stage 7 (stars 6 and 7), Epic / Unique stay at 5; the schema says each artifact's own limit."""
+    sch = client.get("/api/classes/hero/schema").json()["artifacts"]
+    limits = {a["key"]: a["max_star"] for a in sch["artifacts"]}
+    assert all(limits[a["key"]] == (7 if a["rank"] == "Legendary" else 5) for a in sch["artifacts"]) and 7 in sch["star_options"]
+    legendary = next(a["key"] for a in sch["artifacts"] if a["rank"] == "Legendary" and a["effect"] == "live")
+    epic = next(a["key"] for a in sch["artifacts"] if a["rank"] == "Epic")
+    totals = []
+    for star in (5, 6, 7):
+        r = client.post("/api/classes/hero/compute", json={"content_type": "World Boss", "artifacts": [{"key": legendary, "star": star}]})
+        assert r.status_code == 200, r.text
+        totals.append(r.json()["total_dps"])
+    assert totals[0] <= totals[1] <= totals[2]      # a higher star never lowers the total
+    bad = client.post("/api/classes/hero/compute", json={"content_type": "World Boss", "artifacts": [{"key": epic, "star": 6}]})
+    assert bad.status_code == 422 and bad.json()["errors"][0]["field"] == "artifacts[0].star"
+    bad = client.post("/api/classes/hero/compute", json={"content_type": "World Boss", "artifacts": [{"key": legendary, "star": 8}]})
+    assert bad.status_code == 422
+
+
 def test_422_field_level(client):
     r = client.post("/api/classes/fp_mage/compute", json={
         "level": 0, "flat_attack": "lots", "crit_rate": -5, "content_type": "World Boss", "bogus": 1, "skill_lvl_all": 1.5,

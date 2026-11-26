@@ -225,15 +225,10 @@ class _Model(model_mod.ModelBase):
         holy_symbol_mastery_pct = gated(D.HOLY_SYMBOL_MASTERY) if unlocked("HOLY_SYMBOL") else 0.0
         holy_symbol_duration = self.tier(D.HOLY_SYMBOL_DURATION)
 
-        # Divine Protection: auto-triggering Defense buff, duty-cycle-averaged (fixed-duration exact branch like any buff row)
-        dp = D.DIVINE_PROTECTION
-        divine_protection_pct = self.coeff_pct(dp["base"], dp["fidx"], True, dp["job_step"]) if unlocked("DIVINE_PROTECTION") else 0.0
-        if unlocked("DIVINE_PROTECTION"):
-            dp_uptime = fight.buff_uptime(dp["cooldown"], dp["duration"], False)
-            divine_protection_bonus = divine_protection_pct * dp_uptime
-        else:
-            divine_protection_bonus = 0.0
-        self.divine_protection_bonus = divine_protection_bonus
+        # Divine Protection (patch 2026-11-26): a PERMANENT +25 % Defense now (the shroud every 20 s only grants debuff immunity), so the preset page's Defense % already contains it:
+        # no live term (it was a 15 s / 20 s duty-cycle average before).  Only its skill-level delta (Sensitivity) is added to the typed Defense %.
+        self.divine_protection_bonus = divine_protection_bonus = 0.0
+        defense_pct = defense_pct + sens.get("defense_pct_delta", 0.0)
 
         self.total_defense = total_defense = defense * (1 + (defense_pct + divine_protection_bonus) / 100)
         inv = D.INVINCIBLE

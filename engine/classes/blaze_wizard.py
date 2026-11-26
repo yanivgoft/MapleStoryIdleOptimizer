@@ -238,7 +238,13 @@ class _Model(model_mod.ModelBase):
         self.crit_rate_bonus = 0.0                                      # (no live Crit Rate source: Burning Focus is a stat-screen passive)
         crit_damage_bonus_live = self.ffe_crit_damage_full * fe_up
         self.crit_damage_bonus = crit_damage_bonus_live
-        self.final_damage_extra = (self.ffe_fd_full * fe_up + self.bc_fd_full * bc_up + sens.get("final_damage_delta", 0.0))      # (+ Liberated Magic's / Phoenix Run's / Wild Blaze's level delta, Sensitivity only)
+        # Phoenix Run (patch 2026-11-26): +1% Final Damage per second from the battle start, up to 12 stacks (the Lv118 mastery doubles it): fight-average stacks x per-stack value
+        pr, prs = D.CURVES["PHOENIX_RUN_FD"], D.PHOENIX_RUN_STACKS
+        pr_stack_pct = (coeff_pct(pr.base, pr.fidx, True, pr.step) * (prs["boost"] if unlocked("PHOENIX_RUN_BOOST") else 1.0)
+                        + sens.get("phoenix_run_stack_delta", 0.0))      # (+ its level delta, Sensitivity only)
+        self.phoenix_run_avg = pr_stack_pct * fight.ramp_avg_stacks(prs["max_stacks"], prs["interval"]) if unlocked("PHOENIX_RUN") else 0.0
+        self.final_damage_extra = (self.ffe_fd_full * fe_up + self.bc_fd_full * bc_up + self.phoenix_run_avg
+                                   + sens.get("final_damage_delta", 0.0))      # (+ Liberated Magic's / Wild Blaze's level delta, Sensitivity only)
 
         # ---- Defense Penetration per branch: typed (+ Final Flame Elemental's, time-averaged) in both, + the Flame Fox's in the boss / PvP branch ----
         self.def_pen_n = def_pen_n = combine_def_pen(def_pen_typed, self.ffe_def_pen_full * fe_up)

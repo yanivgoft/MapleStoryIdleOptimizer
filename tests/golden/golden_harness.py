@@ -63,7 +63,10 @@ def check_engine_and_companion(chk, out, res, casts_keys=False, companion_presen
     else:
         chk("engine.casts empty", {}, out["engine_n"])
     if out["companion"] is None:
-        chk("companion none", None, res["companion"])
+        # (a stun-only uplift - the player's own stunning skill with no companion chosen - is reported as a "None" companion: FP-Mage's Poison Breath since the 2026-11-26 patch,
+        #  the workbook golden of FP-Mage predates it; its numbers are pinned through companion_dps / total_dps)
+        c = res["companion"]
+        chk("companion none", None, None if (c is None or c.get("choice") == "None") else c)
     elif companion_present and res["companion"] is None:
         chk("companion present", "present", None)
     else:

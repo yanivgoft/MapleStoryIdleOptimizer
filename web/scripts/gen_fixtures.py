@@ -89,7 +89,11 @@ def potential_tables():
 def artifacts_fixtures(client):
     from engine.data import artifacts as AD
 
-    (LIB / "artifact_values.json").write_text(json.dumps(AD.ARTIFACT_STAR_VALUES, indent=1) + "\n")
+    from engine import artifacts as art_engine
+
+    # 8 tiers (stars 0..7): the workbook tables hold 0..5, stars 6 and 7 (Legendary artifacts, patch 2026-11-26) continue the straight line (engine.artifacts.sv)
+    values = {k: [art_engine.sv(k, s) for s in range(art_engine.LEGENDARY_MAX_STAR + 1)] for k in AD.ARTIFACT_STAR_VALUES}
+    (LIB / "artifact_values.json").write_text(json.dumps(values, indent=1) + "\n")
     potential_tables()
     for c in json.loads((OUT / "classes.json").read_text())["classes"]:       # the fixture list (what mock mode shows), not the live API
         if not c.get("artifacts_modelled") or not selected(c["id"]):

@@ -84,7 +84,7 @@ BUFFS = {
     "INTO_DARKNESS": dict(job_step=3, cooldown=40, duration=13, base=200, fidx=21, scales=True, costs_action=True, actions_per_cast=1),
     "SMOKESCREEN": dict(job_step=4, cooldown=45, duration=20, base=130, fidx=22, scales=True, costs_action=True, actions_per_cast=1),
 }
-SMOKESCREEN_CRIT_DAMAGE = (113, 30)       # Lv113 mastery: allies' Critical Damage +30 (x Smokescreen's uptime)
+SMOKESCREEN_CRIT_DAMAGE = (113, 40)       # Lv113 mastery: allies' Critical Damage +40 (30 before the 2026-11-26 patch) (x Smokescreen's uptime)
 
 # ---- Steal / Meso Mastery / Shadow Partner (averaged) ----
 STEAL = dict(base=50, fidx=22, step=2, stacks=3)                                # Attack% x 3 stacks, always on
@@ -112,13 +112,13 @@ DAMAGE_SKILLS = {
                        costs_action=True, targets=8),
     "VENOM": dict(step=3, cooldown=1, hits=1, base=450, fidx=21, mastery={}, costs_action=False, targets=1),
     "ASSASSINATE": dict(step=4, cooldown=13, hits=2, base=None, fidx=None, mastery=None, costs_action=True, targets=1),
-    "SUDDEN_RAID_BURST": dict(step=4, cooldown=19, hits=3, base=14000, fidx=12, mastery={126: 50}, costs_action=True, targets=8),
+    "SUDDEN_RAID_BURST": dict(step=4, cooldown=19, hits=3, base=14000, fidx=12, mastery={126: 80}, costs_action=True, targets=8),
     "SUDDEN_RAID_DOT": dict(step=4, cooldown=19, hits=1, icd=1, window=5, base=3600, fidx=12, mastery={}, costs_action=False, targets=8),
 }
 CDR_EXEMPT = ["VENOM"]                                      # rate-surrogate cooldown
 
 # ---- Toxic Venom: 20% proc off every row below (no ICD); Shadow Shifter: incoming_hit_rate x 20% counterattack ----
-TOXIC_VENOM = dict(base=6000, fidx=21, step=4, gated={130: 100}, chance=0.2)
+TOXIC_VENOM = dict(base=8000, fidx=21, step=4, gated={130: 100}, chance=0.2)
 # The verify script sums the trigger rates over a Python ``set`` literal (ulp-level noise depending on PYTHONHASHSEED).  The golden is generated with
 # PYTHONHASHSEED=0; the engine fixes that order (the iteration order of the set under seed 0).
 TRIGGERS_TOXIC_VENOM = ["ASSASSINATE", "CRUEL_STAB", "MESO_EXPLOSION", "PHASE_DASH", "BLOOD_MONEY", "SUDDEN_RAID_DOT", "SUDDEN_RAID_BURST", "DARK_FLARE"]

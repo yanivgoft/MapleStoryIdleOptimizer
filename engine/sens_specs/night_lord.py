@@ -72,6 +72,7 @@ PASSIVE_LEVELS = (
     PassiveLevel("boss_damage_delta", 180, 22, 3, 72),             # Enveloping Darkness
     PassiveLevel("attack_mult_delta", 180, 22, 3, 75),             # Expert Throwing Star Handling (Attack%)
     PassiveLevel("skill_damage_delta", 150, 22, 4, 120),           # Claw Expert
+    PassiveLevel("max_damage_delta", 300, 22, 4, 120),             # Claw Expert (Max Damage Multiplier; added with the 2026-11-26 patch, the frozen builder has no such row)
     PassiveLevel("final_damage_delta", 120, 22, 4, 125),           # Dark Harmony
     PassiveLevel("final_damage_delta", 100, 22, 4, 115),           # Shadow Shifter (self Final Damage)
 )

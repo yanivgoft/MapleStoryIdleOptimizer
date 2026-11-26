@@ -63,6 +63,7 @@ describe("mock mode, cube tabs", () => {
     expect(get(locked)).toMatchObject({ star: 0, total: 0, equipped: true });
     expect(get(unlocked).star).toBe(3);
     expect(get(unlocked).total).toBeGreaterThan(0);
-    expect(unlocked.rows).toHaveLength(36);
+    expect(unlocked.rows).toHaveLength(locked.rows.length);
+    expect(unlocked.rows.length).toBeGreaterThanOrEqual(36);
   });
 });

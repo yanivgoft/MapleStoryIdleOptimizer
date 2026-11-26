@@ -54,11 +54,19 @@ def parse_builder():
     return {n: ns[n] for n in NAMES}
 
 
+FOOTER = '''
+# ---- artifacts the game added after the frozen workbooks (engine-only, patch 2026-11-26): merged here, WORKBOOK_* keep the workbook subset ----
+from .artifacts_extra import extend as _extend  # noqa: E402
+
+_extend(globals())
+'''
+
+
 def render(data):
     parts = [HEADER]
     for name in NAMES:
         parts.append(f"{name} = {pprint.pformat(data[name], width=140, sort_dicts=False)}\n")
-    return "\n".join(parts)
+    return "\n".join(parts) + FOOTER
 
 
 if __name__ == "__main__":

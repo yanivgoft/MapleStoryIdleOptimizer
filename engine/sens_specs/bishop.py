@@ -71,6 +71,7 @@ PASSIVE_LEVELS = (
     PassiveLevel("crit_damage_delta", 120, 22, 3),   # Magic Critical (Crit Damage)
     PassiveLevel("min_damage_delta", 150, 22, 2),    # Spell Mastery
     PassiveLevel("as_bonus_extra", 50, 22, 2),       # Magic Acceleration (counted only while MP Eater is unlocked)
+    PassiveLevel("defense_pct_delta", 250, 22, 3, 60),   # Divine Protection (Defense %, permanent since patch 2026-11-26: typed, so only its level delta; unlock Lv60)
 )
 
 # the builder's POTENTIAL_STAT_TO_SWEEP_KEY / POTENTIAL_SUB_STAT_PCT_LINES / EQUIP_COMPARE_STAT_TO_SWEEP_KEY / ARTIFACT_POTENTIAL_STAT_TO_SWEEP_KEY (checked against it by

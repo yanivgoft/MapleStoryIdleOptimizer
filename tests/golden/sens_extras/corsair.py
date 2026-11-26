@@ -17,6 +17,7 @@ from engine.classes import corsair  # noqa: E402
 from engine.data import artifacts as AD  # noqa: E402
 import sens_compare_generic as C  # noqa: E402
 import sens_test_common as SC  # noqa: E402
+import patch_2026_11_26  # noqa: E402
 
 TEST = SC.SensTest.from_registry("corsair")
 GOLDEN = TEST.GOLDEN
@@ -34,16 +35,16 @@ def test_static():
     """The spec reproduces the builder's tables (so a builder change that is not mirrored in the spec fails here)."""
     assert [t["key"] for t in sensitivity.ARTIFACT_TOGGLES] == list(AD.ARTIFACT_LABELS), "toggle list must come from the engine's artifact table"
     assert sensitivity.supports(corsair) and sensitivity.meta(corsair)["class_id"] == "corsair"
-    assert len(sensitivity.stat_sweep(corsair)) == 28 and len(sensitivity.ARTIFACT_TOGGLES) == 36
+    assert len(sensitivity.stat_sweep(corsair)) == 28 and len(sensitivity.ARTIFACT_TOGGLES) == len(AD.ARTIFACT_LABELS)
     bm = _builder()
     if bm is None:
         return
     assert [(k, l, t) for k, l, t in bm.STAT_SWEEP_STAT_ENTRIES] == [tuple(e) for e in SPEC.stat_list]
-    assert list(bm.STATUS_REBUILD_KEYS) == list(SPEC.status_rebuild_keys)
-    assert tuple(bm.COMPANION_FULL_SEARCH_KEYS) == tuple(SPEC.companion_full_search_keys)
+    assert list(bm.STATUS_REBUILD_KEYS) == list(patch_2026_11_26.workbook_keys(SPEC.status_rebuild_keys))
+    assert tuple(bm.COMPANION_FULL_SEARCH_KEYS) == tuple(patch_2026_11_26.workbook_keys(SPEC.companion_full_search_keys, search=True))
     assert tuple(bm.SUMMON_TIME_KEYS) == tuple(SPEC.summon_time_keys)
     assert list(bm.CDR_SWEEP_VALUES) == list(sensitivity.CDR_SWEEP_VALUES)
-    assert list(bm.ARTIFACT_LABELS) == list(AD.ARTIFACT_LABELS) and sorted(bm.ARTIFACT_NO_DPS_EFFECT) == sorted(AD.ARTIFACT_NO_DPS_EFFECT)
+    assert list(bm.ARTIFACT_LABELS) == list(AD.WORKBOOK_ARTIFACT_LABELS) and sorted(bm.ARTIFACT_NO_DPS_EFFECT) == sorted(AD.ARTIFACT_NO_DPS_EFFECT)
     # passive-level deltas: every PASSIVE_DELTA_SLOT row is a PassiveLevel with the Skills-sheet row's own (job step, base, factor index) and unlock level
     col = {name: i for i, name in enumerate(bm.SKILL_COLUMNS)}
     rows = {r[col["Key"]]: r for r in bm.SKILL_ROWS}

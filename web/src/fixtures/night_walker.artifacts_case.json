@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 14503000799.452133,
+  "total_dps": 14641711752.900663,
   "artifacts": {
    "equipped": [
     {
@@ -97,6 +97,8 @@
     "reindeer_spear_attack_pct": 0,
     "alliance_badge": 18,
     "bottle_of_emotion_attack_pct": 0,
+    "shiny_watch_attack_pct": 0,
+    "mummydogs_bandages_attack_pct": 0,
     "secret_map_final_dmg_normal": 0,
     "flaming_lava": 0,
     "horn_flute": 0,
@@ -104,6 +106,11 @@
     "fire_flower_boss": 0,
     "chalice_normal": 0,
     "chalice_boss": 0,
+    "sealed_bottle_final_damage": 0,
+    "sealed_bottle_stacks_normal": 0.0,
+    "sealed_bottle_stacks_boss": 0.0,
+    "sealed_bottle_normal": 0,
+    "sealed_bottle_boss": 0,
     "sayrams_necklace_normal": 0,
     "sayrams_necklace_boss": 0,
     "contract_of_darkness_crit_rate_bonus": 0,
@@ -124,19 +131,14 @@
      "typed_below_artifact:arwens_glass_shoes"
     ],
     "typed": {
-     "companion_summon_time_increase_pct": 0.0,
-     "attack_pct": 1800.0
+     "companion_summon_time_increase_pct": 0.0
     },
     "base": {
-     "companion_summon_time_increase_pct": 0.0,
-     "attack_pct": 1782.0
+     "companion_summon_time_increase_pct": 0.0
     },
     "amounts": {
      "companion_summon_time_increase_pct": {
       "arwens_glass_shoes": 28
-     },
-     "attack_pct": {
-      "alliance_badge": 18
      }
     }
    },
@@ -152,81 +154,81 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 10708367930.780819,
-  "boss_dps": 14503000799.452133,
-  "normal_dps": 2902236595.68645,
-  "player_boss_dps": 10708367930.780819,
+  "player_dps": 10810785902.488604,
+  "boss_dps": 14641711752.900663,
+  "normal_dps": 2929994437.7280846,
+  "player_boss_dps": 10810785902.488604,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "QUINTUPLE_STAR",
     "name": "Quintuple Star (basic attack)",
-    "dps": 3410797429.5118146,
+    "dps": 3443419296.531587,
     "share": 0.23517873829536445,
-    "boss_dps": 3410797429.5118146,
+    "boss_dps": 3443419296.531587,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SHADOW_DOUBLE",
     "name": "Shadow Double (clone's extra damage)",
-    "dps": 815572776.8992071,
+    "dps": 823373154.14904,
     "share": 0.05623476052831882,
-    "boss_dps": 815572776.8992071,
+    "boss_dps": 823373154.14904,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SHADOW_SPARK",
     "name": "Shadow Spark",
-    "dps": 328919489.0958767,
+    "dps": 332065371.5633186,
     "share": 0.022679409154297364,
-    "boss_dps": 328919489.0958767,
+    "boss_dps": 332065371.5633186,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SHADOW_SPARK_EXPLOSION",
     "name": "Shadow Spark (explosion)",
-    "dps": 493379233.64381504,
-    "share": 0.034019113731446046,
-    "boss_dps": 493379233.64381504,
+    "dps": 498098057.3449783,
+    "share": 0.034019113731446074,
+    "boss_dps": 498098057.3449783,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SHADOW_STITCH",
     "name": "Shadow Stitch",
-    "dps": 998353877.6321375,
+    "dps": 1007902426.9399899,
     "share": 0.06883774547332656,
-    "boss_dps": 998353877.6321375,
+    "boss_dps": 1007902426.9399899,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SHADOW_BAT",
     "name": "Shadow Bat (attacks)",
-    "dps": 2386534800.0572,
-    "share": 0.16455455205845082,
-    "boss_dps": 2386534800.0572,
+    "dps": 2409360318.867524,
+    "share": 0.16455455205845088,
+    "boss_dps": 2409360318.867524,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BAT_EXPLOSION",
     "name": "Bat Affinity II (first-attack explosion)",
-    "dps": 1374569235.123014,
-    "share": 0.09477826376283037,
-    "boss_dps": 1374569235.123014,
+    "dps": 1387716018.4557524,
+    "share": 0.09477826376283036,
+    "boss_dps": 1387716018.4557524,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "MARK_OF_DARKNESS",
     "name": "Mark of Darkness (Dark Elemental)",
-    "dps": 900241088.8177528,
-    "share": 0.06207274627274105,
-    "boss_dps": 900241088.8177528,
+    "dps": 908851258.6364133,
+    "share": 0.06207274627274104,
+    "boss_dps": 908851258.6364133,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -234,19 +236,19 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 3794632868.671315,
-   "boss_dps": 3794632868.671315,
-   "normal_dps": 2902236595.68645,
+   "dps": 3830925850.4120603,
+   "boss_dps": 3830925850.4120603,
+   "normal_dps": 2929994437.7280846,
    "share": 0.2616446707232245,
-   "damage": 210546554815.6898,
-   "uplift": 55077745991.302284,
+   "damage": 212560283820.30313,
+   "uplift": 55604525708.54108,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 3794632868.671315,
-    "comp_norm_dps": 2902236595.68645,
-    "comp_blend_dps": 3794632868.671315,
+    "comp_boss_dps": 3830925850.4120603,
+    "comp_norm_dps": 2929994437.7280846,
+    "comp_blend_dps": 3830925850.4120603,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -258,9 +260,9 @@
     "stunfracB": 0.12142857142857141,
     "stunfracN": 0.12142857142857141,
     "hasstun": 1,
-    "dmg_b": 210546554815.6898,
-    "dmg_n": 203156561698.0515,
-    "upl_b": 55077745991.302284,
+    "dmg_b": 212560283820.30313,
+    "dmg_n": 205099610640.9659,
+    "upl_b": 55604525708.54108,
     "upl_n": 0.0
    }
   },
@@ -275,11 +277,11 @@
    "phi_rows": {
     "SHADOW_SPARK": 1.3000000000000014,
     "SHADOW_SPARK_EXPLOSION": 1.3000000000000014,
-    "SHADOW_STITCH": 1.3000000000000014
+    "SHADOW_STITCH": 1.3000000000000012
    }
   },
   "derived": {
-   "attack": 4705000.0,
+   "attack": 4750000.0,
    "stat_damage": 72.0,
    "actions_per_second": 1.2802580308980087,
    "cast_rate": 0.31428571428571433,

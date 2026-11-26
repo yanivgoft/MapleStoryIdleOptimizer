@@ -9,6 +9,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
+from engine.data import artifacts as artifact_data
 from api import registry
 from api.cache import TTLCache, cache_key
 from api.main import create_app
@@ -66,7 +67,7 @@ def test_matches_engine_directly(client):
     body = r.json()
     direct = sensitivity.run(fp_mage, engine_inputs(CASE))
     _same(direct, body)
-    assert len(body["stats"]["rows"]) == 27 and len(body["artifacts"]["rows"]) == 36 and len(body["companions"]["rows"]) == 16
+    assert len(body["stats"]["rows"]) == 27 and len(body["artifacts"]["rows"]) == len(artifact_data.ARTIFACT_LABELS) and len(body["companions"]["rows"]) == 16
     assert r.headers["x-cache"] == "MISS"
     json.loads(r.text)                                   # strictly valid JSON (no NaN / Infinity tokens)
     assert "NaN" not in r.text and "Infinity" not in r.text
@@ -120,7 +121,7 @@ def test_meta(client):
     assert m["parts"] == ["stats", "artifacts", "companions", "summon_time", "cdr"]
     assert [s["key"] for s in m["stats"]] == [s["key"] for s in sensitivity.STAT_SWEEP] and len(m["stats"]) == 27
     assert {"key", "label", "type", "step", "semantics"} <= set(m["stats"][0])
-    assert len(m["artifacts"]) == 36 and {"key", "label", "rank", "no_dps_effect", "reason"} <= set(m["artifacts"][0])
+    assert len(m["artifacts"]) == len(artifact_data.ARTIFACT_LABELS) and {"key", "label", "rank", "no_dps_effect", "reason"} <= set(m["artifacts"][0])
     assert m["cdr_values"][0] == 0.5 and "LOWER" in m["metric"]["units_per_1pct"]
 
 
@@ -270,9 +271,9 @@ def test_companion_levels_validation(client):
 
 
 # ---- artifact_lines: the potential lines entered on the Artifacts tab value the equip / removal row ---------------------------------------------
-# (``typed_includes_artifacts`` False = the workbooks' convention these cases were written for: typed 40 EXCLUDES the shoes, so equipped means 40 + 40 = 80 and the effect is
+# (``typed_includes_artifacts`` False = the workbooks' convention these cases were written for: typed 60 EXCLUDES the shoes, so equipped means 60 + 40 = 100 and the effect is
 # saturated.  With the API default True the typed 40 already contains the shoes: see api/tests/test_typed_includes_artifacts.py)
-ARWEN_CASE = {"content_type": "Breakthrough", "companion_choice": "Blaze Wizard", "companion_level": 10, "companion_summon_time_increase_pct": 40,
+ARWEN_CASE = {"content_type": "Breakthrough", "companion_choice": "Blaze Wizard", "companion_level": 10, "companion_summon_time_increase_pct": 60,
               "artifacts": [{"key": "arwens_glass_shoes", "star": 5}], "which": ["artifacts"], "artifact_stars": {"arwens_glass_shoes": 5},
               "typed_includes_artifacts": False}
 ARWEN_LINES = {"arwens_glass_shoes": {"star": 5, "lines": [{"rarity": "Legendary", "stat": "Damage %"}, {"rarity": "Epic", "stat": "Boss Monster Damage %"}]}}
@@ -283,7 +284,7 @@ def _arwen(out):
 
 
 def test_artifact_lines_value_an_equipped_row(client):
-    """Reported: Arwen's Glass Shoes equipped (+40% summoning time already past Blaze Wizard's last step) showed 0% although it carries potential lines.  Without lines
+    """Reported: Arwen's Glass Shoes equipped (typed 60 + the shoes' 40 is already past the last useful step of Blaze Wizard with Poison Breath's stun) showed 0% although it carries potential lines.  Without lines
     the row stays 0 (the effect is saturated); with them it is the lines' value, computed like the Artifacts tab's own numbers (same engine, same rates)."""
     plain = client.post(URL, json=ARWEN_CASE)
     assert plain.status_code == 200, plain.text

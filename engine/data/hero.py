@@ -65,7 +65,7 @@ RAGING_BLOW_BOSS_MASTERY = {111: 10, 124: 10}                                   
 
 # ---- helper rows folded into Raging Blow / hits ----
 FINAL_ATTACK = dict(base=350, fidx=21, step=2, gated={54: 50})
-ADVANCED_FINAL_ATTACK = dict(base=5000, fidx=21, step=4, gated={113: 50})
+ADVANCED_FINAL_ATTACK = dict(base=5000, fidx=21, step=4, gated={113: 100})
 FINAL_ATTACK_RAGING_BLOW_SHARE = 25                    # Final Attack's share folded into Raging Blow's coefficient (%)
 ENHANCED_RB_COMBO_FD = dict(level=138, per_stack=50, free_stacks=5)   # Enhanced Raging Blow: +50% FD per combo stack beyond 5 (level >= 138)
 
@@ -95,7 +95,7 @@ DAMAGE_SKILLS = {
                            costs_action=False, targets=5, extra_targets=(100, 5)),
     "ENHANCED_RAGING_BLOW": dict(step=4, cooldown=17, hits=6, base=6100, fidx=12, mastery={122: 50}, mastery_boss=100, mastery_normal=0,
                                  costs_action=True, targets=9, extra_targets=(100, 3)),
-    "MAGIC_CRASH": dict(step=4, cooldown=28, hits=1, base=48000, fidx=12, mastery={}, mastery_boss=0, mastery_normal=0,
+    "MAGIC_CRASH": dict(step=4, cooldown=28, hits=1, base=65000, fidx=12, mastery={}, mastery_boss=0, mastery_normal=0,
                         costs_action=True, targets=5, extra_targets=(100, 4)),
     "BEAM_BLADE": dict(step=3, cooldown=16, haste=(104, 0.7), hits=4, extra_hits=(94, 1), base=2500, fidx=12, mastery={73: 50},
                        mastery_boss=0, mastery_normal=0, costs_action=True, targets=8),

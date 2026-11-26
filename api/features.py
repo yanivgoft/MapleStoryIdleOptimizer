@@ -20,11 +20,11 @@ from .cache import TTLCache, cache_key
 log = logging.getLogger("msi.features")
 
 try:                                                     # a broken engine module only disables these three features (they answer 501)
-    from engine import cubes, equipment, potentials
+    from engine import artifacts as artifact_engine, cubes, equipment, potentials
     from engine.data import artifacts as artifact_data
 except Exception:                                        # noqa: BLE001
     log.exception("engine.cubes / equipment / potentials failed to import; cube features disabled")
-    cubes = equipment = potentials = artifact_data = None
+    cubes = equipment = potentials = artifact_data = artifact_engine = None
 
 CUBES_UNSUPPORTED = "cube recommendations are not available for this class yet"
 EQUIPMENT_UNSUPPORTED = "equipment compare is not modelled for this class yet"
@@ -47,7 +47,7 @@ RARITY_LABELS = {"normal": "Normal", "rare": "Rare", "epic": "Epic", "unique": "
 MAX_PITY = 10000
 MAX_LINE_VALUE = 1_000_000.0
 MAX_ATTACK = 1e12
-STAR_OPTIONS = (0, 1, 2, 3, 4, 5, "Not Unlocked")
+STAR_OPTIONS = (0, 1, 2, 3, 4, 5, 6, 7, "Not Unlocked")      # 6 and 7: Legendary artifacts only (patch 2026-11-26), see engine.artifacts.max_star
 
 
 def available():
@@ -254,7 +254,7 @@ def cubes_meta():
                 "none_stat": potentials.NONE_STAT,
                 "star_options": list(STAR_OPTIONS),
                 "artifacts": [{"key": k, "label": label, "rank": artifact_data.ARTIFACT_RANK[k], "lines": potentials.num_lines(k),
-                               "default_star": potentials.default_star(k)} for k, label in artifact_data.ARTIFACT_LABELS.items()],
+                               "default_star": potentials.default_star(k), "max_star": artifact_engine.max_star(k)} for k, label in artifact_data.ARTIFACT_LABELS.items()],
             },
         }
     return _META
@@ -295,7 +295,7 @@ POTENTIALS_EXTRA_KEYS = ("potentials",)
 
 
 def validate_potentials_extras(extras):
-    """``(state, errors)``: ``potentials`` = ``{artifact id: {"star": 0..5 | "Not Unlocked" | null (optional), "lines": [{rarity, stat} x <= 2 (3 for Legendary)]}}``;
+    """``(state, errors)``: ``potentials`` = ``{artifact id: {"star": 0..5 (0..7 Legendary) | "Not Unlocked" | null (optional), "lines": [{rarity, stat} x <= 2 (3 for Legendary)]}}``;
     state = ``{artifact id: {"star"?: ..., "lines": [(rarity, stat)]}}`` (an absent ``star`` is kept absent: the engine's default by rank / the equip slot's star)."""
     raw = extras.get("potentials")
     if raw is None:
@@ -318,8 +318,9 @@ def validate_potentials_extras(extras):
         entry = {}
         if "star" in s:
             star = s["star"]
-            if star is not None and not (star in STAR_OPTIONS and not isinstance(star, bool)):
-                errors.append({"field": f"{name}.star", "message": "must be 0-5, 'Not Unlocked' or null"})
+            if star is not None and not (star in STAR_OPTIONS and not isinstance(star, bool)
+                                         and (not isinstance(star, int) or star <= artifact_engine.max_star(art))):
+                errors.append({"field": f"{name}.star", "message": "must be 0-5 (0-7 for Legendary artifacts), 'Not Unlocked' or null"})
             else:
                 entry["star"] = star
         n = potentials.num_lines(art)

@@ -150,8 +150,7 @@ def check_skill_rows(D):
     # Adrenaline's 5 activations, Critical Throw Lv47 +8, Venom Weaken Lv82 +15, Frailty Curse - Critical Lv111 +30
     src = (rr.REF.SRC / "build_night_lord_workbook.py").read_text()
     for lit in (f"value=f'={D.SHOWDOWN_BASE}*{{IB(\"basic_factor\")}}/1000')", f"activations_needed = {D.ADRENALIN_ACTIVATIONS}",
-                f'>={D.CRITICAL_THROW_LV47[0]},{D.CRITICAL_THROW_LV47[1]:g},0)', f'>={D.VENOM_WEAKEN[0]},{D.VENOM_WEAKEN[1]:g},0)',
-                f'>={D.FRAILTY_CRIT_DAMAGE_TAKEN[0]},{D.FRAILTY_CRIT_DAMAGE_TAKEN[1]:g},0)'):
+                f'>={D.CRITICAL_THROW_LV47[0]},{D.CRITICAL_THROW_LV47[1]:g},0)', f'>={D.VENOM_WEAKEN[0]},{D.VENOM_WEAKEN[1]:g},0)'):   # (the frozen builder's Frailty Curse - Critical Lv111 +30 differs on purpose: patch 2026-11-26)
         if lit not in src:
             problems.append(f"builder source lacks {lit!r}")
     return problems

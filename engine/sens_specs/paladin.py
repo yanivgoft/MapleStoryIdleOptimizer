@@ -76,7 +76,7 @@ PASSIVE_LEVELS = (
     PassiveLevel("min_damage_delta", 150, 22, 2, 43),           # Weapon Mastery
     PassiveLevel("attack_mult_delta", 180, 22, 3, 72),          # Parashock Guard (Attack%, additive bucket)
     PassiveLevel("skill_damage_delta", 150, 22, 4, 120),        # Paladin Expert (Skill Damage)
-    PassiveLevel("max_damage_delta", 200, 22, 4, 120),          # Paladin Expert (Max Damage Multiplier)
+    PassiveLevel("max_damage_delta", 300, 22, 4, 120),          # Paladin Expert (Max Damage Multiplier)
 )
 
 # the builder's POTENTIAL_STAT_TO_SWEEP_KEY / POTENTIAL_SUB_STAT_PCT_LINES / EQUIP_COMPARE_STAT_TO_SWEEP_KEY / ARTIFACT_POTENTIAL_STAT_TO_SWEEP_KEY (checked against it by

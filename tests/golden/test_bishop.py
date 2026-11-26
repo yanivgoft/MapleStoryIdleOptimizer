@@ -31,9 +31,8 @@ def compare(gold, res, rtol=0.0):
     w = out["normal_weight"]
     for k, (bd, nd, explicit, bm_, nm_) in out["branch_pairs"].items():
         val = out["big_bang_dps"] if k == "BIG_BANG" else out["skill_dps"][k]
-        if not explicit:            # multiplier-style row: boss DPS = DPS x b / ((1-w) b + w n), exactly as the script's companion block forms it
-            den = (1 - w) * bm_ + w * nm_
-            bd, nd = val * bm_ / den, val * nm_ / den
+        # (A multiplier-style row - not ``explicit`` - used to be re-derived here as DPS x b / ((1-w) b + w n), the way the script's companion block forms it.  Since the
+        #  2026-11-26 refresh the stored pair IS the engine's boss / normal DPS of the row (a derived value cannot be refreshed by update_goldens.py), so it is compared directly.)
         chk(f"boss_dps[{k}]", bd, rows[k]["boss_dps"])
         chk(f"normal_dps[{k}]", nd, rows[k]["normal_dps"])
     d = res["derived"]

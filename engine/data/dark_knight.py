@@ -68,7 +68,11 @@ DARK_IMPALE_BOSS_MASTERY = {111: 10, 124: 10}                             # Boss
 
 # ---- helper rows folded into Dark Impale / Evil Eye Shock ----
 FINAL_ATTACK = dict(base=350, fidx=21, step=2, gated={54: 50})
-ADVANCED_FINAL_ATTACK = dict(base=5000, fidx=21, step=4, gated={113: 50})        # mastery is ADDITIVE (percentage points) on this helper
+# Final Pact (patch 2026-11-26): on appearing / at the battle start the character enters Death Avoidance and gains Final Damage +1% every second, up to 12 stacks
+# (before: a flat +10%, which the typed Final Damage contained).  Per-stack value = 10 tenths-of-% x factor 22 (the old +10% curve, so 1% at level 1).
+FINAL_PACT = dict(base=10, fidx=22, step=4, max_stacks=12, interval=1.0, boost=(118, 2.0))      # Lv118 'Final Pact - Recovery': Final Damage boost +100 % = x2
+
+ADVANCED_FINAL_ATTACK = dict(base=5000, fidx=21, step=4, gated={113: 100})        # mastery is ADDITIVE (percentage points) on this helper
 FINAL_ATTACK_SHARE = 25                    # Final Attack's share folded into Dark Impale's coefficient (%)
 EVIL_EYE_SHOCK_ENH = dict(base=1000, fidx=22, step=3)
 
@@ -99,7 +103,7 @@ MAGIC_CRASH_WEAKEN = dict(level=126, pct=10, duration=15, cooldown=28)
 # normal-monster targets [+ extra_targets (level, n)].  ``hits_gate`` / ``base_gate``: (level, value from that level on) overrides (Gungnir's Descent's
 # Lv134 "Strike" mastery halves the base and triples the hits).  ``fold``: coefficient points ADDED after the multiplicative mastery.
 DAMAGE_SKILLS = {
-    "MAGIC_CRASH": dict(step=4, cooldown=28, hits=1, base=48000, fidx=12, mastery={}, costs_action=True, targets=5, extra_targets=(100, 4)),
+    "MAGIC_CRASH": dict(step=4, cooldown=28, hits=1, base=65000, fidx=12, mastery={}, costs_action=True, targets=5, extra_targets=(100, 4)),
     "GUNGNIRS_DESCENT": dict(step=4, cooldown=13, hits=2, hits_gate=(134, 6), base=18000, base_gate=(134, 9000), fidx=12, mastery={108: 50},
                              costs_action=True, targets=1),
     "EVIL_EYE_SHOCK": dict(step=2, cooldown=18, hits=6, base=700, fidx=12, mastery={44: 50}, costs_action=True, targets=6, extra_targets=(75, 3),

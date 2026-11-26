@@ -21,6 +21,8 @@ component (Attack%), Nimble Feet (Attack Speed), Swift Fire's Weaken (global dam
 proc stay duty-cycle averages; Scurvy Summons / All Aboard are crew windows (``crew_window``), Broadside is a burst + a sustained turret / bombardment
 window; Nautilus Strike - Final Attack and Majestic Presence are chance procs (one roll per attack per enemy hit, with their internal cooldowns).
 """
+import math
+
 from .. import _src  # noqa: F401
 from ..common import blend as blend_mod
 from ..common import classapi
@@ -282,6 +284,48 @@ class _Model(model_mod.ModelBase):
         # artifact Attack% (Old Music Box, Secret Map, Reindeer's Spear, Alliance Badge, Bottle of Emotion, Charm's average) joins the same additive bucket
         self.attack_bucket_mult = attack_bucket_mult = 1 + (roll_of_dice_pct + pre.agg_attack_pct) / 100
 
+        # ---- Cast rate with the engine's cast counts (Skill + buff cast rate subtracted from Eight-Legs Easton) ----
+        def cast_rate_with(counts):
+            """`counts` maps row key -> engine cast count (the engine's schedule), other rows use the averaged formulas."""
+            if fixed_duration_active:
+                tot = 0.0
+                for k, cd, ca, aps in cost_rows:
+                    if ca and unlocked(k):
+                        tot += (counts[k] if k in counts else non_buff_casts(eff_cd_of(k, cd, ca))) * aps
+                if unlocked("NIMBLE_FEET"):
+                    tot += counts["NIMBLE_FEET"] if "NIMBLE_FEET" in counts else fight.exact_casts(eff_cooldown(60, True))
+                if unlocked("JOLLY_ROGER_FD"):
+                    tot += counts["JOLLY_ROGER_FD"] if "JOLLY_ROGER_FD" in counts else fight.exact_casts(eff_cooldown(42, True))
+                return tot / fight_duration
+            r = sum((1 / eff_cd_of(k, cd, ca)) * aps for k, cd, ca, aps in cost_rows if ca and unlocked(k))
+            r += (1 / eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0
+            r += (1 / eff_cooldown(42, True)) if unlocked("JOLLY_ROGER_FD") else 0
+            return r
+
+        # ---- Majestic Presence's Final Damage (patch 2026-11-26): every proc gives +8 % for 5 s (non-stacking refresh => Poisson uptime 1 - exp(-rate x 5)).  The proc rate
+        #      comes from the AVERAGED attack rates (basic attack = Actions Per Second - the averaged cast rate; Brain Scrambler, Rapid Fire = hits / effective cooldown),
+        #      not from the timeline strip: the strip's Final Damage baseline (fd_scale) needs this value before it is solved, and the proc rate does not depend on it. ----
+        mp = D.MAJESTIC_PRESENCE
+        self.majestic_fd_pct = 0.0
+        if unlocked("MAJESTIC_PRESENCE"):
+            easton_avg = max(0, actions_per_second - cast_rate_with({}))
+            pre_sources = [(easton_avg, eight_legs_easton_targets)]
+            for k in D.MAJESTIC_SOURCES:
+                if unlocked(k):
+                    t = D.DAMAGE_SKILLS[k]
+                    eff = eff_cd_of(k, t["cooldown"], t["costs_action"])
+                    rate = (fight.non_buff_total_hits(eff, t["hits"], None, None) / fight_duration) if fixed_duration_active else t["hits"] / eff
+                    pre_sources.append((rate, t["targets"]))
+            cap = fight.max_enemies_hit
+            x_boss = mp["chance"] * sum(r for r, _ in pre_sources)
+            x_norm = sum(r * dmg.q_roll(mp["chance"], min(t, cap)) for r, t in pre_sources)
+            mfd = D.MAJESTIC_FD
+            up_boss = 1 - math.exp(-(x_boss / (1 + mp["icd"] * x_boss)) * mfd["duration"])
+            up_norm = 1 - math.exp(-(x_norm / (1 + mp["icd"] * x_norm)) * mfd["duration"])
+            self.majestic_fd_pct = mfd["pct"] * ((1 - normal_weight) * up_boss + normal_weight * up_norm)
+            self.final_damage_rest = final_damage_rest = final_damage_rest + self.majestic_fd_pct      # the Final Damage the engine does not time
+            self.final_damage_extra = final_damage_extra = final_damage_extra + self.majestic_fd_pct
+
         # ---- Engine pass 1: the buff schedule (independent of the skill weights) ----
         self.engine_n = ENGINE_N = {}
         E_ENGINE = None
@@ -310,7 +354,7 @@ class _Model(model_mod.ModelBase):
         # Final Damage of both sources at the CURRENT cast counts (Summary R_FD_ALL: the engine's Jolly Roger count when it is on) + the Ahoy Mateys proc: the bucket
         # the Sensitivity sheet's "mult"-kind Final Damage sweep bumps by 1% (``SensSpec.mult_extra``)
         self.final_damage_all = ((jolly_roger_full * fight.buff_uptime(jr["cooldown"], jr["duration"], True, casts=ENGINE_N.get("JOLLY_ROGER_FD"))
-                                  if unlocked("JOLLY_ROGER_FD") else 0.0) + ahoy_mateys_proc_fd)
+                                  if unlocked("JOLLY_ROGER_FD") else 0.0) + ahoy_mateys_proc_fd + self.majestic_fd_pct)
 
         # ---- artifact effects (full): everything that needs the action rate / startup delay / the timeline's status multiplier ----
         actx.aps, actx.startup = actions_per_second, buff_cast_startup_time
@@ -399,24 +443,6 @@ class _Model(model_mod.ModelBase):
             E_FS = E_ENGINE["fs"]
         self.e_engine = E_ENGINE
 
-        # ---- Cast rate with the engine's cast counts (Skill + buff cast rate subtracted from Eight-Legs Easton) ----
-        def cast_rate_with(counts):
-            """`counts` maps row key -> engine cast count (the engine's schedule), other rows use the averaged formulas."""
-            if fixed_duration_active:
-                tot = 0.0
-                for k, cd, ca, aps in cost_rows:
-                    if ca and unlocked(k):
-                        tot += (counts[k] if k in counts else non_buff_casts(eff_cd_of(k, cd, ca))) * aps
-                if unlocked("NIMBLE_FEET"):
-                    tot += counts["NIMBLE_FEET"] if "NIMBLE_FEET" in counts else fight.exact_casts(eff_cooldown(60, True))
-                if unlocked("JOLLY_ROGER_FD"):
-                    tot += counts["JOLLY_ROGER_FD"] if "JOLLY_ROGER_FD" in counts else fight.exact_casts(eff_cooldown(42, True))
-                return tot / fight_duration
-            r = sum((1 / eff_cd_of(k, cd, ca)) * aps for k, cd, ca, aps in cost_rows if ca and unlocked(k))
-            r += (1 / eff_cooldown(60, True)) if unlocked("NIMBLE_FEET") else 0
-            r += (1 / eff_cooldown(42, True)) if unlocked("JOLLY_ROGER_FD") else 0
-            return r
-
         cost_keys = {c[0] for c in cost_rows} | {"JOLLY_ROGER_FD"}
         self.cast_rate_avg = cast_rate_with({})
         self.cast_rate = cast_rate = cast_rate_with({k: v for k, v in ENGINE_N.items() if k in cost_keys})
@@ -446,6 +472,16 @@ class _Model(model_mod.ModelBase):
             hits = s["hits"] * (fight_mod.ticks(capped_window(s["window"]), s["icd"]) if s.get("icd") else 1)
             return hits / eff_cd
 
+        mp = D.MAJESTIC_PRESENCE
+        mp_sources = [(eight_legs_easton_per_second, eight_legs_easton_targets)]
+        if unlocked("MAJESTIC_PRESENCE"):
+            def source_rate(key):
+                if not unlocked(key):
+                    return 0.0
+                return skill_rate(key, SKILLS[key])
+            for k in D.MAJESTIC_SOURCES:
+                mp_sources.append((source_rate(k), SKILLS[k]["targets"]))
+
         skill_dps = {}
         for key, s in SKILLS.items():
             if not unlocked(key):
@@ -470,19 +506,9 @@ class _Model(model_mod.ModelBase):
             skill_dps["NAUTILUS_FINAL_ATTACK"] = 0.0
 
         # ---- Majestic Presence (procs off Basic Attack + Brain Scrambler + Rapid Fire; 25% per attack per enemy hit with a 0.5 s ICD) ----
-        mp = D.MAJESTIC_PRESENCE
         if unlocked("MAJESTIC_PRESENCE"):
             mp_pct = coeff_pct(mp["base"], mp["fidx"], True, mp["step"]) * (1 + gated(mp["mastery"]) / 100)
             mp_hit = self.hit_damage(mp_pct, False)
-
-            def source_rate(key):
-                if not unlocked(key):
-                    return 0.0
-                return skill_rate(key, SKILLS[key])
-
-            mp_sources = [(eight_legs_easton_per_second, eight_legs_easton_targets)]
-            for k in D.MAJESTIC_SOURCES:
-                mp_sources.append((source_rate(k), SKILLS[k]["targets"]))
             majestic_presence_dps = self.proc_branch_dps("MAJESTIC_PRESENCE", mp["chance"], mp["icd"], mp_sources, mp_hit, mp["targets"])
         else:
             majestic_presence_dps = 0.0

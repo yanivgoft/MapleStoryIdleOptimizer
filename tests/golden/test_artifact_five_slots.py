@@ -25,6 +25,7 @@ REPO = HERE.parents[1]
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(HERE))
 from engine import CLASSES, artifacts as art, sensitivity  # noqa: E402
+from engine.data import artifacts as AD  # noqa: E402
 import factor_mode  # noqa: E402
 
 FACTOR_MODE = factor_mode.pin("legacy")        # workbook classes against workbook-derived expectations: skill levels clamp at 300 (engine/common/factors.py)
@@ -80,7 +81,7 @@ def test_schema_has_five_slots_in_every_class():
     for cid in CLASSES:
         s = mod(cid).schema()
         assert s["artifacts"]["max_slots"] == 5, cid
-        assert s["artifacts"]["none_label"] == "(none)" and len(s["artifacts"]["slot_options"]) == 37, cid
+        assert s["artifacts"]["none_label"] == "(none)" and len(s["artifacts"]["slot_options"]) == len(AD.ARTIFACT_LABELS) + 1, cid
 
 
 def test_five_slots_compute_in_all_classes():
@@ -156,7 +157,7 @@ def test_fifth_equals_sequential_toggle_in_sensitivity():
         t5 = m.compute(inputs(cid, slot_list(LIVE5)))["total_dps"]
         rows = sensitivity.run(m, inputs(cid, four), which="artifacts")["artifacts"]["rows"]
         fifth = _row(rows, LIVE5[4])
-        assert not fifth["equipped"] and len(rows) == 36
+        assert not fifth["equipped"] and len(rows) == len(AD.ARTIFACT_LABELS)
         assert math.isclose(fifth["dps_gain"], t5 - t4, rel_tol=1e-12), (cid, fifth["dps_gain"], t5 - t4)
         assert math.isclose(fifth["new_total"], t5, rel_tol=1e-12), (cid, fifth["new_total"], t5)
         # removing it again from 5 equipped is the same pair of states (direction-invariant, live artifact)

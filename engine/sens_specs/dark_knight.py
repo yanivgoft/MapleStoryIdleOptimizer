@@ -62,9 +62,10 @@ PASSIVE_LEVELS = (
     PassiveLevel("attack_speed_extra", 50, 22, 2, 33),      # Weapon Acceleration
     PassiveLevel("min_damage_delta", 150, 22, 2, 43),       # Weapon Mastery
     PassiveLevel("skill_damage_delta", 150, 22, 4, 120),    # Barricade Mastery (Skill Damage)
-    PassiveLevel("max_damage_delta", 200, 22, 4, 120),      # Barricade Mastery (Max Damage Multiplier)
-    PassiveLevel("final_damage_delta", 150, 22, 4, 125),    # Power Stance (Final Damage)
-    PassiveLevel("final_damage_delta", 100, 22, 4, 107),    # Final Pact
+    PassiveLevel("max_damage_delta", 300, 22, 4, 120),      # Barricade Mastery (Max Damage Multiplier)
+    PassiveLevel("final_damage_delta", 180, 22, 4, 125),    # Power Stance (Final Damage)
+    PassiveLevel("final_pact_stack_delta", 10, 22, 4, 107), # Final Pact (per-stack Final Damage of the live ramp; the frozen builder's row is a flat +10 final_damage_delta)
+    PassiveLevel("final_pact_stack_delta", 10, 22, 4, 118), # ... + its Lv118 mastery "boost +100 %" (x2 = a second copy of the same curve; the builder folds it into one cell)
 )
 
 # the builder's POTENTIAL_STAT_TO_SWEEP_KEY / POTENTIAL_SUB_STAT_PCT_LINES / EQUIP_COMPARE_STAT_TO_SWEEP_KEY / ARTIFACT_POTENTIAL_STAT_TO_SWEEP_KEY (checked against it by
@@ -75,5 +76,5 @@ SPEC = SensSpec(
     class_id="dark_knight", stat_list=STAT_LIST, mainstat=MainStat("flat_str", "str_pct", subs=(("dex", 0.25),)),
     status_rebuild_keys=STATUS_REBUILD_KEYS, companion_full_search_keys=COMPANION_FULL_SEARCH_KEYS, summon_time_keys=SUMMON_TIME_KEYS,
     passive_levels=PASSIVE_LEVELS, semantics=SEMANTICS, bdi_toggle_wired=True, pin_monster_defense=True, reindeer_dose_in_rows=True,
-    athena_as_in_aps=True, stat_to_key=STAT_TO_KEY,
+    athena_as_in_aps=True, stat_to_key=STAT_TO_KEY, baked_fd_form="typed", mult_extra=(("final_damage", "final_damage_extra"),),      # Final Pact's live ramp shares the typed bracket (patch 2026-11-26)
 )

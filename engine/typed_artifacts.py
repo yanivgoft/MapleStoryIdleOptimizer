@@ -23,11 +23,11 @@ crit_damage                        ``typed + rainbow + icy soul rock``          
 boss_damage / normal_damage        ``typed + candle boss + sayram``                          ``B = T - sum``
 skill_damage / basic_attack_damage ``typed + ring of cycles (crit rate >= 100 mode)``        ``B = T - a``
 attack_pct                         NOT stripped (user, 2026-11-26): artifact and buff Attack% stack together in their own bucket, unrelated to the ATTACK % of the preset page
-final_damage                       ``(1 + typed/100)(1 + art/100)``, art = candle x lava x horn  ``B = (1 + T/100) / (1 + art/100) - 1``
+final_damage                       ``(1 + typed/100)(1 + art/100)``, art = candle x lava x horn x sealed bottle  ``B = (1 + T/100) / (1 + art/100) - 1``
 damage                             Hexagon Necklace: ``(1 + typed/100)(1 + art/100)`` (Bishop: additive in ONE bucket)  ``B = (1 + T/100) / (1 + a/100) - 1`` (Bishop ``T - a``)
 =================================  ======================================================  =====================================================================
 
-No typed counterpart (nothing to strip, unchanged by the flag): Chalice, Fire Flower, Secret Map's normal-monster Final Damage and Contract of Darkness (boss /
+No typed counterpart (nothing to strip, unchanged by the flag): Sealed Bottle's kill-stack Normal / Boss Monster Damage (during the fight), Shiny Watch and Mummydog's Bandages (Attack% only, never stripped; the watch's companion ramp is a during-the-fight effect), Chalice, Fire Flower, Secret Map's normal-monster Final Damage and Contract of Darkness (boss /
 normal-branch-only terms), Peach Tree and Silver Pendant (enemy damage taken), Soul Contract (a % cooldown decrease; the typed field is in seconds), Reindeer's Spear's
 boss / PvP extra Defense Penetration (its base Def Pen is already "baked into Inputs"), the reference-only artifacts (Book of Ancient, Athena's Gloves, Clear Spring
 Water, Soul Pouch, Lit Lamp, Star Rock, Cursed Doll, Shamaness Marble, Bottle of Emotion's Final Damage: the user already types their stat by hand) and the seven
@@ -62,7 +62,7 @@ ADD_ROWS = {
     "basic_attack_damage": [("ring_of_cycles", "roc_basic_attack_damage")],
 }
 FACTOR_ROWS = {
-    "final_damage": [("candle", "candle_final_damage"), ("flaming_lava", "flaming_lava"), ("horn_flute", "horn_flute")],
+    "final_damage": [("candle", "candle_final_damage"), ("flaming_lava", "flaming_lava"), ("horn_flute", "horn_flute"), ("sealed_bottle", "sealed_bottle_final_damage")],
     "damage": [("hexagon_necklace", "hexagon_damage")],
 }
 SUMMON_KEY = "companion_summon_time_increase_pct"

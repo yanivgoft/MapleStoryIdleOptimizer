@@ -60,8 +60,8 @@ PASSIVE_LEVELS = (
     PassiveLevel("basic_attack_damage_delta", 100, 22, 2, 38),   # Physical Training
     PassiveLevel("min_damage_delta", 150, 22, 2, 43),            # Weapon Mastery
     PassiveLevel("skill_damage_delta", 150, 22, 4, 120),         # Combat Mastery (Skill Damage)
-    PassiveLevel("max_damage_delta", 200, 22, 4, 120),           # Combat Mastery (Max Damage Multiplier)
-    PassiveLevel("final_damage_delta", 150, 22, 4, 125),         # Power Stance (Final Damage)
+    PassiveLevel("max_damage_delta", 300, 22, 4, 120),           # Combat Mastery (Max Damage Multiplier)
+    PassiveLevel("final_damage_delta", 180, 22, 4, 125),         # Power Stance (Final Damage)
     PassiveLevel("crit_rate_delta", 80, 22, 3, 72),              # Chance Attack (Crit Rate)
 )
 

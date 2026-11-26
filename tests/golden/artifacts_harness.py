@@ -93,7 +93,7 @@ class ArtifactsTest:
             chk(f"summary.{name}", s[str(row)], d[dkey])
         if self.extra_summary is not None:
             self.extra_summary(chk, wb, s, d)
-        chk("engine_on", bool(wb["timeline_on"]), res["engine_on"])
+        chk("engine_on", wb["timeline_on"], res["engine_on"])
         return diffs
 
     def run(self, rtol=1e-9, verbose=False):

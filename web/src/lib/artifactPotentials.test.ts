@@ -14,8 +14,9 @@ const close = (a: number, b: number) => expect(Math.abs(a - b)).toBeLessThanOrEq
 describe("potential port == the real engine (fixture)", () => {
   const slots: { key: string; star: number }[] = []; // the fixture case equips nothing (its stars come from the request)
   const rows = computePotentials(pm, fx.potentials.request.potentials, fx.potentials.rate_by_stat, fx.potentials.result.baseline_total, slots);
-  it("all 36 artifacts, every line", () => {
-    expect(rows).toHaveLength(36);
+  it("every artifact, every line", () => {
+    expect(rows).toHaveLength(fx.potentials.result.rows.length);
+    expect(rows.length).toBeGreaterThanOrEqual(36);
     fx.potentials.result.rows.forEach((e, i) => {
       const r = rows[i];
       expect(r.key).toBe(e.key);

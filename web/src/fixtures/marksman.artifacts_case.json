@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 3.2851915668349572e+16,
+  "total_dps": 3.420754000913098e+16,
   "artifacts": {
    "equipped": [
     {
@@ -97,6 +97,8 @@
     "reindeer_spear_attack_pct": 0,
     "alliance_badge": 18,
     "bottle_of_emotion_attack_pct": 0,
+    "shiny_watch_attack_pct": 0,
+    "mummydogs_bandages_attack_pct": 0,
     "secret_map_final_dmg_normal": 0,
     "flaming_lava": 0,
     "horn_flute": 0,
@@ -104,6 +106,11 @@
     "fire_flower_boss": 0,
     "chalice_normal": 0,
     "chalice_boss": 0,
+    "sealed_bottle_final_damage": 0,
+    "sealed_bottle_stacks_normal": 0.0,
+    "sealed_bottle_stacks_boss": 0.0,
+    "sealed_bottle_normal": 0,
+    "sealed_bottle_boss": 0,
     "sayrams_necklace_normal": 0,
     "sayrams_necklace_boss": 0,
     "contract_of_darkness_crit_rate_bonus": 0,
@@ -124,19 +131,14 @@
      "typed_below_artifact:arwens_glass_shoes"
     ],
     "typed": {
-     "companion_summon_time_increase_pct": 0.0,
-     "attack_pct": 34372.5
+     "companion_summon_time_increase_pct": 0.0
     },
     "base": {
-     "companion_summon_time_increase_pct": 0.0,
-     "attack_pct": 34354.5
+     "companion_summon_time_increase_pct": 0.0
     },
     "amounts": {
      "companion_summon_time_increase_pct": {
       "arwens_glass_shoes": 28
-     },
-     "attack_pct": {
-      "alliance_badge": 18
      }
     }
    },
@@ -152,72 +154,72 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 2.6184752336609064e+16,
-  "boss_dps": 3.2851915668349572e+16,
-  "normal_dps": 4931602136574247.0,
-  "player_boss_dps": 2.6184752336609064e+16,
+  "player_dps": 2.7436351371990296e+16,
+  "boss_dps": 3.420754000913098e+16,
+  "normal_dps": 4986696411427626.0,
+  "player_boss_dps": 2.7436351371990296e+16,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "EMPOWERED_PIERCING_ARROW",
     "name": "Empowered Piercing Arrow",
-    "dps": 1.0550226160887142e+16,
-    "share": 0.3211449300976843,
-    "boss_dps": 1.0550226160887142e+16,
+    "dps": 1.0759369659123898e+16,
+    "share": 0.31453210772396706,
+    "boss_dps": 1.0759369659123898e+16,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "COVERING_FIRE",
     "name": "Covering Fire",
-    "dps": 1906468517906227.0,
-    "share": 0.05803218713796257,
-    "boss_dps": 1906468517906227.0,
+    "dps": 1929558787645077.2,
+    "share": 0.056407411556926405,
+    "boss_dps": 1929558787645077.2,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BOLT_BURST",
     "name": "Bolt Burst",
-    "dps": 1383202176714521.5,
-    "share": 0.04210415583305348,
-    "boss_dps": 1383202176714521.5,
+    "dps": 1399954885224378.2,
+    "share": 0.04092533063911319,
+    "boss_dps": 1399954885224378.2,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "FROSTPREY",
     "name": "Frostprey",
-    "dps": 2882681881754627.5,
-    "share": 0.0877477560473553,
-    "boss_dps": 2882681881754627.5,
+    "dps": 2917595598711312.0,
+    "share": 0.08529100888086433,
+    "boss_dps": 2917595598711312.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SNIPE",
     "name": "Snipe",
-    "dps": 4249401489109322.5,
-    "share": 0.12935018864678602,
-    "boss_dps": 4249401489109322.5,
+    "dps": 4300868285277543.0,
+    "share": 0.12572866345050002,
+    "boss_dps": 4300868285277543.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "ARROW_ILLUSION",
     "name": "Arrow Illusion",
-    "dps": 3192050777134824.0,
-    "share": 0.09716482927082795,
-    "boss_dps": 3192050777134824.0,
+    "dps": 3769163332487929.0,
+    "share": 0.11018516185267431,
+    "boss_dps": 3769163332487929.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BOLT_SURPLUS",
     "name": "Bolt Surplus",
-    "dps": 2020721333102399.2,
-    "share": 0.06151000001041696,
-    "boss_dps": 2020721333102399.2,
+    "dps": 2359840823520159.5,
+    "share": 0.06898598446103549,
+    "boss_dps": 2359840823520159.5,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -225,19 +227,19 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 6667163331740509.0,
-   "boss_dps": 6667163331740509.0,
-   "normal_dps": 4931602136574247.0,
-   "share": 0.20294595295591347,
-   "damage": 3.924553048446166e+17,
-   "uplift": 7.424612837721907e+16,
+   "dps": 6771188637140684.0,
+   "boss_dps": 6771188637140684.0,
+   "normal_dps": 4986696411427626.0,
+   "share": 0.19794433143491927,
+   "damage": 3.968396894389091e+17,
+   "uplift": 7.714351516093875e+16,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 6667163331740509.0,
-    "comp_norm_dps": 4931602136574247.0,
-    "comp_blend_dps": 6667163331740509.0,
+    "comp_boss_dps": 6771188637140684.0,
+    "comp_norm_dps": 4986696411427626.0,
+    "comp_blend_dps": 6771188637140684.0,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -249,9 +251,9 @@
     "stunfracB": 0.26428571428571423,
     "stunfracN": 0.26428571428571423,
     "hasstun": 1,
-    "dmg_b": 3.924553048446166e+17,
-    "dmg_n": 3.452121495601973e+17,
-    "upl_b": 7.424612837721907e+16,
+    "dmg_b": 3.968396894389091e+17,
+    "dmg_n": 3.490687487999338e+17,
+    "upl_b": 7.714351516093875e+16,
     "upl_n": 0.0
    }
   },
@@ -265,25 +267,25 @@
     "SNIPE": 6,
     "ARROW_ILLUSION": 2
    },
-   "phi_unif": 1.0730000000000006,
+   "phi_unif": 1.0729999999999986,
    "phi_rows": {
-    "COVERING_FIRE": 1.3000000000000007,
-    "BOLT_BURST": 1.300000000000001,
-    "FROSTPREY": 1.0716666666666672,
-    "SNIPE": 1.203333333333334,
-    "ARROW_ILLUSION": 1.0734000000000006
+    "COVERING_FIRE": 1.2999999999999987,
+    "BOLT_BURST": 1.2999999999999983,
+    "FROSTPREY": 1.071666666666665,
+    "SNIPE": 1.203333333333332,
+    "ARROW_ILLUSION": 1.0733999999999981
    }
   },
   "derived": {
-   "attack": 416623469.45500004,
+   "attack": 416841125.27500004,
    "stat_damage": 3020.49016,
    "actions_per_second": 1.5932455,
    "cast_rate": 0.32857142857142857,
    "basic_attacks_per_second": 1.2646740714285716,
-   "avg_buff_mult": 2.2661324999999986,
+   "avg_buff_mult": 2.2923812500000027,
    "as_bonus": 6.070714285714286,
-   "attack_bucket_mult": 2.2661324999999986,
-   "attack_bucket_sum": 108.61325,
+   "attack_bucket_mult": 2.2923812500000027,
+   "attack_bucket_sum": 111.238125,
    "skill_coefficient_base": 641.48,
    "buff_cast_startup_time": 0.0,
    "crit_damage_bonus": 83.408832,

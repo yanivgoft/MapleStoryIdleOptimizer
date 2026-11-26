@@ -64,13 +64,14 @@ def compare_case(class_module, cid, case, rtol):
     n = [0]
     base_total = wb["summary"]["total"]
 
-    def chk(name, wbv, eng, atol=0.0, frac=False, dimensionless=False):
-        """atol = absolute slack (dollars unless ``dimensionless``); ``frac`` = the compared quantity depends on a fractional companion window."""
+    def chk(name, wbv, eng, atol=0.0, frac=False, dimensionless=False, loose_rtol=None):
+        """atol = absolute slack (dollars unless ``dimensionless``); ``frac`` = the compared quantity depends on a fractional companion window;
+        ``loose_rtol`` = an explicit relative tolerance (a quantity that is 1 / a tiny gain)."""
         n[0] += 1
         frac = frac or frac_case
         if frac and atol and not dimensionless:
             atol = max(atol, FRAC_ATOL * base_total)
-        if not close(wbv, eng, max(rtol, FRAC_RTOL) if frac else rtol, atol):
+        if not close(wbv, eng, loose_rtol if loose_rtol is not None else (max(rtol, FRAC_RTOL) if frac else rtol), atol):
             diffs.append((name, wbv, eng))
     atol_total = 1e-12 * base_total       # a zero gain is a difference of two huge totals: a few ulp of the total is rounding noise
     chk("baseline.total", base_total, out["baseline_total"])
@@ -90,9 +91,7 @@ def compare_case(class_module, cid, case, rtol):
             chk(f"stat.{key}.pct_gain", blk["pct_gain"], r["pct_gain"], 1e-12 * 100, frac=fr, dimensionless=True)
             if fr or frac_case:      # 1 / (a gain error of ~1e-9 x Total): compared loosely
                 if not isinstance(blk["units_per_1pct"], str):
-                    n[0] += 1
-                    if not close(blk["units_per_1pct"], r["units_per_1pct"], 1e-4):
-                        diffs.append((f"stat.{key}.units_per_1pct", blk["units_per_1pct"], r["units_per_1pct"]))
+                    chk(f"stat.{key}.units_per_1pct", blk["units_per_1pct"], r["units_per_1pct"], loose_rtol=1e-4)
                 continue
             u = blk["units_per_1pct"]
             if isinstance(u, str):                       # "n/a" (no gain)

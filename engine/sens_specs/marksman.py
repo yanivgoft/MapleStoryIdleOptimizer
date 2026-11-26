@@ -63,7 +63,7 @@ PASSIVE_LEVELS = (
     PassiveLevel("final_damage_delta", 150, 22, 3, 75),          # Extreme Archery / Reckless Hunt: Crossbow
     PassiveLevel("final_damage_delta", 150, 22, 4, 125),         # Last Man Standing (base FD)
     PassiveLevel("skill_damage_delta", 150, 22, 4, 120),         # Crossbow Expert (Skill Damage)
-    PassiveLevel("max_damage_delta", 200, 22, 4, 120),           # Crossbow Expert (Max Damage Multiplier)
+    PassiveLevel("max_damage_delta", 300, 22, 4, 120),           # Crossbow Expert (Max Damage Multiplier)
     PassiveLevel("attack_mult_delta", 120, 22, 2, 45),           # Soul Arrow: Crossbow (Attack%)
 )
 

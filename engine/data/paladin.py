@@ -84,7 +84,7 @@ COMBAT_ORDERS_JOB4_BONUS = (104, 18)                                            
 # Debuffs ("weaken"): global monster damage-taken bonus (pct, duration, cooldown, unlock level or None = always)
 CLOSE_COMBAT_WEAKEN = dict(level=44, pct=10, duration=10, cooldown=18)
 NOBLE_DEMAND_WEAKEN = dict(pct=12, duration=10, cooldown=30, haste=(94, 0.7))      # (no unlock gate in the verify script)
-DIVINE_MARK_WEAKEN = dict(level=138, pct=20, duration=10, cooldown=16)
+DIVINE_MARK_WEAKEN = dict(level=138, pct=12, duration=10, cooldown=16)
 
 # ---- damage rows (the verify script's DAMAGE_SKILLS dict order; summation order matters bit-for-bit) ----
 # cooldown (s) [+ haste (level, multiplier)], hits, base damage (tenths of %), factor index, skill mastery chain, boss / normal mastery %,
@@ -101,9 +101,9 @@ DAMAGE_SKILLS = {
                              costs_action=True, targets=8),
     "DIVINE_MARK_DETONATION": dict(step=4, cooldown=16, hits=4, base=4000, fidx=12, mastery={122: 50}, mastery_boss=0, mastery_normal=0,
                                    costs_action=False, targets=8),
-    "DIVINE_JUDGMENT": dict(step=4, cooldown=None, hits=4, base=8500, fidx=12, mastery={130: 50}, mastery_boss=0, mastery_normal=0,
+    "DIVINE_JUDGMENT": dict(step=4, cooldown=None, hits=4, base=10000, fidx=12, mastery={130: 50}, mastery_boss=0, mastery_normal=0,
                             costs_action=False, targets=4),
-    "MAGIC_CRASH": dict(step=4, cooldown=28, hits=1, base=48000, fidx=12, mastery={}, mastery_boss=0, mastery_normal=0,
+    "MAGIC_CRASH": dict(step=4, cooldown=28, hits=1, base=65000, fidx=12, mastery={}, mastery_boss=0, mastery_normal=0,
                         costs_action=True, targets=5, extra_targets=(100, 4)),
     "RUSH": dict(step=3, cooldown=22, haste=(90, 0.7), hits=1, base=6000, fidx=12, mastery={68: 80}, mastery_boss=0, mastery_normal=0,
                  costs_action=True, targets=12),

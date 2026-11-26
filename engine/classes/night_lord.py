@@ -319,10 +319,12 @@ class _Model(model_mod.ModelBase):
         fd_ = BUFFS["FRAILTY_CURSE_DEBUFF"]
         frailty_debuff_pct = coeff_pct(fd_["base"], fd_["fidx"], True, fd_["step"]) if unlocked("FRAILTY_CURSE_DEBUFF") else 0.0
         frailty_debuff_uptime = fight.buff_uptime(fd_["cooldown"], fd_["duration"], casts=ENGINE_N.get("FRAILTY_CURSE_DEBUFF"))
+        # Mastery Lv.113 ("Frailty Curse - Weaken", patch 2026-11-26): the damage-taken debuff x 1.08 (the Critical Resistance half is not modelled)
+        fc_lvl, fc_mult = D.FRAILTY_WEAKEN
+        if level >= fc_lvl:
+            frailty_debuff_pct *= fc_mult
         frailty_debuff_avg = frailty_debuff_pct * frailty_debuff_uptime if unlocked("FRAILTY_CURSE_DEBUFF") else 0.0
-        # Mastery Lv.111 ("Frailty Curse - Critical"): +30% Critical Damage Taken x the debuff's uptime (the Critical Resistance half is not modelled)
-        fc_lvl, fc_val = D.FRAILTY_CRIT_DAMAGE_TAKEN
-        self.crit_damage_bonus = (fc_val * frailty_debuff_uptime) if level >= fc_lvl else 0.0
+        self.crit_damage_bonus = 0.0     # the old Critical-Damage-Taken mastery term was replaced by the Weaken multiplier above
 
         cth_lvl, cth_val = D.CRITICAL_THROW_LV47
         critical_throw_lv47 = cth_val if level >= cth_lvl else 0.0

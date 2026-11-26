@@ -26,7 +26,7 @@ engine/
     status.py        Status Effect / KO timeline pass 2: `build_groups`, `solve_groups`
     sens.py          (also) `COMMON_STATS` / `stat_list` and `standard_stat_to_key` that the `engine/sens_specs/<class>.py` files build their stat tables from
   typed_artifacts.py the typed-stats-include-the-artifacts convention (`strip`): the character without the equipped artifacts' effects, derived from the typed values; used by `ModelBase.__init__`, `sensitivity._Base`, `cubes.pricing_from_sensitivity`
-  artifacts.py       the 36 artifacts' EQUIP effects (ports of the artifact_*_expr generators): Pre (Attack% bucket / Hexagon / Charm, needed by the
+  artifacts.py       the artifacts' EQUIP effects (36 of the workbooks + the 3 Legendary ones of the 2026-11-26 patch, data/artifacts_extra.py; Legendary stars 0-7) (ports of the artifact_*_expr generators): Pre (Attack% bucket / Hexagon / Charm, needed by the
                      timeline strip), Effects (all buckets, per-artifact rows, reference-only values, boss/normal extra multipliers),
                      time-dependent shapes (Hexagon ramp, Charm duty, Ring of Cycles uptime, Chalice, Peach/Silver Erlang ...), Horn Flute's uptime
   data/

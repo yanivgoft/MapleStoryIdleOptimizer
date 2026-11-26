@@ -31,13 +31,14 @@ describe("artifact data coverage (engine schema vs web wording)", () => {
       expect(c.schema.artifacts).toBeUndefined();
     }
   });
-  it.each(MODELLED.map((c) => [c.info.id, c.schema.artifacts as ArtifactSchema] as const))("%s: 36 artifacts, each with wording and values", (_id, a) => {
-    expect(a.artifacts).toHaveLength(36);
-    expect(a.slot_options).toHaveLength(37);
+  it.each(MODELLED.map((c) => [c.info.id, c.schema.artifacts as ArtifactSchema] as const))("%s: every artifact has wording and values", (_id, a) => {
+    expect(a.artifacts.length).toBeGreaterThanOrEqual(36);
+    expect(a.slot_options).toHaveLength(a.artifacts.length + 1);
     expect(a.max_slots).toBe(5);
     for (const x of a.artifacts) {
       expect(EFFECTS[x.key], x.key).toBeDefined();
-      for (const k of placeholders(x.key)) expect(STAR_VALUES[k], `${x.key}: ${k}`).toHaveLength(6);
+      expect(x.max_star, x.key).toBe(x.rank === "Legendary" ? 7 : 5);                                  // Legendary artifacts reach star 7 (patch 2026-11-26)
+      for (const k of placeholders(x.key)) expect(STAR_VALUES[k], `${x.key}: ${k}`).toHaveLength(8);      // stars 0..7
       expect(a.slot_options).toContain(x.name);
     }
     expect(Object.keys(EFFECTS).sort()).toEqual(a.artifacts.map((x) => x.key).sort());
@@ -60,11 +61,18 @@ describe("star options and effect text", () => {
     expect(o.map((x) => x.value)).toEqual(art.star_options);
     expect(o[0].label).toBe("Not unlocked");
     expect(STAR_TOOLTIP).toContain("acts as star 0");
-    expect(o[6].label).toBe("Star 5 (max)");
+    expect(o[o.length - 1].label).toBe("Star 7 (max)");
+    // per artifact: Legendary up to 7, Epic / Unique up to 5
+    const legendary = art.artifacts.find((x) => x.rank === "Legendary")!;
+    const epic = art.artifacts.find((x) => x.rank === "Epic")!;
+    expect(starOptions(art, legendary.key).map((x) => x.value)).toEqual(art.star_options);
+    expect(starOptions(art, epic.key).map((x) => x.value)).toEqual(art.star_options.filter((x) => typeof x !== "number" || x <= 5));
+    expect(starOptions(art, epic.key).at(-1)!.label).toBe("Star 5 (max)");
     expect(starIndex("Not Unlocked")).toBe(0);
     expect(starIndex(null)).toBe(0);
     expect(starIndex(3)).toBe(3);
-    expect(starIndex(9)).toBe(5);
+    expect(starIndex(7)).toBe(7);
+    expect(starIndex(9)).toBe(7);
   });
   it("default star follows the rank (Epic 5, Unique 3, Legendary Not Unlocked)", () => {
     expect(defaultStarFor(art, "charm_of_the_undead")).toBe(5);
@@ -85,7 +93,7 @@ describe("star options and effect text", () => {
 });
 
 describe("the per-artifact table state", () => {
-  it("emptyArtifacts: all 36 artifacts, default star by rank, 3 blank lines (no equipped flag any more)", () => {
+  it("emptyArtifacts: every artifact, default star by rank, 3 blank lines (no equipped flag any more)", () => {
     const t = emptyArtifacts(art);
     expect(Object.keys(t)).toEqual(art.artifacts.map((a) => a.key));
     expect(t.charm_of_the_undead).toEqual({ star: 5, lines: [blankLine(), blankLine(), blankLine()] });
@@ -95,13 +103,14 @@ describe("the per-artifact table state", () => {
     expect(defaultTableStar(art, "alliance_badge")).toBeNull();
     expect(defaultEntry(art, "candle").star).toBeNull();
   });
-  it("parseStar: Not Unlocked / null / 0-5 (also as text) are valid, anything else is junk", () => {
+  it("parseStar: Not Unlocked / null / 0-7 (also as text) are valid, anything else is junk", () => {
     expect(parseStar(null)).toEqual({ ok: true, value: null });
     expect(parseStar("Not Unlocked")).toEqual({ ok: true, value: null });
     expect(parseStar(" not unlocked ")).toEqual({ ok: true, value: null });
     expect(parseStar(0)).toEqual({ ok: true, value: 0 });
     expect(parseStar("3")).toEqual({ ok: true, value: 3 });
-    for (const bad of [6, -1, 2.5, "x", {}, undefined, true]) expect(parseStar(bad), String(bad)).toEqual({ ok: false });
+    expect(parseStar(7)).toEqual({ ok: true, value: 7 });
+    for (const bad of [8, -1, 2.5, "x", {}, undefined, true]) expect(parseStar(bad), String(bad)).toEqual({ ok: false });
   });
   it("lineCount: 3 lines for Legendary artifacts, 2 for Epic / Unique (the engine's rule)", () => {
     for (const a of art.artifacts) expect(lineCount(a), a.key).toBe(a.rank === "Legendary" ? 3 : 2);
@@ -112,7 +121,7 @@ describe("the per-artifact table state", () => {
         pigs_ribbon: { star: "Not Unlocked", equipped: "yes", lines: [{ rarity: "Unique", stat: "Damage %" }, { rarity: "Epic", stat: "Accuracy" }, { rarity: "Epic", stat: "Accuracy" }] } },
       art,
     );
-    expect(Object.keys(n)).toHaveLength(36);
+    expect(Object.keys(n)).toHaveLength(art.artifacts.length);
     expect("no_such" in n).toBe(false);
     expect(n.candle.star).toBeNull();                                // 99 is not an option -> the default (Legendary: Not Unlocked)
     expect("equipped" in n.candle).toBe(false);                      // the old per-artifact flag is dropped (normalizeEquipped reads it first)
@@ -170,6 +179,13 @@ describe("the per-artifact table state", () => {
     expect(setStar(art, t, "candle", 17).candle.star).toBe(2);
     expect(setStar(art, t, "no_such", 1)).toEqual(t);
   });
+  it("stars 6 and 7 exist for Legendary artifacts only: a higher star is cut to the artifact's own maximum", () => {
+    expect(setStar(art, emptyArtifacts(art), "candle", 7).candle.star).toBe(7);
+    expect(setStar(art, emptyArtifacts(art), "charm_of_the_undead", 7).charm_of_the_undead.star).toBe(5);       // Epic: 5 is the maximum
+    const stored = { ...emptyArtifacts(art), charm_of_the_undead: { star: 6, lines: emptyArtifacts(art).charm_of_the_undead.lines } };
+    expect(normalizeArtifacts(stored, art).charm_of_the_undead.star).toBe(5);
+    expect(normalizeArtifacts({ ...stored, candle: { star: 6, lines: stored.charm_of_the_undead.lines } }, art).candle.star).toBe(6);
+  });
   it("setLine: rarity and stat of one line; Epic / Unique artifacts have no 3rd line; other artifacts untouched", () => {
     let t = emptyArtifacts(art);
     t = setLine(art, t, "alliance_badge", 2, { rarity: "Mystic", stat: "Boss Monster Damage %" });
@@ -182,7 +198,7 @@ describe("the per-artifact table state", () => {
   });
   it("visibleArtifacts: filter by name (case-insensitive substring) and 'only unlocked / equipped'", () => {
     const t = setStar(art, emptyArtifacts(art), "alliance_badge", 1);
-    expect(visibleArtifacts(art, t, { text: "", onlyActive: false })).toHaveLength(36);
+    expect(visibleArtifacts(art, t, { text: "", onlyActive: false })).toHaveLength(art.artifacts.length);
     expect(visibleArtifacts(art, t, { text: " BADGE ", onlyActive: false }).map((a) => a.key)).toEqual(["alliance_badge"]);
     const active = visibleArtifacts(art, t, { text: "", onlyActive: true }, ["candle"]).map((a) => a.key);
     // default-unlocked Epic (4) + Unique (9) artifacts, plus the two touched Legendary ones
@@ -218,9 +234,9 @@ describe("badges come from the engine's flags", () => {
     expect(badgesFor(info("reindeer_spear"))[0].partial).toBe(true);
     expect(badgesFor(info("alliance_badge"))).toEqual([]);
   });
-  it("companion effect: Arwen's Glass Shoes, Hexagon, Charm, Horn Flute", () => {
+  it("companion effect: Arwen's Glass Shoes, Hexagon, Charm, Horn Flute, Shiny Watch", () => {
     const comp = art.artifacts.filter((a) => badgesFor(a).some((b) => b.kind === "companion" || b.kind === "status")).map((a) => a.key).sort();
-    expect(comp).toEqual(["arwens_glass_shoes", "charm_of_the_undead", "hexagon_necklace", "horn_flute"]);
+    expect(comp).toEqual(["arwens_glass_shoes", "charm_of_the_undead", "hexagon_necklace", "horn_flute", "shiny_watch"]);
   });
 });
 
@@ -245,7 +261,7 @@ describe("request building and capability", () => {
   it("artifact_stars (equip ranking / stat values): the star of EVERY artifact, 'Not Unlocked' for the locked ones", () => {
     const t = setStar(art, emptyArtifacts(art), "alliance_badge", 4);
     const x = artifactStarsExtra(art, t) as { artifact_stars: Record<string, number | string> };
-    expect(Object.keys(x.artifact_stars)).toHaveLength(36);
+    expect(Object.keys(x.artifact_stars)).toHaveLength(art.artifacts.length);
     expect(x.artifact_stars.alliance_badge).toBe(4);
     expect(x.artifact_stars.candle).toBe("Not Unlocked");
     expect(x.artifact_stars.charm_of_the_undead).toBe(5);
@@ -411,7 +427,7 @@ describe("profiles saved with the OLD slots UI (a slots list + the separate Arti
     expect(Array.isArray(p.state.artifacts)).toBe(true);                 // the stored shape is kept until the schema is known
     const n = normalizeState(fp.schema, p.state);
     expect("potentials" in n).toBe(false);
-    expect(Object.keys(n.artifacts)).toHaveLength(36);
+    expect(Object.keys(n.artifacts)).toHaveLength(art.artifacts.length);
     for (const ct of fp.schema.content_types) expect(equippedKeys(art, n.equippedArtifacts![ct]), ct).toEqual(["pigs_ribbon", "candle", "horn_flute"]);   // every content type starts from the old set
     expect(n.artifacts.candle.star).toBe(2);
     expect(n.artifacts.candle.lines).toEqual([{ rarity: "Legendary", stat: "Damage %" }, { rarity: "Epic", stat: "Critical Rate %" }, blankLine()]);

@@ -77,7 +77,7 @@ def test_tables_match_builder():
     spec.loader.exec_module(mod)
     assert potentials.RARITIES == mod.ARTIFACT_POTENTIAL_RARITIES and potentials.VALUES == mod.ARTIFACT_POTENTIAL_VALUES
     assert potentials.STAT_TO_KEY == mod.ARTIFACT_POTENTIAL_STAT_TO_SWEEP_KEY
-    assert {a: potentials.num_lines(a) for a in AD.ARTIFACT_LABELS} == {a: (3 if mod.ARTIFACT_RANK[a] == "Legendary" else 2) for a in mod.ARTIFACT_LABELS}
+    assert {a: potentials.num_lines(a) for a in AD.WORKBOOK_ARTIFACT_LABELS} == {a: (3 if mod.ARTIFACT_RANK[a] == "Legendary" else 2) for a in mod.ARTIFACT_LABELS}
     assert potentials.default_star("book_of_ancient") == mod.ARTIFACT_RANK_DEFAULT_STAR[mod.ARTIFACT_RANK["book_of_ancient"]]
     # companion model: the summoning-time line tiers behind potential_line_totals()
     import companion_model as cm

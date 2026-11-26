@@ -1,4 +1,4 @@
-"""Artifact EQUIP effects (up to 5 equipped slots, star 0-5; the workbooks have 4) exactly as the workbook wires them - a port of the ~32 ``artifact_*_expr()``
+"""Artifact EQUIP effects (up to 5 equipped slots, star 0-5, Legendary artifacts 0-7 since the 2026-11-26 patch; the workbooks have 4 slots and 6 stars) exactly as the workbook wires them - a port of the ~32 ``artifact_*_expr()``
 generators of ``src/build_fp_mage_workbook.py`` (byte-identical in the 12 builders) and of the aggregate rows of its Artifacts sheet.
 
 What an artifact can do in the workbook (and so here):
@@ -23,12 +23,15 @@ Every function takes plain numbers and mirrors the operation order of the Excel 
 import math
 
 from .data import artifacts as AD
+from .data import artifacts_extra as AX
 
 NONE_LABEL = "(none)"
 MAX_SLOTS = 5          # the game gained a 5th artifact slot (2026-11-23).  The workbooks keep 4 slot rows: with 5 equipped the engine composes the verified
 #                        per-artifact effects itself (same buckets, same formulas, nothing slot-specific) - not verifiable against Excel (KNOWN_GAPS "Fifth artifact slot")
 WORKBOOK_SLOTS = 4     # what the workbooks / golden tests can check
-STAR_OPTIONS = ["Not Unlocked", 0, 1, 2, 3, 4, 5]
+WORKBOOK_MAX_STAR = 5  # the workbooks' star tiers 0..5 (every golden compares at most star 5)
+LEGENDARY_MAX_STAR = 7  # patch 2026-11-26: Legendary artifacts reach Awakening Stage 7 (inventory and on-equip effects keep growing at stages 6 and 7)
+STAR_OPTIONS = ["Not Unlocked"] + list(range(LEGENDARY_MAX_STAR + 1))      # the superset; an artifact's own limit is ``max_star(key)``
 LABEL_TO_KEY = {label: key for key, label in AD.ARTIFACT_LABELS.items()}
 
 # artifacts whose stat is entered by hand in Inputs (see module docstring): equipping changes nothing live
@@ -39,8 +42,17 @@ ZERO_ARTIFACTS = NO_DPS_EFFECT                        # old name
 
 
 def sv(key, star):
-    """Star-tier value (CHOOSE(star+1, v0..v5))."""
-    return AD.ARTIFACT_STAR_VALUES[key][star]
+    """Star-tier value (CHOOSE(star+1, v0..v5)); stars 6 and 7 (Legendary artifacts, patch 2026-11-26) continue the straight line: every star adds the same step
+    (user, 2026-11-26: "every star gives 20 % of the base value"; all tables are exactly ``v0 x (1 + 0.2 x star)``, checked by ``tests/golden/test_patch_2026_11_26.py``)."""
+    values = AD.ARTIFACT_STAR_VALUES[key]
+    if star < len(values):
+        return values[star]
+    return values[0] + (values[-1] - values[0]) * star / (len(values) - 1)
+
+
+def max_star(key):
+    """Highest Star Level of an artifact: 7 for Legendary, 5 otherwise."""
+    return LEGENDARY_MAX_STAR if AD.ARTIFACT_RANK[key] == "Legendary" else WORKBOOK_MAX_STAR
 
 
 def default_star(key):
@@ -52,7 +64,7 @@ def default_star(key):
 # slots
 # ----------------------------------------------------------------------------------------------------------------------
 def resolve_slots(artifacts):
-    """``[{"key": <id or name>, "star": 0..5 | None | "Not Unlocked"}, ...]`` -> ``{artifact id: star 0..5}`` (equipped artifacts only, in slot
+    """``[{"key": <id or name>, "star": 0..max_star | None | "Not Unlocked"}, ...]`` -> ``{artifact id: star}`` (equipped artifacts only, in slot
     order).  A (none) / blank slot is skipped; the same artifact twice is equipped once (first entry's star wins, like the workbook's one
     star per artifact)."""
     out = {}
@@ -70,8 +82,8 @@ def resolve_slots(artifacts):
         if star is None or star == "Not Unlocked":
             star = 0
         star = int(star)
-        if not 0 <= star <= 5:
-            raise ValueError(f"artifact {key!r}: star must be 0..5 (got {star})")
+        if not 0 <= star <= max_star(key):
+            raise ValueError(f"artifact {key!r}: star must be 0..{max_star(key)} (got {star})")
         out.setdefault(key, star)
     return out
 
@@ -217,6 +229,23 @@ def peach_uptime(aps):
     return 1 - math.exp(-lam * 5)
 
 
+def sealed_bottle_stacks(c):
+    """Sealed Bottle (patch 2026-11-26): every enemy the player or the companion defeats adds a stack (+1 % Normal, +2 % Boss Monster Damage), up to 10 (30 in
+    Chapter Breakthrough).  ``(average stacks in the normal-monster branch, stacks in the boss branch)``: continuous hunting fills the 10 stacks within seconds
+    (the Chalice kill rate, ``CHALICE_KILLS_PER_MINUTE``); Breakthrough / Hero Dungeon kill their normal monsters first (the boss appears at ``boss_appear_time``): the
+    normal phase ramps from 0 at that kill rate, the boss phase starts with whatever was collected; boss-only content and PvP defeat nobody: no stacks."""
+    if c.monster_type == "normal":
+        return float(AX.SEALED_BOTTLE_STACKS), float(AX.SEALED_BOTTLE_STACKS)
+    if c.monster_type == "breakthrough":
+        cap = AX.SEALED_BOTTLE_STACKS_BREAKTHROUGH if c.content_type == "Breakthrough" else AX.SEALED_BOTTLE_STACKS
+        appear = boss_appear_time(c.content_type)
+        k = AD.CHALICE_KILLS_PER_MINUTE / 60
+        reach = cap / k                                           # seconds until the stacks are full
+        avg = k * appear / 2 if appear <= reach else (cap * reach / 2 + cap * (appear - reach)) / appear
+        return avg, min(float(cap), k * appear)
+    return 0.0, 0.0
+
+
 def silver_avg_stacks(aps):
     """M/M/5/5 Erlang-loss mean stack count, offered load rho = 0.15 x aps x 5."""
     rho = 0.15 * aps * 5
@@ -304,10 +333,13 @@ class Pre:
         self.reindeer_attack = val("reindeer_spear", "reindeer_spear_attack_pct") if on("reindeer_spear") else 0
         self.alliance = val("alliance_badge", "alliance_badge_attack_pct") if on("alliance_badge") else 0
         self.bottle_attack = val("bottle_of_emotion", "bottle_of_emotion_attack_pct") if on("bottle_of_emotion") else 0
+        self.shiny_watch_attack = val("shiny_watch", "shiny_watch_attack_pct") if on("shiny_watch") else 0                  # (patch 2026-11-26)
+        self.mummydog_attack = val("mummydogs_bandages", "mummydogs_bandages_attack_pct") if on("mummydogs_bandages") else 0   # (HP assumed to stay above 50 %)
         self.charm_val = val("charm_of_the_undead", "charm_of_the_undead_attack_pct") if on("charm_of_the_undead") else 0   # full value while active
         self.charm_avg = self.charm_val * charm_uptime(c) if on("charm_of_the_undead") else 0                                # fight average
         # AGG_ATTACK_PCT sums in this order (Artifacts sheet)
-        self.agg_attack_pct = self.omb + self.secret_map_attack + self.reindeer_attack + self.alliance + self.bottle_attack + self.charm_avg
+        self.agg_attack_pct = (self.omb + self.secret_map_attack + self.reindeer_attack + self.alliance + self.bottle_attack + self.charm_avg
+                               + self.shiny_watch_attack + self.mummydog_attack)
         self.hex_v = val("hexagon_necklace", "hexagon_necklace_damage") if on("hexagon_necklace") else 0                       # per stack
         self.hex_avg = self.hex_v * hexagon_avg_stacks(c) if on("hexagon_necklace") else 0
         self.a0 = self.agg_attack_pct - self.charm_avg                                    # strip A0: the Attack% bucket without Charm
@@ -374,6 +406,8 @@ class Effects:
         rows["reindeer_spear_attack_pct"] = pre.reindeer_attack
         rows["alliance_badge"] = pre.alliance
         rows["bottle_of_emotion_attack_pct"] = pre.bottle_attack
+        rows["shiny_watch_attack_pct"] = pre.shiny_watch_attack
+        rows["mummydogs_bandages_attack_pct"] = pre.mummydog_attack
         growth = ct in AD.GROWTH_DUNGEON_CONTENT_TYPES
         rows["secret_map_final_dmg_normal"] = (val("secret_map", "secret_map_final_damage") * (3 if growth else 1)
                                                if (on("secret_map") and not pvp) else 0)
@@ -392,6 +426,14 @@ class Effects:
         rows["chalice_normal"] = star_val * cn if chalice_gate else 0
         rows["chalice_boss"] = star_val * cb if chalice_gate else 0
         self.chalice_full = star_val if chalice_gate else 0
+        # ---- Sealed Bottle (patch 2026-11-26): +6 % Final Damage always; kill stacks of Normal / Boss Monster Damage ----
+        rows["sealed_bottle_final_damage"] = val("sealed_bottle", "sealed_bottle_final_damage") if on("sealed_bottle") else 0
+        stacks_normal, stacks_boss = sealed_bottle_stacks(c)
+        rows["sealed_bottle_stacks_normal"], rows["sealed_bottle_stacks_boss"] = stacks_normal, stacks_boss
+        rows["sealed_bottle_normal"] = val("sealed_bottle", "sealed_bottle_normal_damage_per_kill") * stacks_normal if on("sealed_bottle") else 0
+        rows["sealed_bottle_boss"] = val("sealed_bottle", "sealed_bottle_boss_damage_per_kill") * stacks_boss if on("sealed_bottle") else 0
+        # Shiny Watch: the summoned companion's Final Damage grows by this much per stack (the companion model averages the ramp over its window)
+        self.watch_per_stack = val("shiny_watch", "shiny_watch_companion_final_damage_per_stack") if on("shiny_watch") else 0.0
         # ---- Boss / Normal Monster Damage ----
         rows["sayrams_necklace_normal"] = val("sayrams_necklace", "sayrams_necklace_normal_damage") if on("sayrams_necklace") else 0
         rows["sayrams_necklace_boss"] = val("sayrams_necklace", "sayrams_necklace_boss_damage") if on("sayrams_necklace") else 0
@@ -404,13 +446,15 @@ class Effects:
         # ---- aggregate buckets (Artifacts sheet rows, same summation order) ----
         self.agg_crit_rate = rows["roc_crit_rate"] + rows["rainbow_crit_rate"]
         self.agg_crit_damage = rows["rainbow_crit_damage"] + rows["icy_soul_rock"]
-        self.agg_final_damage = ((1 + rows["candle_final_damage"] / 100) * (1 + rows["flaming_lava"] / 100) * (1 + rows["horn_flute"] / 100) - 1) * 100
-        self.agg_boss_damage = rows["candle_boss_damage"] + rows["sayrams_necklace_boss"]
-        self.agg_normal_damage = rows["sayrams_necklace_normal"]
+        self.agg_final_damage = ((1 + rows["candle_final_damage"] / 100) * (1 + rows["flaming_lava"] / 100) * (1 + rows["horn_flute"] / 100)
+                                 * (1 + rows["sealed_bottle_final_damage"] / 100) - 1) * 100
+        self.agg_boss_damage = rows["candle_boss_damage"] + rows["sayrams_necklace_boss"] + rows["sealed_bottle_boss"]
+        self.agg_normal_damage = rows["sayrams_necklace_normal"] + rows["sealed_bottle_normal"]
         self.agg_enemy_dmg_taken = rows["peach_enemy_dmg_taken"] + rows["silver_enemy_dmg_taken"]
         self.agg_damage = rows["hexagon_damage"]
         self.agg_attack_pct = (rows["old_music_box_attack_pct"] + rows["secret_map_attack_pct"] + rows["reindeer_spear_attack_pct"]
-                               + rows["alliance_badge"] + rows["bottle_of_emotion_attack_pct"] + rows["charm_of_the_undead"])
+                               + rows["alliance_badge"] + rows["bottle_of_emotion_attack_pct"] + rows["charm_of_the_undead"]
+                               + rows["shiny_watch_attack_pct"] + rows["mummydogs_bandages_attack_pct"])
         self.agg_fd_normal_only = rows["secret_map_final_dmg_normal"] + rows["fire_flower_normal"] + rows["chalice_normal"]
         self.agg_fd_boss_only = rows["fire_flower_boss"] + rows["chalice_boss"]
         self.agg_skill_damage = rows["roc_skill_damage"]

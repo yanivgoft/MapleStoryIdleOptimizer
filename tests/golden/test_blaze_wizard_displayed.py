@@ -65,16 +65,16 @@ TABLE = [
     ("Call of Cygnus: Orbital Explosion", 70.0, "CYGNUS_ORBITAL_EXPLOSION"),
     ("Final Flame Elemental: Defense Penetration", 3.0, "FINAL_FE_DEF_PEN"),
     ("Final Flame Elemental: Critical Damage", 28.0, "FINAL_FE_CRIT_DAMAGE"),
-    ("Phoenix Run: Final Damage", 10.0, "PHOENIX_RUN_FD"),
+    ("Phoenix Run: Final Damage (per stack)", 1.0, "PHOENIX_RUN_FD"),   # a flat 10.0 before the 2026-11-26 patch (+1 % per second, 12 stacks now; patch-derived)
     ("Flame Barrier: Attack", 5.0, "FLAME_BARRIER_ATTACK"),
     ("Pure Magic: Skill Damage", 15.0, "PURE_MAGIC_SKILL"),
-    ("Pure Magic: Max Damage Multiplier", 20.0, "PURE_MAGIC_MAX"),
+    ("Pure Magic: Max Damage Multiplier", 30.0, "PURE_MAGIC_MAX"),   # 20.0 before the 2026-11-26 patch (patch-derived)
     ("Wild Blaze: Final Damage", 12.0, "WILD_BLAZE_FD"),
 ]
 # transcribed passives with no DPS role (barrier / Defense / MP): only the convention triple is checked (nothing in the model reads them): (name, shown, base, fidx, step)
 UNMODELLED = [
     ("Fire Repulsion: Defense", 15.0, 150, 22, 1), ("Controlled Burn: MP recovery", 1.5, 15, 22, 2), ("Liberated Magic: MP cost increase", 10.0, 100, 22, 3),
-    ("Flame Barrier: barrier (% of Max HP)", 6.0, 60, 22, 4),
+    ("Flame Barrier: barrier (% of Max HP)", 10.0, 100, 22, 4),   # 6.0 / 60 before the 2026-11-26 patch
 ]
 # fixed (non-growing) mastery / passive values: shown, value in the data / model
 MASTERY_VALUES = [

@@ -153,7 +153,11 @@ def sample_inputs(cid):
 
 def stars():
     from sens_cases import STARS
-    return dict(STARS)
+    from engine.data import artifacts as AD
+    out = dict(STARS)
+    for key in AD.ARTIFACT_LABELS:                 # the artifacts the game added after the workbooks (engine/data/artifacts_extra.py): the new Legendary maximum, star 7
+        out.setdefault(key, 7)
+    return out
 
 
 def artifact_keys():

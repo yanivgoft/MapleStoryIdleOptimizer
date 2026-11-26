@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 1.231137731976276e+17,
+  "total_dps": 1.2824448800365762e+17,
   "artifacts": {
    "equipped": [
     {
@@ -97,6 +97,8 @@
     "reindeer_spear_attack_pct": 0,
     "alliance_badge": 18,
     "bottle_of_emotion_attack_pct": 0,
+    "shiny_watch_attack_pct": 0,
+    "mummydogs_bandages_attack_pct": 0,
     "secret_map_final_dmg_normal": 0,
     "flaming_lava": 0,
     "horn_flute": 0,
@@ -104,6 +106,11 @@
     "fire_flower_boss": 0,
     "chalice_normal": 0,
     "chalice_boss": 0,
+    "sealed_bottle_final_damage": 0,
+    "sealed_bottle_stacks_normal": 0.0,
+    "sealed_bottle_stacks_boss": 0.0,
+    "sealed_bottle_normal": 0,
+    "sealed_bottle_boss": 0,
     "sayrams_necklace_normal": 0,
     "sayrams_necklace_boss": 0,
     "contract_of_darkness_crit_rate_bonus": 0,
@@ -124,19 +131,14 @@
      "typed_below_artifact:arwens_glass_shoes"
     ],
     "typed": {
-     "companion_summon_time_increase_pct": 0.0,
-     "attack_pct": 34372.5
+     "companion_summon_time_increase_pct": 0.0
     },
     "base": {
-     "companion_summon_time_increase_pct": 0.0,
-     "attack_pct": 34354.5
+     "companion_summon_time_increase_pct": 0.0
     },
     "amounts": {
      "companion_summon_time_increase_pct": {
       "arwens_glass_shoes": 28
-     },
-     "attack_pct": {
-      "alliance_badge": 18
      }
     }
    },
@@ -152,108 +154,108 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 1.1158719739045582e+17,
-  "boss_dps": 1.231137731976276e+17,
-  "normal_dps": 5369978740029050.0,
-  "player_boss_dps": 1.1158719739045582e+17,
+  "player_dps": 1.1639309589430872e+17,
+  "boss_dps": 1.2824448800365762e+17,
+  "normal_dps": 5449140112589963.0,
+  "player_boss_dps": 1.1639309589430872e+17,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "CRUEL_STAB",
     "name": "Cruel Stab",
-    "dps": 2.3516345199142548e+16,
-    "share": 0.19101311403552781,
-    "boss_dps": 2.3516345199142548e+16,
+    "dps": 2.3863010661652416e+16,
+    "share": 0.1860743571370633,
+    "boss_dps": 2.3863010661652416e+16,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "PHASE_DASH",
     "name": "Phase Dash",
-    "dps": 5322963633625499.0,
-    "share": 0.04323613431196561,
-    "boss_dps": 5322963633625499.0,
+    "dps": 5401431934475296.0,
+    "share": 0.04211823851892366,
+    "boss_dps": 5401431934475296.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "MESO_EXPLOSION",
     "name": "Meso Explosion",
-    "dps": 1839077908930191.5,
-    "share": 0.014938035454229994,
-    "boss_dps": 1839077908930191.5,
+    "dps": 1866188618034522.2,
+    "share": 0.014551803723379497,
+    "boss_dps": 1866188618034522.2,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "BLOOD_MONEY",
     "name": "Blood Money",
-    "dps": 3.0912487491792356e+16,
-    "share": 0.2510887830736069,
-    "boss_dps": 3.0912487491792356e+16,
+    "dps": 3.13681829530949e+16,
+    "share": 0.24459673426432377,
+    "boss_dps": 3.13681829530949e+16,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "DARK_FLARE",
     "name": "Dark Flare",
-    "dps": 1.0306329834804266e+16,
-    "share": 0.08371386537118065,
-    "boss_dps": 1.0306329834804266e+16,
+    "dps": 1.045826027164324e+16,
+    "share": 0.08154939393063788,
+    "boss_dps": 1.045826027164324e+16,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "VENOM",
     "name": "Venom",
-    "dps": 2215194860483640.0,
-    "share": 0.01799307098587347,
-    "boss_dps": 2215194860483640.0,
+    "dps": 2247850085789955.0,
+    "share": 0.0175278495066848,
+    "boss_dps": 2247850085789955.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "ASSASSINATE",
     "name": "Assassinate",
-    "dps": 1.0549978711865524e+16,
-    "share": 0.08569291995405126,
-    "boss_dps": 1.0549978711865524e+16,
+    "dps": 1.070550089095616e+16,
+    "share": 0.08347727888820322,
+    "boss_dps": 1.070550089095616e+16,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SUDDEN_RAID_BURST",
     "name": "Sudden Raid (burst)",
-    "dps": 5960217943208329.0,
-    "share": 0.048412275803136395,
-    "boss_dps": 5960217943208329.0,
+    "dps": 7257696370084156.0,
+    "share": 0.0565926573770341,
+    "boss_dps": 7257696370084156.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SUDDEN_RAID_DOT",
     "name": "Sudden Raid (DoT)",
-    "dps": 1397251396460861.2,
-    "share": 0.01134926954287992,
-    "boss_dps": 1397251396460861.2,
+    "dps": 1417848933939361.5,
+    "share": 0.0110558274746196,
+    "boss_dps": 1417848933939361.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "TOXIC_VENOM",
     "name": "Toxic Venom",
-    "dps": 5768927391538405.0,
-    "share": 0.046858505280947496,
-    "boss_dps": 5768927391538405.0,
+    "dps": 7805293137450012.0,
+    "share": 0.06086260126226556,
+    "boss_dps": 7805293137450012.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "SHADOW_SHIFTER",
     "name": "Shadow Shifter (counterattack)",
-    "dps": 1.3798423018604212e+16,
-    "share": 0.11207862987396529,
-    "boss_dps": 1.3798423018604212e+16,
+    "dps": 1.4001832037188686e+16,
+    "share": 0.10918077069159764,
+    "boss_dps": 1.4001832037188686e+16,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -261,19 +263,19 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 1.1526575807171782e+16,
-   "boss_dps": 1.1526575807171782e+16,
-   "normal_dps": 5369978740029050.0,
-   "share": 0.0936253963126353,
-   "damage": 4.240875053952106e+17,
-   "uplift": 3.827728011068141e+17,
+   "dps": 1.18513921093489e+16,
+   "boss_dps": 1.18513921093489e+16,
+   "normal_dps": 5449140112589963.0,
+   "share": 0.09241248722526688,
+   "damage": 4.303391780066439e+17,
+   "uplift": 3.992582696477792e+17,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 1.1526575807171782e+16,
-    "comp_norm_dps": 5369978740029050.0,
-    "comp_blend_dps": 1.1526575807171782e+16,
+    "comp_boss_dps": 1.18513921093489e+16,
+    "comp_norm_dps": 5449140112589963.0,
+    "comp_blend_dps": 1.18513921093489e+16,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -285,9 +287,9 @@
     "stunfracB": 0.17857142857142855,
     "stunfracN": 0.17857142857142855,
     "hasstun": 1,
-    "dmg_b": 4.240875053952106e+17,
-    "dmg_n": 3.758985118020335e+17,
-    "upl_b": 3.827728011068141e+17,
+    "dmg_b": 4.303391780066439e+17,
+    "dmg_n": 3.814398078812974e+17,
+    "upl_b": 3.992582696477792e+17,
     "upl_n": 0.0
    }
   },
@@ -309,16 +311,16 @@
    "phi_unif": 1.0497553390143077,
    "phi_rows": {
     "PHASE_DASH": 1.3378194472334912,
-    "MESO_EXPLOSION": 1.197005058894154,
+    "MESO_EXPLOSION": 1.1970050588941537,
     "BLOOD_MONEY": 1.197005058894154,
-    "DARK_FLARE": 1.1055465062219998,
+    "DARK_FLARE": 1.1055465062220002,
     "ASSASSINATE": 1.1645914890858735,
-    "SUDDEN_RAID_BURST": 1.3847629114984068,
-    "SUDDEN_RAID_DOT": 1.1960030137419575
+    "SUDDEN_RAID_BURST": 1.3847629114984066,
+    "SUDDEN_RAID_DOT": 1.1960030137419577
    }
   },
   "derived": {
-   "attack": 416623469.45500004,
+   "attack": 416841125.27500004,
    "stat_damage": 3020.49016,
    "actions_per_second": 1.5932455,
    "cast_rate": 0.5142857142857142,
@@ -329,7 +331,7 @@
    "shadow_partner_mult": 3.917602,
    "skill_coefficient_base": 641.48,
    "buff_cast_startup_time": 0.0,
-   "crit_damage_bonus": 20.948571428571427,
+   "crit_damage_bonus": 27.93142857142857,
    "crit_rate_bonus": 5.625948342857143,
    "monster_dmg_bonus": 15,
    "artifact_monster_dmg_bonus": 0,

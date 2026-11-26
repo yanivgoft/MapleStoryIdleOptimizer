@@ -132,6 +132,8 @@ DAMAGE_SKILLS = {
 NAUTILUS_FA = dict(base=8500, fidx=21, step=4, chance=0.30, icd=1.0, targets=1)                      # any attack, 30%, 1 s ICD
 NAUTILUS_FA_TRIGGERS = ("SWIFT_FIRE", "BLACKBOOT_BILL", "BRAIN_SCRAMBLER", "NAUTILUS_STRIKE", "RAPID_FIRE")   # direct-attack skills (+ Easton)
 MAJESTIC_PRESENCE = dict(base=18000, fidx=21, step=4, mastery={134: 50}, chance=0.25, icd=0.5, targets=6)
+# patch 2026-11-26: every Majestic Presence proc also gives the player +8 % Final Damage for 5 s (a proc-refreshed buff: Poisson uptime 1 - exp(-rate x 5), not timed by the strip)
+MAJESTIC_FD = dict(pct=8.0, duration=5.0)
 MAJESTIC_SOURCES = ("BRAIN_SCRAMBLER", "RAPID_FIRE")                                                  # (+ Easton)
 
 # ---- player's own stun (game table): Blackboot Bill stuns for 2 s (cooldown 23 s), cast on cooldown from the start (from its unlock, Lv66) ----

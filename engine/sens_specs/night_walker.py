@@ -62,7 +62,7 @@ PASSIVE_LEVELS = (
     PassiveLevel("attack_mult_delta", 150, 22, 3, 75),            # Spirit Projection (Attack %)
     PassiveLevel("attack_mult_delta", 150, 22, 4, 117),           # Vitality Siphon (Attack %)
     PassiveLevel("skill_damage_delta", 150, 22, 4, 120),          # Throwing Expert (Skill Damage)
-    PassiveLevel("max_damage_delta", 200, 22, 4, 120),            # Throwing Expert (Max Damage Multiplier)
+    PassiveLevel("max_damage_delta", 300, 22, 4, 120),            # Throwing Expert (Max Damage Multiplier)
     PassiveLevel("final_damage_delta", 120, 22, 4, 125),          # Dark Blessing (Final Damage)
     PassiveLevel("def_pen_delta", 50, 22, 4, 125),                # Dark Blessing (Defense Penetration)
 )

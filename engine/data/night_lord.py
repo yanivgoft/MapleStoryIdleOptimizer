@@ -84,14 +84,14 @@ DAMAGE_SKILLS = {
     "VENOM": dict(step=3, cooldown=1, hits=1, base=450, fidx=21, mastery={}, mastery_boss=0.0, mastery_normal=0.0, costs_action=False, targets=1),
     "QUAD_STAR": dict(step=4, cooldown=10, haste=(108, 0.7), hits=4, base=11500, fidx=12, mastery={134: 50}, mastery_boss=0.0, mastery_normal=0.0,
                       costs_action=True, targets=1),
-    "SUDDEN_RAID_BURST": dict(step=4, cooldown=19, hits=3, base=14000, fidx=12, mastery={126: 50}, mastery_boss=0.0, mastery_normal=0.0,
+    "SUDDEN_RAID_BURST": dict(step=4, cooldown=19, hits=3, base=14000, fidx=12, mastery={126: 80}, mastery_boss=0.0, mastery_normal=0.0,
                               costs_action=True, targets=8),
     "SUDDEN_RAID_DOT": dict(step=4, cooldown=19, hits=1, icd=1, window=5, base=3600, fidx=12, mastery={}, mastery_boss=0.0, mastery_normal=0.0,
                             costs_action=False, targets=8),     # shares Sudden Raid (burst)'s cooldown
 }
 
 # ---- procs / counterattacks handled outside the loop ----
-TOXIC_VENOM = dict(base=6000, fidx=21, step=4, mastery={130: 100}, chance=0.2)        # no ICD: 20% per attack per enemy hit
+TOXIC_VENOM = dict(base=8000, fidx=21, step=4, mastery={130: 100}, chance=0.2)        # no ICD: 20% per attack per enemy hit
 SHADOW_SHIFTER = dict(base=25000, fidx=21, step=4, chance=0.2)                        # counterattack: incoming_hit_rate x 20%
 SHADOW_PARTNER = dict(base=600, fidx=21, step=3, mastery={68: 100}, share=25)         # average multiplier only (the clone mirrors the player's attacks)
 # Maple Hero (NL) targets per row (tenths of %, factor index 23, 4th-job level); Showdown and the rows not listed use none
@@ -138,7 +138,9 @@ PASSIVE_MULT = {
 NIGHT_LORDS_MARK = dict(step=4, base=3000, fidx=21, level=107)       # Final Damage of Assassin's Mark from Lv107
 CRITICAL_THROW_LV47 = (47, 8.0)         # +8 %p Crit Rate from Lv47 (always on)
 VENOM_WEAKEN = (82, 15.0)               # Venom's Weaken: +15 %p enemy damage taken from Lv82 (always on)
-FRAILTY_CRIT_DAMAGE_TAKEN = (111, 30.0)  # Lv111 mastery: +30% Critical Damage Taken x the Frailty Curse debuff uptime
+# Mastery "Frailty Curse - Weaken" (Lv113; before the 2026-11-26 patch "Frailty Curse - Critical", Lv111, +30% Critical Damage Taken): the Frailty Curse
+# damage-taken debuff is multiplied by 1.08 (the patch says "+8%p of the damage taken boost"; the user chose the multiplicative reading, 2026-11-26)
+FRAILTY_WEAKEN = (113, 1.08)
 
 # ---- the player's own stun (game table): Gust Charm stuns 8 targets for 2 s, cooldown 24 s, no Reuse mastery; cast on cooldown from the start ----
 PLAYER_STUN = [

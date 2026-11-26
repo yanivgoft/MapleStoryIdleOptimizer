@@ -39,6 +39,7 @@ import factor_mode  # noqa: E402
 
 FACTOR_MODE = factor_mode.pin("extended")        # engine-native classes: production mode (growth curves continue past level 300)
 from engine import sensitivity, sens_specs  # noqa: E402
+from engine.data import artifacts as AD  # noqa: E402
 
 ALLOWLIST = HERE / "native_level_allowlist.json"
 LEVEL_CONFIGS = SN.LEVEL_CONTENTS + (("Breakthrough", False),)       # (content type, companion on)
@@ -93,7 +94,7 @@ def check_spec(cid):
         assert mp, f"spec.stat_to_key[{feature!r}] missing: the {feature} tab would price with FP-Mage's INT defaults"
         bad = sorted({v for v in mp.values() if v is not None and v not in keys and v != "defense"})      # ("defense": a class without an Iron Wall-type sweep row prices it as 0)
         assert not bad, f"spec.stat_to_key[{feature!r}] maps to sweep keys that are not in the stat list: {bad}"
-    assert len(sensitivity.stat_sweep(m)) == len(keys) and len(sensitivity.ARTIFACT_TOGGLES) == 36
+    assert len(sensitivity.stat_sweep(m)) == len(keys) and len(sensitivity.ARTIFACT_TOGGLES) == len(AD.ARTIFACT_LABELS)
     return f"{len(keys)} stats"
 
 
@@ -185,7 +186,7 @@ def check_no_dps_effect_artifacts(cid):
         if key in AD.ARTIFACT_NO_DPS_EFFECT:
             assert r["total_dps"] == base, f"{key} is flagged no_dps_effect but changes the total ({base!r} -> {r['total_dps']!r})"
             n += 1
-    return f"36 artifacts finite, {n} no-effect artifacts change nothing"
+    return f"{len(AD.ARTIFACT_LABELS)} artifacts finite, {n} no-effect artifacts change nothing"
 
 
 def check_content_sweep(cid):

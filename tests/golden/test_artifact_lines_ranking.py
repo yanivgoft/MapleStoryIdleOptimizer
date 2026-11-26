@@ -42,17 +42,17 @@ def total(d):
 
 
 def test_saturated_effect_is_zero_without_lines():
-    """Typed 40 + the shoes' 40 = 80, and 40 alone is already past Blaze Wizard's last step in Breakthrough: the EFFECT is exactly 0 (the old 0% row)."""
-    assert total(inputs(40, True)) == total(inputs(40, False))
+    """Typed 60 + the shoes' 40 = 100, and 60 alone is already past Blaze Wizard's last useful step in Breakthrough (40 before FP-Mage's Poison Breath stun of the 2026-11-26 patch): the EFFECT is exactly 0 (the old 0% row)."""
+    assert total(inputs(60, True)) == total(inputs(60, False))
     for equipped in (True, False):
-        r = arwen_row(inputs(40, equipped))
+        r = arwen_row(inputs(60, equipped))
         assert r["dps_gain"] == 0.0 and r["pct_gain"] == 100.0 and r["potential_gain"] == 0.0
 
 
 def test_equipped_row_includes_the_lines():
     """The reported case: equipped, effect saturated, lines entered -> the row is the lines' value (> 0), not 0%."""
-    d = inputs(40, True, artifact_lines=LINES)
-    gains, _rates, base_total = potentials.hook_for(fp_mage, inputs(40, True), LINES)
+    d = inputs(60, True, artifact_lines=LINES)
+    gains, _rates, base_total = potentials.hook_for(fp_mage, inputs(60, True), LINES)
     assert gains[ARWEN] > 0
     r = arwen_row(d)
     assert r["potential_gain"] == gains[ARWEN] and math.isclose(r["dps_gain"], gains[ARWEN], rel_tol=1e-12)
@@ -62,8 +62,8 @@ def test_equipped_row_includes_the_lines():
 
 
 def test_unequipped_row_is_effect_plus_lines():
-    d = inputs(40, False, artifact_lines=LINES)
-    gains, _rates, base_total = potentials.hook_for(fp_mage, inputs(40, False), LINES)
+    d = inputs(60, False, artifact_lines=LINES)
+    gains, _rates, base_total = potentials.hook_for(fp_mage, inputs(60, False), LINES)
     r = arwen_row(d)
     assert r["equipped"] is False and r["potential_gain"] == gains[ARWEN] > 0
     assert math.isclose(r["pct_gain"], (base_total + gains[ARWEN]) / base_total * 100, rel_tol=1e-12)
@@ -106,7 +106,7 @@ def test_removal_never_goes_below_zero_total():
 
 def test_lines_follow_the_resolved_star():
     """Lines unlock with the artifact's star (line 1 from star 1, line 2 from star 2): an equipped star-0 Arwen's has no active line -> 0 from the lines."""
-    d = inputs(40, True, artifact_lines=LINES)
+    d = inputs(60, True, artifact_lines=LINES)
     d["artifacts"] = [{"key": ARWEN, "star": 0}]
     d["artifact_stars"] = {ARWEN: 0}
     assert arwen_row(d)["potential_gain"] == 0.0
@@ -119,7 +119,7 @@ def test_lines_follow_the_resolved_star():
 
 def test_explicit_gain_and_lines_do_not_clash():
     """``artifact_potential_gain`` (the workbook hook) keeps working; a computed value overrides only the artifacts that have lines."""
-    d = inputs(40, True, artifact_lines=LINES, artifact_potential_gain={"pigs_ribbon": 123.0, ARWEN: 1.0})
+    d = inputs(60, True, artifact_lines=LINES, artifact_potential_gain={"pigs_ribbon": 123.0, ARWEN: 1.0})
     rows = {r["key"]: r for r in sensitivity.run(fp_mage, d, which=["artifacts"])["artifacts"]["rows"]}
     assert rows["pigs_ribbon"]["potential_gain"] == 123.0 and rows[ARWEN]["potential_gain"] > 1.0
 
@@ -127,8 +127,8 @@ def test_explicit_gain_and_lines_do_not_clash():
 def test_dict_lines_are_accepted():
     """The web sends ``{rarity, stat}`` objects; the engine takes them as well as ``(rarity, stat)`` pairs."""
     as_dicts = {ARWEN: {"lines": [{"rarity": "Legendary", "stat": "Damage %"}, {"rarity": "Epic", "stat": "Boss Monster Damage %"}]}}
-    a = arwen_row(inputs(40, True, artifact_lines=LINES))
-    b = arwen_row(inputs(40, True, artifact_lines=as_dicts))
+    a = arwen_row(inputs(60, True, artifact_lines=LINES))
+    b = arwen_row(inputs(60, True, artifact_lines=as_dicts))
     assert a["potential_gain"] == b["potential_gain"] > 0
 
 

@@ -5,6 +5,7 @@ from .. import _src  # noqa: F401  (puts src/ on sys.path)
 import companion_kits as ck  # noqa: E402
 import companion_python_model as cpm  # noqa: E402
 import status_timeline as stl  # noqa: E402
+from ..data import artifacts_extra as AX  # noqa: E402
 
 COMPANIONS_ORDER = list(ck.COMPANIONS_ORDER)
 COMPANION_CHOICES = ["None"] + COMPANIONS_ORDER
@@ -136,6 +137,7 @@ def host_common(m, pre, eff, basic_b, basic_n):
         agg_fd_boss_only=eff.agg_fd_boss_only, agg_fd_norm_only=eff.agg_fd_normal_only,
         chalice_avg_boss=eff.rows["chalice_boss"], chalice_avg_norm=eff.rows["chalice_normal"], chalice_full=eff.chalice_full,
         horn_avg=eff.rows["horn_flute"], horn_full=eff.horn_full,
+        watch_per=eff.watch_per_stack, watch_max=AX.SHINY_WATCH_MAX_STACKS, watch_interval=AX.SHINY_WATCH_INTERVAL,       # Shiny Watch's companion ramp (0 = not equipped)
         extra_boss=m.extra_boss, extra_norm=m.extra_norm, player_boss=m.pb_total, player_norm=m.pn_total,
         player_uniform_boss=m.pu_total, player_basic_boss=basic_b, player_basic_norm=basic_n,
         min_dmg=m.min_damage, max_dmg=m.max_damage, defense=m.monster_defense,

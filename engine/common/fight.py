@@ -57,6 +57,15 @@ def exact_buff_uptime(cooldown, buff_duration, d, casts=None):
     return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
+def ramp_avg_stacks(duration, max_stacks, interval=1.0):
+    """Average stack count over ``duration`` s of a buff that gains one stack every ``interval`` s from t = 0 up to ``max_stacks`` (a stack counts once gained)."""
+    if duration <= 0:
+        return 0.0
+    n = min(int(duration // interval), max_stacks)          # whole stacks gained within the window
+    stack_seconds = interval * n * (n - 1) / 2 + n * (duration - n * interval)        # stacks 0..n-1 for one interval each, then n stacks for the rest
+    return stack_seconds / duration
+
+
 class Fight:
     """Bound view of one fight: content timing + the two modifiers that scale cooldowns and buff durations."""
 
@@ -107,6 +116,16 @@ class Fight:
         if self.monster_type == "pvp":
             return min(self.eff_duration(duration), self.pvp_len) / self.pvp_len
         return min(1.0, self.eff_duration(duration) / eff_cd)
+
+    def ramp_avg_stacks(self, max_stacks, interval=1.0):
+        """Average stack count of a buff that gains one stack every ``interval`` s from the start of the battle up to ``max_stacks`` (Dark Knight's Final Pact,
+        Blaze Wizard's Phoenix Run).  Timed fights and PvP: the exact average over the fight (a stack counts once it has been gained); continuous hunting:
+        the buff is at its maximum (a battle lasts far longer than the ramp)."""
+        if self.fixed_duration_active:
+            return ramp_avg_stacks(self.fight_duration, max_stacks, interval)
+        if self.monster_type == "pvp":
+            return ramp_avg_stacks(self.pvp_len, max_stacks, interval)
+        return float(max_stacks)
 
     # ---- damage skills under the buff-casting startup delay ----
     def non_buff_casts(self, cooldown):

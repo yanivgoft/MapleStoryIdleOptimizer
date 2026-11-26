@@ -43,6 +43,9 @@ const open = (name: string) => XlsxBook.open(xlsxBytes(name), name);
 const WITH_LAYOUT = ALL.filter((c) => c.schema.class_id in XLSX_MAP);
 const WITHOUT_LAYOUT = ALL.filter((c) => !(c.schema.class_id in XLSX_MAP));
 
+/** Artifacts of the 2026-11-26 patch: in the app only, the frozen workbooks have no row for them (engine/data/artifacts_extra.py). */
+const ENGINE_ONLY_ARTIFACTS = ["sealed_bottle", "shiny_watch", "mummydogs_bandages"];
+
 describe("xlsx_map.json matches the engine schemas", () => {
   it.each(WITH_LAYOUT.map((c) => [c.schema.class_id, c] as const))("%s: every engine input has a workbook row and the layout fits the schema", (_id, c) => {
     const m = XLSX_MAP[c.schema.class_id];
@@ -53,8 +56,9 @@ describe("xlsx_map.json matches the engine schemas", () => {
     expect(m.inputs.slotRows).toHaveLength(4);                                    // the WORKBOOK has 4 slot rows; the app allows max_slots (5)
     expect(c.schema.artifacts!.max_slots).toBeGreaterThan(m.inputs.slotRows.length);
     expect(m.artifacts.lineCols).toEqual([[3, 4], [6, 7], [9, 10]]);
-    expect(Object.keys(m.artifacts.rows).sort()).toEqual(c.schema.artifacts!.artifacts.map((a) => a.key).sort());
-    for (const a of c.schema.artifacts!.artifacts) expect(m.artifacts.rows[a.key].name).toBe(a.name);
+    const inWorkbook = c.schema.artifacts!.artifacts.filter((a) => !ENGINE_ONLY_ARTIFACTS.includes(a.key));        // the artifacts the game added after the workbooks have no row
+    expect(Object.keys(m.artifacts.rows).sort()).toEqual(inWorkbook.map((a) => a.key).sort());
+    for (const a of inWorkbook) expect(m.artifacts.rows[a.key].name).toBe(a.name);
     expect(Object.keys(m.companions.rows)).toEqual(c.schema.companions);
     // rows never collide
     expect(new Set(Object.values(m.inputs.perContent)).size).toBe(Object.keys(m.inputs.perContent).length);
@@ -153,10 +157,10 @@ describe.each(WITH_LAYOUT.map((c) => c.schema.class_id))("import of the generate
     }
   });
   it("imports the star level of EVERY artifact, the potential lines and, PER CONTENT TYPE, the equipped artifacts", () => {
-    expect(res.state.artifacts).toEqual(exp.table);
-    expect(Object.keys(res.state.artifacts)).toHaveLength(36);
+    for (const [k, entry] of Object.entries(exp.table)) expect(res.state.artifacts[k], k).toEqual(entry);
+    expect(Object.keys(res.state.artifacts)).toHaveLength(schema.artifacts!.artifacts.length);      // (the artifacts added after the workbooks stay at their defaults)
     for (const [k, star] of Object.entries(exp.stars)) expect(res.state.artifacts[k].star, k).toBe(star === "Not Unlocked" ? null : star);
-    expect(res.summary.starsRead).toBe(36);
+    expect(res.summary.starsRead).toBe(Object.keys(exp.stars).length);
     expect(res.summary.linesRead).toBe(exp.linesRead);
     for (const ct of schema.content_types) {
       expect(res.state.equippedArtifacts![ct], ct).toEqual(exp.slots[ct]);                                  // slot i of the workbook = slot i of the app

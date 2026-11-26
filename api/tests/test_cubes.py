@@ -10,6 +10,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
+from engine.data import artifacts as artifact_data
 from api import features, registry
 from api.main import create_app
 from api.settings import Settings
@@ -91,7 +92,7 @@ def test_meta_matches_engine_tables(client):
     assert "Skill Cooldown Decrease (seconds)" in m["stats_by_slot"]["head"]
     assert m["equipment"]["stats"] == equipment.DROPDOWN_STATS and len(m["equipment"]["stats"]) == 21 and m["equipment"]["lines"] == 5
     ap = m["artifact_potentials"]
-    assert ap["rarities"] == potentials.RARITIES and ap["line_min_star"] == [1, 2, 5] and len(ap["artifacts"]) == 36
+    assert ap["rarities"] == potentials.RARITIES and ap["line_min_star"] == [1, 2, 5] and len(ap["artifacts"]) == len(artifact_data.ARTIFACT_LABELS)
     assert {a["lines"] for a in ap["artifacts"]} == {2, 3} and ap["values"]["Damage %"]["Legendary"] == 14
     assert m["class_id"] == "fp_mage"
 
@@ -567,7 +568,7 @@ def test_potentials_match_engine_directly(client):
     direct = potentials.potential_table(state, rates, total, ["book_of_ancient"])
     _same(direct, out["rows"])
     rows = {x["key"]: x for x in out["rows"]}
-    assert len(out["rows"]) == 36 and rows["book_of_ancient"]["equipped"] is True and rows["pigs_ribbon"]["equipped"] is False
+    assert len(out["rows"]) == len(artifact_data.ARTIFACT_LABELS) and rows["book_of_ancient"]["equipped"] is True and rows["pigs_ribbon"]["equipped"] is False
     book = rows["book_of_ancient"]
     assert book["star"] == 5 and len(book["lines"]) == (3 if book["rank"] == "Legendary" else 2) and book["total"] > 0
     assert rows["pigs_ribbon"]["total"] > 0

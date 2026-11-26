@@ -1,5 +1,5 @@
 {
- "total_dps": 2.3560013876911516e+16,
+ "total_dps": 2.39584662718396e+16,
  "artifacts": {
   "equipped": [],
   "buckets": {
@@ -41,6 +41,8 @@
    "reindeer_spear_attack_pct": 0,
    "alliance_badge": 0,
    "bottle_of_emotion_attack_pct": 0,
+   "shiny_watch_attack_pct": 0,
+   "mummydogs_bandages_attack_pct": 0,
    "secret_map_final_dmg_normal": 0,
    "flaming_lava": 0,
    "horn_flute": 0,
@@ -48,6 +50,11 @@
    "fire_flower_boss": 0,
    "chalice_normal": 0,
    "chalice_boss": 0,
+   "sealed_bottle_final_damage": 0,
+   "sealed_bottle_stacks_normal": 0.0,
+   "sealed_bottle_stacks_boss": 0.0,
+   "sealed_bottle_normal": 0,
+   "sealed_bottle_boss": 0,
    "sayrams_necklace_normal": 0,
    "sayrams_necklace_boss": 0,
    "contract_of_darkness_crit_rate_bonus": 0,
@@ -71,18 +78,18 @@
    "phase_factor_normal": 1.0
   }
  },
- "player_dps": 1.856704790374476e+16,
- "boss_dps": 2.356001387691152e+16,
+ "player_dps": 1.8950782280917004e+16,
+ "boss_dps": 2.39584662718396e+16,
  "normal_dps": 4090826622158514.5,
- "player_boss_dps": 1.8567047903744764e+16,
+ "player_boss_dps": 1.8950782280917004e+16,
  "player_normal_dps": 0.0,
  "skills": [
   {
    "key": "RAGING_BLOW",
    "name": "Raging Blow",
-   "dps": 8317220574374020.0,
-   "share": 0.35302273665147454,
-   "boss_dps": 8317220574374020.0,
+   "dps": 8380595932701509.0,
+   "share": 0.3497968458253076,
+   "boss_dps": 8380595932701509.0,
    "normal_dps": 0.0,
    "unlocked": true
   },
@@ -90,7 +97,7 @@
    "key": "PUNCTURE",
    "name": "Puncture",
    "dps": 1124586009422230.9,
-   "share": 0.04773282457716672,
+   "share": 0.046938981680311125,
    "boss_dps": 1124586009422230.9,
    "normal_dps": 0.0,
    "unlocked": true
@@ -99,7 +106,7 @@
    "key": "PUNCTURE_WOUND",
    "name": "Puncture (wound DoT)",
    "dps": 323204844895552.44,
-   "share": 0.013718363944271216,
+   "share": 0.013490214324588978,
    "boss_dps": 323204844895552.44,
    "normal_dps": 0.0,
    "unlocked": true
@@ -108,7 +115,7 @@
    "key": "ENHANCED_RAGING_BLOW",
    "name": "Enhanced Raging Blow",
    "dps": 4681389599928894.0,
-   "share": 0.19870062999057017,
+   "share": 0.19539604692606408,
    "boss_dps": 4681389599928894.0,
    "normal_dps": 0.0,
    "unlocked": true
@@ -116,9 +123,9 @@
   {
    "key": "MAGIC_CRASH",
    "name": "Magic Crash",
-   "dps": 904543112032237.5,
-   "share": 0.03839314852520852,
-   "boss_dps": 904543112032237.5,
+   "dps": 1224902130876988.5,
+   "share": 0.05112606612538963,
+   "boss_dps": 1224902130876988.5,
    "normal_dps": 0.0,
    "unlocked": true
   },
@@ -126,7 +133,7 @@
    "key": "BEAM_BLADE",
    "name": "Beam Blade",
    "dps": 1418537852089665.2,
-   "share": 0.060209550788075404,
+   "share": 0.05920820790423434,
    "boss_dps": 1418537852089665.2,
    "normal_dps": 0.0,
    "unlocked": true
@@ -135,7 +142,7 @@
    "key": "RUSH",
    "name": "Rush",
    "dps": 888139899270341.0,
-   "share": 0.037696917493784066,
+   "share": 0.03706998140837782,
    "boss_dps": 888139899270341.0,
    "normal_dps": 0.0,
    "unlocked": true
@@ -144,7 +151,7 @@
    "key": "FLASH_SLASH",
    "name": "Flash Slash",
    "dps": 909426011731822.8,
-   "share": 0.03860040221041837,
+   "share": 0.037958440303031735,
    "boss_dps": 909426011731822.8,
    "normal_dps": 0.0,
    "unlocked": true
@@ -153,19 +160,19 @@
  "companion": {
   "choice": "Blaze Wizard",
   "level": 10,
-  "dps": 4992965973166755.0,
-  "boss_dps": 4992965973166755.0,
+  "dps": 5007683990922597.0,
+  "boss_dps": 5007683990922597.0,
   "normal_dps": 4090826622158514.5,
-  "share": 0.21192542581903112,
+  "share": 0.20901521550269472,
   "damage": 2.996582666212297e+17,
-  "uplift": 4.984935150044313e+16,
+  "uplift": 5.087961274335211e+16,
   "best_candidate": 1,
   "summon_time_s": 40.0,
   "window_s": 30.0,
   "details": {
-   "comp_boss_dps": 4992965973166755.0,
+   "comp_boss_dps": 5007683990922597.0,
    "comp_norm_dps": 4090826622158514.5,
-   "comp_blend_dps": 4992965973166755.0,
+   "comp_blend_dps": 5007683990922597.0,
    "best": 1,
    "s": 40.0,
    "W": 30.0,
@@ -179,7 +186,7 @@
    "hasstun": 1,
    "dmg_b": 2.996582666212297e+17,
    "dmg_n": 2.86357863551096e+17,
-   "upl_b": 4.984935150044313e+16,
+   "upl_b": 5.087961274335211e+16,
    "upl_n": 0.0
   }
  },
@@ -200,7 +207,7 @@
    "PUNCTURE": 1.1366402126284565,
    "PUNCTURE_WOUND": 1.0500081759992683,
    "ENHANCED_RAGING_BLOW": 1.1366402126284565,
-   "MAGIC_CRASH": 1.2856482017604476,
+   "MAGIC_CRASH": 1.285648201760448,
    "BEAM_BLADE": 1.1762149308110785,
    "RUSH": 1.1629584941183508,
    "FLASH_SLASH": 1.2529570746030019

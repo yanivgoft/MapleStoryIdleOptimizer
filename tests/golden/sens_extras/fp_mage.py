@@ -22,7 +22,7 @@ GOLDEN = TEST.GOLDEN
 def test_static():
     """Pieces that need no workbook."""
     assert [t["key"] for t in sensitivity.ARTIFACT_TOGGLES] == list(AD.ARTIFACT_LABELS), "toggle list must come from the engine's artifact table"
-    assert len(sensitivity.ARTIFACT_TOGGLES) == 36 and len(sensitivity.STAT_SWEEP) == 27
+    assert len(sensitivity.ARTIFACT_TOGGLES) == len(AD.ARTIFACT_LABELS) and len(sensitivity.STAT_SWEEP) == 27
     sys.path.insert(0, str(HERE.parents[1] / "src"))
     try:
         import companion_model as cm      # needs openpyxl (the Excel generator); skipped without it

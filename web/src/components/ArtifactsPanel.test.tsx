@@ -40,10 +40,10 @@ async function render(id: string, artifacts: (art: ArtifactSchema) => ArtifactsS
 const rowHtml = (html: string, key: string) => html.match(new RegExp(`<tr data-artifact="${key}"[\\s\\S]*?</tr>`))?.[0] ?? "";
 
 describe("Artifacts tab render (server-side): one table", () => {
-  it.each(MODELLED.map((c) => [c.info.id] as const))("%s: 36 rows by rank, badges only (no effect text), equip count, breakdown, ranking section", async (id) => {
+  it.each(MODELLED.map((c) => [c.info.id] as const))("%s: a row per artifact by rank, badges only (no effect text), equip count, breakdown, ranking section", async (id) => {
     const html = await render(id, caseTable, true, CASE_KEYS);
     expect(html).toContain('aria-label="Artifacts table"');
-    expect(html.match(/<tr data-artifact="/g)).toHaveLength(36);
+    expect(html.match(/<tr data-artifact="/g)).toHaveLength((MODELLED.find((c) => c.info.id === id)!.schema.artifacts as ArtifactSchema).artifacts.length);
     for (const rank of ["Epic", "Unique", "Legendary"]) expect(html).toContain(`<th scope="rowgroup" colSpan="7">${rank}</th>`.replace("colSpan", "colSpan"));
     expect(html).toContain("4 / 5 equipped in World Boss");
     // no per-artifact effect description, no reason text, no caption above the table

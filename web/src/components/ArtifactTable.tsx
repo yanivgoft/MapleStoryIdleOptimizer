@@ -73,7 +73,6 @@ export function ArtifactTableView(p: ViewProps) {
   const state = useMemo(() => normalizeArtifacts(p.state, art), [p.state, art]);
   const [text, setText] = useState(p.initialText ?? "");
   const [onlyActive, setOnlyActive] = useState(!!p.initialOnlyActive);
-  const opts = starOptions(art);
   const equippedIds = useMemo(() => equippedKeys(art, p.equipped), [art, p.equipped]);
   const equipped = equippedIds.length;
   const rows = new Map<string, PotentialRow>((p.result?.rows ?? []).map((r) => [r.key, r]));
@@ -170,11 +169,11 @@ export function ArtifactTableView(p: ViewProps) {
                           aria-label={`${info.name} star level`}
                           value={String(e.star ?? NOT_UNLOCKED_VALUE)}
                           onChange={(ev) => {
-                            const o = opts.find((x) => String(x.value) === ev.target.value);
+                            const o = starOptions(art, info.key).find((x) => String(x.value) === ev.target.value);
                             if (o) p.onState(setStar(art, state, info.key, o.value));
                           }}
                         >
-                          {opts.map((o) => (
+                          {starOptions(art, info.key).map((o) => (
                             <option key={String(o.value)} value={String(o.value)}>
                               {o.label}
                             </option>

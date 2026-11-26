@@ -64,11 +64,11 @@ PASSIVE_LEVELS = (
     PassiveLevel("crit_rate_delta", 80, 22, 3, 72),               # Burning Focus (Crit Rate)
     PassiveLevel("crit_damage_delta", 160, 22, 3, 72),            # Burning Focus (Crit Damage)
     PassiveLevel("final_damage_delta", 150, 22, 3, 75),           # Liberated Magic (Final Damage, MP >= 35 %)
-    PassiveLevel("final_damage_delta", 100, 22, 4, 107),          # Phoenix Run (Final Damage) ...
-    PassiveLevel("final_damage_delta", 100, 22, 4, 118),          # ... + the Lv118 mastery "boost +100 %" (x2 = a second copy of the same curve)
+    PassiveLevel("phoenix_run_stack_delta", 10, 22, 4, 107),      # Phoenix Run (per-stack Final Damage of the live ramp) ...
+    PassiveLevel("phoenix_run_stack_delta", 10, 22, 4, 118),      # ... + the Lv118 mastery "boost +100 %" (x2 = a second copy of the same curve)
     PassiveLevel("attack_mult_delta", 50, 22, 4, 117),            # Flame Barrier (Attack %)
     PassiveLevel("skill_damage_delta", 150, 22, 4, 120),          # Pure Magic (Skill Damage)
-    PassiveLevel("max_damage_delta", 200, 22, 4, 120),            # Pure Magic (Max Damage Multiplier)
+    PassiveLevel("max_damage_delta", 300, 22, 4, 120),            # Pure Magic (Max Damage Multiplier)
     PassiveLevel("final_damage_delta", 120, 22, 4, 125),          # Wild Blaze (Final Damage)
 )
 

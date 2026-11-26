@@ -30,6 +30,7 @@ from engine.data import night_walker as D  # noqa: E402
 from engine.sens_specs import night_walker as NS  # noqa: E402
 sys.path.insert(0, str(HERE))
 import factor_mode  # noqa: E402
+import patch_2026_11_26 as PM  # noqa: E402
 
 FACTOR_MODE = factor_mode.pin("extended")        # production mode: growth curves continue past level 300
 
@@ -81,7 +82,7 @@ PASSIVES = [
     (15.0, "Spirit Projection: Attack", "attack_mult_delta", 150),
     (15.0, "Vitality Siphon: Attack", "attack_mult_delta", 150),
     (15.0, "Throwing Expert: Skill Damage", "skill_damage_delta", 150),
-    (20.0, "Throwing Expert: Max Damage Multiplier", "max_damage_delta", 200),
+    (30.0, "Throwing Expert: Max Damage Multiplier", "max_damage_delta", 300),   # 20.0 / 200 before the 2026-11-26 patch (patch-derived: x1.5, not a reading)
     (12.0, "Dark Blessing: Final Damage", "final_damage_delta", 120),
     (5.0, "Dark Blessing: Defense Penetration", "def_pen_delta", 50),
 ]
@@ -180,7 +181,7 @@ READINGS = [
     ("Vitality Siphon: Attack", 15, 29.4, 4, 22, ("passive", "attack_mult_delta", 150)),
     ("Vitality Siphon: barrier", 10, 19.6, 4, 22, None),
     ("Throwing Expert: Skill Damage", 15, 29.4, 4, 22, ("passive", "skill_damage_delta", 150)),
-    ("Throwing Expert: Max Damage Multiplier", 20, 39.3, 4, 22, ("passive", "max_damage_delta", 200)),
+    ("Throwing Expert: Max Damage Multiplier", 30, 58.9, 4, 22, ("passive", "max_damage_delta", 300)),   # 20 / 39.3 / 200 before the 2026-11-26 patch (patch-derived x1.5)
     ("Dark Blessing: Final Damage", 12, 23.5, 4, 22, ("passive", "final_damage_delta", 120)),
     ("Dark Blessing: Defense Penetration", 5, 9.8, 4, 22, ("passive", "def_pen_delta", 50)),
 ]
@@ -402,7 +403,7 @@ def check_site():
     for p, (name, stat) in zip(NS.PASSIVE_LEVELS, passive_sources):
         sk = S[name]
         op = next(o for o in sk["statOps"] if o["statType"] == stat)
-        eq(f"{name}/{stat} value", p.base, op["value"])
+        eq(f"{name}/{stat} value", PM.pre_patch_base("night_walker", p.hook, p.base), op["value"])   # (the site snapshot predates the 2026-11-26 patch)
         eq(f"{name}/{stat} factorIndex", p.fidx, op["factorIndex"])
         eq(f"{name}/{stat} job step", p.step, sk["jobStep"])
         eq(f"{name}/{stat} unlock level", p.unlock, sk["requiredLevel"])

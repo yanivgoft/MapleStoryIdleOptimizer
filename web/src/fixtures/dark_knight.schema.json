@@ -863,7 +863,9 @@
    2,
    3,
    4,
-   5
+   5,
+   6,
+   7
   ],
   "slot_options": [
    "(none)",
@@ -902,7 +904,10 @@
    "Cursed Doll",
    "Reindeer's Spear",
    "Secret Map",
-   "Ring of Cycles"
+   "Ring of Cycles",
+   "Sealed Bottle",
+   "Shiny Watch",
+   "Mummydog's Bandages"
   ],
   "artifacts": [
    {
@@ -910,6 +915,7 @@
     "name": "Charm of the Undead",
     "rank": "Epic",
     "default_star": 5,
+    "max_star": 5,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -919,6 +925,7 @@
     "name": "Pig's Ribbon",
     "rank": "Epic",
     "default_star": 5,
+    "max_star": 5,
     "effect": "no_dps_effect",
     "no_dps_effect": true,
     "reason": "stat not used by the DPS model (no attacking effect)"
@@ -928,6 +935,7 @@
     "name": "Shamaness Marble",
     "rank": "Epic",
     "default_star": 5,
+    "max_star": 5,
     "effect": "reference_only",
     "no_dps_effect": false,
     "reason": null
@@ -937,6 +945,7 @@
     "name": "The Contract of Darkness",
     "rank": "Epic",
     "default_star": 5,
+    "max_star": 5,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -946,6 +955,7 @@
     "name": "Rainbow-colored Snail Shell",
     "rank": "Unique",
     "default_star": 3,
+    "max_star": 5,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -955,6 +965,7 @@
     "name": "Hexagon Necklace",
     "rank": "Unique",
     "default_star": 3,
+    "max_star": 5,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -964,6 +975,7 @@
     "name": "Arwen's Glass Shoes",
     "rank": "Unique",
     "default_star": 3,
+    "max_star": 5,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -973,6 +985,7 @@
     "name": "Mushmom's Cap",
     "rank": "Unique",
     "default_star": 3,
+    "max_star": 5,
     "effect": "no_dps_effect",
     "no_dps_effect": true,
     "reason": "stat not used by the DPS model (Accuracy vs Evasion not modelled)"
@@ -982,6 +995,7 @@
     "name": "Clear Spring Water",
     "rank": "Unique",
     "default_star": 3,
+    "max_star": 5,
     "effect": "reference_only",
     "no_dps_effect": false,
     "reason": null
@@ -991,6 +1005,7 @@
     "name": "Athena Pierce's Old Gloves",
     "rank": "Unique",
     "default_star": 3,
+    "max_star": 5,
     "effect": "reference_only",
     "no_dps_effect": false,
     "reason": null
@@ -1000,6 +1015,7 @@
     "name": "Zakum's Stone Piece",
     "rank": "Unique",
     "default_star": 3,
+    "max_star": 5,
     "effect": "no_dps_effect",
     "no_dps_effect": true,
     "reason": "raid content (not modelled)"
@@ -1009,6 +1025,7 @@
     "name": "Horntail's Scale",
     "rank": "Unique",
     "default_star": 3,
+    "max_star": 5,
     "effect": "no_dps_effect",
     "no_dps_effect": true,
     "reason": "raid content (not modelled)"
@@ -1018,6 +1035,7 @@
     "name": "Pink Bean's Giant Rib",
     "rank": "Unique",
     "default_star": 3,
+    "max_star": 5,
     "effect": "no_dps_effect",
     "no_dps_effect": true,
     "reason": "raid content (not modelled)"
@@ -1027,6 +1045,7 @@
     "name": "Chalice",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1036,6 +1055,7 @@
     "name": "Old Music Box",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1045,6 +1065,7 @@
     "name": "Silver Pendant",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1054,6 +1075,7 @@
     "name": "Star Rock",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "reference_only",
     "no_dps_effect": false,
     "reason": null
@@ -1063,6 +1085,7 @@
     "name": "Book of Ancient",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "reference_only",
     "no_dps_effect": false,
     "reason": null
@@ -1072,6 +1095,7 @@
     "name": "Lunar Dew",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "no_dps_effect",
     "no_dps_effect": true,
     "reason": "stat not used by the DPS model (no attacking effect)"
@@ -1081,6 +1105,7 @@
     "name": "Fire Flower",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1090,6 +1115,7 @@
     "name": "Soul Contract",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1099,6 +1125,7 @@
     "name": "Lit Lamp",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "reference_only",
     "no_dps_effect": false,
     "reason": null
@@ -1108,6 +1135,7 @@
     "name": "Soul Pouch",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "reference_only",
     "no_dps_effect": false,
     "reason": null
@@ -1117,6 +1145,7 @@
     "name": "Ancient Text Piece",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "no_dps_effect",
     "no_dps_effect": true,
     "reason": "Guild Conquest content (not modelled)"
@@ -1126,6 +1155,7 @@
     "name": "Icy Soul Rock",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1135,6 +1165,7 @@
     "name": "Flaming Lava",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1144,6 +1175,7 @@
     "name": "Sayram's Necklace",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1153,6 +1185,7 @@
     "name": "Bottle of Emotion",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "reference_only",
     "no_dps_effect": false,
     "reason": null
@@ -1162,6 +1195,7 @@
     "name": "Peach Tree Herb Pouch",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1171,6 +1205,7 @@
     "name": "Candle",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1180,6 +1215,7 @@
     "name": "Alliance Badge",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1189,6 +1225,7 @@
     "name": "Horn Flute",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1198,6 +1235,7 @@
     "name": "Cursed Doll",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "reference_only",
     "no_dps_effect": false,
     "reason": null
@@ -1207,6 +1245,7 @@
     "name": "Reindeer's Spear",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1216,6 +1255,7 @@
     "name": "Secret Map",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null
@@ -1225,6 +1265,37 @@
     "name": "Ring of Cycles",
     "rank": "Legendary",
     "default_star": "Not Unlocked",
+    "max_star": 7,
+    "effect": "live",
+    "no_dps_effect": false,
+    "reason": null
+   },
+   {
+    "key": "sealed_bottle",
+    "name": "Sealed Bottle",
+    "rank": "Legendary",
+    "default_star": "Not Unlocked",
+    "max_star": 7,
+    "effect": "live",
+    "no_dps_effect": false,
+    "reason": null
+   },
+   {
+    "key": "shiny_watch",
+    "name": "Shiny Watch",
+    "rank": "Legendary",
+    "default_star": "Not Unlocked",
+    "max_star": 7,
+    "effect": "live",
+    "no_dps_effect": false,
+    "reason": null
+   },
+   {
+    "key": "mummydogs_bandages",
+    "name": "Mummydog's Bandages",
+    "rank": "Legendary",
+    "default_star": "Not Unlocked",
+    "max_star": 7,
     "effect": "live",
     "no_dps_effect": false,
     "reason": null

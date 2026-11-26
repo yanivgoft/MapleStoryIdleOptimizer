@@ -1,5 +1,5 @@
 {
- "total_dps": 6.884230022428866e+16,
+ "total_dps": 6.87005545854877e+16,
  "artifacts": {
   "equipped": [],
   "buckets": {
@@ -41,6 +41,8 @@
    "reindeer_spear_attack_pct": 0,
    "alliance_badge": 0,
    "bottle_of_emotion_attack_pct": 0,
+   "shiny_watch_attack_pct": 0,
+   "mummydogs_bandages_attack_pct": 0,
    "secret_map_final_dmg_normal": 0,
    "flaming_lava": 0,
    "horn_flute": 0,
@@ -48,6 +50,11 @@
    "fire_flower_boss": 0,
    "chalice_normal": 0,
    "chalice_boss": 0,
+   "sealed_bottle_final_damage": 0,
+   "sealed_bottle_stacks_normal": 0.0,
+   "sealed_bottle_stacks_boss": 0.0,
+   "sealed_bottle_normal": 0,
+   "sealed_bottle_boss": 0,
    "sayrams_necklace_normal": 0,
    "sayrams_necklace_boss": 0,
    "contract_of_darkness_crit_rate_bonus": 0,
@@ -71,36 +78,36 @@
    "phase_factor_normal": 1.0
   }
  },
- "player_dps": 6.219717242567062e+16,
- "boss_dps": 6.884230022428866e+16,
- "normal_dps": 2845374693479753.0,
- "player_boss_dps": 6.219717242567062e+16,
+ "player_dps": 6.218006103957499e+16,
+ "boss_dps": 6.87005545854877e+16,
+ "normal_dps": 2738892996100434.5,
+ "player_boss_dps": 6.218006103957499e+16,
  "player_normal_dps": 0.0,
  "skills": [
   {
    "key": "SHOWDOWN",
    "name": "Showdown",
-   "dps": 1.924728941096937e+16,
-   "share": 0.2795852164768111,
-   "boss_dps": 1.924728941096937e+16,
+   "dps": 1.851461599277639e+16,
+   "share": 0.26949732945369004,
+   "boss_dps": 1.851461599277639e+16,
    "normal_dps": 0.0,
    "unlocked": true
   },
   {
    "key": "GUST_CHARM",
    "name": "Gust Charm",
-   "dps": 3005859555681211.0,
-   "share": 0.04366297386763809,
-   "boss_dps": 3005859555681211.0,
+   "dps": 2892053212134599.5,
+   "share": 0.042096504600059176,
+   "boss_dps": 2892053212134599.5,
    "normal_dps": 0.0,
    "unlocked": true
   },
   {
    "key": "MARK_OF_ASSASSIN",
    "name": "Assassin's Mark",
-   "dps": 7896853131018476.0,
-   "share": 0.11470931542511621,
-   "boss_dps": 7896853131018476.0,
+   "dps": 7597202378543459.0,
+   "share": 0.11058429476125789,
+   "boss_dps": 7597202378543459.0,
    "normal_dps": 0.0,
    "unlocked": true
   },
@@ -116,63 +123,63 @@
   {
    "key": "DARK_FLARE",
    "name": "Dark Flare",
-   "dps": 7059001875387555.0,
-   "share": 0.1025387276774495,
-   "boss_dps": 7059001875387555.0,
+   "dps": 6791737494718753.0,
+   "share": 0.09886000972914183,
+   "boss_dps": 6791737494718753.0,
    "normal_dps": 0.0,
    "unlocked": true
   },
   {
    "key": "VENOM",
    "name": "Venom",
-   "dps": 1590563179149448.8,
-   "share": 0.023104445580222968,
-   "boss_dps": 1590563179149448.8,
+   "dps": 1530342075586328.8,
+   "share": 0.022275541803407774,
+   "boss_dps": 1530342075586328.8,
    "normal_dps": 0.0,
    "unlocked": true
   },
   {
    "key": "QUAD_STAR",
    "name": "Quad Star",
-   "dps": 9573002324790516.0,
-   "share": 0.13905697940948533,
-   "boss_dps": 9573002324790516.0,
+   "dps": 9210554122814984.0,
+   "share": 0.1340681189313226,
+   "boss_dps": 9210554122814984.0,
    "normal_dps": 0.0,
    "unlocked": true
   },
   {
    "key": "SUDDEN_RAID_BURST",
    "name": "Sudden Raid (burst)",
-   "dps": 3732842712084944.0,
-   "share": 0.054223096844865995,
-   "boss_dps": 3732842712084944.0,
+   "dps": 4476447613846071.5,
+   "share": 0.06515882791420255,
+   "boss_dps": 4476447613846071.5,
    "normal_dps": 0.0,
    "unlocked": true
   },
   {
    "key": "SUDDEN_RAID_DOT",
    "name": "Sudden Raid (DoT)",
-   "dps": 986158949168492.0,
-   "share": 0.01432489829589627,
-   "boss_dps": 986158949168492.0,
+   "dps": 826696400227547.5,
+   "share": 0.012033329355425303,
+   "boss_dps": 826696400227547.5,
    "normal_dps": 0.0,
    "unlocked": true
   },
   {
    "key": "TOXIC_VENOM",
    "name": "Toxic Venom",
-   "dps": 5142561470882152.0,
-   "share": 0.07470060492063242,
-   "boss_dps": 5142561470882152.0,
+   "dps": 6527418553827327.0,
+   "share": 0.09501260351115388,
+   "boss_dps": 6527418553827327.0,
    "normal_dps": 0.0,
    "unlocked": true
   },
   {
    "key": "SHADOW_SHIFTER",
    "name": "Shadow Shifter (counterattack)",
-   "dps": 3963039816538457.5,
-   "share": 0.05756692910647739,
-   "boss_dps": 3963039816538457.5,
+   "dps": 3812993195099532.0,
+   "share": 0.05550163631291833,
+   "boss_dps": 3812993195099532.0,
    "normal_dps": 0.0,
    "unlocked": true
   }
@@ -180,19 +187,19 @@
  "companion": {
   "choice": "Blaze Wizard",
   "level": 10,
-  "dps": 6645127798618028.0,
-  "boss_dps": 6645127798618028.0,
-  "normal_dps": 2845374693479753.0,
-  "share": 0.09652681239540456,
-  "damage": 2.2331158360690707e+17,
-  "uplift": 2.4184736229635485e+17,
+  "dps": 6520493545912706.0,
+  "boss_dps": 6520493545912706.0,
+  "normal_dps": 2738892996100434.5,
+  "share": 0.09491180362742072,
+  "damage": 2.148378937770486e+17,
+  "uplift": 2.4159665443684077e+17,
   "best_candidate": 1,
   "summon_time_s": 40.0,
   "window_s": 30.0,
   "details": {
-   "comp_boss_dps": 6645127798618028.0,
-   "comp_norm_dps": 2845374693479753.0,
-   "comp_blend_dps": 6645127798618028.0,
+   "comp_boss_dps": 6520493545912706.0,
+   "comp_norm_dps": 2738892996100434.5,
+   "comp_blend_dps": 6520493545912706.0,
    "best": 1,
    "s": 40.0,
    "W": 30.0,
@@ -204,9 +211,9 @@
    "stunfracB": 0.12857142857142856,
    "stunfracN": 0.12857142857142856,
    "hasstun": 1,
-   "dmg_b": 2.2331158360690707e+17,
-   "dmg_n": 1.9917622854358272e+17,
-   "upl_b": 2.4184736229635485e+17,
+   "dmg_b": 2.148378937770486e+17,
+   "dmg_n": 1.9172250972703043e+17,
+   "upl_b": 2.4159665443684077e+17,
    "upl_n": 0.0
   }
  },
@@ -228,10 +235,10 @@
   "phi_rows": {
    "GUST_CHARM": 1.281094535900272,
    "TRIPLE_THROW": 1.0,
-   "DARK_FLARE": 1.0426899876738807,
-   "QUAD_STAR": 1.1185407836275376,
-   "SUDDEN_RAID_BURST": 1.194240788356353,
-   "SUDDEN_RAID_DOT": 1.104249404831335
+   "DARK_FLARE": 1.0426899876738804,
+   "QUAD_STAR": 1.1185407836275374,
+   "SUDDEN_RAID_BURST": 1.2404146167791439,
+   "SUDDEN_RAID_DOT": 1.0690209005855518
   }
  },
  "derived": {
@@ -244,9 +251,9 @@
   "as_bonus": 16.979106838439964,
   "skill_coefficient_base": 641.48,
   "buff_cast_startup_time": 0.0,
-  "crit_damage_bonus": 20.948571428571427,
+  "crit_damage_bonus": 0.0,
   "crit_rate_bonus": 13.625948342857143,
-  "monster_dmg_bonus": 42.802944,
+  "monster_dmg_bonus": 45.027179520000004,
   "shadow_partner_mult": 3.917602,
   "dark_sight_attack_avg": 9.37658057142857,
   "dark_sight_crit_rate_avg": 5.625948342857143,
@@ -257,7 +264,7 @@
   "nimble_feet_avg": 6.070714285714286,
   "actions_per_second_pre_adrenalin": 1.5932455,
   "artifact_attack_pct": 0.0,
-  "toxic_venom_trigger_rate": 2.7033969445107426,
+  "toxic_venom_trigger_rate": 2.674825515939314,
   "attack_rates": {
    "SHOWDOWN": 1.233396944510743,
    "GUST_CHARM": 0.04285714285714286,
@@ -267,7 +274,7 @@
    "VENOM": 1.0142857142857142,
    "QUAD_STAR": 0.14285714285714285,
    "SUDDEN_RAID_BURST": 0.05714285714285714,
-   "SUDDEN_RAID_DOT": 0.2857142857142857
+   "SUDDEN_RAID_DOT": 0.2571428571428571
   },
   "stunned_share_boss": 0.12857142857142856,
   "stunned_share_normal": 0.12857142857142856,

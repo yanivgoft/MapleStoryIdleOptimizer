@@ -69,13 +69,13 @@ ARROW_STREAM_BOSS_MASTERY = {111: 10, 124: 10}                                  
 
 # ---- helper rows (own coefficient only, folded into another row's extra Final Damage term) ----
 FINAL_ATTACK_BOW = dict(base=350, fidx=21, step=2, gated={54: 50})                  # helper coefficient (not a DPS row of its own)
-ADVANCED_FINAL_ATTACK = dict(base=5000, fidx=21, step=4, gated={113: 50})
+ADVANCED_FINAL_ATTACK = dict(base=5000, fidx=21, step=4, gated={113: 100})
 ENCHANTED_QUIVER = dict(base=3000, fidx=21, step=4)
 FLASH_MIRAGE_II = dict(base=4000, fidx=21, step=4)
 
 # ---- Attack% bucket: Marksmanship (base + conditional) + Illusion Step ----
 MARKSMANSHIP = dict(base=100, fidx=22, step=3)
-ILLUSION_STEP = dict(base=140, fidx=22, step=4, boost=(118, 0.375), duration=(15, 118, 24), cooldown=24)   # 15 s, 24 s from Lv118; +37.5% from Lv118
+ILLUSION_STEP = dict(base=150, fidx=22, step=4, boost=(118, 0.375), duration=(15, 118, 24), cooldown=24)   # 15 s, 24 s from Lv118; +37.5% from Lv118
 
 # ---- Sharp Eyes / Concentration / Mortal Blow / Nimble Feet ----
 SHARP_EYES = dict(base=400, fidx=21, step=4, duration=(18, 126, 27), cooldown=35)    # Crit Damage; 18 s, 27 s from Lv126

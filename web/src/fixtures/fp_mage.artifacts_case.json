@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 6.080283921627421e+16,
+  "total_dps": 6.24885568189803e+16,
   "artifacts": {
    "equipped": [
     {
@@ -97,6 +97,8 @@
     "reindeer_spear_attack_pct": 0,
     "alliance_badge": 18,
     "bottle_of_emotion_attack_pct": 0,
+    "shiny_watch_attack_pct": 0,
+    "mummydogs_bandages_attack_pct": 0,
     "secret_map_final_dmg_normal": 0,
     "flaming_lava": 0,
     "horn_flute": 0,
@@ -104,6 +106,11 @@
     "fire_flower_boss": 0,
     "chalice_normal": 0,
     "chalice_boss": 0,
+    "sealed_bottle_final_damage": 0,
+    "sealed_bottle_stacks_normal": 0.0,
+    "sealed_bottle_stacks_boss": 0.0,
+    "sealed_bottle_normal": 0,
+    "sealed_bottle_boss": 0,
     "sayrams_necklace_normal": 0,
     "sayrams_necklace_boss": 0,
     "contract_of_darkness_crit_rate_bonus": 0,
@@ -124,23 +131,18 @@
      "typed_below_artifact:arwens_glass_shoes"
     ],
     "typed": {
-     "companion_summon_time_increase_pct": 0.0,
-     "attack_pct": 34372.5
+     "companion_summon_time_increase_pct": 0.0
     },
     "base": {
-     "companion_summon_time_increase_pct": 0.0,
-     "attack_pct": 34354.5
+     "companion_summon_time_increase_pct": 0.0
     },
     "amounts": {
      "companion_summon_time_increase_pct": {
       "arwens_glass_shoes": 28
-     },
-     "attack_pct": {
-      "alliance_badge": 18
      }
     }
    },
-   "horn_flute_uptime": 0.5571128241065165,
+   "horn_flute_uptime": 0.5557074504442919,
    "extra_boss_multiplier": 1.0,
    "extra_normal_multiplier": 1.0,
    "hexagon_charm": {
@@ -152,135 +154,135 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 4.599977818683362e+16,
-  "boss_dps": 6.080283921627421e+16,
-  "normal_dps": 1.1294216883799188e+16,
-  "player_boss_dps": 4.599977818683362e+16,
+  "player_dps": 4.732856989673757e+16,
+  "boss_dps": 6.24885568189803e+16,
+  "normal_dps": 1.1585193840568296e+16,
+  "player_boss_dps": 4.732856989673757e+16,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "BASIC_ATTACK",
     "name": "Basic Attack",
-    "dps": 1.1223966988414172e+16,
-    "share": 0.1845961000026791,
-    "boss_dps": 1.1223966988414172e+16,
+    "dps": 1.1489989497607086e+16,
+    "share": 0.18387349752518387,
+    "boss_dps": 1.1489989497607086e+16,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "IGNITE",
     "name": "Ignite",
-    "dps": 1923700848526784.0,
-    "share": 0.0316383391519634,
-    "boss_dps": 1923700848526784.0,
+    "dps": 1969295042379088.5,
+    "share": 0.031514490694413574,
+    "boss_dps": 1969295042379088.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "POISON_BREATH",
     "name": "Poison Breath",
-    "dps": 2934314187513341.0,
-    "share": 0.04825949290091631,
-    "boss_dps": 2934314187513341.0,
+    "dps": 3007163222258941.0,
+    "share": 0.04812342251670539,
+    "boss_dps": 3007163222258941.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "ELEMENTAL_DRAIN",
     "name": "Elemental Drain",
-    "dps": 4274015082115600.0,
-    "share": 0.07029301817490846,
-    "boss_dps": 4274015082115600.0,
+    "dps": 4375314757858266.0,
+    "share": 0.070017855757701,
+    "boss_dps": 4375314757858266.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "POISON_MIST_BURST",
     "name": "Poison Mist (burst)",
-    "dps": 289289919706574.56,
-    "share": 0.004757835710230199,
-    "boss_dps": 289289919706574.56,
+    "dps": 308116707399786.9,
+    "share": 0.0049307700975132675,
+    "boss_dps": 308116707399786.9,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "POISON_MIST_DOT",
     "name": "Poison Mist (fog DoT)",
-    "dps": 1729975547450911.2,
-    "share": 0.028452216537083585,
-    "boss_dps": 1729975547450911.2,
+    "dps": 1768551713280533.8,
+    "share": 0.028302009252730142,
+    "boss_dps": 1768551713280533.8,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "MIST_ERUPTION",
     "name": "Mist Eruption",
-    "dps": 2542863022188410.5,
-    "share": 0.04182145200725757,
-    "boss_dps": 2542863022188410.5,
+    "dps": 2544191485361564.5,
+    "share": 0.040714518223419593,
+    "boss_dps": 2544191485361564.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "CREEPING_TOXIN",
     "name": "Creeping Toxin",
-    "dps": 1322176820377403.5,
-    "share": 0.021745313827771316,
-    "boss_dps": 1322176820377403.5,
+    "dps": 1337070411317002.5,
+    "share": 0.02139704418507038,
+    "boss_dps": 1337070411317002.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "METEOR_SHOWER_BURST",
     "name": "Meteor Shower (burst)",
-    "dps": 3497124733655521.0,
-    "share": 0.05751581305630045,
-    "boss_dps": 3497124733655521.0,
+    "dps": 3775714384451534.0,
+    "share": 0.060422492959618115,
+    "boss_dps": 3775714384451534.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "METEOR_PROC",
     "name": "Meteor Proc (30% on-hit, 1s ICD)",
-    "dps": 1948606414586065.5,
-    "share": 0.03204795104476816,
-    "boss_dps": 1948606414586065.5,
+    "dps": 1994790902510225.0,
+    "share": 0.031922499159147265,
+    "boss_dps": 1994790902510225.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "FLAME_HAZE_BURST",
     "name": "Flame Haze (burst)",
-    "dps": 1025720626249311.8,
-    "share": 0.016869617265747223,
-    "boss_dps": 1025720626249311.8,
+    "dps": 1149262115762967.0,
+    "share": 0.018391561179628486,
+    "boss_dps": 1149262115762967.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "FLAME_HAZE_DOT",
     "name": "Flame Haze (burn DoT)",
-    "dps": 5837817886222862.0,
-    "share": 0.09601225800423377,
-    "boss_dps": 5837817886222862.0,
+    "dps": 5996311377863411.0,
+    "share": 0.09595855118295976,
+    "boss_dps": 5996311377863411.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "IFRIT",
     "name": "Ifrit",
-    "dps": 5699964715223127.0,
-    "share": 0.0937450419864193,
-    "boss_dps": 5699964715223127.0,
+    "dps": 5815038808794026.0,
+    "share": 0.09305765895089073,
+    "boss_dps": 5815038808794026.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "FLAME_HAZE_FOG",
     "name": "Flame Haze (poison fog DoT)",
-    "dps": 1750241394603534.8,
-    "share": 0.028785520827045084,
-    "boss_dps": 1750241394603534.8,
+    "dps": 1797759469893139.8,
+    "share": 0.028769418936989876,
+    "boss_dps": 1797759469893139.8,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -288,19 +290,19 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 1.4803061029440596e+16,
-   "boss_dps": 1.4803061029440596e+16,
-   "normal_dps": 1.1294216883799188e+16,
-   "share": 0.2434600295026762,
-   "damage": 8.664143261404175e+17,
-   "uplift": 1.6979994592042422e+17,
+   "dps": 1.5159986922242734e+16,
+   "boss_dps": 1.5159986922242734e+16,
+   "normal_dps": 1.1585193840568296e+16,
+   "share": 0.2426042093780286,
+   "damage": 8.864941419306095e+17,
+   "uplift": 1.7470494262638182e+17,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 1.4803061029440596e+16,
-    "comp_norm_dps": 1.1294216883799188e+16,
-    "comp_blend_dps": 1.4803061029440596e+16,
+    "comp_boss_dps": 1.5159986922242734e+16,
+    "comp_norm_dps": 1.1585193840568296e+16,
+    "comp_blend_dps": 1.5159986922242734e+16,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -309,12 +311,12 @@
     "horn_uptime": 0.5485714285714286,
     "s0": 31.6,
     "W0": 38.4,
-    "stunfracB": 0.06428571428571428,
-    "stunfracN": 0.06428571428571428,
+    "stunfracB": 0.15,
+    "stunfracN": 0.15,
     "hasstun": 1,
-    "dmg_b": 8.664143261404175e+17,
-    "dmg_n": 7.905951818659432e+17,
-    "upl_b": 1.6979994592042422e+17,
+    "dmg_b": 8.864941419306095e+17,
+    "dmg_n": 8.109635688397807e+17,
+    "upl_b": 1.7470494262638182e+17,
     "upl_n": 0.0
    }
   },
@@ -335,22 +337,22 @@
     "METEOR_SHOWER_BURST": 3,
     "IFRIT": 1
    },
-   "phi_unif": 1.0196291756773306,
+   "phi_unif": 1.0432506801099257,
    "phi_rows": {
-    "POISON_BREATH": 1.1792191279614717,
-    "POISON_MIST_BURST": 0.8320120638038597,
-    "POISON_MIST_DOT": 1.0408783558976524,
+    "POISON_BREATH": 1.2078641034157456,
+    "POISON_MIST_BURST": 0.8856961203295903,
+    "POISON_MIST_DOT": 1.06353294655107,
     "MIST_ERUPTION": 0.9831437642629381,
-    "FLAME_HAZE_BURST": 0.8812733510513865,
-    "FLAME_HAZE_DOT": 1.0355205587296268,
-    "FLAME_HAZE_FOG": 1.0355205587296266,
-    "CREEPING_TOXIN": 1.111162700313473,
-    "METEOR_SHOWER_BURST": 1.3353962534365333,
-    "IFRIT": 1.0315124022397586
+    "FLAME_HAZE_BURST": 0.9869015049614033,
+    "FLAME_HAZE_DOT": 1.0630789805676542,
+    "FLAME_HAZE_FOG": 1.0630789805676542,
+    "CREEPING_TOXIN": 1.1230925986799782,
+    "METEOR_SHOWER_BURST": 1.4410244073465506,
+    "IFRIT": 1.0517876713160221
    }
   },
   "derived": {
-   "attack": 416623469.45500004,
+   "attack": 416841125.27500004,
    "stat_damage": 3020.49016,
    "actions_per_second": 1.5932455,
    "cast_rate": 0.4142857142857143,
@@ -386,8 +388,8 @@
     "boss": 2.3249552780768052,
     "normal": 2.021762816017316
    },
-   "stunned_share_boss": 0.06428571428571428,
-   "stunned_share_normal": 0.06428571428571428,
+   "stunned_share_boss": 0.15,
+   "stunned_share_normal": 0.15,
    "monster_type": "boss",
    "chapter": 37.0,
    "stage": 37.0,

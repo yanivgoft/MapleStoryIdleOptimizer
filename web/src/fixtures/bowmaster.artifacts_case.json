@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 3.2296369815013304e+16,
+  "total_dps": 3.2782876030402204e+16,
   "artifacts": {
    "equipped": [
     {
@@ -97,6 +97,8 @@
     "reindeer_spear_attack_pct": 0,
     "alliance_badge": 18,
     "bottle_of_emotion_attack_pct": 0,
+    "shiny_watch_attack_pct": 0,
+    "mummydogs_bandages_attack_pct": 0,
     "secret_map_final_dmg_normal": 0,
     "flaming_lava": 0,
     "horn_flute": 0,
@@ -104,6 +106,11 @@
     "fire_flower_boss": 0,
     "chalice_normal": 0,
     "chalice_boss": 0,
+    "sealed_bottle_final_damage": 0,
+    "sealed_bottle_stacks_normal": 0.0,
+    "sealed_bottle_stacks_boss": 0.0,
+    "sealed_bottle_normal": 0,
+    "sealed_bottle_boss": 0,
     "sayrams_necklace_normal": 0,
     "sayrams_necklace_boss": 0,
     "contract_of_darkness_crit_rate_bonus": 0,
@@ -124,19 +131,14 @@
      "typed_below_artifact:arwens_glass_shoes"
     ],
     "typed": {
-     "companion_summon_time_increase_pct": 0.0,
-     "attack_pct": 34372.5
+     "companion_summon_time_increase_pct": 0.0
     },
     "base": {
-     "companion_summon_time_increase_pct": 0.0,
-     "attack_pct": 34354.5
+     "companion_summon_time_increase_pct": 0.0
     },
     "amounts": {
      "companion_summon_time_increase_pct": {
       "arwens_glass_shoes": 28
-     },
-     "attack_pct": {
-      "alliance_badge": 18
      }
     }
    },
@@ -152,90 +154,90 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 2.643800412294186e+16,
-  "boss_dps": 3.2296369815013296e+16,
-  "normal_dps": 4039771657189130.0,
-  "player_boss_dps": 2.6438004122941856e+16,
+  "player_dps": 2.685715147308373e+16,
+  "boss_dps": 3.278287603040221e+16,
+  "normal_dps": 4093212764554943.0,
+  "player_boss_dps": 2.6857151473083732e+16,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "ARROW_STREAM",
     "name": "Arrow Stream",
-    "dps": 7533582980630179.0,
-    "share": 0.23326407964055806,
-    "boss_dps": 7533582980630179.0,
+    "dps": 7643497792253093.0,
+    "share": 0.2331551931308486,
+    "boss_dps": 7643497792253093.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "COVERING_FIRE",
     "name": "Covering Fire",
-    "dps": 1598555722568449.5,
-    "share": 0.04949645213145114,
-    "boss_dps": 1598555722568449.5,
+    "dps": 1621878615747777.5,
+    "share": 0.049473347434303164,
+    "boss_dps": 1621878615747777.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "QUIVER_CARTRIDGE",
     "name": "Quiver Cartridge",
-    "dps": 1541338573626583.0,
-    "share": 0.04772482425904337,
-    "boss_dps": 1541338573626583.0,
+    "dps": 1563826669848909.5,
+    "share": 0.04770254654895583,
+    "boss_dps": 1563826669848909.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "ENCHANTED_QUIVER_DRAIN",
     "name": "Enchanted Quiver (Drain)",
-    "dps": 1044143545550003.9,
-    "share": 0.0323300591221439,
-    "boss_dps": 1044143545550003.9,
+    "dps": 1059377577140481.8,
+    "share": 0.032314967611689574,
+    "boss_dps": 1059377577140481.8,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "PHOENIX",
     "name": "Phoenix",
-    "dps": 2171406564233537.0,
-    "share": 0.06723376579692669,
-    "boss_dps": 2171406564233537.0,
+    "dps": 2203087338717359.8,
+    "share": 0.0672023814101685,
+    "boss_dps": 2203087338717359.8,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "ARROW_PLATTER",
     "name": "Arrow Platter",
-    "dps": 2569076795169713.5,
-    "share": 0.07954692152352837,
-    "boss_dps": 2569076795169713.5,
+    "dps": 2606559569662529.5,
+    "share": 0.07950978941704982,
+    "boss_dps": 2606559569662529.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "FLASH_MIRAGE",
     "name": "Flash Mirage",
-    "dps": 4425297658124655.0,
-    "share": 0.13702151924416933,
-    "boss_dps": 4425297658124655.0,
+    "dps": 4489862654583670.5,
+    "share": 0.13695755828194753,
+    "boss_dps": 4489862654583670.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "HURRICANE",
     "name": "Hurricane",
-    "dps": 4727227426971420.0,
-    "share": 0.1463702408056375,
-    "boss_dps": 4727227426971420.0,
+    "dps": 4796197572182564.0,
+    "share": 0.14630191590678815,
+    "boss_dps": 4796197572182564.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "FINAL_ATTACK_BOW",
     "name": "Final Attack: Bow",
-    "dps": 827374856067317.5,
-    "share": 0.025618199841231187,
-    "boss_dps": 827374856067317.5,
+    "dps": 872863682947344.4,
+    "share": 0.026625598136596297,
+    "boss_dps": 872863682947344.4,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -243,19 +245,19 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 5858365692071442.0,
-   "boss_dps": 5858365692071442.0,
-   "normal_dps": 4039771657189130.0,
-   "share": 0.1813939376353103,
-   "damage": 3.233963435980889e+17,
-   "uplift": 8.66892548469121e+16,
+   "dps": 5925724557318476.0,
+   "boss_dps": 5925724557318476.0,
+   "normal_dps": 4093212764554943.0,
+   "share": 0.1807567021216526,
+   "damage": 3.276744712217581e+17,
+   "uplift": 8.712624779053522e+16,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 5858365692071442.0,
-    "comp_norm_dps": 4039771657189130.0,
-    "comp_blend_dps": 5858365692071442.0,
+    "comp_boss_dps": 5925724557318476.0,
+    "comp_norm_dps": 4093212764554943.0,
+    "comp_blend_dps": 5925724557318476.0,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -267,9 +269,9 @@
     "stunfracB": 0.12142857142857141,
     "stunfracN": 0.12142857142857141,
     "hasstun": 1,
-    "dmg_b": 3.233963435980889e+17,
-    "dmg_n": 2.827840160032391e+17,
-    "upl_b": 8.66892548469121e+16,
+    "dmg_b": 3.276744712217581e+17,
+    "dmg_n": 2.86524893518846e+17,
+    "upl_b": 8.712624779053522e+16,
     "upl_n": 0.0
    }
   },
@@ -282,24 +284,24 @@
     "ARROW_PLATTER": 2,
     "HURRICANE": 2
    },
-   "phi_unif": 1.0364285714285713,
+   "phi_unif": 1.0364285714285715,
    "phi_rows": {
-    "COVERING_FIRE": 1.299999999999999,
-    "PHOENIX": 1.0314999999999992,
-    "ARROW_PLATTER": 1.0366666666666662,
-    "HURRICANE": 1.2999999999999987
+    "COVERING_FIRE": 1.3000000000000003,
+    "PHOENIX": 1.0315000000000007,
+    "ARROW_PLATTER": 1.0366666666666668,
+    "HURRICANE": 1.3000000000000005
    }
   },
   "derived": {
-   "attack": 416623469.45500004,
+   "attack": 416841125.27500004,
    "stat_damage": 3020.49016,
    "actions_per_second": 1.5932455,
    "cast_rate": 0.21428571428571427,
    "basic_attacks_per_second": 1.378959785714286,
-   "avg_buff_mult": 1.8668825000000018,
+   "avg_buff_mult": 1.8931312499999995,
    "as_bonus": 6.070714285714286,
-   "attack_bucket_mult": 1.8668825000000018,
-   "attack_bucket_sum": 68.68825,
+   "attack_bucket_mult": 1.8931312499999995,
+   "attack_bucket_sum": 71.313125,
    "skill_coefficient_base": 641.48,
    "buff_cast_startup_time": 0.0,
    "crit_damage_bonus": 116.94583200000001,

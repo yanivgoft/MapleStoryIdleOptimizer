@@ -5001,6 +5001,8 @@
    3,
    4,
    5,
+   6,
+   7,
    "Not Unlocked"
   ],
   "artifacts": [
@@ -5009,252 +5011,312 @@
     "label": "Charm of the Undead",
     "rank": "Epic",
     "lines": 2,
-    "default_star": 5
+    "default_star": 5,
+    "max_star": 5
    },
    {
     "key": "pigs_ribbon",
     "label": "Pig's Ribbon",
     "rank": "Epic",
     "lines": 2,
-    "default_star": 5
+    "default_star": 5,
+    "max_star": 5
    },
    {
     "key": "shamaness_marble",
     "label": "Shamaness Marble",
     "rank": "Epic",
     "lines": 2,
-    "default_star": 5
+    "default_star": 5,
+    "max_star": 5
    },
    {
     "key": "contract_of_darkness",
     "label": "The Contract of Darkness",
     "rank": "Epic",
     "lines": 2,
-    "default_star": 5
+    "default_star": 5,
+    "max_star": 5
    },
    {
     "key": "rainbow_snail_shell",
     "label": "Rainbow-colored Snail Shell",
     "rank": "Unique",
     "lines": 2,
-    "default_star": 3
+    "default_star": 3,
+    "max_star": 5
    },
    {
     "key": "hexagon_necklace",
     "label": "Hexagon Necklace",
     "rank": "Unique",
     "lines": 2,
-    "default_star": 3
+    "default_star": 3,
+    "max_star": 5
    },
    {
     "key": "arwens_glass_shoes",
     "label": "Arwen's Glass Shoes",
     "rank": "Unique",
     "lines": 2,
-    "default_star": 3
+    "default_star": 3,
+    "max_star": 5
    },
    {
     "key": "mushmoms_cap",
     "label": "Mushmom's Cap",
     "rank": "Unique",
     "lines": 2,
-    "default_star": 3
+    "default_star": 3,
+    "max_star": 5
    },
    {
     "key": "clear_spring_water",
     "label": "Clear Spring Water",
     "rank": "Unique",
     "lines": 2,
-    "default_star": 3
+    "default_star": 3,
+    "max_star": 5
    },
    {
     "key": "athena_gloves",
     "label": "Athena Pierce's Old Gloves",
     "rank": "Unique",
     "lines": 2,
-    "default_star": 3
+    "default_star": 3,
+    "max_star": 5
    },
    {
     "key": "zakums_stone_piece",
     "label": "Zakum's Stone Piece",
     "rank": "Unique",
     "lines": 2,
-    "default_star": 3
+    "default_star": 3,
+    "max_star": 5
    },
    {
     "key": "horntails_scale",
     "label": "Horntail's Scale",
     "rank": "Unique",
     "lines": 2,
-    "default_star": 3
+    "default_star": 3,
+    "max_star": 5
    },
    {
     "key": "pink_beans_giant_rib",
     "label": "Pink Bean's Giant Rib",
     "rank": "Unique",
     "lines": 2,
-    "default_star": 3
+    "default_star": 3,
+    "max_star": 5
    },
    {
     "key": "chalice",
     "label": "Chalice",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "old_music_box",
     "label": "Old Music Box",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "silver_pendant",
     "label": "Silver Pendant",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "star_rock",
     "label": "Star Rock",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "book_of_ancient",
     "label": "Book of Ancient",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "lunar_dew",
     "label": "Lunar Dew",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "fire_flower",
     "label": "Fire Flower",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "soul_contract",
     "label": "Soul Contract",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "lit_lamp",
     "label": "Lit Lamp",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "soul_pouch",
     "label": "Soul Pouch",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "ancient_text_piece",
     "label": "Ancient Text Piece",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "icy_soul_rock",
     "label": "Icy Soul Rock",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "flaming_lava",
     "label": "Flaming Lava",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "sayrams_necklace",
     "label": "Sayram's Necklace",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "bottle_of_emotion",
     "label": "Bottle of Emotion",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "peach_tree",
     "label": "Peach Tree Herb Pouch",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "candle",
     "label": "Candle",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "alliance_badge",
     "label": "Alliance Badge",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "horn_flute",
     "label": "Horn Flute",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "cursed_doll",
     "label": "Cursed Doll",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "reindeer_spear",
     "label": "Reindeer's Spear",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "secret_map",
     "label": "Secret Map",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
    },
    {
     "key": "ring_of_cycles",
     "label": "Ring of Cycles",
     "rank": "Legendary",
     "lines": 3,
-    "default_star": "Not Unlocked"
+    "default_star": "Not Unlocked",
+    "max_star": 7
+   },
+   {
+    "key": "sealed_bottle",
+    "label": "Sealed Bottle",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked",
+    "max_star": 7
+   },
+   {
+    "key": "shiny_watch",
+    "label": "Shiny Watch",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked",
+    "max_star": 7
+   },
+   {
+    "key": "mummydogs_bandages",
+    "label": "Mummydog's Bandages",
+    "rank": "Legendary",
+    "lines": 3,
+    "default_star": "Not Unlocked",
+    "max_star": 7
    }
   ]
  },

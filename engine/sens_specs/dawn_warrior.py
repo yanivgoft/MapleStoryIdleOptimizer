@@ -62,7 +62,7 @@ PASSIVE_LEVELS = (
     PassiveLevel("basic_attack_damage_delta", 80, 22, 4, 117),    # Unpredictable (Basic Attack Damage)
     PassiveLevel("final_damage_delta", 50, 22, 4, 117),           # Unpredictable (Final Damage)
     PassiveLevel("skill_damage_delta", 150, 22, 4, 120),          # Student of the Blade (Skill Damage)
-    PassiveLevel("max_damage_delta", 200, 22, 4, 120),            # Student of the Blade (Max Damage Multiplier)
+    PassiveLevel("max_damage_delta", 300, 22, 4, 120),            # Student of the Blade (Max Damage Multiplier)
 )
 
 # potential-line / equipment-dropdown / artifact-potential stat -> sweep key maps; "Defense (flat)" has no sweep row in this class: a key without a rate prices as 0

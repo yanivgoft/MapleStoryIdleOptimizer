@@ -70,7 +70,7 @@ PASSIVE_LEVELS = (
     PassiveLevel("final_damage_delta", 100, 22, 4, 125),         # Armor Break (Final Damage)
     PassiveLevel("def_pen_delta", 100, 22, 4, 125),              # Armor Break (Defense Penetration)
     PassiveLevel("skill_damage_delta", 150, 22, 4, 120),         # Bow Expert (Skill Damage)
-    PassiveLevel("max_damage_delta", 200, 22, 4, 120),           # Bow Expert (Max Damage Multiplier)
+    PassiveLevel("max_damage_delta", 300, 22, 4, 120),           # Bow Expert (Max Damage Multiplier)
     PassiveLevel("attack_mult_delta", 80, 22, 2, 45),            # Soul Arrow: Bow (Attack%)
 )
 

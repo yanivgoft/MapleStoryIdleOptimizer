@@ -225,23 +225,34 @@ class _Model(model_mod.ModelBase):
         # ---- Status Effect Damage / KO timeline engine (src/status_timeline.py `solve`) ----
         choice, c_level = comp_mod.read_choice(inp, zero_none=False)
         self.companion_choice, self.companion_level = choice, c_level
-        stun_info = comp_mod.stun_probe(ct, fight, self.pvp_len, choice, c_level, summon_time_inc)
-        # Sensitivity blocks pin candidate 0 to the summon time the MAIN sheet chose: the block's own stunned share / Horn Flute window use the pinned
-        # timing, the timeline strip's stun vector keeps the unpinned candidate-0 timing of `stun_info` (exactly as the workbook's blocks do)
-        _pin = sens.get("comp_pin")
-        stun_pin = comp_mod.stun_probe(ct, fight, self.pvp_len, choice, c_level, summon_time_inc, pin=_pin) if _pin is not None else stun_info
-        self.hasstun = bool(stun_info and stun_info.get("hasstun"))
-        self.stf_b = stun_pin["stunfracB"] if stun_pin else 0.0
-        self.stf_n = stun_pin["stunfracN"] if stun_pin else 0.0
+        # The player's own stunning skill (patch 2026-11-26): Poison Breath stuns for 1.5 s, cast on cooldown from the start
+        player_stun = [dict(e, cd=SKILLS[e["key"]]["cooldown"]) for e in D.PLAYER_STUN]
+        pl_on = any(unlocked(e["key"]) for e in player_stun)
+        self.pl_on = pl_on
+        stun_info0 = comp_mod.stun_probe(ct, fight, self.pvp_len, choice, c_level, summon_time_inc)
+        self.hasstun = bool(stun_info0 and stun_info0.get("hasstun")) or pl_on
         ko = content_mod.ko_windows(self.fight_duration)
         self.status_on = self.fixed_duration_active and self.normal_weight == 0 and (self.content_type in ko or self.hasstun)
         status_on = self.status_on
+        # the player's stun entries (cast on cooldown from the start; with the engine off the first cast follows the buff-casting startup delay) feed the companion
+        # model's stub host: Sensitivity blocks pin candidate 0 to the summon time the MAIN sheet chose (``comp_pin``), the strip's stun vector keeps the unpinned timing
+        _pin = sens.get("comp_pin")
+        n_startup = sum(1 for key, b in BUFFS.items() if b["costs_action"] and unlocked(key))
+        t0_pl = 0.0 if status_on else ((n_startup / dmg.actions_per_second(attack_speed_base + sens.get("attack_speed_extra", 0.0), as_bonus))
+                                       if self.fixed_duration_active else 0.0)
+        self.pst = pst = [dict(id=e["id"], typ=e["typ"], cd=fight.eff_cooldown(e["cd"], True), dur=e["dur"], p=e["p"], on=unlocked(e["key"]),
+                               t0=t0_pl, tick=1.0, win=0.0) for e in player_stun]
+        stun_info, stun_pin = comp_mod.stun_windows(ct, fight, self.pvp_len, pst, choice, c_level, summon_time_inc, sens)
+        self.stf_b = stun_pin["stunfracB"]
+        self.stf_n = stun_pin["stunfracN"]
         self.engine_n = ENGINE_N = {}
         E_ENGINE = None
         self.e1 = None
         eng_host = None
         if status_on:
-            stun_vec = stun_info["stun_vector"](stl.NB_MAX) if stun_info else None
+            # (without a companion and without a stunning skill the stub run carries no stun_vector: no stun)
+            comp_stun = stun_info["stun_vector"](stl.NB_MAX) if "stun_vector" in stun_info else [0.0] * stl.NB_MAX
+            stun_vec = [min(1.0, a + b) for a, b in zip(comp_stun, stl.pl_stun_vector([dict(e, t0=0.0) for e in pst], self.fight_duration, stl.NB_MAX))]
             buffs = []
             for bid, key, kind in D.STATUS_BUFFS:
                 b = BUFFS[key]
@@ -286,10 +297,11 @@ class _Model(model_mod.ModelBase):
             steady = actx.steady
             t_eff = self.pvp_len if self.monster_type == "pvp" else self.fight_duration
             period = max(d_comp, 90.0) if steady else t_eff
-            if stun_pin is not None:
-                s0, w0 = stun_pin["s0"], stun_pin["W0"]
-                ts_window = w0                              # max(0, min(D, Tend0 - s0)) of the workbook with a companion chosen
-            else:                                           # no companion: the workbook still computes s_0 (E_0 = 0) but its window W_0 is 0
+            if "s0" in stun_pin:
+                s0 = stun_pin["s0"]
+                w0 = stun_pin["W0"] if (choice != "None" and c_level >= 1) else 0.0      # the workbook's W_0 is 0 with no companion chosen
+                ts_window = stun_pin["W0"]                                              # max(0, min(D, Tend0 - s0)) either way
+            else:                                           # no companion and no player stun: the workbook still computes s_0 (E_0 = 0) but its window W_0 is 0
                 s0 = 0.0 if steady else max(7.0, t_eff - d_comp)
                 w0 = 0.0
                 ts_window = max(0.0, min(d_comp, t_eff - s0))
@@ -335,7 +347,8 @@ class _Model(model_mod.ModelBase):
             basic_s0 = SKILLS["BASIC_ATTACK"]
             c_slot = basic_s0["hits"] * self.hit_damage(self.skill_coefficient_base, True, 1.0, basic_s0) * self.branch_multipliers("BASIC_ATTACK", basic_s0)[0]
             groups = status_mod.build_groups(D, unlocked, SKILLS, percast, fight.capped_window,
-                                             lambda cast: fight.eff_cooldown(SKILLS[cast]["cooldown"], SKILLS[cast]["costs_action"], exempt=cast in self.cdr_exempt))
+                                             lambda cast: fight.eff_cooldown(SKILLS[cast]["cooldown"], SKILLS[cast]["costs_action"], exempt=cast in self.cdr_exempt),
+                                             stun_keys={e["key"] for e in D.PLAYER_STUN})
             E_ENGINE = status_mod.solve_groups(self, D, eng_host, groups, c_slot, ENGINE_N, sens)
             E_FS = E_ENGINE["fs"]
         self.e_engine = E_ENGINE
@@ -486,7 +499,7 @@ class _Model(model_mod.ModelBase):
         self.companion_dps = 0.0
         self.comp_host = None
         self.summon_time_inc = summon_time_inc          # effective Summoning Time Increase % (Inputs + Arwen's Glass Shoes)
-        if (choice != "None" and c_level >= 1) or sens.get("want_comp_host"):    # (Sensitivity: the comparison tables need the host with no companion chosen too)
+        if (choice != "None" and c_level >= 1) or pl_on or sens.get("want_comp_host"):    # (Sensitivity: the comparison tables need the host with no companion chosen too)
             pairs = self.ledger.pairs
             pb_total, pn_total, pu_total = self.pb_total, self.pn_total, self.pu_total
             basic_pair = pairs["BASIC_ATTACK"]
@@ -510,10 +523,10 @@ class _Model(model_mod.ModelBase):
                 sd=self.skill_damage + self.art_skill_damage + self.fervent_drain_pct * 5, aps=self.actions_per_second, avgbuff=self.avg_buff_mult,
                 attack_bucket_avg=self.attack_bucket_avg, agg_damage_avg=eff.agg_damage,
                 avgbuff_snap=lambda charm, extra: (1 + (att_full + agg_att - charm_avg + charm + extra) / 100) * fd_full, boss_pct=self.boss_damage,
-                norm_pct=self.normal_damage, cr_total=self.crit_rate, cd_total=self.crit_damage, def_pen=self.def_pen, taken_bucket=ed_bucket)
+                norm_pct=self.normal_damage, cr_total=self.crit_rate, cd_total=self.crit_damage, def_pen=self.def_pen, taken_bucket=ed_bucket, pst=pst)
             self.comp_host = comp_host
-            if choice != "None" and c_level >= 1:
-                self.companion_result = comp_mod.run(comp_host, choice, c_level, summon_time_inc, pin=_pin)
+            if (choice != "None" and c_level >= 1) or pl_on:       # (the player's own Poison Breath stun alone makes an uplift, like Ice/Lightning's Glacier Wall)
+                self.companion_result = comp_mod.run(comp_host, choice if (choice != "None" and c_level >= 1) else "None", c_level, summon_time_inc, pin=_pin)
                 self.companion_dps = self.companion_result["comp_blend_dps"]
         self.total_dps = self.player_dps + self.companion_dps
 

@@ -44,11 +44,13 @@ export function artifactInfo(art: ArtifactSchema, key: string): ArtifactInfo | u
   return art.artifacts.find((a) => a.key === key);
 }
 
-/** The star level the engine will use: "Not Unlocked" / null act as star 0, anything else is clamped to 0..5. */
+/** The star level the engine will use: "Not Unlocked" / null act as star 0, anything else is clamped to 0..7 (Legendary artifacts go up to 7, the others to 5: `ArtifactInfo.max_star`). */
+/** The highest star of any artifact (Legendary, patch 2026-11-26); an artifact's own limit is `max_star` in the schema (5 for Epic / Unique). */
+export const MAX_STAR = 7;
 export function starIndex(star: number | string | null | undefined): number {
   if (star === null || star === undefined || star === NOT_UNLOCKED) return 0;
   const n = Math.round(Number(star));
-  return Number.isFinite(n) ? Math.min(5, Math.max(0, n)) : 0;
+  return Number.isFinite(n) ? Math.min(MAX_STAR, Math.max(0, n)) : 0;
 }
 
 /** Table star (null = Not Unlocked) from anything stored / imported: `{ok:false}` for junk (the caller falls back to the default). */
@@ -59,16 +61,20 @@ export function parseStar(x: unknown): { ok: true; value: number | null } | { ok
     if (/^\d$/.test(x.trim())) return parseStar(Number(x.trim()));
     return { ok: false };
   }
-  if (typeof x === "number" && Number.isInteger(x) && x >= 0 && x <= 5) return { ok: true, value: x };
+  if (typeof x === "number" && Number.isInteger(x) && x >= 0 && x <= MAX_STAR) return { ok: true, value: x };
   return { ok: false };
 }
 
-/** Star dropdown: "Not unlocked" (value "Not Unlocked") + Star 0..5; how "Not unlocked" acts is the select's tooltip (STAR_TOOLTIP). */
+/** Star dropdown: "Not unlocked" (value "Not Unlocked") + Star 0..max (7 for Legendary artifacts, 5 for the others: pass the artifact's `key`); how "Not unlocked" acts is the select's tooltip (STAR_TOOLTIP). */
 export const STAR_TOOLTIP =
   "Not unlocked acts as star 0 when the artifact is equipped: its equip effect still applies at the star-0 value. An artifact that is not equipped does nothing; its star only feeds the equip ranking (locked artifacts are unranked) and its potential lines.";
-export function starOptions(art: ArtifactSchema): { value: number | string; label: string }[] {
-  const max = Math.max(...art.star_options.filter((s): s is number => typeof s === "number"));
-  return art.star_options.map((s) => ({ value: s, label: s === NOT_UNLOCKED ? "Not unlocked" : `Star ${s}${s === max ? " (max)" : ""}` }));
+export const maxStarOf = (art: ArtifactSchema, key: string): number =>
+  artifactInfo(art, key)?.max_star ?? Math.max(...art.star_options.filter((s): s is number => typeof s === "number"));
+export function starOptions(art: ArtifactSchema, key?: string): { value: number | string; label: string }[] {
+  const max = key === undefined ? Math.max(...art.star_options.filter((s): s is number => typeof s === "number")) : maxStarOf(art, key);
+  return art.star_options
+    .filter((s) => typeof s !== "number" || s <= max)
+    .map((s) => ({ value: s, label: s === NOT_UNLOCKED ? "Not unlocked" : `Star ${s}${s === max ? " (max)" : ""}` }));
 }
 
 export function defaultStarFor(art: ArtifactSchema, key: string): number | string {
@@ -105,7 +111,7 @@ function normalizeLines(raw: unknown, count: number): ArtifactLine[] {
 /**
  * The table state (stars + lines) for ``art`` from anything stored (current record shape, or the OLD shape: a list of equipped slots ``[{key, star}]`` plus - optionally - the
  * old Artifact-potentials state ``{key: {star?, lines}}``).  Junk is repaired, never thrown: unknown artifacts are dropped, a missing entry becomes the default
- * (star by rank, no lines), stars outside Not Unlocked / 0-5 fall back to the default, and an old equipped artifact keeps the star of its slot (the old UI used the
+ * (star by rank, no lines), stars outside Not Unlocked / 0..7 fall back to the default (and a star above the artifact's own maximum is cut to it), and an old equipped artifact keeps the star of its slot (the old UI used the
  * slot's star for its potentials too).  An old per-artifact ``equipped`` flag is NOT kept here: ``normalizeEquipped`` reads it first (see ``legacyEquippedKeys``).
  */
 export function normalizeArtifacts(raw: unknown, art: ArtifactSchema | undefined, legacyPotentials?: unknown): ArtifactsState {
@@ -134,6 +140,7 @@ export function normalizeArtifacts(raw: unknown, art: ArtifactSchema | undefined
         linesRaw = e.lines;
       }
     }
+    if (star !== null && info.max_star !== undefined && star > info.max_star) star = info.max_star;
     out[key] = { star, lines: normalizeLines(linesRaw, lineCount(info)) };
   }
   return out;
@@ -220,7 +227,8 @@ export function setStar(art: ArtifactSchema, state: ArtifactsState | undefined, 
   const cur = normalizeArtifacts(state, art);
   const p = parseStar(star);
   if (!cur[key] || !p.ok) return cur;
-  return { ...cur, [key]: { ...cur[key], star: p.value } };
+  const limit = artifactInfo(art, key)?.max_star;
+  return { ...cur, [key]: { ...cur[key], star: p.value !== null && limit !== undefined ? Math.min(p.value, limit) : p.value } };
 }
 
 /** Patch line ``i`` (0-based) of ``key``; lines beyond the artifact's own count (Epic / Unique: 2) cannot be set. */
@@ -392,6 +400,21 @@ export const EFFECTS: Record<string, EffectSpec> = {
     bucket: "Final Damage / Boss Monster Damage %",
   },
   alliance_badge: { live: ["+{alliance_badge_attack_pct}% Attack"], rows: ["alliance_badge"], bucket: "Attack %" },
+  sealed_bottle: {
+    live: ["+{sealed_bottle_final_damage}% Final Damage", "+{sealed_bottle_normal_damage_per_kill}% Normal and +{sealed_bottle_boss_damage_per_kill}% Boss Monster Damage per enemy defeated (10 stacks, 30 in Chapter Breakthrough)"],
+    note: "Kill stacks are counted from the normal monsters you defeat (about 100 a minute): full in continuous hunting, ramping up in Breakthrough / Hero Dungeon until the boss appears, none in boss-only content and PvP.",
+    rows: ["sealed_bottle_final_damage", "sealed_bottle_normal", "sealed_bottle_boss"], bucket: "Final Damage / Normal / Boss Monster Damage %",
+  },
+  shiny_watch: {
+    live: ["+{shiny_watch_attack_pct}% Attack", "Companion: +{shiny_watch_companion_final_damage_per_stack}% Final Damage every 3 s after it is summoned (10 stacks)"],
+    note: "The companion's ramp is averaged over its summon window (a longer summon window reaches more stacks).",
+    rows: ["shiny_watch_attack_pct"], bucket: "Attack % (+ the companion's Final Damage)", companion: "companion",
+  },
+  mummydogs_bandages: {
+    live: ["+{mummydogs_bandages_attack_pct}% Attack"],
+    note: "The Attack bonus ends when your HP falls below 50% (you heal and take 40% less damage for 15 s instead); your HP is assumed to stay above 50%.",
+    rows: ["mummydogs_bandages_attack_pct"], bucket: "Attack %",
+  },
   horn_flute: {
     live: ["+{horn_flute_final_damage}% Final Damage (doubled in Chapter Boss)"],
     note: "Weighted by the uptime of the companion's Horn window.", rows: ["horn_flute"], bucket: "Final Damage", companion: "companion",
@@ -513,6 +536,11 @@ const ROW_LABELS: Record<string, [string, Unit]> = {
   candle_final_damage: ["Final Damage", "%"],
   candle_boss_damage: ["Boss Monster Damage (window-weighted)", "%"],
   alliance_badge: ["Attack %", "%"],
+  sealed_bottle_final_damage: ["Final Damage", "%"],
+  sealed_bottle_normal: ["Normal Monster Damage (average stacks)", "%"],
+  sealed_bottle_boss: ["Boss Monster Damage (stacks when the boss appears)", "%"],
+  shiny_watch_attack_pct: ["Attack %", "%"],
+  mummydogs_bandages_attack_pct: ["Attack %", "%"],
   horn_flute: ["Final Damage (uptime-weighted)", "%"],
   reindeer_spear_attack_pct: ["Attack %", "%"],
   secret_map_attack_pct: ["Attack %", "%"],

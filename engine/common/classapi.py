@@ -15,12 +15,12 @@ INCOMING_HIT_RATE = schema_mod.field(
 
 def artifact_schema():
     """What a UI needs for the artifact slots: dropdown names (+ '(none)'), star options, the default star by rank, per-artifact info.
-    ``inputs["artifacts"]`` = ``[{"key": <id>, "star": 0..5 | None}, ...]`` (equipped slots, <= max_slots); the star is the artifact's own
+    ``inputs["artifacts"]`` = ``[{"key": <id>, "star": 0..max_star | None}, ...]`` (7 for Legendary, 5 otherwise) (equipped slots, <= max_slots); the star is the artifact's own
     Star Level ("Not Unlocked" / None reads as star 0, as in the workbook)."""
     return dict(
         modelled=True, max_slots=art_mod.MAX_SLOTS, none_label=art_mod.NONE_LABEL, star_options=list(art_mod.STAR_OPTIONS),
         slot_options=[art_mod.NONE_LABEL] + list(AD.ARTIFACT_LABELS.values()),
-        artifacts=[dict(key=k, name=label, rank=AD.ARTIFACT_RANK[k], default_star=art_mod.default_star(k),
+        artifacts=[dict(key=k, name=label, rank=AD.ARTIFACT_RANK[k], default_star=art_mod.default_star(k), max_star=art_mod.max_star(k),
                         effect=art_mod.effect_kind(k), no_dps_effect=k in AD.ARTIFACT_NO_DPS_EFFECT, reason=AD.ARTIFACT_NO_DPS_EFFECT.get(k))
                    for k, label in AD.ARTIFACT_LABELS.items()],
     )

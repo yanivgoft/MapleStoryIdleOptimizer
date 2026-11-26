@@ -68,7 +68,7 @@ TABLE = [
     ("Unpredictable: Basic Attack Damage", 12.3, 80, 22, 4, None),
     ("Unpredictable: Final Damage", 7.7, 50, 22, 4, None),
     ("Student of the Blade: Skill Damage", 23.1, 150, 22, 4, None),
-    ("Student of the Blade: Max Damage Multiplier", 30.8, 200, 22, 4, None),
+    ("Student of the Blade: Max Damage Multiplier", 46.2, 300, 22, 4, None),   # 30.8 / 200 before the 2026-11-26 patch (patch-derived: x1.5, not a reading)
     ("Soul Blessing III: Final Damage", 30.8, 200, 22, 4, ("SOUL_BLESSING_III", D.SOUL_BLESSING_III)),
 ]
 

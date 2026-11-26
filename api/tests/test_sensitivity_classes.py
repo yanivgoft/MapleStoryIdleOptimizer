@@ -14,6 +14,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
+from engine.data import artifacts as artifact_data
 from api import features, registry
 from api.main import create_app
 from api.settings import Settings
@@ -155,7 +156,7 @@ def test_sensitivity_matches_engine_directly(client, cid):
     _same(direct, body)
     assert body["class_id"] == cid
     assert [x["key"] for x in body["stats"]["rows"]][:len(c.first_keys)] == c.first_keys
-    assert len(body["stats"]["rows"]) == c.n_stats and len(body["artifacts"]["rows"]) == 36 and len(body["companions"]["rows"]) == 16
+    assert len(body["stats"]["rows"]) == c.n_stats and len(body["artifacts"]["rows"]) == len(artifact_data.ARTIFACT_LABELS) and len(body["companions"]["rows"]) == 16
     text = r.text if c.nan_filter is None else r.text.replace(*c.nan_filter)
     assert "NaN" not in r.text and "Infinity" not in text
 

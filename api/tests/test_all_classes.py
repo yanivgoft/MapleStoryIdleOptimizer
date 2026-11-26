@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from engine.data import artifacts as artifact_data
 from api import registry as api_registry
 from api.main import create_app
 from api.settings import Settings
@@ -270,7 +271,7 @@ def test_engine_native_sensitivity_and_cube_tabs(client, cid):
     out = r.json()
     assert out["class_id"] == cid and out["baseline_total"] > 0 and {"stats", "artifacts", "companions", "summon_time", "cdr"} <= set(out)
     meta = client.get(f"/api/classes/{cid}/sensitivity/meta").json()
-    assert [x["key"] for x in out["stats"]["rows"]] == [x["key"] for x in meta["stats"]] and len(out["artifacts"]["rows"]) == 36 and len(out["companions"]["rows"]) == 16
+    assert [x["key"] for x in out["stats"]["rows"]] == [x["key"] for x in meta["stats"]] and len(out["artifacts"]["rows"]) == len(artifact_data.ARTIFACT_LABELS) and len(out["companions"]["rows"]) == 16
     assert "NaN" not in r.text
     assert client.get(f"/api/classes/{cid}/cubes/meta").status_code == 200
     gear = [{"slot": "head", "potential_type": "Potential", "rarity": "epic", "pity": 12, "lines": [{"stat": "Damage %", "value": 12}, {"stat": "Critical Rate %", "value": 3}]}]

@@ -50,7 +50,7 @@ CLASSES = ("fp_mage", "hero", "night_lord", "bowmaster", "bishop")
 CONTENTS = ("World Boss", "Chapter Hunt", "Breakthrough", "PvP", "Hero Dungeon")
 LIVE = [a for a in AD.ARTIFACT_LABELS if art_mod.effect_kind(a) == "live"]
 NO_TYPED = ["chalice", "fire_flower", "peach_tree", "silver_pendant", "soul_contract", "contract_of_darkness",
-            "old_music_box", "alliance_badge", "secret_map", "charm_of_the_undead", "reindeer_spear"]       # live, no typed counterpart (the Attack% ones stack in their own bucket, not in the preset page ATTACK %)
+            "old_music_box", "alliance_badge", "secret_map", "charm_of_the_undead", "reindeer_spear", "shiny_watch", "mummydogs_bandages"]       # live, no typed counterpart (the Attack% ones stack in their own bucket, not in the preset page ATTACK %)
 RTOL = 1e-12
 # stats typed with the artifact ABSENT (B); crit rate comes from CRIT_CASES, summoning time is typed so that Horn Flute / Hexagon timing is non-trivial
 BASE_OVER = dict(companion_summon_time_increase_pct=10.0)
@@ -125,11 +125,11 @@ def roundtrip(cid, content, slots, crit=60.0, check_base=True):
     return err, moved, info
 
 
-STARS = range(6)
+STARS = range(8)
 
 
 def test_live_artifact_count():
-    assert len(LIVE) == 20, LIVE
+    assert len(LIVE) == 23, LIVE         # 20 + the three artifacts of the 2026-11-26 patch
     assert set(NO_TYPED) <= set(LIVE)
     assert TA.STRIPPED_ARTIFACTS <= set(LIVE) | {"bottle_of_emotion"}            # Bottle of Emotion: reference-only Final Damage but a LIVE Attack%
     assert set(LIVE) - set(NO_TYPED) - TA.STRIP_EXEMPT <= TA.STRIPPED_ARTIFACTS, set(LIVE) - set(NO_TYPED) - TA.STRIP_EXEMPT - TA.STRIPPED_ARTIFACTS
@@ -139,6 +139,8 @@ def run_matrix(table=None):
     """Every live artifact x star x content x class (+ Bottle of Emotion's Attack% and the crit-rate modes); fills ``table`` {artifact: [max err, n, typed keys]}."""
     n = 0
     for cid, content, art, star in itertools.product(CLASSES, CONTENTS, LIVE + ["bottle_of_emotion"], STARS):
+        if star > art_mod.max_star(art):          # Legendary artifacts reach star 7 (patch 2026-11-26), Epic / Unique stop at 5
+            continue
         crits = CRIT_CASES if art in ("ring_of_cycles", "rainbow_snail_shell") else (60.0,)
         for crit in crits:
             err, moved, _info = roundtrip(cid, content, [{"key": art, "star": star}], crit)

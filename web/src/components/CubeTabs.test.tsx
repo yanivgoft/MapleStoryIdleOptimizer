@@ -245,7 +245,7 @@ describe("Artifacts table: potential lines (the old 'Artifact potentials' sectio
     const xart = x.schema.artifacts as ArtifactSchema;
     const html = strip(renderToString(<ArtifactTable classId={x.info.id} inputs={{}} supported={false} active meta={null} metaStatus={IDLE_STATUS} art={xart} state={undefined} onState={noop} onOpenCompanion={noop} equipped={[]} />));
     expect(html).toContain(POTENTIALS_UNSUPPORTED_TEXT);
-    expect(html.match(/<tr data-artifact="/g)).toHaveLength(36);
+    expect(html.match(/<tr data-artifact="/g)).toHaveLength(xart.artifacts.length);
     expect(html).toContain("line 1 stat");
   });
   it("without the cube meta the static tables fill the dropdowns (the same data)", () => {
@@ -262,7 +262,7 @@ describe("Artifacts tab: the table needs no cube meta, the potentials are part o
   it("with or without the meta the table shows the same rows", () => {
     for (const extra of [{}, { cubesMeta: meta, cubesMetaStatus: IDLE_STATUS }, { cubesMeta: null }]) {
       const html = render(extra);
-      expect(html.match(/<tr data-artifact="/g)).toHaveLength(36);
+      expect(html.match(/<tr data-artifact="/g)).toHaveLength((c.schema.artifacts as ArtifactSchema).artifacts.length);
       expect(html).not.toContain("Artifact potentials");
     }
   });
@@ -272,7 +272,7 @@ describe("Artifacts tab: the table needs no cube meta, the potentials are part o
       const xs = initialState(x.schema, x.defaults["World Boss"], "World Boss");
       const html = strip(renderToString(<ArtifactsPanel schema={x.schema} classInfo={x.info} state={xs} onState={noop} result={null} busy={false} stale={false} onOpenCompanion={noop} cubesMeta={undefined} />));
       expect(html, x.info.id).toContain(POTENTIALS_UNSUPPORTED_TEXT);
-      expect(html.match(/<tr data-artifact="/g), x.info.id).toHaveLength(36);
+      expect(html.match(/<tr data-artifact="/g), x.info.id).toHaveLength((x.schema.artifacts as ArtifactSchema).artifacts.length);
     }
     // the status flag in classes.json and the cube fixtures the generator dumps agree (a stat-values class has a cubes meta fixture, the others do not)
     const withMeta = Object.keys(import.meta.glob("../fixtures/*.cubes_meta.json")).map((f) => f.replace(/^.*\//, "").replace(".cubes_meta.json", "")).sort();

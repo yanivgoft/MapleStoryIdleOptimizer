@@ -74,7 +74,7 @@ export const HOW_TO_USE: HelpSection = {
           companion you actually use in a content type is chosen on the Calculator.
         </li>
         <li>
-          <strong>Artifacts</strong> - one table with all 36 artifacts: set each artifact's star level (Not unlocked, 0-5) and, per artifact, up to three potential lines (rarity + stat; the third line only
+          <strong>Artifacts</strong> - one table with every artifact: set each artifact's star level (Not unlocked, 0-5; Legendary artifacts go up to 7) and, per artifact, up to three potential lines (rarity + stat; the third line only
           for Legendary artifacts) with the % of Total DPS each line and the artifact's potential total would add.  Stars and lines are the same for every content type.  The artifacts you have <strong>equipped</strong> are
           chosen per content type in the <strong>Equipped artifacts</strong> section of the Calculator; in the table the rows equipped in the current content type carry an "equipped" marker.  Filter the table by
           name or show only unlocked / equipped artifacts.  Below it: what the equipped artifacts do in the calculation and the artifact ranking (% DPS gain if equipped).  "Not unlocked" counts as star 0 once the artifact is equipped.
@@ -259,7 +259,7 @@ export const LIMITATIONS: ReactNode[] = [
     <strong>Not yet checked in game</strong>: Ice / Lightning Mage's Elquines strike-interval mastery (level and value), Illusion Step at level 118 (Bowmaster / Marksman), and Hero's Puncture wound debuff.
   </>,
   <>
-    <strong>Artifacts</strong>: all 36 are listed and the equip effects of the live ones are counted.  The potential lines of the Artifacts table are a reference / what-if tool only: they never change the main
+    <strong>Artifacts</strong>: all of them are listed and the equip effects of the live ones are counted.  The potential lines of the Artifacts table are a reference / what-if tool only: they never change the main
     result.  Artifacts that need their stat typed in (baked in) only show a what-if gain.
   </>,
   <>

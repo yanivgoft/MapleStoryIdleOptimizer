@@ -184,7 +184,10 @@ def build_class(cid: str, report: list[str], tables: dict) -> dict:
     if list(m.cm.COMPANIONS) != schema["companions"]:
         problems.append("companion list differs between workbook and engine")
     wb_arts = dict(m.ARTIFACT_LABELS)
-    eng_arts = {a["key"]: a["name"] for a in schema["artifacts"]["artifacts"]}
+    from engine.data import artifacts as artifact_data
+
+    # the engine also knows the artifacts the game added after the frozen workbooks (engine/data/artifacts_extra.py): the Excel import has no rows for them
+    eng_arts = {a["key"]: a["name"] for a in schema["artifacts"]["artifacts"] if a["key"] in artifact_data.WORKBOOK_ARTIFACT_LABELS}
     if wb_arts != eng_arts:
         problems.append("artifact keys/names differ between workbook and engine")
     from engine import artifacts as engine_artifacts
