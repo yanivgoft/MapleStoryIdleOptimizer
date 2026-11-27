@@ -16,6 +16,21 @@
    }
   },
   {
+   "id": "blaze_wizard",
+   "name": "Blaze Wizard",
+   "family": "Mage",
+   "stat_identity": {
+    "main": "INT",
+    "sub": "LUK"
+   },
+   "artifacts_modelled": true,
+   "status": {
+    "companions": true,
+    "artifacts": true,
+    "stat_values": true
+   }
+  },
+  {
    "id": "bowmaster",
    "name": "Bowmaster",
    "family": "Archer",

@@ -1,10 +1,10 @@
-"""Blaze Wizard (Cygnus Knight, INT main / LUK sub mage) static game data - ENGINE-NATIVE and PROVISIONAL: there is no workbook, builder or verify script for this class,
-and (unlike Dawn Warrior) the user has so far supplied only LEVEL-1 pop-ups (fresh character, "Lv. 1" everywhere = the BASE value, factor 1.0).
+"""Blaze Wizard (Cygnus Knight, INT main / LUK sub mage) static game data - ENGINE-NATIVE (no workbook, builder or verify script): the bases are the user's LEVEL-1 pop-ups
+(fresh character, "Lv. 1" everywhere = the BASE value, factor 1.0) and every growth curve is CONFIRMED by his higher-level readings of 2026-11-27 (``CONFIRMED_BY_READINGS``).
 
-Source: ``data/cygnus/blaze_wizard_ingame.md`` (the user's transcribed screenshots).  A level-1 reading gives each base EXACTLY but says nothing about the growth curve, and the
-live site data (maplestoryidle.info) has NO Blaze Wizard rows, so EVERY factor index below is a CONVENTION (Dawn Warrior's: burst damage 12; basic attack, additional-damage procs and
-active buffs / debuffs 21; passives 22; per-skill Final Damage "Call of Cygnus" 23) and is marked PROVISIONAL in ``CURVES`` / ``PROVISIONAL`` (ONE place to edit per skill: change the
-triple in ``CURVES`` and nothing else).  The class module stays ``PUBLISHED = False`` until the user supplies one higher-level reading per skill (data/cygnus/README.md).
+Source: ``data/cygnus/blaze_wizard_ingame.md`` (the user's transcribed screenshots: level-1 pop-ups and, since 2026-11-27, one higher-level reading per skill).  The live site data
+(maplestoryidle.info) has NO Blaze Wizard rows, so the factor index of every curve comes from those readings: the convention (burst damage 12; basic attack, additional-damage procs and
+active buffs / debuffs 21; passives 22; per-skill Final Damage "Call of Cygnus" 23) held for every skill except two (Flashfire's Attack is idx 22; Fires of Creation is 3rd job, idx 22).
+``PROVISIONAL`` is empty.  The class module stays ``PUBLISHED = False`` until the user decides to publish (the unlock-level mapping and a few masteries are still unconfirmed, see KNOWN_GAPS).
 
 Conventions follow ``engine/data/dawn_warrior.py``: base damage in TENTHS of a percent (``base``), ``fidx`` the FactorTable column, ``step`` the job tier (1-4) whose skill level
 scales the skill (1st job 60 + bonus, 2nd 90 +, 3rd 120 +, 4th (character level - 100) x 3 + bonus); ``(threshold, value)`` tuples / ``{level: tier value}`` chains are resolved by the
@@ -18,7 +18,7 @@ CLASS_ID = "blaze_wizard"
 
 Curve = namedtuple("Curve", "base fidx step")        # base in tenths of %, FactorTable column, job tier
 
-# ---- EVERY scaling curve of the class (all PROVISIONAL: bases = the level-1 values read in game, factor index and job step = convention) ----
+# ---- EVERY scaling curve of the class (bases = the level-1 values read in game; factor index and job step CONFIRMED by the 2026-11-27 higher-level readings, see CONFIRMED_BY_READINGS) ----
 CURVES = {
     # damage skills (burst convention: idx 12)
     "FLAME_VORTEX": Curve(2600, 12, 2),                      # 260 % x 7 targets x 2
@@ -34,10 +34,10 @@ CURVES = {
     "ORBITAL_EXPLOSION": Curve(500, 21, 2),                  # 50 % additional damage x 5 targets x 2 (passive, unlock 45)
     # timed / equipped buffs and effects (idx 21: active skills)
     "FLAME_ELEMENTAL_ATTACK": Curve(150, 21, 1),             # Attack +15 %, 12 s
-    "FLASHFIRE_ATTACK": Curve(120, 21, 2),                   # Attack +12 % while the mark lasts (30 s)
-    "FIRES_LION_NORMAL_DAMAGE": Curve(200, 21, 2),           # Fire Lion: Normal Monster Damage +20 %
-    "FIRES_FOX_BOSS_DAMAGE": Curve(200, 21, 2),              # Flame Fox: Boss Monster Damage +20 %
-    "FIRES_FINAL_DAMAGE": Curve(30, 21, 2),                  # while equipped: Final Damage +3 % (stat screen, Sensitivity delta only)
+    "FLASHFIRE_ATTACK": Curve(120, 22, 2),                   # Attack +12 % while the mark lasts (30 s); idx 22 (reading: 16.3 at total level 120, NOT the active-buff idx 21)
+    "FIRES_LION_NORMAL_DAMAGE": Curve(200, 22, 3),           # Fire Lion: Normal Monster Damage +20 %; 3rd job, idx 22 (reading: 30.6 at total level 177)
+    "FIRES_FOX_BOSS_DAMAGE": Curve(200, 22, 3),              # Flame Fox: Boss Monster Damage +20 %; 3rd job, idx 22
+    "FIRES_FINAL_DAMAGE": Curve(30, 22, 3),                  # while equipped: Final Damage +3 % (stat screen, Sensitivity delta only); 3rd job, idx 22 (reading: 4.5 at 177)
     "BURNING_CONDUIT_FD": Curve(50, 21, 4),                  # YOUR Final Damage +5 %, 20 s
     # passives (idx 22)
     "GREATER_FE_DAMAGE": Curve(200, 22, 2),                  # damage +20 % during Flame Elemental
@@ -63,8 +63,22 @@ CURVES = {
     "CYGNUS_CINDER_MAELSTROM": Curve(300, 23, 4),
     "CYGNUS_ORBITAL_EXPLOSION": Curve(700, 23, 4),
 }
-# Every curve is a convention (no site table row, no higher-level reading yet): the flag the user's later scaling data flips one skill at a time (move a name out of this set once resolved).
-PROVISIONAL = set(CURVES)
+# Nothing is provisional any more.  CONFIRMED_BY_READINGS: every curve, resolved by the user's higher-level in-game readings of 2026-11-27 (character level 121; total skill level per job tier
+# 105 / 120 / 177 / 225 = 1st 60+45, 2nd 90+30, 3rd 120+57, 4th 63+162; the game truncates to 1 decimal): key -> (shown value, total skill level).  Asserted by
+# tests/golden/test_blaze_wizard_displayed.py (which also holds the full reading list).  Two surprises against the convention: Flashfire's Attack uses the PASSIVE curve (idx 22) and
+# Fires of Creation is a 3rd-job skill on idx 22 (both were idx 21, Fires step 2).
+PROVISIONAL = set()
+CONFIRMED_BY_READINGS = {
+    "FLAME_ELEMENTAL_ATTACK": (21.3, 105), "FIRE_REPULSION_ATTACK": (3.9, 105),
+    "FLAME_VORTEX": (416.0, 120), "FLASHFIRE_ATTACK": (16.3, 120), "ORBITAL_EXPLOSION": (74.0, 120), "GREATER_FE_DAMAGE": (27.2, 120), "WORD_OF_FIRE_AS": (6.8, 120), "SPELL_CONTROL_MIN": (20.4, 120),
+    "FLAME_TEMPEST": (565.5, 177), "CINDER_MAELSTROM": (508.9, 177), "FIRES_LION_NORMAL_DAMAGE": (30.6, 177), "FIRES_FOX_BOSS_DAMAGE": (30.6, 177), "FIRES_FINAL_DAMAGE": (4.5, 177),
+    "GRAND_FE_BASIC_ATTACK": (22.9, 177), "BURNING_FOCUS_CRIT_RATE": (12.2, 177), "BURNING_FOCUS_CRIT_DAMAGE": (24.4, 177), "BRILLIANT_MIN": (15.3, 177), "BRILLIANT_MAX": (30.6, 177),
+    "LIBERATED_MAGIC_FD": (22.9, 177),
+    "FINAL_ORBITAL_FLAME": (551.0, 225), "BLAZING_EXTINCTION_LION": (2550.0, 225), "BLAZING_EXTINCTION_FOX": (3400.0, 225), "TOWERING_INFERNO_LION": (2868.7, 225),
+    "TOWERING_INFERNO_FOX": (5100.0, 225), "TOWERING_INFERNO_FOX_STRIKES": (1168.7, 225), "BURNING_CONDUIT_FD": (9.5, 225), "FINAL_FE_DEF_PEN": (5.0, 225), "FINAL_FE_CRIT_DAMAGE": (46.9, 225),
+    "PHOENIX_RUN_FD": (1.6, 225), "FLAME_BARRIER_ATTACK": (8.3, 225), "PURE_MAGIC_SKILL": (25.1, 225), "PURE_MAGIC_MAX": (50.2, 225), "WILD_BLAZE_FD": (20.1, 225),
+    "CYGNUS_FLAME_VORTEX": (483.0, 225), "CYGNUS_FLAME_TEMPEST": (281.7, 225), "CYGNUS_CINDER_MAELSTROM": (241.5, 225), "CYGNUS_ORBITAL_EXPLOSION": (563.5, 225),
+}
 
 
 def is_provisional(name):
@@ -214,27 +228,27 @@ STATUS_PHI_ROWS = sorted({e[0] for _g, _c, ents in STATUS_GROUPS for e in ents})
 
 # ---- flagged assumptions, one line per row (also listed in data/cygnus/blaze_wizard_known_gaps.md) ----
 ROW_NOTES = {
-    "FINAL_ORBITAL_FLAME": "PROVISIONAL curve (base 2900 = 290 %, idx 21, step 4).  Basic attack from level 100 (absent below, like every class).  Damage chain = raw tiers 10/11/12/13/14/15 summed then "
+    "FINAL_ORBITAL_FLAME": "Curve confirmed by the 2026-11-27 reading (base 2900 = 290 %, idx 21, step 4).  Basic attack from level 100 (absent below, like every class).  Damage chain = raw tiers 10/11/12/13/14/15 summed then "
                            "x(1+m/100); +10 / +10 Boss Damage (Lv111 / Lv124) is its own boss mastery; +1 strike at 136.  Targets 6 + Basic Attack Target Increase (that input already "
                            "contains the Lv64 mastery); FLAGGED: +1 more target in the NORMAL branch from Lv73 (Fires of Creation - Fire Lion).  Grand Flame Elemental's Basic Attack "
                            "Damage is time-averaged by Flame Elemental's uptime.",
-    "ORBITAL_EXPLOSION": "PROVISIONAL curve (base 500 = 50 %, idx 21, step 2).  FLAGGED: counted as SKILL damage (no [Basic Attack Effect] tag, like Meteor Proc); fire energy "
+    "ORBITAL_EXPLOSION": "Curve confirmed by the 2026-11-27 reading (base 500 = 50 %, idx 21, step 2).  FLAGGED: counted as SKILL damage (no [Basic Attack Effect] tag, like Meteor Proc); fire energy "
                          "lasts 15 s from the battle start and 'activates every 30 s' (window average 15/30, exact windows in fixed fights: [0,15) [30,45) [60,75); no Skill Cooldown "
                          "Decrease / Buff Duration on this interval); while it is up each Basic Attack rolls 60 % per enemy hit (q = 1-(1-0.6)^N, N = enemies the basic attack hits: 1 on "
                          "boss / PvP), at most one explosion per 1 s (rate X/(1+X)); 2 hits on 5 targets; +50 % damage at 54 (multiplies); Call of Cygnus +70 % Final Damage (per-skill).",
-    "FLAME_VORTEX": "PROVISIONAL curve (base 2600 = 260 %, idx 12, step 2).  260 x2 on 7 targets, +70 % damage at 39, Call of Cygnus Final Damage 60 (per-skill multiplier 1 + pct/100, Dawn Warrior's convention).",
-    "FLAME_TEMPEST": "PROVISIONAL curve (base 3000 = 300 %, idx 12, step 3).  300 x2 on 8 targets, +80 % at 68, stun 1 s from 90 (player stun for Status Effect Damage), Call of Cygnus Final Damage 35.",
-    "CINDER_MAELSTROM": "PROVISIONAL curve (base 2700 = 270 %, idx 12, step 3).  270 x3 on 6 targets, +50 % at 78, stun 1.5 s, Call of Cygnus Final Damage 30.  FLAGGED unlock 63 (icon order).  Weaken (Lv98): "
+    "FLAME_VORTEX": "Curve confirmed by the 2026-11-27 reading (base 2600 = 260 %, idx 12, step 2).  260 x2 on 7 targets, +70 % damage at 39, Call of Cygnus Final Damage 60 (per-skill multiplier 1 + pct/100, Dawn Warrior's convention).",
+    "FLAME_TEMPEST": "Curve confirmed by the 2026-11-27 reading (base 3000 = 300 %, idx 12, step 3).  300 x2 on 8 targets, +80 % at 68, stun 1 s from 90 (player stun for Status Effect Damage), Call of Cygnus Final Damage 35.",
+    "CINDER_MAELSTROM": "Curve confirmed by the 2026-11-27 reading (base 2700 = 270 %, idx 12, step 3).  270 x3 on 6 targets, +50 % at 78, stun 1.5 s, Call of Cygnus Final Damage 30.  FLAGGED unlock 63 (icon order).  Weaken (Lv98): "
                         "+9 % damage taken for 14 s joins the monster-damage-taken term of BOTH branches (True Sight convention), uptime = 14 s x (1 + Buff Duration) / effective cooldown.",
-    "BLAZING_EXTINCTION_FOX": "PROVISIONAL curve (base 16000 = 1600 %, idx 12, step 4).  FLAGGED: the Flame Fox variant is the BOSS / PvP branch (the game summons the Fox against a boss, the Lion otherwise): 1600 per "
+    "BLAZING_EXTINCTION_FOX": "Curve confirmed by the 2026-11-27 reading (base 16000 = 1600 %, idx 12, step 4).  FLAGGED: the Flame Fox variant is the BOSS / PvP branch (the game summons the Fox against a boss, the Lion otherwise): 1600 per "
                               "strike on 3 targets every 0.7 s for 5 s (0.5 s from Lv126 = 'Fox -0.2 s'); +50 % at 108; the window is not extended by Buff Duration Increase.  Requires Fires of "
                               "Creation (Lv50).  A swap between incarnates (3 s cooldown skill) is not charged.",
-    "BLAZING_EXTINCTION_LION": "PROVISIONAL curve (base 12000 = 1200 %, idx 12, step 4).  FLAGGED: the Fire Lion variant is the NORMAL-monster branch only: 1200 per strike on 9 targets every 0.5 s for 3 s "
+    "BLAZING_EXTINCTION_LION": "Curve confirmed by the 2026-11-27 reading (base 12000 = 1200 %, idx 12, step 4).  FLAGGED: the Fire Lion variant is the NORMAL-monster branch only: 1200 per strike on 9 targets every 0.5 s for 3 s "
                                "(0.4 s from Lv126), same cast / cooldown as the Fox row; strikes counted whole (floor(window / interval)).",
-    "TOWERING_INFERNO_FOX": "PROVISIONAL curve (base 24000 = 2400 %, idx 12, step 4).  Boss / PvP branch (Flame Fox): 2400 x2 on 4 targets, +50 % at 113.",
-    "TOWERING_INFERNO_FOX_STRIKES": "PROVISIONAL curve (base 5500 = 550 %, idx 12, step 4).  Boss branch only: 3 flame strikes (4 from Lv138) of 550 x2 each ('against bosses').  FLAGGED: the Lv113 +50 % mastery "
+    "TOWERING_INFERNO_FOX": "Curve confirmed by the 2026-11-27 reading (base 24000 = 2400 %, idx 12, step 4).  Boss / PvP branch (Flame Fox): 2400 x2 on 4 targets, +50 % at 113.",
+    "TOWERING_INFERNO_FOX_STRIKES": "Curve confirmed by the 2026-11-27 reading (base 5500 = 550 %, idx 12, step 4).  Boss branch only: 3 flame strikes (4 from Lv138) of 550 x2 each ('against bosses').  FLAGGED: the Lv113 +50 % mastery "
                                     "is assumed to apply to it; counted as part of the same Towering Inferno cast.",
-    "TOWERING_INFERNO_LION": "PROVISIONAL curve (base 13500 = 1350 %, idx 12, step 4).  Normal branch only (Fire Lion): 1350 x5 on 12 targets, +50 % at 113, and from Lv138 +150 % Normal Monster Damage for THIS row "
+    "TOWERING_INFERNO_LION": "Curve confirmed by the 2026-11-27 reading (base 13500 = 1350 %, idx 12, step 4).  Normal branch only (Fire Lion): 1350 x5 on 12 targets, +50 % at 113, and from Lv138 +150 % Normal Monster Damage for THIS row "
                              "(added to the row's own Normal Monster Damage term).",
 }
 

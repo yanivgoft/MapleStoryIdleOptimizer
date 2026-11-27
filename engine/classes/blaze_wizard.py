@@ -1,11 +1,10 @@
-"""Blaze Wizard (Cygnus Knight, INT main / LUK sub mage): an ENGINE-NATIVE, PROVISIONAL, UNPUBLISHED class - there is no workbook, builder or verify script for it.
+"""Blaze Wizard (Cygnus Knight, INT main / LUK sub mage): an ENGINE-NATIVE, PUBLISHED class (scaling confirmed 2026-11-27, published by the user the same day) - there is no workbook, builder or verify script for it.
 
     from engine.classes import blaze_wizard
     result = blaze_wizard.compute(blaze_wizard.defaults("World Boss"))
 
-``PUBLISHED = False``: the API hides the class (and the live site never serves it) until the user has supplied the skill SCALING data (one higher-level reading per skill) and
-the provisional curves of ``engine/data/blaze_wizard.py`` (``CURVES`` / ``PROVISIONAL``: every factor index is a convention, the bases are the user's level-1 values) are
-resolved.  The independent check is the user's level-1 text: ``tests/golden/test_blaze_wizard_displayed.py``.
+Published (no ``PUBLISHED`` flag).  The skill SCALING is confirmed (the user's higher-level readings of
+2026-11-27, ``CONFIRMED_BY_READINGS`` in ``engine/data/blaze_wizard.py``).  The independent check is the user's text and readings: ``tests/golden/test_blaze_wizard_displayed.py``.
 
 Built on Dawn Warrior's model (same input dict, artifacts / companion / Status Effect Damage + KO timeline plumbing, Sensitivity hooks).  Blaze Wizard specifics:
 
@@ -37,7 +36,6 @@ import status_timeline as stl  # noqa: E402  (src/status_timeline.py through the
 CLASS_ID = "blaze_wizard"
 CLASS_NAME = "Blaze Wizard"
 STAT_IDENTITY = {"main": "INT", "sub": "LUK"}
-PUBLISHED = False          # publish gate: flip only after the user confirmed the skill scaling in game (CLAUDE.md "Adding an engine-native class" step 6)
 
 _MAIN_STAT_FIELDS = [
     schema_mod.field("flat_int", "Flat INT", "Main stats", "float", "flat", 0),

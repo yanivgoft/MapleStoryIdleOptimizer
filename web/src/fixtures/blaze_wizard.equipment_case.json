@@ -1,0 +1,174 @@
+{
+ "request": {
+  "current": {
+   "attack": 1500,
+   "lines": [
+    {
+     "stat": "Damage %",
+     "value": 14
+    },
+    {
+     "stat": "Critical Rate %",
+     "value": 3
+    }
+   ]
+  },
+  "new": {
+   "attack": 2200,
+   "lines": [
+    {
+     "stat": "Final Damage %",
+     "value": 6
+    },
+    {
+     "stat": "Min Damage %",
+     "value": 15
+    },
+    {
+     "stat": "Damage %",
+     "value": 5
+    }
+   ]
+  }
+ },
+ "result": {
+  "current": {
+   "rows": [
+    {
+     "stat": "Attack (flat)",
+     "value": 1500.0,
+     "gain": 93610380.90523668,
+     "first": true,
+     "group": 93610380.90523668,
+     "factor": 1.0060000000001725
+    },
+    {
+     "stat": "Damage %",
+     "value": 14.0,
+     "gain": 1362953625.4410634,
+     "first": true,
+     "group": 1362953625.4410634,
+     "factor": 1.087359133397395
+    },
+    {
+     "stat": "Critical Rate %",
+     "value": 3.0,
+     "gain": 408938121.1900165,
+     "first": true,
+     "group": 408938121.1900165,
+     "factor": 1.0262110751337985
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    }
+   ],
+   "total_gain": 1912072304.7760139,
+   "pct": 12.25551452525304
+  },
+  "new": {
+   "rows": [
+    {
+     "stat": "Attack (flat)",
+     "value": 2200.0,
+     "gain": 137295225.32768047,
+     "first": true,
+     "group": 137295225.32768047,
+     "factor": 1.008800000000253
+    },
+    {
+     "stat": "Final Damage %",
+     "value": 6.0,
+     "gain": 936103809.0254493,
+     "first": true,
+     "group": 936103809.0254493,
+     "factor": 1.06
+    },
+    {
+     "stat": "Min Damage %",
+     "value": 15.0,
+     "gain": 1114409296.4589672,
+     "first": true,
+     "group": 1114409296.4589672,
+     "factor": 1.0714285714285778
+    },
+    {
+     "stat": "Damage %",
+     "value": 5.0,
+     "gain": 486769151.94323695,
+     "first": true,
+     "group": 486769151.94323695,
+     "factor": 1.0311996904990697
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    },
+    {
+     "stat": "(none)",
+     "value": 0.0,
+     "gain": 0,
+     "first": false,
+     "group": 0,
+     "factor": 1
+    }
+   ],
+   "total_gain": 2831001401.725491,
+   "pct": 18.145432425957765
+  },
+  "delta_pct": 5.889917900704724,
+  "delta_dps": 918929096.9494772,
+  "better": "new",
+  "class_id": "blaze_wizard",
+  "baseline_total": 15601730150.42414,
+  "crit_rate_total": 60.0,
+  "crit_priced_as_crit_damage": false,
+  "rate_by_stat": {
+   "Main Stat (flat)": 1357285.0683872409,
+   "Main Stat %": 48483283.5197827,
+   "Attack (flat)": 62406.92060349112,
+   "Min Damage %": 74293953.09726448,
+   "Max Damage %": 74293953.09726448,
+   "Damage %": 97353830.38864739,
+   "Critical Rate %": 136312707.06333885,
+   "Critical Damage %": 44537806.359745026,
+   "Boss Monster Damage %": 83361375.03423788,
+   "Normal Monster Damage %": 0.0,
+   "Defense Penetration %": 37685715.3380205,
+   "Defense (flat)": 0.0,
+   "Skill Level Bonus \u2014 1st Job": 5750433.652206459,
+   "Skill Level Bonus \u2014 2nd Job": 16224965.563599205,
+   "Skill Level Bonus \u2014 3rd Job": 27700402.72242673,
+   "Skill Level Bonus \u2014 4th Job": 62972031.32730056,
+   "Skill Level Bonus \u2014 All Skills": 112873948.06332463,
+   "Final Damage %": 156017301.50424156,
+   "Basic Attack Damage %": 53658608.637994014,
+   "Skill Damage %": 61493988.48428136,
+   "Attack Speed %": 73191223.67656422
+  }
+ }
+}

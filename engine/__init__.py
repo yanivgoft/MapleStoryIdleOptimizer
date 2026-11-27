@@ -13,7 +13,7 @@ from . import _src  # noqa: F401  (side effect: makes src/'s shared pure-Python 
 
 # Every class id the repo knows, published or not (the tests that loop over ``CLASSES`` therefore cover a class that is still unpublished).  A new class is added here.
 CLASSES = ("fp_mage", "hero", "ice_lightning_mage", "blaze_wizard", "paladin", "bowmaster", "bishop", "dark_knight",
-           "marksman", "buccaneer", "corsair", "night_lord", "shadower", "dawn_warrior", "night_walker")
+           "marksman", "buccaneer", "corsair", "night_lord", "shadower", "dawn_warrior", "night_walker", "wind_archer")
 
 INCLUDE_UNPUBLISHED_ENV = "MSI_INCLUDE_UNPUBLISHED"       # "1" = the API serves unpublished classes too (tests, fixture generation with --include-unpublished)
 

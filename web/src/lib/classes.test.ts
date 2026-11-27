@@ -20,7 +20,9 @@ describe("class picker logic (every class of the API fixture)", () => {
       expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
     }
     expect(g.find((x) => x.family === "Thief")!.classes.map((c) => c.id).sort()).toEqual(["night_lord", "night_walker", "shadower"]);
-    expect(g.find((x) => x.family === "Mage")!.classes).toHaveLength(3);
+    const mages = g.find((x) => x.family === "Mage")!.classes.map((c) => c.id);
+    expect(mages).toEqual(expect.arrayContaining(["bishop", "fp_mage", "ice_lightning_mage"]));
+    expect(mages).toHaveLength(classList.filter((c) => c.family === "Mage").length);
   });
   it("puts unknown families after the known ones", () => {
     const g = groupClasses([...classList, { id: "x", name: "X", family: "Explorer" }, { id: "y", name: "Y" }]);

@@ -2,7 +2,20 @@
   "_comment": "Understood, intended Total DPS DECREASES as the character level rises (tests/golden/test_engine_native.py, check level_sweep), per engine-native class: {\"level\": the level whose total is LOWER than at level-1, \"content_type\": optional, \"companion\": optional bool, \"reason\": mandatory}. A stale entry (no such decrease any more) fails the test.",
   "classes": {
     "night_walker": [
-      {"level": 49, "content_type": "World Boss", "companion": false, "reason": "Shadow Spark's Lv49 stun makes it a player stun skill: the Status/KO timeline then casts it on cooldown from t = 0 (fixed schedule, project convention shared with Hero's Rush / Dawn's Sol Rush) instead of letting the optimiser place the casts inside the 24-34 s / 59-69 s KO windows (timing factor 1.8 -> 1.3 on the only damage row below level 100: 4 -> 5 casts, Spark 8.57e6 -> 7.74e6 of 9.48e6 -> 8.89e6 total).  Level 48 has the same skill with free placement."}
+      {
+        "level": 49,
+        "content_type": "World Boss",
+        "companion": false,
+        "reason": "Shadow Spark's Lv49 stun makes it a player stun skill: the Status/KO timeline then casts it on cooldown from t = 0 (fixed schedule, project convention shared with Hero's Rush / Dawn's Sol Rush) instead of letting the optimiser place the casts inside the 24-34 s / 59-69 s KO windows (timing factor 1.8 -> 1.3 on the only damage row below level 100: 4 -> 5 casts, Spark 8.57e6 -> 7.74e6 of 9.48e6 -> 8.89e6 total).  Level 48 has the same skill with free placement."
+      }
+    ],
+    "wind_archer": [
+      {
+        "level": 69,
+        "content_type": "Breakthrough",
+        "companion": false,
+        "reason": "Emerald Flower (Lv69) is a new actively cast buff: the Buff-Casting Startup Delay grows by one cast (1.59 s -> 2.39 s) in the 40 s Breakthrough fight and Pinpoint Pierce loses one of its exact integer casts (Pinpoint Pierce 6.2e7 -> 4.3e7 of 2.48e8 -> 2.36e8 total); the flower's boss damage taken (+15 % x 58 % uptime) only helps the boss branch (40 % of the fight).  The repo's exact-cast convention, the same boundary effect as Blaze Wizard's Lv35 startup-delay drop (KNOWN_GAPS)."
+      }
     ]
   }
 }

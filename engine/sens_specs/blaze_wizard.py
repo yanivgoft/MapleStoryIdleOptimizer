@@ -29,8 +29,8 @@ SEMANTICS = {
     "luk": _INT_NOTE,
     "final_damage": "the +1% multiplicative step bumps the whole Final Damage bucket, including the live Final Flame Elemental / Burning Conduit share (Current / New include it)",
     "skill_lvl_1st": "adds Fire Repulsion's (Attack %) level delta",
-    "skill_lvl_2nd": "adds Word of Fire's (Attack Speed), Spell Control's (Min Damage) and Fires of Creation's (Final Damage) level deltas",
-    "skill_lvl_3rd": "adds Brilliant Enlightenment's (Min / Max Damage), Burning Focus' (Crit Rate / Crit Damage) and Liberated Magic's (Final Damage) level deltas",
+    "skill_lvl_2nd": "adds Word of Fire's (Attack Speed) and Spell Control's (Min Damage) level deltas",
+    "skill_lvl_3rd": "adds Fires of Creation's (equipped Final Damage), Brilliant Enlightenment's (Min / Max Damage), Burning Focus' (Crit Rate / Crit Damage) and Liberated Magic's (Final Damage) level deltas",
     "skill_lvl_4th": "adds Phoenix Run's and Wild Blaze's (Final Damage), Flame Barrier's (Attack %) and Pure Magic's (Skill Damage, Max Damage) level deltas",
     "skill_lvl_all": "adds every passive's level delta (Fire Repulsion, Word of Fire, Spell Control, Fires of Creation, Brilliant Enlightenment, Burning Focus, Liberated Magic, Phoenix Run, Wild Blaze, Flame Barrier, Pure Magic)",
     "crit_rate": "Book of Ancient (if equipped): Crit Damage follows the crit-rate change",
@@ -58,7 +58,7 @@ PASSIVE_LEVELS = (
     PassiveLevel("attack_mult_delta", 30, 22, 1, None),           # Fire Repulsion (Attack %)
     PassiveLevel("attack_speed_extra", 50, 22, 2, 33),            # Word of Fire (Attack Speed)
     PassiveLevel("min_damage_delta", 150, 22, 2, 43),             # Spell Control (Min Damage Multiplier)
-    PassiveLevel("final_damage_delta", 30, 21, 2, 50),            # Fires of Creation (Final Damage while equipped; an active skill: idx 21)
+    PassiveLevel("final_damage_delta", 30, 22, 3, 50),            # Fires of Creation (Final Damage while equipped; 3rd job, idx 22 by the 2026-11-27 reading)
     PassiveLevel("min_damage_delta", 100, 22, 3, 66),             # Brilliant Enlightenment (Min Damage Multiplier)
     PassiveLevel("max_damage_delta", 200, 22, 3, 66),             # Brilliant Enlightenment (Max Damage Multiplier)
     PassiveLevel("crit_rate_delta", 80, 22, 3, 72),               # Burning Focus (Crit Rate)

@@ -5,7 +5,7 @@ sensitivity engine")."""
 import dataclasses
 import importlib
 
-CLASS_IDS = ("fp_mage", "dark_knight", "hero", "ice_lightning_mage", "blaze_wizard", "bishop", "buccaneer", "marksman", "bowmaster", "corsair", "paladin", "shadower", "night_lord", "dawn_warrior", "night_walker")
+CLASS_IDS = ("fp_mage", "dark_knight", "hero", "ice_lightning_mage", "blaze_wizard", "bishop", "buccaneer", "marksman", "bowmaster", "corsair", "paladin", "shadower", "night_lord", "dawn_warrior", "night_walker", "wind_archer")
 _cache = {}
 
 # toggles of the artifacts the game added after the frozen workbooks (patch 2026-11-26) that the specs of the workbook classes do not list: Shiny Watch and Mummydog's Bandages

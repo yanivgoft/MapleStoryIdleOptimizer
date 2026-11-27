@@ -2059,7 +2059,16 @@ Site-confirmed (asserted against the site JSON by the displayed-value test, not 
 
 **Verification** (2026-11-24): displayed-value test (re-run after the readings): 138 values reproduced (32 level-1 values, 35 higher-level readings at total level 151 / 219 / 279 / 322 through the engine's own level resolution, 8 cooldown readings with Skill Cooldown Decrease 3.5, timings / masteries / buff derived values) + 138 site-table facts equal to the engine data (12 site-confirmed curves, 8 confirmed by the readings, 0 PROVISIONAL, asserted to be exactly the CURVES the site does not cover); engine-native snapshot `tests/golden/night_walker_snapshot.json` created 2026-11-24 (330 cases, 41772 leaves, 1.49 MB, EXTENDED factor mode); `tests/run_all.py --class night_walker` all green (displayed, snapshot, engine-native 8/8, API); [earlier verification of the unpublished build:] `tests/golden/test_engine_native.py --class night_walker` 8/8 (spec, hooks no-ops, API shape, Final Damage +1 % exact, equip-toggle direction invariance of 16 pairs, 36 artifacts finite, 10 content types x 2 stat sets x companion on/off, level sweep 1-200 x 3 fights with the one allow-listed decrease above); extra scratch runs: level sweep 1-200 x 10 contents x {default, late, weak} stats x {no companion, Blaze Wizard Lv10} = 12000 runs finite and non-negative, decreases only at Lv49 / Lv63 (item 14); 400-case random fuzz (random level, content, every stat, 0-5 random artifacts at random stars, random companion) with no NaN / negative / exception; blank (None) inputs in every content type; the generic snapshot matrix (326 cases incl. sensitivity, cube / equipment / potential pricing) computes finite with NO snapshot written; every non-hook Sensitivity row equals a direct re-run with the swept input (World Boss / Chapter Hunt / Chapter Boss, with and without artifacts; only the main-stat channel and the skill-level rows differ, by design); the API (TestClient, `MSI_INCLUDE_UNPUBLISHED=1`) lists `night_walker` and answers schema / defaults / compute / sensitivity (+ meta) / cubes (+ meta) / equipment-compare with 200, and with the variable off the class is hidden (404).
 
-## Blaze Wizard (engine-native, no workbook, PROVISIONAL, UNPUBLISHED)
+## Blaze Wizard (engine-native, no workbook, scaling CONFIRMED 2026-11-27, PUBLISHED 2026-11-27)
+
+**PUBLISHED 2026-11-27** on the user's decision (snapshot `blaze_wizard_snapshot.json` created, fixtures generated).  Still unconfirmed: unlock-level mapping by icon order, mastery details, stat identity.
+
+**UPDATE 2026-11-27: every growth curve is CONFIRMED** by the user's higher-level readings (`/Users/yaniv/private/Blaze_Wizzard/Skills_With_levels`, 27 pop-ups at character level 121: total skill level 105 / 120 / 177 / 225 for the four
+job tiers = 1st 60+45, 2nd 90+30, 3rd 120+57, 4th 63+162; transcribed in `tests/golden/test_blaze_wizard_displayed.py::READINGS` and `CONFIRMED_BY_READINGS` of `engine/data/blaze_wizard.py`; `PROVISIONAL` is empty).  The convention
+(burst 12, basic attack / active buffs 21, passives 22, Call of Cygnus 23, step = the unlock tier) held for 38 of 40 curves; the exceptions: **Flashfire's Attack is idx 22** (16.3 at 120, not the active-buff idx 21) and **Fires of Creation
+is a 3rd-job skill on idx 22** (30.6 / 4.5 at 177; was step 2, idx 21).  The readings also confirm the 2026-11-26 patch values in game (Pure Magic Max Damage base 30 -> 50.2 at 225, Flame Barrier barrier base 10 -> 16.7) and that Phoenix Run's
+tooltip shows 1.6 % per stack at 225 (= 1 % x 1.675; whether the Lv118 "boost +100 %" doubles it on top is still an assumption).  Buff Duration of Wild Blaze scales too (6 -> 10 at 225; it is a typed input).  What is still open
+before publishing: the unlock-level mapping by icon order (flag 2 below), the mastery details, the stat identity.  The text below is the state before the readings (the "PROVISIONAL" wording is historical).
 
 Blaze Wizard (Cygnus Knight, INT main / LUK sub mage) is the second class that exists ONLY in the engine / web app and the first one whose scaling is NOT known: the user supplied LEVEL-1 pop-ups only (fresh character, "Lv. 1" on every pop-up = the BASE
 value, factor 1.0; transcription in `data/cygnus/blaze_wizard_ingame.md`, screenshots outside the repo in `/Users/yaniv/private/Blaze_Wizzard`).  A level-1 reading fixes each base EXACTLY but says nothing about the growth curve, and the site's job-skill-impact
@@ -2126,6 +2135,32 @@ Orbital Explosion, Cinder Maelstrom's weaken, Elemental Harmony (Attack Speed), 
 extra: level sweep 1..200 over all 10 content types x 3 stat sets x with / without companion (12000 runs): the only decrease is the Chapter Boss Lv35 startup-delay cast drop of item 18; 400-case random fuzz (all fields, content types, companions, 0-5 artifacts) without NaN / negative / error; Sensitivity "New Total" equals a plain re-run with the swept value for every stat except the main-stat / skill-level / crit-rate / attack-speed
 blocks (block-only terms by design) and Final Damage (bumps the whole bucket by design) with Bottle of Emotion + Reindeer's Spear at star 5 in World Boss, Chapter Hunt and Breakthrough; `engine.sensitivity.run` (stats / artifacts / companions / summon_time / cdr), the cube / equipment pricing (`snapshot_common.run_cubes`) and the API through TestClient with `MSI_INCLUDE_UNPUBLISHED=1`
 (`/api/classes` lists it, schema, defaults, compute, sensitivity, sensitivity/meta, cubes/meta answer 200) answer; without the variable the API lists 13 classes and every route 404s.
+
+## Wind Archer (engine-native, no workbook, ALL curves PROVISIONAL, UNPUBLISHED)
+
+Wind Archer (Cygnus Knight bowman) is the third Cygnus class built without Excel and the second whose scaling is unknown: the user supplied LEVEL-1 pop-ups only (`data/cygnus/wind_archer_ingame.md`, screenshots outside the repo in
+`/Users/yaniv/private/wind_archer`).  A level-1 reading fixes each base exactly but not the growth curve, and the site's tables have no Wind Archer rows, so **every factor index / job step is a convention** (burst 12, basic attack / procs / active
+buffs 21, passives 22, Call of Cygnus 23; `CURVES` + `PROVISIONAL` in `engine/data/wind_archer.py`, one triple per skill to edit).  Files: `engine/data/wind_archer.py`, `engine/classes/wind_archer.py` (model, modelled on Blaze Wizard; `PUBLISHED = False`),
+`engine/sens_specs/wind_archer.py`, `tests/golden/test_wind_archer_displayed.py` (161 level-1 checks).  No snapshot yet (optional while unpublished), no web fixtures.  **Before publishing:** one higher-level reading per skill (the Blaze `Skills_With_levels`
+method), then `CONFIRMED_BY_READINGS`, a snapshot (`update_goldens.py --create --class wind_archer`), fixtures and `PUBLISHED = True`.
+
+Flagged assumptions (also `ROW_NOTES` / `FLAGS` in the data module):
+1. **Unlock levels** by icon order (Spiraling Vortex 30 vs 35, Pinpoint Pierce 63, Emerald Flower 69, Song of Heaven 103, Trifling Wind 40 ...); the test only checks that each level occurs in the transcribed grids.
+2. **Stat identity DEX main / STR sub** assumed.
+3. **Trifling Wind** ("a skill is activated"): every cooldown cast (damage skills and buffs), at most once per 2 s; 3 Spirit Arrows (+2 at 104, +2 at 130) each on a random target; masteries +50 (44) and +80 (73) are summed then multiply;
+   Trifling Wind II (100 %) REPLACES Trifling Wind I (36 %) from level 66; the x2 chance (25 %, +15 pp at 90) enters as its expectation 1+p; Trifling Wind III's +100 % (+35 at 113 added raw) is a Final Damage on the arrows.
+4. **Spirit Arrow ladder** (-20 % per consecutive strike on one target, floor 20 %) applies only against a single target (boss / PvP branch); in a pack each arrow is assumed to pick another target.
+5. **Song of Heaven**'s Spirit Arrows (13 volleys x 2, +3 from 134) use Trifling Wind's current damage; the 13 volleys are a fixed count (Attack Speed only shortens them).
+6. **Storm Bringer** is a steady-state expectation (no exact windows): activation starts the storm with 50 % while off cooldown (25 s, reduced by Skill Cooldown Decrease), the storm lasts 15 s and is NOT extended by Buff Duration, every attack rolls
+   30 % (+30 pp at 138) per enemy hit, the giant arrow has a 0.5 s cooldown.
+7. **Emerald Flower** (+15 % boss damage taken) and **Emerald Dust** (+8 % damage taken in range) are ADDED (boss 23 %, normal 8 %) while the flower lasts; Emerald Dust's 3 % Final Damage (+6 pp at 118) is a standalone 20 s buff (patch 2026-11-26),
+   Buff Duration Increase applies to it, not to the flower window.  Emerald Flower's own Speed -10 % is ignored (movement only).
+8. **Second Wind**: Attack Speed +15 % for 8 s after 8 activations (-4 at 82), 4 s dead time: uptime `dur / (dur + dead + N / r)`.
+9. **Timed buffs** (Storm Elemental, Sharp Eyes, Elemental Harmony, Emerald Flower) are cast on cooldown from t = 0 and averaged by uptime (no timeline-engine entries); Sharp Eyes' allied crit share is not modelled, only YOUR Critical Damage +40 %.
+10. **Stat-screen passives** (Whispers, Agile Bows, Sylvan Aid, Featherweight, Eagle Eye, Touch of the Wind, Bow Expert, Albatross Max ...) are NOT added to the typed stats (the Inputs come from the in-game stat screen); only their Sensitivity level deltas exist.
+    Bow Expert's Max Damage Multiplier uses the patch 2026-11-26 value (30).
+11. Not modelled: Sentient Arrow (3rd-job basic attack, below level 100 no basic attack in any class), Wind Walk, Evasion Boost, MP costs.
+12. One engine-native level-sweep decrease is allowlisted (level 69, Breakthrough, no companion: Emerald Flower startup delay / Pinpoint Pierce exact-cast loss; `tests/golden/native_level_allowlist.json`).
 
 ## Typed stats include the equipped artifacts + equip toggles in blended content (2026-11-25, engine / API only; the workbooks keep their convention)
 

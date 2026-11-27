@@ -24,7 +24,7 @@ log = logging.getLogger("msi.registry")
 FAMILIES = {
     "hero": "Warrior", "paladin": "Warrior", "dark_knight": "Warrior", "dawn_warrior": "Warrior",
     "fp_mage": "Mage", "ice_lightning_mage": "Mage", "blaze_wizard": "Mage", "bishop": "Mage",
-    "bowmaster": "Archer", "marksman": "Archer",
+    "bowmaster": "Archer", "marksman": "Archer", "wind_archer": "Archer",
     "night_lord": "Thief", "shadower": "Thief", "night_walker": "Thief",
     "buccaneer": "Pirate", "corsair": "Pirate",
 }

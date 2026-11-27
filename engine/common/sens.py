@@ -17,7 +17,7 @@ The hook vocabulary (keys of ``inputs["_sens"]``, all optional):
 ``monster_defense``                   PvP opponent Defense fixed to the main sheet's value (the block's ``ib("monster_defense")`` is the baseline Inputs cell)
 ``mainstat_attack_delta``             flat-Attack channel of the main / sub stat (CLAUDE.md bug 7): ADDED to ATTACK as ``delta x (1 + ATTACK%/100)``
 ``min_damage_delta`` / ``max_damage_delta`` / ``skill_damage_delta`` / ``basic_attack_damage_delta`` / ``boss_damage_delta`` / ``final_damage_delta`` /
-``crit_rate_delta`` / ``crit_damage_delta`` /
+``crit_rate_delta`` / ``crit_damage_delta`` / ``damage_delta`` / ``normal_damage_delta`` /
 ``attack_speed_extra``                additive deltas baked into the Inputs of passive skills / artifacts (level deltas, Athena's direct Attack Speed ...)
 ``as_bonus_extra``                    (Ice/Lightning Mage) a passive's level delta added to the BONUS side of the Attack Speed diminishing returns (MP Eater's flat Attack Speed), not the typed side
 ``attack_mult_delta``                 (Buccaneer) an Attack% passive's level delta (Dark Clarity: baked into Inputs!attack_pct): ADDED to the additive Attack% bucket next to the class's own live Attack% terms

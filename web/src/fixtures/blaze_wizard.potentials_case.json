@@ -1,0 +1,1058 @@
+{
+ "request": {
+  "potentials": {
+   "book_of_ancient": {
+    "star": 5,
+    "lines": [
+     {
+      "rarity": "Legendary",
+      "stat": "Damage %"
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Critical Rate %"
+     }
+    ]
+   },
+   "pigs_ribbon": {
+    "star": 3,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Defense Penetration %"
+     }
+    ]
+   }
+  }
+ },
+ "result": {
+  "class_id": "blaze_wizard",
+  "baseline_total": 15601730150.42414,
+  "rows": [
+   {
+    "key": "charm_of_the_undead",
+    "label": "Charm of the Undead",
+    "rank": "Epic",
+    "equipped": false,
+    "star": 5,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "pigs_ribbon",
+    "label": "Pig's Ribbon",
+    "rank": "Epic",
+    "equipped": false,
+    "star": 3,
+    "lines": [
+     {
+      "rarity": "Unique",
+      "stat": "Defense Penetration %",
+      "active": true,
+      "gain": 169585719.02109227
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 169585719.02109054
+   },
+   {
+    "key": "shamaness_marble",
+    "label": "Shamaness Marble",
+    "rank": "Epic",
+    "equipped": false,
+    "star": 5,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "contract_of_darkness",
+    "label": "The Contract of Darkness",
+    "rank": "Epic",
+    "equipped": false,
+    "star": 5,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "rainbow_snail_shell",
+    "label": "Rainbow-colored Snail Shell",
+    "rank": "Unique",
+    "equipped": false,
+    "star": 3,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "hexagon_necklace",
+    "label": "Hexagon Necklace",
+    "rank": "Unique",
+    "equipped": false,
+    "star": 3,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "arwens_glass_shoes",
+    "label": "Arwen's Glass Shoes",
+    "rank": "Unique",
+    "equipped": false,
+    "star": 3,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "mushmoms_cap",
+    "label": "Mushmom's Cap",
+    "rank": "Unique",
+    "equipped": false,
+    "star": 3,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "clear_spring_water",
+    "label": "Clear Spring Water",
+    "rank": "Unique",
+    "equipped": false,
+    "star": 3,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "athena_gloves",
+    "label": "Athena Pierce's Old Gloves",
+    "rank": "Unique",
+    "equipped": false,
+    "star": 3,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "zakums_stone_piece",
+    "label": "Zakum's Stone Piece",
+    "rank": "Unique",
+    "equipped": false,
+    "star": 3,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "horntails_scale",
+    "label": "Horntail's Scale",
+    "rank": "Unique",
+    "equipped": false,
+    "star": 3,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "pink_beans_giant_rib",
+    "label": "Pink Bean's Giant Rib",
+    "rank": "Unique",
+    "equipped": false,
+    "star": 3,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "chalice",
+    "label": "Chalice",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "old_music_box",
+    "label": "Old Music Box",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "silver_pendant",
+    "label": "Silver Pendant",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "star_rock",
+    "label": "Star Rock",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "book_of_ancient",
+    "label": "Book of Ancient",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 5,
+    "lines": [
+     {
+      "rarity": "Legendary",
+      "stat": "Damage %",
+      "active": true,
+      "gain": 1362953625.4410634
+     },
+     {
+      "rarity": "Epic",
+      "stat": "Critical Rate %",
+      "active": true,
+      "gain": 408938121.1900165
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": true,
+      "gain": 0.0
+     }
+    ],
+    "total": 1807616226.5113978
+   },
+   {
+    "key": "lunar_dew",
+    "label": "Lunar Dew",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "fire_flower",
+    "label": "Fire Flower",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "soul_contract",
+    "label": "Soul Contract",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "lit_lamp",
+    "label": "Lit Lamp",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "soul_pouch",
+    "label": "Soul Pouch",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "ancient_text_piece",
+    "label": "Ancient Text Piece",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "icy_soul_rock",
+    "label": "Icy Soul Rock",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "flaming_lava",
+    "label": "Flaming Lava",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "sayrams_necklace",
+    "label": "Sayram's Necklace",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "bottle_of_emotion",
+    "label": "Bottle of Emotion",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "peach_tree",
+    "label": "Peach Tree Herb Pouch",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "candle",
+    "label": "Candle",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "alliance_badge",
+    "label": "Alliance Badge",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "horn_flute",
+    "label": "Horn Flute",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "cursed_doll",
+    "label": "Cursed Doll",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "reindeer_spear",
+    "label": "Reindeer's Spear",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "secret_map",
+    "label": "Secret Map",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "ring_of_cycles",
+    "label": "Ring of Cycles",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "sealed_bottle",
+    "label": "Sealed Bottle",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "shiny_watch",
+    "label": "Shiny Watch",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   },
+   {
+    "key": "mummydogs_bandages",
+    "label": "Mummydog's Bandages",
+    "rank": "Legendary",
+    "equipped": false,
+    "star": 0,
+    "lines": [
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     },
+     {
+      "rarity": "Rare",
+      "stat": "(none)",
+      "active": false,
+      "gain": 0.0
+     }
+    ],
+    "total": 0.0
+   }
+  ]
+ },
+ "rate_by_stat": {
+  "Main Stat %": 48483283.5197827,
+  "Critical Rate %": 136312707.06333885,
+  "Min Damage Multiplier %": 74293953.09726448,
+  "Max Damage Multiplier %": 74293953.09726448,
+  "Boss Monster Damage %": 83361375.03423788,
+  "Normal Monster Damage %": 0.0,
+  "Damage %": 97353830.38864739,
+  "Defense Penetration %": 37685715.3380205
+ }
+}

@@ -44,3 +44,12 @@ Mage, INT main / LUK sub (to confirm). Values are BASE values (factor 1.0). NOT 
 128 Final Orbital Flame +14% | 130 Final Flame Elemental - Final Damage: +3% for the duration of Flame Elemental | 132 Final Orbital Flame +15% | 134 Flame Barrier - Attack: additionally +10%p | 136 Final Orbital Flame - Strike: strike count +1 |
 138 Towering Inferno - Incarnation: Fire Lion +150% additional Normal Monster Damage; Flame Fox +1 flame strike(s) against bosses.
 (Mastery pop-ups also show a currency cost and a learning timer; irrelevant for DPS.)
+
+
+## Higher-level readings (2026-11-27; character level 121; total skill level: 1st 60+45 = 105, 2nd 90+30 = 120, 3rd 120+57 = 177, 4th 63+162 = 225; source /Users/yaniv/private/Blaze_Wizzard/Skills_With_levels)
+Displayed value at that total level (base in brackets): Flame Elemental Attack 21.3 (15); Fire Repulsion Attack 3.9 (3) / Defense 19.7 (15); Flame Vortex 416 (260); Flashfire Attack 16.3 (12); Orbital Explosion 74 (50);
+Greater Flame Elemental 27.2 (20); Word of Fire 6.8 (5); Spell Control 20.4 (15); Controlled Burn MP 2 (1.5); Flame Tempest 565.5 (300); Cinder Maelstrom 508.9 (270); Fires of Creation Lion / Fox 30.6 (20), Final Damage 4.5 (3);
+Grand Flame Elemental 22.9 (15); Burning Focus 12.2 / 24.4 (8 / 16); Brilliant Enlightenment 15.3 / 30.6 (10 / 20); Liberated Magic 22.9 (15); Final Orbital Flame 551 (290); Blazing Extinction 2550 / 3400 (1200 / 1600);
+Towering Inferno 2868.7 / 5100 / strike 1168.7 (1350 / 2400 / 550); Burning Conduit allied damage 66.5 (35), allied Basic Attack 19 (10), own Final Damage 9.5 (5); Final Flame Elemental Def Pen 5 (3) / Crit Damage 46.9 (28);
+Phoenix Run 1.6 % per second, 12 stacks, Death Evasion 1 s (patch text); Flame Barrier Attack 8.3 (5), barrier 16.7 % of Max HP (10); Pure Magic Skill 25.1 (15) / Max 50.2 (30); Wild Blaze Final Damage 20.1 (12), Buff Duration 10 (6);
+Call of Cygnus 483 / 281.7 / 241.5 / 563.5 (60 / 35 / 30 / 70).  Cooldown pop-ups show "28(-3)" etc. (Skill Cooldown Decrease 3 s).

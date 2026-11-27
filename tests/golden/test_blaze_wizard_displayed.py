@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Displayed-value test of the Blaze Wizard data (the only real-game check of this engine-native, PROVISIONAL, unpublished class; no workbook exists).
+"""Displayed-value test of the Blaze Wizard data (the only real-game check of this engine-native, unpublished class; no workbook exists).
 
 SOURCE: ``data/cygnus/blaze_wizard_ingame.md`` = the user's LEVEL-1 pop-ups (fresh character, "Lv. 1" everywhere: the displayed value IS the base, factor 1.0).  There is NO site
 cross-check for this class: ``maplestoryidle.info``'s job-skill-impact table has no Blaze Wizard rows, so every factor index (the growth curve) is a convention (Dawn Warrior's:
@@ -110,8 +110,8 @@ def check_coefficients():
     bad = []
     for name, shown, key in TABLE:
         c = D.CURVES[key]
-        if not D.is_provisional(key):
-            bad.append(f"{name}: {key} is not marked PROVISIONAL (no higher-level reading exists)")
+        if D.is_provisional(key):
+            bad.append(f"{name}: {key} is still marked PROVISIONAL (every curve has a higher-level reading since 2026-11-27)")
         if SL1.input_level(c.step) > 1:
             bad.append(f"{name}: total level {SL1.input_level(c.step)} > 1")
         if factors.get_factor(1, c.fidx) != 1000:
@@ -127,6 +127,79 @@ def check_coefficients():
     if missing:
         bad.append(f"curves with no displayed value in this test: {missing}")
     return bad
+
+
+# ---- the higher-level readings of 2026-11-27 (character level 121; total skill level = tier base + that tier's displayed bonus: 1st 60+45, 2nd 90+30, 3rd 120+57, 4th 63+162) ----
+READING_LEVEL = 121
+READING_BONUS = dict(skill_lvl_1st=45, skill_lvl_2nd=30, skill_lvl_3rd=57, skill_lvl_4th=162, skill_lvl_all=0)
+TOTAL_OF_STEP = {1: 105, 2: 120, 3: 177, 4: 225}
+# (what, level-1 base in %, shown value at the total level, job step, factor index, CURVES key or None = a number the model does not scale (no DPS effect) / a Sensitivity passive)
+READINGS = [
+    ("Flame Elemental: Attack", 15, 21.3, 1, 21, "FLAME_ELEMENTAL_ATTACK"), ("Fire Repulsion: Attack", 3, 3.9, 1, 22, "FIRE_REPULSION_ATTACK"), ("Fire Repulsion: Defense", 15, 19.7, 1, 22, None),
+    ("Flame Vortex", 260, 416.0, 2, 12, "FLAME_VORTEX"), ("Flashfire: Attack", 12, 16.3, 2, 22, "FLASHFIRE_ATTACK"), ("Orbital Explosion: additional damage", 50, 74.0, 2, 21, "ORBITAL_EXPLOSION"),
+    ("Greater Flame Elemental: damage", 20, 27.2, 2, 22, "GREATER_FE_DAMAGE"), ("Word of Fire: Attack Speed", 5, 6.8, 2, 22, "WORD_OF_FIRE_AS"), ("Spell Control: Min Damage Multiplier", 15, 20.4, 2, 22, "SPELL_CONTROL_MIN"),
+    ("Controlled Burn: MP recovery", 1.5, 2.0, 2, 22, None),
+    ("Flame Tempest", 300, 565.5, 3, 12, "FLAME_TEMPEST"), ("Cinder Maelstrom", 270, 508.9, 3, 12, "CINDER_MAELSTROM"),
+    ("Fires of Creation: Fire Lion Normal Monster Damage", 20, 30.6, 3, 22, "FIRES_LION_NORMAL_DAMAGE"), ("Fires of Creation: Flame Fox Boss Monster Damage", 20, 30.6, 3, 22, "FIRES_FOX_BOSS_DAMAGE"),
+    ("Fires of Creation: Final Damage", 3, 4.5, 3, 22, "FIRES_FINAL_DAMAGE"), ("Grand Flame Elemental: Basic Attack Damage", 15, 22.9, 3, 22, "GRAND_FE_BASIC_ATTACK"),
+    ("Burning Focus: Critical Rate", 8, 12.2, 3, 22, "BURNING_FOCUS_CRIT_RATE"), ("Burning Focus: Critical Damage", 16, 24.4, 3, 22, "BURNING_FOCUS_CRIT_DAMAGE"),
+    ("Brilliant Enlightenment: Min Damage Multiplier", 10, 15.3, 3, 22, "BRILLIANT_MIN"), ("Brilliant Enlightenment: Max Damage Multiplier", 20, 30.6, 3, 22, "BRILLIANT_MAX"),
+    ("Liberated Magic: Final Damage", 15, 22.9, 3, 22, "LIBERATED_MAGIC_FD"),
+    ("Final Orbital Flame", 290, 551.0, 4, 21, "FINAL_ORBITAL_FLAME"), ("Blazing Extinction: Fire Lion", 1200, 2550.0, 4, 12, "BLAZING_EXTINCTION_LION"),
+    ("Blazing Extinction: Flame Fox", 1600, 3400.0, 4, 12, "BLAZING_EXTINCTION_FOX"), ("Towering Inferno: Fire Lion", 1350, 2868.7, 4, 12, "TOWERING_INFERNO_LION"),
+    ("Towering Inferno: Flame Fox", 2400, 5100.0, 4, 12, "TOWERING_INFERNO_FOX"), ("Towering Inferno: Flame Fox boss flame strike", 550, 1168.7, 4, 12, "TOWERING_INFERNO_FOX_STRIKES"),
+    ("Burning Conduit: own Final Damage", 5, 9.5, 4, 21, "BURNING_CONDUIT_FD"), ("Burning Conduit: allied damage", 35, 66.5, 4, 21, None), ("Burning Conduit: allied Basic Attack Damage", 10, 19.0, 4, 21, None),
+    ("Final Flame Elemental: Defense Penetration", 3, 5.0, 4, 22, "FINAL_FE_DEF_PEN"), ("Final Flame Elemental: Critical Damage", 28, 46.9, 4, 22, "FINAL_FE_CRIT_DAMAGE"),
+    ("Phoenix Run: Final Damage per stack", 1, 1.6, 4, 22, "PHOENIX_RUN_FD"), ("Flame Barrier: Attack", 5, 8.3, 4, 22, "FLAME_BARRIER_ATTACK"), ("Flame Barrier: barrier (% of Max HP)", 10, 16.7, 4, 22, None),
+    ("Pure Magic: Skill Damage", 15, 25.1, 4, 22, "PURE_MAGIC_SKILL"), ("Pure Magic: Max Damage Multiplier", 30, 50.2, 4, 22, "PURE_MAGIC_MAX"), ("Wild Blaze: Final Damage", 12, 20.1, 4, 22, "WILD_BLAZE_FD"),
+    ("Wild Blaze: Buff Duration", 6, 10.0, 4, 22, None),
+    ("Call of Cygnus: Flame Vortex", 60, 483.0, 4, 23, "CYGNUS_FLAME_VORTEX"), ("Call of Cygnus: Flame Tempest", 35, 281.7, 4, 23, "CYGNUS_FLAME_TEMPEST"),
+    ("Call of Cygnus: Cinder Maelstrom", 30, 241.5, 4, 23, "CYGNUS_CINDER_MAELSTROM"), ("Call of Cygnus: Orbital Explosion", 70, 563.5, 4, 23, "CYGNUS_ORBITAL_EXPLOSION"),
+]
+
+
+def check_readings():
+    """The higher-level readings reproduced (truncated to 1 decimal) through the engine's own level resolution and coefficient function (extended factor mode)."""
+    bad = []
+    n = 0
+    m = BW.model(dict(BW.defaults("Chapter Hunt"), level=READING_LEVEL, **READING_BONUS))
+    for step, total in TOTAL_OF_STEP.items():
+        n += 1
+        if m.sl.input_level(step) != total:
+            bad.append(f"job step {step}: engine total skill level {m.sl.input_level(step)} != the readings' {total}")
+    for what, base, shown, step, idx, key in READINGS:
+        n += 1
+        if key is None:
+            got = trunc1(m.sl.coeff_pct(base * 10, idx, True, step))
+        else:
+            c = D.CURVES[key]
+            if (c.base, c.fidx, c.step) != (base * 10, idx, step):
+                bad.append(f"{what}: CURVES[{key}] = {tuple(c)} != the reading's {(base * 10, idx, step)}")
+            got = trunc1(m.sl.coeff_pct(c.base, c.fidx, True, c.step))
+        if got != shown:
+            bad.append(f"{what}: engine {got} != shown {shown} (total level {TOTAL_OF_STEP[step]}, factor {idx})")
+    # CONFIRMED_BY_READINGS (the data module's own record) == the reading table, and covers every curve
+    by_key = {key: (shown, TOTAL_OF_STEP[step]) for _w, _b, shown, step, _i, key in READINGS if key}
+    n += 1 + len(D.CONFIRMED_BY_READINGS)
+    if sorted(D.CONFIRMED_BY_READINGS) != sorted(D.CURVES):
+        bad.append(f"CONFIRMED_BY_READINGS keys differ from CURVES: {sorted(set(D.CURVES) ^ set(D.CONFIRMED_BY_READINGS))}")
+    for key, want in D.CONFIRMED_BY_READINGS.items():
+        if by_key.get(key) != want:
+            bad.append(f"CONFIRMED_BY_READINGS[{key}] {want} != the READINGS table {by_key.get(key)}")
+    # the model's resolved values at the readings' levels (what the Result shows)
+    for name, got, want in (("Flame Elemental Attack", m.fe_attack_full, 21.3), ("Flashfire Attack", m.ff_attack_full, 16.3), ("Final Orbital Flame coefficient", m.skill_coefficient_base, 551.0)):
+        n += 1
+        if trunc1(got) != want:
+            bad.append(f"model {name}: {got!r} (trunc {trunc1(got)}) != shown {want}")
+    for key, want in (("FLAME_VORTEX", 416.0), ("FLAME_TEMPEST", 565.5), ("CINDER_MAELSTROM", 508.9), ("BLAZING_EXTINCTION_LION", 2550.0), ("TOWERING_INFERNO_FOX", 5100.0)):
+        n += 1
+        if trunc1(m.skills[key]["coef_pct"]) != want:
+            bad.append(f"model {key} coefficient {m.skills[key]['coef_pct']!r} != shown {want}")
+    for key, want in (("FLAME_VORTEX", 483.0), ("FLAME_TEMPEST", 281.7), ("CINDER_MAELSTROM", 241.5)):
+        n += 1
+        if trunc1(m.skills[key]["cygnus_pct"]) != want:
+            bad.append(f"model {key} Call of Cygnus {m.skills[key]['cygnus_pct']!r} != shown {want}")
+    return n, bad
 
 
 def model(**over):
@@ -269,8 +342,9 @@ def run(verbose=True):
     n2, bad2 = check_model_values()
     n3, bad3 = check_cooldowns_and_uptimes()
     n4, bad4 = check_mastery_values_and_unlocks()
-    bad += bad2 + bad3 + bad4
-    n += n2 + n3 + n4
+    n5, bad5 = check_readings()
+    bad += bad2 + bad3 + bad4 + bad5
+    n += n2 + n3 + n4 + n5
     if verbose:
         if bad:
             print("FAIL:")
