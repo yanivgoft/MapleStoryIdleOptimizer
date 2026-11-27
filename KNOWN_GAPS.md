@@ -2179,11 +2179,11 @@ spec and was added**, the frozen builder has none), Power Stance 15 -> 18 % (Her
 Damage rows there are now patch-derived (x1.5), not readings.
 
 **New live terms** (each is an engine-only behaviour; no workbook has it):
-* **Final Pact (Dark Knight) / Phoenix Run (Blaze Wizard)**: a ramp of +1 % Final Damage per second from the battle start, 12 stacks (was a flat +10 % that the typed Final Damage contained; user: "live ramp
-  on top of the typed stat").  The per-stack value follows the old curve (10 tenths-of-% x factor 22, x2 from Lv118 by the existing "boost +100 %" mastery - ASSUMED unchanged by the patch, which does not mention
-  it); fight-average stacks `Fight.ramp_avg_stacks` (timed fights / PvP: exact, `12 - 78/T` for T >= 12; continuous hunting: always 12; one battle start per fight: not reset per wave - open, ask for an in-game
-  observation if a hunting number looks off).  Dark Knight therefore now uses `baked_fd_form="typed"` (Hero's convention) because the ramp shares the typed Final Damage bracket; `mult_extra` makes the
-  Final Damage sweep bump the whole bucket.
+* **Final Pact (Dark Knight) / Phoenix Run (Blaze Wizard)**: a ramp of +1 % Final Damage per second from the battle start, 12 stacks (was a flat +10 % that the typed Final Damage contained;
+  user: "live ramp on top of the typed stat").  **The stacks COMPOUND** (user, 2026-11-26: every stack is its own Final Damage factor, "another 4.8 % every 3 s, compounding per FD rules", like Arcane Aim):
+  average gain over the fight `Fight.ramp_avg_gain_pct` = mean of `(1 + p)^n - 1` (continuous hunting: `(1 + p)^12 - 1`; one battle start per fight, not reset per wave - open).  The per-stack value follows the old
+  curve (10 tenths-of-% x factor 22, x2 from Lv118 by the existing "boost +100 %" mastery - ASSUMED unchanged by the patch, which does not mention it).  Dark Knight therefore now uses `baked_fd_form="typed"`
+  (Hero's convention) because the ramp shares the typed Final Damage bracket; `mult_extra` makes the Final Damage sweep bump the whole bucket.
 * **Night Lord - Frailty Curse - Weaken** (was "Frailty Curse - Critical", Lv111, +30 % Critical Damage Taken): Lv113, the Frailty Curse damage-taken debuff x 1.08 (user: multiplicative reading of "+8%p");
   the Critical-Damage-Taken term is gone (`crit_damage_bonus` 0).  The Critical Resistance half stays unmodelled.  "Frailty Curse / Smokescreen / Emerald Dust now a standalone 20 s buff, Buff Duration applies":
   the engine already modelled both as 20 s buffs on a 45 s cooldown with Buff Duration; buff removal is not modelled (no change).
@@ -2210,9 +2210,12 @@ Final Damage as a standalone 20 s buff, Bow Expert Max Damage 30 %: the class is
 them), stars 6 / 7 continue the line (`sv`); Epic / Unique stay at 5; schema `artifacts[].max_star`, API validation per artifact, web star dropdown per artifact (clamped).  **Three new Legendary artifacts**
 (`engine/data/artifacts_extra.py`, merged into `engine.data.artifacts` by the footer of the generated file; `WORKBOOK_ARTIFACT_*` keep the workbook subset, `gen_artifact_data.py --check` still verifies the
 generated part): Sealed Bottle (+6 % Final Damage; Normal +1 % / Boss +2 % Monster Damage per kill, 10 stacks, 30 in Chapter Breakthrough: stacks from the Chalice kill rate (100 / min), full in continuous
-hunting, a ramp until the boss appears in Breakthrough / Hero Dungeon, none in boss-only content / PvP), Shiny Watch (+10 % Attack; the companion's Final Damage +4 % every 3 s up to 10 stacks, averaged over
-its window by the companion model: host key `watch_per`, absent for the workbooks), Mummydog's Bandages (+12 % Attack; the below-50 %-HP branch has no DPS counterpart: HP is assumed to stay above 50 %).
+hunting, a ramp until the boss appears in Breakthrough / Hero Dungeon, none in boss-only content / PvP), Shiny Watch (+10 % Attack; the companion's Final Damage +4 % every 3 s up to 10 COMPOUNDING stacks, averaged over
+its window by the companion model: host key `watch_per`, absent for the workbooks; it scales only the companion's OWN damage, not the stun uplift the model books under the companion), Mummydog's Bandages (+12 % Attack; the below-50 %-HP branch has no DPS counterpart: HP is assumed to stay above 50 %).
 The star-0 values are the patch table's (inventory effects - Normal Monster Damage 15 %, Final Damage 2 %, Defense 10 % - belong to the preset page and are never modelled); the percentages scale +20 % of
 the base per star by the user's rule, the stack counts and the 3 s interval do not.  Sealed Bottle's Final Damage is stripped from the typed value like the other always-on Final Damage artifacts
 (`typed_artifacts.FACTOR_ROWS`); its kill stacks, Shiny Watch and Mummydog's Bandages are not.  The Sensitivity specs of every class carry `shiny_watch_equipped` / `mummydogs_bandages_equipped`
 (strip rebuild) and `shiny_watch_equipped` (full summon search) on top of the builders' lists (`engine/sens_specs/__init__.py`).  The Excel import has no rows for them (they stay at their defaults).
+
+**Companion result split (2026-11-26, user request)**: `result.companion` carries `own_dps` / `effects_dps` (+ boss / normal): the companion's own damage and what it does for the player (stun uplift = Status Effect
+Damage on your hits while enemies are stunned, buff snapshots, boss-phase extension); `own + effects == dps`.  The Calculator shows them as two rows / bars ("Companion damage", "Companion buffs to you").

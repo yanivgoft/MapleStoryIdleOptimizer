@@ -316,11 +316,11 @@ class _Model(model_mod.ModelBase):
         self.lord_critrate_avg, self.lord_critdmg_avg = lord_critrate_avg, lord_critdmg_avg
         self.crit_rate_bonus = lord_critrate_avg
         self.crit_damage_bonus = lord_critdmg_avg
-        # Final Pact (patch 2026-11-26): +1% Final Damage per second from the battle start, up to 12 stacks - the fight-average stack count x the per-stack value
+        # Final Pact (patch 2026-11-26): +1% Final Damage per second from the battle start, up to 12 stacks, every stack its own Final Damage factor (compounding): fight average
         fp = D.FINAL_PACT
         fp_stack_pct = (coeff_pct(fp["base"], fp["fidx"], True, fp["step"]) * (fp["boost"][1] if level >= fp["boost"][0] else 1.0)
                         + sens.get("final_pact_stack_delta", 0.0))      # (+ its level delta, Sensitivity only)
-        self.final_pact_avg = fp_stack_pct * fight.ramp_avg_stacks(fp["max_stacks"], fp["interval"]) if unlocked("FINAL_PACT") else 0.0
+        self.final_pact_avg = fight.ramp_avg_gain_pct(fp_stack_pct, fp["max_stacks"], fp["interval"]) if unlocked("FINAL_PACT") else 0.0
         self.final_damage_extra = self.final_pact_avg + sens.get("final_damage_delta", 0.0)      # (+ Power Stance's level delta, Sensitivity only)
 
         # Buff-Casting Startup Delay: in fixed-duration fights the character casts every unlocked, actively cast buff sequentially at fight start

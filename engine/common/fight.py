@@ -57,13 +57,14 @@ def exact_buff_uptime(cooldown, buff_duration, d, casts=None):
     return (casts - 1) * min(buff_duration, cooldown) + last_uptime
 
 
-def ramp_avg_stacks(duration, max_stacks, interval=1.0):
-    """Average stack count over ``duration`` s of a buff that gains one stack every ``interval`` s from t = 0 up to ``max_stacks`` (a stack counts once gained)."""
+def ramp_avg_gain_pct(duration, per_stack_pct, max_stacks, interval=1.0):
+    """Average over ``duration`` s of the compounded gain ``((1 + p)^n - 1) x 100`` of a buff with n stacks (one more every ``interval`` s from t = 0, at most ``max_stacks``)."""
     if duration <= 0:
         return 0.0
+    f = 1 + per_stack_pct / 100
     n = min(int(duration // interval), max_stacks)          # whole stacks gained within the window
-    stack_seconds = interval * n * (n - 1) / 2 + n * (duration - n * interval)        # stacks 0..n-1 for one interval each, then n stacks for the rest
-    return stack_seconds / duration
+    total = interval * sum(f ** k for k in range(n)) + (duration - n * interval) * f ** n        # stacks 0..n-1 for one interval each, then n stacks for the rest
+    return (total / duration - 1) * 100
 
 
 class Fight:
@@ -117,15 +118,15 @@ class Fight:
             return min(self.eff_duration(duration), self.pvp_len) / self.pvp_len
         return min(1.0, self.eff_duration(duration) / eff_cd)
 
-    def ramp_avg_stacks(self, max_stacks, interval=1.0):
-        """Average stack count of a buff that gains one stack every ``interval`` s from the start of the battle up to ``max_stacks`` (Dark Knight's Final Pact,
-        Blaze Wizard's Phoenix Run).  Timed fights and PvP: the exact average over the fight (a stack counts once it has been gained); continuous hunting:
-        the buff is at its maximum (a battle lasts far longer than the ramp)."""
+    def ramp_avg_gain_pct(self, per_stack_pct, max_stacks, interval=1.0):
+        """Average Final Damage % of a buff that gains one stack worth ``per_stack_pct`` every ``interval`` s from the start of the battle up to ``max_stacks`` (Dark Knight's Final
+        Pact, Blaze Wizard's Phoenix Run).  Every stack is its own Final Damage factor, so the stacks COMPOUND ((1 + p)^n - 1; user, 2026-11-26: "another 4.8 % every 3 s, that is
+        compounding per FD rules", like Arcane Aim).  Timed fights and PvP: the exact average over the fight; continuous hunting: the buff is at its maximum."""
         if self.fixed_duration_active:
-            return ramp_avg_stacks(self.fight_duration, max_stacks, interval)
+            return ramp_avg_gain_pct(self.fight_duration, per_stack_pct, max_stacks, interval)
         if self.monster_type == "pvp":
-            return ramp_avg_stacks(self.pvp_len, max_stacks, interval)
-        return float(max_stacks)
+            return ramp_avg_gain_pct(self.pvp_len, per_stack_pct, max_stacks, interval)
+        return ((1 + per_stack_pct / 100) ** max_stacks - 1) * 100
 
     # ---- damage skills under the buff-casting startup delay ----
     def non_buff_casts(self, cooldown):

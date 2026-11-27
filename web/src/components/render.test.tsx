@@ -35,7 +35,8 @@ describe("render smoke (server-side), FP-Mage", () => {
     const html = strip(renderToString(<Results result={fp.result} busy={false} stale={false} />));
     expect(html).toContain("Total DPS");
     expect(html).toContain(formatNumber(fp.result.total_dps));
-    expect(html).toContain("Companion: Blaze Wizard");
+    expect(html).toContain("Companion damage: Blaze Wizard");
+    expect(html).toContain("Companion buffs to you");
     expect(html).toContain("Basic Attack");
     expect(html).not.toContain("Timeline engine");
     expect(html.includes("Detailed simulation")).toBe(fp.result.engine_on);       // the pill only appears when the simulation is on
@@ -110,7 +111,8 @@ describe("render smoke, every class", () => {
     expect(html).toContain(formatNumber(c.result.total_dps));
     expect(html).toContain("<svg");
     for (const s of c.result.skills.filter((x) => x.unlocked)) expect(html, s.key).toContain(esc(s.name));
-    expect(html).toContain("Companion: Blaze Wizard");
+    expect(html).toContain("Companion damage: Blaze Wizard");
+    expect(html).toContain("Companion buffs to you");
     expect(html).toContain("Advanced: calculation details");
     expect(html).not.toContain("Derived values");
   });

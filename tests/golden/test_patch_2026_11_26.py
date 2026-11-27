@@ -52,16 +52,20 @@ def test_passive_deltas():
 
 
 def test_ramp_average():
+    """Stacks compound (user, 2026-11-26): the average over the fight of ((1 + p)^n - 1), n = whole stacks gained so far, capped."""
     class C:
         monster_type, fight_duration, fixed_duration_active, normal_weight = "boss", 60, True, 0.0
-    f = Fight(C, 30, 0, 0, 999)
-    assert math.isclose(f.ramp_avg_stacks(12), 12 - 78 / 60, rel_tol=1e-12)           # whole stacks gained at t = 1, 2, ...: 12 d - 78 over d seconds
+    p = 1.0
+    f = 1 + p / 100
+    want60 = (sum(f ** k for k in range(12)) + (60 - 12) * f ** 12) / 60 - 1          # stacks 0..11 for 1 s each, then 12 stacks for 48 s
+    assert math.isclose(Fight(C, 30, 0, 0, 999).ramp_avg_gain_pct(p, 12), want60 * 100, rel_tol=1e-12)
     C.fight_duration = 5
-    assert math.isclose(Fight(C, 30, 0, 0, 999).ramp_avg_stacks(12), (0 + 1 + 2 + 3 + 4) / 5, rel_tol=1e-12)
+    assert math.isclose(Fight(C, 30, 0, 0, 999).ramp_avg_gain_pct(p, 12), (sum(f ** k for k in range(5)) / 5 - 1) * 100, rel_tol=1e-12)
+    assert math.isclose(Fight(C, 30, 0, 0, 999).ramp_avg_gain_pct(0.0, 12), 0.0, abs_tol=1e-12)           # no stack value, no gain
     C.fixed_duration_active, C.monster_type = False, "normal"
-    assert Fight(C, 30, 0, 0, 999).ramp_avg_stacks(12) == 12.0                           # continuous hunting: always at the maximum
+    assert math.isclose(Fight(C, 30, 0, 0, 999).ramp_avg_gain_pct(p, 12), (f ** 12 - 1) * 100, rel_tol=1e-12)    # continuous hunting: always at the maximum
     C.monster_type = "pvp"
-    assert math.isclose(Fight(C, 30, 0, 0, 999).ramp_avg_stacks(12), 12 - 78 / 30, rel_tol=1e-12)
+    assert math.isclose(Fight(C, 30, 0, 0, 999).ramp_avg_gain_pct(p, 12), ((sum(f ** k for k in range(12)) + (30 - 12) * f ** 12) / 30 - 1) * 100, rel_tol=1e-12)
 
 
 def test_final_pact_and_phoenix_run_are_live_ramps():
@@ -136,13 +140,15 @@ def test_new_artifacts():
     # Mummydog's Bandages / Shiny Watch: Attack % (12 / 10 at star 0, +20 % of the base per star)
     assert math.isclose(bucket("World Boss", [{"key": "mummydogs_bandages", "star": 7}], "attack_pct"), 12 * 2.4, rel_tol=1e-12)
     assert math.isclose(bucket("World Boss", [{"key": "shiny_watch", "star": 3}], "attack_pct"), 10 * 1.6, rel_tol=1e-12)
-    # Shiny Watch's companion ramp: 4 % Final Damage per 3 s up to 10 stacks, averaged over the companion's window (4.5 stacks = 18 % over the base 30 s)
+    # Shiny Watch's companion ramp: 4 % Final Damage per 3 s up to 10 stacks, averaged over the companion's window (compounding stacks)
     inputs = dict(H.defaults("World Boss"), companion_choice="Blaze Wizard", companion_level=10)
     m_off = H.model(dict(inputs, artifacts=[{"key": "alliance_badge", "star": 0}]))
     m_on = H.model(dict(inputs, artifacts=[{"key": "shiny_watch", "star": 0}]))
     assert m_on.comp_host["watch_per"] == 4.0 and m_off.comp_host["watch_per"] == 0.0
     cpm = __import__("companion_python_model")
-    assert math.isclose(cpm._ramp_avg_stacks(30, 10, 3.0), 4.5, rel_tol=1e-12) and cpm._ramp_avg_stacks(300, 10, 3.0) < 10
+    f = 1.048
+    assert math.isclose(cpm._ramp_avg_factor(42, 10, 3.0, 4.8), (3 * sum(f ** k for k in range(10)) + 12 * f ** 10) / 42, rel_tol=1e-12)      # 10 compounding stacks over a 42 s window
+    assert cpm._ramp_avg_factor(300, 10, 3.0, 4.8) < f ** 10 and cpm._ramp_avg_factor(0.0, 10, 3.0, 4.8) == 1.0
     host = dict(m_on.comp_host)
     with_watch = cpm.run(host, "Blaze Wizard", 10, 0.0)["comp_blend_dps"]
     without = cpm.run(dict(host, watch_per=0.0), "Blaze Wizard", 10, 0.0)["comp_blend_dps"]
@@ -159,6 +165,15 @@ def test_bishop_divine_protection_and_fp_mage_stun():
     assert FD.PLAYER_STUN == [dict(id="BREATH", key="POISON_BREATH", typ="cast", dur=1.5, p=1.0)]
     r = F.compute(dict(F.defaults("World Boss"), companion_choice="None", companion_level=0))
     assert r["companion"] is not None and r["companion"]["choice"] == "None"           # a stun-only uplift is reported like in every class with a player stun
+
+
+def test_companion_result_splits_own_damage_and_effects():
+    from engine.classes import hero as H
+    r = H.compute(dict(H.defaults("World Boss"), companion_choice="Blaze Wizard", companion_level=10))["companion"]
+    assert r["own_dps"] > 0 and r["effects_dps"] >= 0
+    assert math.isclose(r["own_dps"] + r["effects_dps"], r["dps"], rel_tol=1e-12)
+    assert math.isclose(r["own_boss_dps"] + r["effects_boss_dps"], r["boss_dps"], rel_tol=1e-12)
+    assert math.isclose(r["own_normal_dps"] + r["effects_normal_dps"], r["normal_dps"], rel_tol=1e-12, abs_tol=1e-9)
 
 
 def main():

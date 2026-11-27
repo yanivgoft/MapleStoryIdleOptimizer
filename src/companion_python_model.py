@@ -28,12 +28,14 @@ def _aps_after(aps, delta_pct):
     return 1 + min(150.0, 150.0 * (1 - (1 - (aps - 1) * 100 / 150) * (1 - delta_pct / 150))) / 100
 
 
-def _ramp_avg_stacks(duration, max_stacks, interval):
-    """Average stack count over ``duration`` s of a buff gaining one stack every ``interval`` s from t = 0 up to ``max_stacks`` (same as engine.common.fight.ramp_avg_stacks)."""
+def _ramp_avg_factor(duration, max_stacks, interval, per_pct):
+    """Average over ``duration`` s of the compounded factor (1 + p/100)^n of a buff gaining one stack worth ``p`` % every ``interval`` s from t = 0 up to ``max_stacks``
+    (same as engine.common.fight.ramp_avg_gain_pct, as a factor)."""
     if duration <= 0:
-        return 0.0
+        return 1.0
+    f = 1 + per_pct / 100
     n = min(int(duration // interval), max_stacks)
-    return (interval * n * (n - 1) / 2 + n * (duration - n * interval)) / duration
+    return (interval * sum(f ** k for k in range(n)) + (duration - n * interval) * f ** n) / duration
 
 
 def run(host, choice, lvl, inc, grid_inc=None):
@@ -46,7 +48,7 @@ def run(host, choice, lvl, inc, grid_inc=None):
     if not sel:
         rows = []
         if not pst:
-            return dict(comp_boss_dps=0.0, comp_norm_dps=0.0, comp_blend_dps=0.0, best=1, s=0, W=0, dmg_b=0.0, dmg_n=0.0, upl_b=0.0, upl_n=0.0,
+            return dict(comp_boss_dps=0.0, comp_norm_dps=0.0, comp_blend_dps=0.0, own_boss_dps=0.0, own_norm_dps=0.0, best=1, s=0, W=0, dmg_b=0.0, dmg_n=0.0, upl_b=0.0, upl_n=0.0,
                         stunfracB=0.0, stunfracN=0.0, hasstun=0, horn_uptime=0.0, E=0.0, ext=0.0)
     D = 30.0 * (1 + inc / 100)
     pvp = h["mt"] == "pvp"
@@ -221,7 +223,12 @@ def run(host, choice, lvl, inc, grid_inc=None):
     else:
         comp_b = (dmg_b + upl_b + (ext / (1 - w) if w < 1 else 0.0)) / period
         comp_n = (dmg_n + upl_n) / period
-    return dict(comp_boss_dps=comp_b, comp_norm_dps=comp_n, comp_blend_dps=(1 - w) * comp_b + w * comp_n, best=idx + 1, s=s, W=W, E=E, ext=ext, horn_uptime=horn_uptime, s0=s0, W0=W0, stunfracB=stf_b, stunfracN=stf_n,
+    if tb0 > 0:             # the companion's OWN damage (the rest of comp_*_dps is what it does for the player: stun uplift, Hexagon / Charm snapshots, boss-phase extension)
+        own_b, own_n = dmg_b / max(1e-6, Teff - tb0), dmg_n / tb0
+    else:
+        own_b, own_n = dmg_b / period, dmg_n / period
+    return dict(comp_boss_dps=comp_b, comp_norm_dps=comp_n, comp_blend_dps=(1 - w) * comp_b + w * comp_n, own_boss_dps=own_b, own_norm_dps=own_n,
+                best=idx + 1, s=s, W=W, E=E, ext=ext, horn_uptime=horn_uptime, s0=s0, W0=W0, stunfracB=stf_b, stunfracN=stf_n,
                 hasstun=1 if ((sel and stunners('b')) or pst) else 0, stun_vector=stun_vector,
                 dmg_b=dmg_b, dmg_n=dmg_n, upl_b=upl_b, upl_n=upl_n)
 
@@ -435,8 +442,8 @@ def _evaluate(h, rows, W, s, steady, pvp, isBT, chboss, tb0, Teff, cap, w, tbasi
         rhoH = (1 + h["horn_full"] / 100) / (1 + h["horn_avg"] / 100)
         core = (rhoA * rhoD * rhoF * rhoH * rc["fdR"] * rc["crR"] * rc["mxR"] * rc["dfR"] * rc["tkR"] * rc["pcR"] * lvlmult
                 * (stm_b if branch == "b" else stm_n))
-        if h.get("watch_per"):          # Shiny Watch (patch 2026-11-26, app only: the frozen workbooks never set it): the companion's own Final Damage ramp over its window W
-            core *= 1 + h["watch_per"] * _ramp_avg_stacks(W, h["watch_max"], h["watch_interval"]) / 100
+        if h.get("watch_per"):          # Shiny Watch (patch 2026-11-26, app only: the frozen workbooks never set it): the companion's own Final Damage ramp (compounding stacks) over its window W
+            core *= _ramp_avg_factor(W, h["watch_max"], h["watch_interval"], h["watch_per"])      # every stack is its own Final Damage factor: they compound
         tf = tf_b if branch == "b" else tf_n
         dmg = h["unit"] * core * (BAS * rc["bdR"] + skratio * rc["sdR"] * (hit + dot + tf * (ech + stn + procs_d)))
         dmg *= (1 if pvp else 1 + pct / 100) * extra

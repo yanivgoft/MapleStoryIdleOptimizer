@@ -93,6 +93,13 @@ export interface CompanionResult {
   share: number;
   damage: number;
   uplift: number;
+  // DPS split of `dps` (absent in older fixtures): the companion's own damage and what it does for the player (stun uplift, buff snapshots, boss-phase extension)
+  own_dps?: number;
+  own_boss_dps?: number;
+  own_normal_dps?: number;
+  effects_dps?: number;
+  effects_boss_dps?: number;
+  effects_normal_dps?: number;
   best_candidate: number;
   summon_time_s: number;
   window_s: number;

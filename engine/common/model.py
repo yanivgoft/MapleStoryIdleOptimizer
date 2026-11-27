@@ -127,6 +127,10 @@ class ModelBase:
                 choice=self.companion_choice, level=self.companion_level, dps=self.companion_dps,
                 boss_dps=cr["comp_boss_dps"], normal_dps=cr["comp_norm_dps"], share=(self.companion_dps / total if total else 0.0),
                 damage=(1 - w) * cr["dmg_b"] + w * cr["dmg_n"], uplift=(1 - w) * cr["upl_b"] + w * cr["upl_n"],
+                # DPS split of ``dps``: the companion's own damage and what it does for the player (stun uplift, buff snapshots, boss-phase extension)
+                own_dps=(1 - w) * cr["own_boss_dps"] + w * cr["own_norm_dps"], own_boss_dps=cr["own_boss_dps"], own_normal_dps=cr["own_norm_dps"],
+                effects_dps=self.companion_dps - ((1 - w) * cr["own_boss_dps"] + w * cr["own_norm_dps"]),
+                effects_boss_dps=cr["comp_boss_dps"] - cr["own_boss_dps"], effects_normal_dps=cr["comp_norm_dps"] - cr["own_norm_dps"],
                 best_candidate=cr["best"], summon_time_s=cr["s"], window_s=cr["W"],
                 details={k: v for k, v in cr.items() if isinstance(v, (int, float, str, bool))},
             )

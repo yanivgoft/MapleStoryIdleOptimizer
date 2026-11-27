@@ -24,11 +24,17 @@ export function Results({ result, busy, stale }: { result: ComputeResult; busy: 
   // No companion chosen: the block can still carry a stun effect (e.g. Hero's Rush lengthening the boss phase); it is not a companion.
   const c = result.companion;
   const hasCompanion = !!c && c.choice !== "None";
+  const split = hasCompanion && c!.own_dps !== undefined && c!.effects_dps !== undefined;       // own damage and buffs to you, reported separately
   const bars = useMemo<Bar[]>(() => {
     const rows: Bar[] = result.skills.filter((s) => s.unlocked && s.dps > 0).map((s) => ({ label: s.name, value: s.dps, share: s.share }));
     const comp = result.companion;
     if (comp && comp.dps > 0) {
-      rows.push({ label: comp.choice === "None" ? "Stun effect" : `Companion: ${comp.choice}`, value: comp.dps, share: comp.share, highlight: true });
+      if (comp.choice !== "None" && comp.own_dps !== undefined && comp.effects_dps !== undefined) {
+        // the companion's own damage and what it does for you (stun uplift, buffs) are two different things: two bars
+        const t = result.total_dps;
+        if (comp.own_dps > 0) rows.push({ label: `Companion ${comp.choice}: damage`, value: comp.own_dps, share: t > 0 ? comp.own_dps / t : 0, highlight: true });
+        if (comp.effects_dps > 0) rows.push({ label: `Companion ${comp.choice}: buffs to you`, value: comp.effects_dps, share: t > 0 ? comp.effects_dps / t : 0, highlight: true });
+      } else rows.push({ label: comp.choice === "None" ? "Stun effect" : `Companion: ${comp.choice}`, value: comp.dps, share: comp.share, highlight: true });
     }
     return rows.sort((a, b) => b.value - a.value);
   }, [result]);
@@ -56,7 +62,9 @@ export function Results({ result, busy, stale }: { result: ComputeResult; busy: 
             </span>
           )}
           <span>Player {formatPercent(ofTotal(result.player_dps), 0)}</span>
-          {c && c.dps > 0 && <span>{hasCompanion ? "Companion" : "Stun effect"} {formatPercent(ofTotal(c.dps), 0)}</span>}
+          {c && c.dps > 0 && !split && <span>{hasCompanion ? "Companion" : "Stun effect"} {formatPercent(ofTotal(c.dps), 0)}</span>}
+          {c && split && <span>Companion damage {formatPercent(ofTotal(c.own_dps!), 0)}</span>}
+          {c && split && <span>Companion buffs to you {formatPercent(ofTotal(c.effects_dps!), 0)}</span>}
         </div>
       </div>
       <div className="split">
@@ -99,7 +107,25 @@ export function Results({ result, busy, stale }: { result: ComputeResult; busy: 
                   <td className="num">{branchShare(s.normal_dps, result.normal_dps)}</td>
                 </tr>
               ))}
-              {c && (hasCompanion || c.dps > 0) && (
+              {c && split && (
+                <>
+                  <tr className="companion">
+                    <th scope="row">
+                      Companion damage: {c.choice} <span className="tag">Lv {c.level}</span>
+                    </th>
+                    <td className="num">{formatPercent(ofTotal(c.own_dps!))}</td>
+                    <td className="num">{branchShare(c.own_boss_dps!, result.boss_dps)}</td>
+                    <td className="num">{branchShare(c.own_normal_dps!, result.normal_dps)}</td>
+                  </tr>
+                  <tr className="companion">
+                    <th scope="row">Companion buffs to you</th>
+                    <td className="num">{formatPercent(ofTotal(c.effects_dps!))}</td>
+                    <td className="num">{branchShare(c.effects_boss_dps!, result.boss_dps)}</td>
+                    <td className="num">{branchShare(c.effects_normal_dps!, result.normal_dps)}</td>
+                  </tr>
+                </>
+              )}
+              {c && !split && (hasCompanion || c.dps > 0) && (
                 <tr className="companion">
                   <th scope="row">
                     {hasCompanion ? (

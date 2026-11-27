@@ -18,7 +18,7 @@
   }
  ],
  "result": {
-  "total_dps": 6.6835263395478136e+16,
+  "total_dps": 6.9399554936619784e+16,
   "artifacts": {
    "equipped": [
     {
@@ -154,72 +154,72 @@
     "phase_factor_normal": 1.0
    }
   },
-  "player_dps": 5.140168413495258e+16,
-  "boss_dps": 6.6835263395478136e+16,
-  "normal_dps": 1.265914330900978e+16,
-  "player_boss_dps": 5.140168413495258e+16,
+  "player_dps": 5.337383023165834e+16,
+  "boss_dps": 6.939955493661979e+16,
+  "normal_dps": 1.3144841014924562e+16,
+  "player_boss_dps": 5.3373830231658344e+16,
   "player_normal_dps": 0.0,
   "skills": [
    {
     "key": "DARK_IMPALE",
     "name": "Dark Impale",
-    "dps": 2.1372089352104468e+16,
-    "share": 0.31977265093789453,
-    "boss_dps": 2.1372089352104468e+16,
+    "dps": 2.2192079655992948e+16,
+    "share": 0.3197726509378945,
+    "boss_dps": 2.2192079655992948e+16,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "MAGIC_CRASH",
     "name": "Magic Crash",
-    "dps": 3380312443423999.5,
-    "share": 0.05057678045528135,
-    "boss_dps": 3380312443423999.5,
+    "dps": 3510006053723655.5,
+    "share": 0.05057678045528134,
+    "boss_dps": 3510006053723655.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "GUNGNIRS_DESCENT",
     "name": "Gungnir's Descent",
-    "dps": 7020648920957539.0,
+    "dps": 7290012573118363.0,
     "share": 0.1050440824840459,
-    "boss_dps": 7020648920957539.0,
+    "boss_dps": 7290012573118363.0,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "EVIL_EYE_SHOCK",
     "name": "Evil Eye Shock",
-    "dps": 1707234048664337.5,
+    "dps": 1772736084675392.8,
     "share": 0.025543911431339456,
-    "boss_dps": 1707234048664337.5,
+    "boss_dps": 1772736084675392.8,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "EVIL_EYE_OF_DOMINANT",
     "name": "Evil Eye of Dominant",
-    "dps": 2436174140119538.5,
-    "share": 0.03645043075096734,
-    "boss_dps": 2436174140119538.5,
+    "dps": 2529643671365212.5,
+    "share": 0.03645043075096733,
+    "boss_dps": 2529643671365212.5,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "REVENGE_OF_THE_EVIL_EYE",
     "name": "Revenge of the Evil Eye",
-    "dps": 1.3025801145633528e+16,
-    "share": 0.1948941394688184,
-    "boss_dps": 1.3025801145633528e+16,
+    "dps": 1.3525566538891502e+16,
+    "share": 0.19489413946881842,
+    "boss_dps": 1.3525566538891502e+16,
     "normal_dps": 0.0,
     "unlocked": true
    },
    {
     "key": "RUSH",
     "name": "Rush",
-    "dps": 2459424084049166.0,
+    "dps": 2553785653891262.5,
     "share": 0.03679830016523228,
-    "boss_dps": 2459424084049166.0,
+    "boss_dps": 2553785653891262.5,
     "normal_dps": 0.0,
     "unlocked": true
    }
@@ -227,19 +227,27 @@
   "companion": {
    "choice": "Blaze Wizard",
    "level": 10,
-   "dps": 1.5433579260525558e+16,
-   "boss_dps": 1.5433579260525558e+16,
-   "normal_dps": 1.265914330900978e+16,
-   "share": 0.23091970430642075,
-   "damage": 9.857729489506045e+17,
-   "uplift": 9.457759928618453e+16,
+   "dps": 1.6025724704961448e+16,
+   "boss_dps": 1.6025724704961448e+16,
+   "normal_dps": 1.3144841014924562e+16,
+   "share": 0.23091970430642084,
+   "damage": 1.0235944387758596e+18,
+   "uplift": 9.820629057144184e+16,
+   "own_dps": 1.4622777696797994e+16,
+   "own_boss_dps": 1.4622777696797994e+16,
+   "own_normal_dps": 1.3144841014924562e+16,
+   "effects_dps": 1402947008163454.0,
+   "effects_boss_dps": 1402947008163454.0,
+   "effects_normal_dps": 0.0,
    "best_candidate": 1,
    "summon_time_s": 31.6,
    "window_s": 38.4,
    "details": {
-    "comp_boss_dps": 1.5433579260525558e+16,
-    "comp_norm_dps": 1.265914330900978e+16,
-    "comp_blend_dps": 1.5433579260525558e+16,
+    "comp_boss_dps": 1.6025724704961448e+16,
+    "comp_norm_dps": 1.3144841014924562e+16,
+    "comp_blend_dps": 1.6025724704961448e+16,
+    "own_boss_dps": 1.4622777696797994e+16,
+    "own_norm_dps": 1.3144841014924562e+16,
     "best": 1,
     "s": 31.6,
     "W": 38.4,
@@ -251,9 +259,9 @@
     "stunfracB": 0.32857142857142857,
     "stunfracN": 0.32857142857142857,
     "hasstun": 1,
-    "dmg_b": 9.857729489506045e+17,
-    "dmg_n": 8.861400316306845e+17,
-    "upl_b": 9.457759928618453e+16,
+    "dmg_b": 1.0235944387758596e+18,
+    "dmg_n": 9.201388710447194e+17,
+    "upl_b": 9.820629057144184e+16,
     "upl_n": 0.0
    }
   },
@@ -273,7 +281,7 @@
    "phi_unif": 1.0946073682122752,
    "phi_rows": {
     "MAGIC_CRASH": 1.5186308559767492,
-    "GUNGNIRS_DESCENT": 1.5186308559767492,
+    "GUNGNIRS_DESCENT": 1.5186308559767494,
     "EVIL_EYE_SHOCK": 1.2448739251318275,
     "EVIL_EYE_OF_DOMINANT": 1.0936107222293283,
     "RUSH": 1.3784495461942812
@@ -293,7 +301,7 @@
    "buff_cast_startup_time": 0.0,
    "crit_rate_bonus": 4.7909999999999995,
    "crit_damage_bonus": 19.163999999999998,
-   "final_damage_extra": 41.56165714285714,
+   "final_damage_extra": 51.1405118227678,
    "monster_dmg_bonus": 79.53714285714285,
    "def_pen_effective": 50,
    "maple_hero_pct": 353.2,
